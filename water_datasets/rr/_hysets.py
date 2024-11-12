@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .camels import Camels
-from .._backend import xarray as xr
+from .._backend import shapefile, xarray as xr
 from ..utils import check_attributes, sanity_check
 
 
@@ -169,7 +169,9 @@ class HYSETS(Camels):
         twoD_vars = []
 
         for src in self.Q_SRC:
-            xds = xr.open_dataset(os.path.join(self.path, f'HYSETS_2020_{src}.nc'))
+            fpath = os.path.join(self.path, f'HYSETS_2020_{src}.nc')
+            assert os.path.exists(fpath), f'{fpath} does not exist'
+            xds = xr.open_dataset(fpath)
 
             for var in xds.variables:
                 print(f'getting {var} from source {src} ')
@@ -200,15 +202,17 @@ class HYSETS(Camels):
         self._path = x
 
     @property
-    def static_features(self)->list:
-        df = self.read_static_data()
+    def static_features(self)->List[str]:
+        df = self.read_static_data(nrows=2)
         return df.columns.to_list()
 
     def stations(self) -> List[str]:
         """
         retuns a list of station names. The ``Watershed_ID`` of the station is used
         as station name instead of ``Official_ID``. This is because in .nc files
-        watershed_ID is used for stations instead of Official_ID
+        watershed_ID is used for stations instead of Official_ID. ``Official_ID``
+        starts with 1, 2, 3 and so on while ``Watershed_ID`` is a code from
+        meteo agency such as ``01AD002`` for station 1.
 
         Returns
         -------
@@ -226,12 +230,68 @@ class HYSETS(Camels):
         return self.read_static_data().index.to_list()
 
     @property
+    def WatershedID_OfficialID_map(self):
+        """A dictionary mapping Watershed_ID to Official_ID.
+        For example '01AD002': '1'
+        """
+        return self.read_static_data(
+            usecols=['Watershed_ID', 'Official_ID']
+            ).loc[:, 'Official_ID'].to_dict()
+
+    @property
+    def OfficialID_WatershedID_map(self):
+        """A dictionary mapping Official_ID to Watershed_ID.
+        For example '1': '01AD002'
+        """
+        s = self.read_static_data(usecols=['Watershed_ID', 'Official_ID'])
+        return {v:k for k,v in s.loc[:, 'Official_ID'].to_dict().items()}
+        
+
+    @property
     def start(self)->str:
         return "19500101"
 
     @property
     def end(self)->str:
         return "20181231"
+
+    def get_boundary(
+            self,
+            catchment_id: str,
+            as_type: str = 'numpy'
+    ):
+        """
+        returns boundary of a catchment in a required format
+
+        Parameters
+        ----------
+        catchment_id : str
+            name/id of catchment
+        as_type : str
+            'numpy' or 'geopandas'
+        
+        Examples
+        --------
+        >>> from water_datasets import HYSETS
+        >>> dataset = HYSETS()
+        >>> dataset.get_boundary(dataset.stations()[0])
+        """
+
+        if shapefile is None:
+            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
+
+        from shapefile import Reader
+
+        bndry_sf = Reader(self.boundary_file)
+        bndry_shp = bndry_sf.shape(self.bndry_id_map[self.WatershedID_OfficialID_map[catchment_id]])
+
+        bndry_sf.close()
+
+        xyz = np.array(bndry_shp.points)
+
+        xyz = self.transform_coords(xyz)
+
+        return xyz
 
     def q_mmd(
             self,
@@ -258,6 +318,10 @@ class HYSETS(Camels):
         q = self.fetch_stations_features(stations,
                                            dynamic_features='discharge',
                                            as_dataframe=True)
+        # todo: this is not good practice. fetch_stations_features should requrn q with correct
+        # column names and after correcting it correct it in USGS as well
+        q.columns = stations
+        
         q.index = q.index.get_level_values(0)
         area_m2 = self.area(stations) * 1e6  # area in m2
         q = (q / area_m2) * 86400  # cms to m/day
@@ -426,7 +490,7 @@ class HYSETS(Camels):
 
     def _fetch_dynamic_features(
             self,
-            stations: list,
+            stations: List[int],
             dynamic_features = 'all',
             st=None,
             en=None,
@@ -494,7 +558,7 @@ class HYSETS(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]]="all",
+            stations: Union[str, List[str]]="all",
             features:Union[str, List[str]]="all",
             st=None,
             en=None,
@@ -505,7 +569,7 @@ class HYSETS(Camels):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -537,14 +601,15 @@ class HYSETS(Camels):
         >>> static_data.shape
            (14425, 2)
         """
-        return self._fetch_static_features(stn_id, features, st, en, as_ts)
+        return self._fetch_static_features(stations, features, st, en, as_ts)
 
-    def read_static_data(self):
+    def read_static_data(self, usecols=None, nrows=None):
         """
         reads the HYSETS_watershed_properties.txt file while using `Watershed_ID`
-        as index instead of ``Official_ID``.
+        as index instead of ``Official_ID``. Watershed_ID starts with 1,2,3 and so on
+        while ``Official_ID`` is code from meteo agency such as ``01AD002`` for station 1.
         """
         fname = os.path.join(self.path, 'HYSETS_watershed_properties.txt')
-        static_df = pd.read_csv(fname, index_col='Watershed_ID', sep=';')
+        static_df = pd.read_csv(fname, index_col='Watershed_ID', sep=';', usecols=usecols, nrows=nrows)
         static_df.index = static_df.index.astype(str)
         return static_df
