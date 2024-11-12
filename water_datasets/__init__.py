@@ -28,6 +28,8 @@ from .rr import Simbi
 from .rr import Bull
 from .rr import CAMELS_IND
 from .rr import RainfallRunoff
+from .rr import Arcticnet
+from .rr import USGS
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

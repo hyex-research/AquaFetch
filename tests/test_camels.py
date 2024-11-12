@@ -30,6 +30,8 @@ from water_datasets import Simbi
 from water_datasets import Bull
 from water_datasets import CAMELS_IND
 from water_datasets import RainfallRunoff
+from water_datasets import Arcticnet
+from water_datasets import USGS
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -130,7 +132,7 @@ def check_dataset(dataset, xds, num_stations, data_len,
             logger.warning(msg)
 
     for dyn_attr in xds.coords['dynamic_features'].data:
-        assert dyn_attr in dataset.dynamic_features
+        assert dyn_attr in dataset.dynamic_features, f'{dyn_attr} not in dataset.dynamic_features'
     return
 
 
@@ -211,12 +213,12 @@ def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features
     if len(dataset.static_features)>0:
         df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
-        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df[stn_id].shape}'
+        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
         df = dataset.fetch_static_features(stn_id, features='all')
 
         assert isinstance(df, pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
-        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df[stn_id].shape}'
+        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
         df = dataset.fetch_static_features("all", features='all')
 
@@ -646,7 +648,7 @@ class TestCamels(unittest.TestCase):
             'H': [76]
             }
         length = {'D': 26298, 'H': 412825}
-        num_dynamic = {'D': 35, 'H': 27}
+        num_dynamic = {'D': 36, 'H': 28}
         yr_steps = {'D': 366, 'H': 8784}
 
         for idx, data_type in enumerate(['total_upstrm', #'intermediate_all', 'intermediate_lowimp'
@@ -693,7 +695,7 @@ class TestCamels(unittest.TestCase):
 
         dataset.area(dataset.static_data_stations())
 
-        return 
+        return
 
     def test_camels_dk():
         dataset = CAMELS_DK(path=os.path.join(gscad_path, 'CAMELS'))
@@ -715,6 +717,15 @@ class TestCamels(unittest.TestCase):
         ds_aus = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
                                  overwrite=True)
         test_dataset(ds_aus, 561, 26388, 187, 26)
+        return
+
+    def test_arcticnet(self):
+        dataset = Arcticnet(path=gscad_path)
+        return
+
+    def test_usgs(self):
+        dataset = USGS(path=gscad_path, verbosity=3)
+        test_dataset(dataset, 12004, 25202, 27, 5, test_df=False)
         return
 
 

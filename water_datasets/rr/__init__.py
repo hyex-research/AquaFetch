@@ -32,6 +32,8 @@ from ._simbi import Simbi
 from ._denmark import CAMELS_DK as CAMELS_DK0
 from ._bull import Bull
 from ._camels import CAMELS_IND
+from ._arcticnet import Arcticnet
+from ._usgs import USGS
 
 
 DATASETS = {
@@ -58,7 +60,8 @@ DATASETS = {
     "Simbi": Simbi,
     "CAMELS_DK0": CAMELS_DK0,
     "Bull": Bull,
-    "CAMELS_IND": CAMELS_IND
+    "CAMELS_IND": CAMELS_IND,
+    "USGS": USGS,
 }
 
 
@@ -216,6 +219,8 @@ class RainfallRunoff(object):
             - ``CAMELS_DK0``
             - ``Bull``
             - ``CAMELS_IND``
+            - ``USGS``
+
         path : str
             path to directory inside which data is located/downloaded. 
             If provided and the path/dataset exists, then the data will be read
@@ -498,7 +503,7 @@ class RainfallRunoff(object):
 
         Raises
         ------
-            ValueError, if both dynamic_features and static_features are None
+        ValueError, if both dynamic_features and static_features are None
 
         Examples
         --------

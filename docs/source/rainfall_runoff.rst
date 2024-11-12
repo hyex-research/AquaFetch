@@ -4,7 +4,7 @@ This section include datasets which can be used for rainfall runoff modeling.
 They all contain observed streamflow and meteological data as time series.
 These are named as ``dynamic features``. The physical catchment properties
 are included as ``static features``. Although each data source has a dedicated
-class, however :py:class:`water_datasets.RainfallRunoff` class can be used to access all the datasets.
+class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to access all the datasets.
 
 
 .. list-table:: Stations per Source
@@ -121,6 +121,11 @@ class, however :py:class:`water_datasets.RainfallRunoff` class can be used to ac
      - 472
      -
      - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
+   * - ``USGS``
+     - :py:class:`water_datasets.rr.USGS`
+     - 12004
+     -
+     - `USGS nwis <https://waterdata.usgs.gov/nwis/>`_
 
 
 High Level API
@@ -290,6 +295,13 @@ The datasets can be accessed individually by their names.
 
 
 .. autoclass:: water_datasets.CAMELS_IND
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.USGS
    :members:
    :show-inheritance:
 
