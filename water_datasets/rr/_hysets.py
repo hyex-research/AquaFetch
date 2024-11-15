@@ -151,7 +151,9 @@ class HYSETS(Camels):
         if not os.path.exists(fpath):
             self._maybe_to_netcdf('hysets_dyn')
         
-        self.boundary_file = os.path.join(path,  "HYSETS_watershed_boundaries", "HYSETS_watershed_boundaries_20200730.shp")
+        self.boundary_file = os.path.join(path,  
+                                          "HYSETS_watershed_boundaries", 
+                                          "HYSETS_watershed_boundaries_20200730.shp")
         self._create_boundary_id_map(self.boundary_file, 2)
 
     @property

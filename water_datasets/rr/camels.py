@@ -97,6 +97,11 @@ class Camels(Datasets):
 
         self.bndry_id_map = {}
         self.timestep = timestep
+
+        if netCDF4 is None:
+            if to_netcdf:
+                warnings.warn("netCDF4 module is not installed. Please install it to save data in netcdf format")
+            to_netcdf = False
         self.to_netcdf = to_netcdf
 
     @property

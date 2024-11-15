@@ -17,9 +17,11 @@ Welcome to water-datasets!
    :caption: API
 
    rainfall_runoff
+   hydro
    water_quality
    laos
    misc
+
 
 Datasets
 ========

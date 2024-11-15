@@ -3446,7 +3446,7 @@ class CAMELS_IND(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
+        >>> from water_datasets import CAMELS_IND
         >>> dataset = CAMELS_IND()
         get the names of stations
         >>> stns = dataset.stations()
@@ -3474,4 +3474,4 @@ class CAMELS_IND(Camels):
         stations = check_attributes(stn_id, self.stations(), 'stations')
         features = check_attributes(features, self.static_features, 'static_features')
         df = self.static_data()
-        return df.loc[stations, features]    
+        return df.loc[stations, features]
