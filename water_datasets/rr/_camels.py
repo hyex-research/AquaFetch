@@ -594,7 +594,7 @@ class CAMELS_AUS(Camels):
     from 1950-01-01 to 2022-03-31. This class Reads CAMELS-AUS dataset of 
     `Fowler et al., 2024 <https://doi.org/10.5194/essd-2024-263>`_ .
 
-    If ``version`` is 1 then this class reads data following `Fowler et al., 2020 <https://doi.org/10.5194/essd-13-3847-2021>`_
+    If ``version`` is 1 then this class reads data following `Fowler et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
     which is a dataset of 222 Australian catchments with 161 static features
     and 26 dyanmic features for each catchment. The dyanmic features are
     timeseries from 1957-01-01 to 2018-12-31.

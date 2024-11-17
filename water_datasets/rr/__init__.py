@@ -34,6 +34,7 @@ from ._bull import Bull
 from ._camels import CAMELS_IND
 from ._arcticnet import Arcticnet
 from ._usgs import USGS
+from ._misc import EStreams
 
 
 DATASETS = {
@@ -50,6 +51,7 @@ DATASETS = {
     "CAMELS_DK": CAMELS_DK,
     "WaterBenchIowa": WaterBenchIowa,
     "GSHA": GSHA,
+    "EStreams": EStreams,
     "CCAM": CCAM,
     "RRLuleaSweden": RRLuleaSweden,
     "CAMELS_CH": CAMELS_CH,

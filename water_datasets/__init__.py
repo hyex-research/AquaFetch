@@ -30,6 +30,7 @@ from .rr import CAMELS_IND
 from .rr import RainfallRunoff
 from .rr import Arcticnet
 from .rr import USGS
+from .rr import EStreams
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

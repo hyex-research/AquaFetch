@@ -14,6 +14,7 @@ from ..utils import check_attributes
 from ..utils import merge_shapefiles
 from .camels import Camels
 
+
 METEO_MAP = {
     'arcticnet': 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT/Meteorology_arcticnet_AFD_GRDC_IWRIS_MLIT',
     'AFD': 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT/Meteorology_arcticnet_AFD_GRDC_IWRIS_MLIT',
@@ -34,7 +35,7 @@ METEO_MAP = {
 class GSHA(Camels):
     """
     Global streamflow characteristics, hydrometeorology and catchment
-    attributes following `Peirong et al., 2023 <https://doi.org/10.5194/essd-16-1559-2024>_`.
+    attributes following `Peirong et al., 2023 <https://doi.org/10.5194/essd-16-1559-2024>`_.
     It should be noted that this dataset does not contain observed streamflow data.
     It has 21568 stations, 26 dynamic features with daily timestep, 21 dynamic 
     features with yearly timestep and 35 static features.
@@ -123,7 +124,7 @@ class GSHA(Camels):
         """
         returns the names of agencies as list
 
-            - arcticnet
+            - ``arcticnet``
             - ``AFD`` : Spain
             - ``GRDC`` : Global
             - ``IWRIS`` : India
@@ -194,7 +195,7 @@ class GSHA(Camels):
         return self.wsAll.loc[stn, 'agency']
 
     def agency_stations(self, agency:str)->List[str]:
-        """find the stations of an agency"""
+        """returns the station ids from a particular agency"""
         return self.wsAll[self.wsAll['agency'] == agency].index.tolist()
 
     def _maybe_merge_shapefiles(self):
@@ -209,7 +210,11 @@ class GSHA(Camels):
                              add_new_field=True)
         return
 
-    def stn_coords(self, stations:List[str] = "all", agency:List[str] = "all")->pd.DataFrame:
+    def _get_stations(
+            self, 
+            stations:Union[str, List[str]]="all", 
+            agency:Union[str, List[str]]="all"
+            )->List[str]:
         if agency != "all" and stations != 'all':
             raise ValueError("Either provide agency or stations not both")
         
@@ -218,6 +223,11 @@ class GSHA(Camels):
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
             stations = check_attributes(stations, self.stations(), 'stations')
+        
+        return stations
+
+    def stn_coords(self, stations:List[str] = "all", agency:List[str] = "all")->pd.DataFrame:
+        stations = self._get_stations(stations, agency)
         return self.wsAll.loc[stations, ['lat', 'long']].copy()
 
     def stations(self, agency:str = "all")->List[str]:
@@ -229,14 +239,7 @@ class GSHA(Camels):
 
     def area(self, stations:List[str]="all", agency:List[str] = "all")->pd.Series:
         """area of catchments"""
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-        
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
         return self.wsAll.loc[stations, 'area']    
 
     def uncertainty(
@@ -260,14 +263,7 @@ class GSHA(Camels):
         pd.DataFrame
             a pandas DataFrame of shape (n, 7) where n is the number of stations
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         fpath = os.path.join(
             self.path, 
@@ -288,14 +284,7 @@ class GSHA(Camels):
         pd.DataFrame
             a pandas DataFrame of shape (n, 24) where n is the number of stations
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         fpath = os.path.join(
             self.path, 
@@ -332,21 +321,13 @@ class GSHA(Camels):
         Landcover variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         lc_vars = lc_vars_all_stns(self.path)
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
-
 
     def reservoir_variables_stn(self, stn:str)->pd.DataFrame:
         """
@@ -372,14 +353,7 @@ class GSHA(Camels):
         Reservoir variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         lc_vars = reservoir_vars_all_stns(self.path)
         if isinstance(lc_vars, xr.Dataset):
@@ -407,14 +381,7 @@ class GSHA(Camels):
         Landcover variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         lc_vars = streamflow_indices_all_stations(
             self.path, 
@@ -448,14 +415,7 @@ class GSHA(Camels):
         Leaf Area Index timeseries for one or more than one station either
         as xr.Dataset or pandas DataFrame. The data has daily timestep.
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         lai = lai_all_stns(
             self.path, 
@@ -633,14 +593,7 @@ class GSHA(Camels):
         Water storage term variables from 1979-01-01 to 2021-12-31 for one or more than one station either
         as xr.Dataset or dictionary. The data has daily timestep.
         """
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
 
         meteo_vars = self.storage_vars_all_stns()
 
@@ -651,7 +604,7 @@ class GSHA(Camels):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             features:Union[str, List[str]] = "all",
             agency:List[str] = "all",
     ) -> pd.DataFrame:
@@ -660,7 +613,7 @@ class GSHA(Camels):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -701,14 +654,7 @@ class GSHA(Camels):
         (106, 35
         """
 
-        if agency != "all" and stn_id != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stn_id, self.stations(), 'stn_id')
+        stations = self._get_stations(stations, agency)
         
         features = check_attributes(features, self.static_features, 'static_features')
 
@@ -799,16 +745,9 @@ class GSHA(Camels):
             ... as_dataframe=True).unstack()
         """
 
-        if agency != "all" and stations != 'all':
-            raise ValueError("Either provide agency or stations not both")
-
-        if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
-            stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
-        else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+        stations = self._get_stations(stations, agency)
         
-        features = check_attributes(dynamic_features, self.dynamic_features, 'static_features')
+        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         if len(stations) == 1:
             if as_dataframe:

@@ -25,7 +25,7 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - :py:class:`water_datasets.rr.CAMELS_GB`
      - 671
      - 
-     - `Coxon et al., 2020 <https://doi.org/10.5194/hess-24-4877-2020>`_
+     - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_
    * - ``CAMELS_BR``
      - :py:class:`water_datasets.rr.CAMELS_BR`
      - 897
