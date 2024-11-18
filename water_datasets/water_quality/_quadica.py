@@ -14,11 +14,8 @@ from ..utils import check_st_en
 class Quadica(Datasets):
     """
     This is dataset of water quality parameters of Germany from 828 stations
-    from 1950 to 2018 following the work of Ebeling_ et al., 2022. The time-step
+    from 1950 to 2018 following the work of `Ebeling et al., 2022 <https://doi.org/10.5194/essd-14-3715-2022>`_ . The time-step
     is monthly and annual but the monthly timeseries data is not continuous.
-
-    .. _Ebeling:
-        https://doi.org/10.5194/essd-2022-6
 
     """
     url = {

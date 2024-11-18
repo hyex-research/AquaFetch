@@ -31,6 +31,7 @@ from .rr import RainfallRunoff
 from .rr import Arcticnet
 from .rr import USGS
 from .rr import EStreams
+from .rr import Japan
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

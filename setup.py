@@ -33,6 +33,10 @@ extra_requires = [
 # for reading data
 'netCDF4',
 'xarray',
+
+# todo : following libraries are required by read_html
+#lxml for reading html
+#html5lib for reading html
 ]
 
 

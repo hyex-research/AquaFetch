@@ -35,6 +35,7 @@ from ._camels import CAMELS_IND
 from ._arcticnet import Arcticnet
 from ._usgs import USGS
 from ._misc import EStreams
+from ._japan import Japan
 
 
 DATASETS = {
@@ -64,7 +65,8 @@ DATASETS = {
     "Bull": Bull,
     "CAMELS_IND": CAMELS_IND,
     "USGS": USGS,
-    "Arcticnet": Arcticnet
+    "Arcticnet": Arcticnet,
+    'Japan': Japan
 }
 
 
@@ -199,6 +201,7 @@ class RainfallRunoff(object):
         dataset: str
             dataset name. This must be one of the following:
 
+            - ``Arcticnet``
             - ``CAMELS_AUS``
             - ``CAMELS_CL``
             - ``CAMELS_GB``
@@ -222,6 +225,8 @@ class RainfallRunoff(object):
             - ``CAMELS_DK0``
             - ``Bull``
             - ``CAMELS_IND``
+            - ``EStreams``
+            - ``Japan``
             - ``USGS``
 
         path : str

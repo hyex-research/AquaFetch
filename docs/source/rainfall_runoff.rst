@@ -120,12 +120,17 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - :py:class:`water_datasets.rr.Simbi`
      - 24
      -
-     - `Bathelemy et al., 2024 <doi: 10.5194/essd-16-2073-2024>`_
+     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
    * - ``CAMELS_IND``
      - :py:class:`water_datasets.rr.CAMELS_IND`
      - 472
      -
      - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
+   * - ``Japan``
+     - :py:class:`water_datasets.rr.Japan`
+     - 751
+     -
+     - `river.go.jp <http://www1.river.go.jp>`_     
    * - ``USGS``
      - :py:class:`water_datasets.rr.USGS`
      - 12004
@@ -148,6 +153,13 @@ It consists of a unified interface to access all the datasets. The datasets are 
 Low Level API
 =============
 The datasets can be accessed individually by their names.
+
+
+.. autoclass:: water_datasets.Arcticnet
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
 
 
 .. autoclass:: water_datasets.rr.Camels
@@ -300,6 +312,13 @@ The datasets can be accessed individually by their names.
 
 
 .. autoclass:: water_datasets.CAMELS_IND
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.Japan
    :members:
    :show-inheritance:
 

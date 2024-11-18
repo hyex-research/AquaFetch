@@ -7,7 +7,7 @@ import concurrent.futures as cf
 import numpy as np
 import pandas as pd
 
-from .._backend import xarray as xr
+from .._backend import xarray as xr, shapefile
 
 from ..utils import get_cpus
 from ..utils import check_attributes
@@ -785,6 +785,268 @@ class GSHA(Camels):
         ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
         ds = ds.rename({'features': 'dynamic_features'})
         return ds.sel(time=slice(st, en))
+
+
+class _GSHA(Camels):
+    """
+    Parent class for those datasets which uses static and dynamic features from 
+    GSHA dataset"""
+    def __init__(
+            self, 
+            gsha_path:Union[str, os.PathLike] = None, 
+            verbosity:int = 1,
+            **kwargs):
+        super(_GSHA, self).__init__(verbosity=verbosity, **kwargs)
+
+
+        if gsha_path is None:
+            self.gsha_path = os.path.dirname(self.path)
+        else:
+            self.gsha_path = gsha_path
+        
+        self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)     
+
+        self.boundary_file = self.gsha.boundary_file        
+
+    @property
+    def start(self)->pd.Timestamp:
+        return pd.Timestamp('1979-01-01')
+
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp('2022-12-31')
+    
+    @property
+    def dynamic_features(self)->List[str]:
+        return ['obs_q_cms'] + self.gsha.dynamic_features
+
+    @property
+    def static_features(self)->List[str]:
+        return self.gsha.static_features
+
+    @property
+    def _coords_name(self)->List[str]:
+        return ['lat', 'long']
+
+    @property
+    def _area_name(self)->str:
+        return 'area'
+
+    @property
+    def _q_name(self)->str:
+        return "obs_q_cms"
+    
+    def get_boundary(
+            self,
+            catchment_id: str,
+            as_type: str = 'numpy'
+    ):
+        """
+        returns boundary of a catchment in a required format
+
+        Parameters
+        ----------
+        catchment_id : str
+            name/id of catchment
+        as_type : str
+            'numpy' or 'geopandas'
+        
+        Examples
+        --------
+        >>> from water_datasets import Japan
+        >>> dataset = Japan()
+        >>> dataset.get_boundary(dataset.stations()[0])
+        """
+
+        if shapefile is None:
+            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
+
+        from shapefile import Reader
+
+        bndry_sf = Reader(self.boundary_file)
+        bndry_shp = bndry_sf.shape(self.gsha.bndry_id_map[f"{catchment_id}_{self.agency_name}"])
+
+        bndry_sf.close()
+
+        xyz = np.array(bndry_shp.points)
+
+        xyz = self.transform_coords(xyz)
+
+        return xyz
+
+    def _fetch_dynamic_features(
+            self,
+            stations: list,
+            dynamic_features = 'all',
+            st=None,
+            en=None,
+            as_dataframe=False,
+            as_ts=False
+    ):
+        """Fetches dynamic features of station."""
+        st, en = self._check_length(st, en)
+        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+
+        daily_q = None
+
+        if 'obs_q_cms' in features:
+            daily_q = self.get_q(as_dataframe)
+            if isinstance(daily_q, xr.Dataset):
+                daily_q = daily_q.sel(time=slice(st, en))[stations]
+            else:
+                daily_q = daily_q.loc[st:en, stations]
+            
+            features.remove('obs_q_cms')
+
+        if len(features) == 0:
+            return daily_q
+
+        stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
+        data = self.gsha.fetch_dynamic_features(stations_, features, st, en, as_dataframe)
+
+        if daily_q is not None:
+            if isinstance(daily_q, xr.Dataset):
+                assert isinstance(data, xr.Dataset), "xarray dataset not supported"
+                data = data.rename({stn:stn.split('_')[0] for stn in data.data_vars})
+
+                # first create a new dimension in daily_q named dynamic_features
+                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
+            else:
+                # -1 because the data in .nc files hysets starts with 0
+                data.rename(columns={stn:stn.split('_')[0] for stn in stations}, inplace=True)
+                assert isinstance(data.index, pd.MultiIndex)
+                # data is multiindex dataframe but daily_q is not
+                # first make daily_q multiindex
+                daily_q['dynamic_features'] = 'daily_q'
+                daily_q.set_index('dynamic_features', append=True, inplace=True)
+                daily_q = daily_q.reorder_levels(['time', 'dynamic_features'])
+                data = pd.concat([data, daily_q], axis=0).sort_index()
+
+        return data
+
+    def _fetch_static_features(
+            self,
+            station="all",
+            static_features: Union[str, list] = 'all',
+            st=None,
+            en=None,
+            as_ts=False
+    )->pd.DataFrame:
+        """Fetches static features of station."""
+        if self.verbosity>1:
+            print('fetching static features')
+        stations = check_attributes(station, self.stations(), 'stations')
+        stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
+        static_feats = self.gsha.fetch_static_features(stations_, static_features).copy()
+        static_feats.index = [stn.split('_')[0] for stn in static_feats.index]
+        return static_feats
+
+
+    def fetch_stations_features(
+            self,
+            stations: list,
+            dynamic_features: Union[str, list, None] = 'all',
+            static_features: Union[str, list, None] = None,
+            st=None,
+            en=None,
+            as_dataframe: bool = False,
+            **kwargs
+    ):
+        """
+        returns features of multiple stations
+
+        Examples
+        --------
+        >>> from water_datasets import Arcticnet
+        >>> dataset = Arcticnet()
+        >>> stations = dataset.stations()
+        >>> features = dataset.fetch_stations_features(stations)
+        """
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        if dynamic_features is not None:
+
+            dyn = self._fetch_dynamic_features(stations=stations,
+                                               dynamic_features=dynamic_features,
+                                               as_dataframe=as_dataframe,
+                                               st=st,
+                                               en=en,
+                                               **kwargs
+                                               )
+
+            if static_features is not None:  # we want both static and dynamic
+                to_return = {}
+                static = self._fetch_static_features(station=stations,
+                                                     static_features=static_features,
+                                                     st=st,
+                                                     en=en,
+                                                     **kwargs
+                                                     )
+                to_return['static'] = static
+                to_return['dynamic'] = dyn
+            else:
+                to_return = dyn
+
+        elif static_features is not None:
+            # we want only static
+            to_return = self._fetch_static_features(
+                station=stations,
+                static_features=static_features,
+                **kwargs
+            )
+        else:
+            raise ValueError(f"""
+            static features are {static_features} and dynamic features are also {dynamic_features}""")
+
+        return to_return
+
+    def fetch_static_features(
+            self,
+            stations: Union[str, List[str]] = "all",
+            features:Union[str, List[str]] = "all",
+            st=None,
+            en=None,
+            as_ts=False
+    ) -> pd.DataFrame:
+        """
+        returns static atttributes of one or multiple stations
+
+        Parameters
+        ----------
+            stations : str
+                name/id of station of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+            st :
+            en :
+            as_ts :
+
+        Examples
+        ---------
+        >>> from water_datasets import Japan
+        >>> dataset = Japan()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            12004
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (12004, 27)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('01010070')
+        >>> static_data.shape
+           (1, 27)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data.shape
+           (12004, 2)
+        """
+        return self._fetch_static_features(stations, features, st, en, as_ts)
 
 
 def streamflow_indices_all_stations(

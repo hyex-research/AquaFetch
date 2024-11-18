@@ -12,10 +12,8 @@ from water_datasets._datasets import Datasets
 
 class Swatch(Datasets):
     """
-    The Surface Water Chemistry (SWatCh) database as introduced in Franz_ and Lobke, 2022.
-
-    .. _Franz:
-        https://essd.copernicus.org/preprints/essd-2021-43/
+    The Surface Water Chemistry (SWatCh) database as introduced in 
+    `Franz_ and Lobke, 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
     """
 
     url = "https://zenodo.org/record/6484939"
@@ -116,7 +114,7 @@ class Swatch(Datasets):
         ----------
         parameters : str/list (default=None)
             Names of parameters to fetch. By default, ``name``, ``value``, ``val_unit``, ``location``,
-             ``lat``, and ``long`` are read.
+            ``lat``, and ``long`` are read.
         station_id : str/list (default=None)
             name/names of station id for which the data is to be fetched.
             By default, the data for all stations is fetched. If given, then
