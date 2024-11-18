@@ -130,7 +130,12 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - :py:class:`water_datasets.rr.Japan`
      - 751
      -
-     - `river.go.jp <http://www1.river.go.jp>`_     
+     - `river.go.jp <http://www1.river.go.jp>`_
+   * - ``Thailand``
+     - :py:class:`water_datasets.rr.Japan`
+     - 73
+     -
+     - `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_
    * - ``USGS``
      - :py:class:`water_datasets.rr.USGS`
      - 12004
@@ -324,6 +329,12 @@ The datasets can be accessed individually by their names.
 
    .. automethod:: __init__
 
+
+.. autoclass:: water_datasets.Thailand
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
 
 .. autoclass:: water_datasets.USGS
    :members:

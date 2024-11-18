@@ -36,6 +36,7 @@ from ._arcticnet import Arcticnet
 from ._usgs import USGS
 from ._misc import EStreams
 from ._japan import Japan
+from ._thailand import Thailand
 
 
 DATASETS = {
@@ -66,7 +67,8 @@ DATASETS = {
     "CAMELS_IND": CAMELS_IND,
     "USGS": USGS,
     "Arcticnet": Arcticnet,
-    'Japan': Japan
+    'Japan': Japan,
+    'Thailand': Thailand
 }
 
 
@@ -74,7 +76,6 @@ class RainfallRunoff(object):
     """
     This is the master class which provides access to all the rainfall-runoff 
     datasets. Use this class instead of using the individual dataset classes.
-
 
     .. list-table:: Naming Convention for dynamic features
        :widths: 20 30
@@ -202,32 +203,33 @@ class RainfallRunoff(object):
             dataset name. This must be one of the following:
 
             - ``Arcticnet``
+            - ``Bull``
+            - ``CABra``
+            - ``CCAM``
             - ``CAMELS_AUS``
+            - ``CAMELS_SE``
+            - ``CAMELS_IND``
+            - ``CAMELS_BR``
             - ``CAMELS_CL``
             - ``CAMELS_GB``
             - ``CAMELS_US``
-            - ``LamaHCE``
-            - ``CAMELS_BR``
-            - ``CABra``
+            - ``CAMELS_DE``
+            - ``CAMELS_CH``
+            - ``CAMELS_DK``
+            - ``CAMELS_DK0``
+            - ``EStreams``
+            - ``GRDCCaravan``
+            - ``GSHA``
             - ``HYSETS``
             - ``HYPE``
-            - ``CAMELS_DK``
-            - ``WaterBenchIowa``
-            - ``GSHA``
-            - ``CCAM``
-            - ``RRLuleaSweden``
-            - ``CAMELS_CH``
-            - ``LamaHIce``
-            - ``CAMELS_DE``
-            - ``GRDCCaravan``
-            - ``CAMELS_SE``
-            - ``Simbi``
-            - ``CAMELS_DK0``
-            - ``Bull``
-            - ``CAMELS_IND``
-            - ``EStreams``
             - ``Japan``
+            - ``LamaHCE``
+            - ``LamaHIce``
+            - ``RRLuleaSweden``
+            - ``Simbi``
+            - ``Thailand``
             - ``USGS``
+            - ``WaterBenchIowa``
 
         path : str
             path to directory inside which data is located/downloaded. 

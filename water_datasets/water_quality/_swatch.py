@@ -13,7 +13,7 @@ from water_datasets._datasets import Datasets
 class Swatch(Datasets):
     """
     The Surface Water Chemistry (SWatCh) database as introduced in 
-    `Franz_ and Lobke, 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
+    `Franz and Lobke, 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
     """
 
     url = "https://zenodo.org/record/6484939"

@@ -806,7 +806,8 @@ class _GSHA(Camels):
         
         self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)     
 
-        self.boundary_file = self.gsha.boundary_file        
+        self.boundary_file = self.gsha.boundary_file
+        self._stations = self.__stations()
 
     @property
     def start(self)->pd.Timestamp:
@@ -835,7 +836,17 @@ class _GSHA(Camels):
     @property
     def _q_name(self)->str:
         return "obs_q_cms"
-    
+
+    def stations(self)->List[str]:
+        return self._stations
+
+    def __stations(self)->List[str]:
+        """
+        returns names of only those stations which are also documented
+        by GSHA.
+        """
+        return [stn.split('_')[0] for stn in self.gsha.agency_stations(self.agency_name)]    
+
     def get_boundary(
             self,
             catchment_id: str,
@@ -864,6 +875,8 @@ class _GSHA(Camels):
         from shapefile import Reader
 
         bndry_sf = Reader(self.boundary_file)
+        if self.agency_name == 'RID':
+            catchment_id = catchment_id.replace('.', '_')
         bndry_shp = bndry_sf.shape(self.gsha.bndry_id_map[f"{catchment_id}_{self.agency_name}"])
 
         bndry_sf.close()

@@ -63,15 +63,15 @@ class Japan(_GSHA):
             merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
         return
 
-    def stations(self)->List[str]:
-        return self._stations
+    # def stations(self)->List[str]:
+    #     return self._stations
 
-    def __stations(self)->List[str]:
-        """
-        returns names of only those stations which are also documented
-        by GSHA.
-        """
-        return [stn.split('_')[0] for stn in self.gsha.agency_stations('MLIT')]    
+    # def __stations(self)->List[str]:
+    #     """
+    #     returns names of only those stations which are also documented
+    #     by GSHA.
+    #     """
+    #     return [stn.split('_')[0] for stn in self.gsha.agency_stations('MLIT')]    
 
     def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single
@@ -97,14 +97,6 @@ class Japan(_GSHA):
         df = xr.Dataset({stn: xr.DataArray(df.loc[:, stn]) for stn in df.columns})
         return df
 
-    def get_daily_data(self):
-        return download_daily_data(
-            self.stations(), 
-            self.path, 
-            verbosity=self.verbosity,
-            cpus=self.processes
-            )
-
     def get_hourly_data(self, cpus=None):
 
         hourly_file = os.path.join(self.path, 'hourly_data.csv')
@@ -129,6 +121,7 @@ class Japan(_GSHA):
 
         q.to_csv(hourly_file)
         return q
+
 
 def download_daily_stn_yr(
         stn:str="309191289913130",
