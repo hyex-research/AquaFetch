@@ -16,6 +16,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - Number of Daily Stations
      - Number of Hourly Stations
      - Reference
+   * - ``Arcticnet``
+     - :py:class:`water_datasets.rr.Arcticnet`
+     - 106
+     - 
+     - `R-Arcticnet <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_     
    * - ``CAMELS_AUS``
      - :py:class:`water_datasets.rr.CAMELS_AUS`
      - 222, 561

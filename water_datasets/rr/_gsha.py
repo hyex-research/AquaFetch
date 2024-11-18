@@ -227,6 +227,23 @@ class GSHA(Camels):
         return stations
 
     def stn_coords(self, stations:List[str] = "all", agency:List[str] = "all")->pd.DataFrame:
+        """
+        returns the latitude and longitude of stations
+        
+        Returns
+        -------
+        pd.DataFrame
+            a pandas DataFrame of shape (n, 2) where n is the number of stations
+        
+        Examples
+        --------
+        >>> from water_datasets import GSHA
+        >>> dataset = GSHA()
+        >>> dataset.stn_coords('1001_arcticnet')
+        >>> dataset.stn_coords(['1001_arcticnet', '1002_arcticnet'])
+        get coordinates for all stations of arcticnet agency
+        >>> dataset.stn_coords(agency='arcticnet')
+        """
         stations = self._get_stations(stations, agency)
         return self.wsAll.loc[stations, ['lat', 'long']].copy()
 
@@ -749,6 +766,8 @@ class GSHA(Camels):
         
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
+        st, en = self._check_length(st, en)
+
         if len(stations) == 1:
             if as_dataframe:
                 return self.fetch_stn_dynamic_features(stations[0], features)
@@ -763,7 +782,9 @@ class GSHA(Camels):
         # since lai does not have 'features' dimension, we need to add it
         lai = self.lai(stations).expand_dims({'features': ['lai']})
 
-        return xr.concat([meteo_vars, storage_vars, lai], dim='features')
+        ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
+        ds = ds.rename({'features': 'dynamic_features'})
+        return ds.sel(time=slice(st, en))
 
 
 def streamflow_indices_all_stations(

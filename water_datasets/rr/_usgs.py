@@ -68,7 +68,7 @@ class USGS(Camels):
         self._stations = self.__stations()
         self.metadata = maybe_make_and_get_metadata(self.path, self.stations())
 
-        self._static_features = self._static_features()
+        self._static_features = self.__static_features()
         self.boundary_file = self.hysets.boundary_file
 
     @property
@@ -380,7 +380,7 @@ class USGS(Camels):
         static_feats = static_feats.set_index('Official_ID')
         return static_feats
 
-    def _static_features(self)->List[str]:
+    def __static_features(self)->List[str]:
         if self.verbosity>1:
             print('getting static features from hysets')
         static_feats =  self.hysets.static_features

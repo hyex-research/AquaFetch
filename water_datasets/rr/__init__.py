@@ -64,6 +64,7 @@ DATASETS = {
     "Bull": Bull,
     "CAMELS_IND": CAMELS_IND,
     "USGS": USGS,
+    "Arcticnet": Arcticnet
 }
 
 

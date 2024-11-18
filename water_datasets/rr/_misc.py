@@ -29,7 +29,7 @@ class EStreams(Camels):
     """
     Hanldes EStreams data following the work of 
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
-    The data is available at `zenodo <https://zenodo.org/records/13961394`_.
+    The data is available at `zenodo <https://zenodo.org/records/13961394`_ .
     It should be noted that this dataset does not contain observed streamflow data.
     It has 15047 stations, 9 dynamic features with daily timestep, 27 dynamic 
     features with yearly timestep and 184 static features.    
@@ -122,7 +122,22 @@ class EStreams(Camels):
         return self.md[self.md['gauge_country'] == country].index.tolist()
 
     def stn_coords(self, stations:List[str] = "all", countries:List[str] = "all")->pd.DataFrame:
- 
+        """
+        Returns the coordinates of one or more stations
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe of shape (stations, 2)
+        
+        Examples
+        --------
+        >>> from water_datasets import EStreams
+        >>> dataset = EStreams()
+        >>> dataset.stn_coords('IEEP0281')
+        >>> dataset.stn_coords(['IEEP0281', 'IEEP0282'])
+        >>> dataset.stn_coords(countries='IE')
+        """
         stations = self._get_stations(countries, stations)
 
         df = pd.read_csv(

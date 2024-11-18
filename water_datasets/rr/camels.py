@@ -225,6 +225,7 @@ class Camels(Datasets):
 
     @property
     def _area_name(self)->str:
+        """name of feature from static_features to be used as area"""
         raise NotImplementedError
 
     @property
@@ -237,6 +238,10 @@ class Camels(Datasets):
     
     @property
     def _coords_name(self)->List[str]:
+        """
+        names of features from static_features to be used as station 
+        coordinates (lat, long)
+        """
         raise NotImplementedError
 
     def area(
