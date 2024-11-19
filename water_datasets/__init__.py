@@ -33,6 +33,7 @@ from .rr import USGS
 from .rr import EStreams
 from .rr import Japan
 from .rr import Thailand
+from .rr import Spain
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador
@@ -69,15 +70,12 @@ from ._wwt import ec_removal_biochar
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand
 from .mtropics import MtropicsVietnam
-from .mtropics import ecoli_mekong_laos
-from .mtropics import ecoli_houay_pano
-from .mtropics import ecoli_mekong_2016
-from .mtropics import ecoli_mekong
 
 
 from ._grimedb import GRiMeDB
 from ._npctr import NPCTRCatchments
 from ._hyperspectral import SoilPhosphorus
+
 
 from .water_quality import Quadica
 from .water_quality import GRQA
@@ -88,6 +86,10 @@ from .water_quality import SeluneRiver
 from .water_quality import busan_beach
 from .water_quality import RiverChemSiberia
 from .water_quality import SyltRoads
+from .water_quality import ecoli_mekong_laos
+from .water_quality import ecoli_houay_pano
+from .water_quality import ecoli_mekong_2016
+from .water_quality import ecoli_mekong
 
 
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):

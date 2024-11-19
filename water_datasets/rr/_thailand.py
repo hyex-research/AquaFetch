@@ -1,6 +1,6 @@
 
 import os
-from typing import List, Union
+from typing import Union
 
 import pandas as pd
 

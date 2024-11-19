@@ -2,12 +2,6 @@ Miscellaneous
 ****************
 
 
-Busan Beach data
-================
-.. automodule:: water_datasets
-   :members: busan_beach
-
-
 Photodegradation of Melachite Green
 ===================================
 .. autofunction:: water_datasets.mg_photodegradation

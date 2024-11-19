@@ -15,9 +15,8 @@ class Arcticnet(_GSHA):
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
-    data is available from 1979-01-01 to 2022-12-31.
+    data is available from 1979-01-01 to 2003-12-31.
     """
-    #url = "https://zenodo.org/record/7563600"
 
     def __init__(
             self, 
@@ -37,6 +36,10 @@ class Arcticnet(_GSHA):
 
         self._static_features = self.gsha.static_features
 
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp('2003-12-31')
+    
     def stations(self)->List[str]:
         return self._stations
 

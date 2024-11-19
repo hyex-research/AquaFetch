@@ -37,6 +37,7 @@ from ._usgs import USGS
 from ._misc import EStreams
 from ._japan import Japan
 from ._thailand import Thailand
+from ._spain import Spain
 
 
 DATASETS = {
@@ -68,6 +69,7 @@ DATASETS = {
     "USGS": USGS,
     "Arcticnet": Arcticnet,
     'Japan': Japan,
+    'Spain': Spain,
     'Thailand': Thailand
 }
 
@@ -227,6 +229,7 @@ class RainfallRunoff(object):
             - ``LamaHIce``
             - ``RRLuleaSweden``
             - ``Simbi``
+            - ``Spain``
             - ``Thailand``
             - ``USGS``
             - ``WaterBenchIowa``

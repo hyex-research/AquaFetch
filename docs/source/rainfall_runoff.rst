@@ -116,6 +116,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 561
      - 
      - `Arciniega-Esparza and Birkel, 2020 <https://zenodo.org/records/4029572>`_
+   * - ``Spain``
+     - :py:class:`water_datasets.rr.Spain`
+     - 889
+     -
+     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_     
    * - ``Simbi``
      - :py:class:`water_datasets.rr.Simbi`
      - 24
@@ -132,7 +137,7 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      -
      - `river.go.jp <http://www1.river.go.jp>`_
    * - ``Thailand``
-     - :py:class:`water_datasets.rr.Japan`
+     - :py:class:`water_datasets.rr.Thailand`
      - 73
      -
      - `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_
@@ -160,16 +165,25 @@ Low Level API
 The datasets can be accessed individually by their names.
 
 
-.. autoclass:: water_datasets.Arcticnet
+
+.. autoclass:: water_datasets.rr.Camels
    :members:
+   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.Camels
+.. autoclass:: water_datasets.rr._gsha._GSHA
    :members:
    :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.Arcticnet
+   :members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -296,6 +310,13 @@ The datasets can be accessed individually by their names.
 
 
 .. autoclass:: water_datasets.rr.Simbi
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.Spain
    :members:
    :show-inheritance:
 
