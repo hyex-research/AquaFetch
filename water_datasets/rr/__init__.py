@@ -38,6 +38,7 @@ from ._misc import EStreams
 from ._japan import Japan
 from ._thailand import Thailand
 from ._spain import Spain
+from ._ireland import Ireland
 
 
 DATASETS = {
@@ -70,7 +71,8 @@ DATASETS = {
     "Arcticnet": Arcticnet,
     'Japan': Japan,
     'Spain': Spain,
-    'Thailand': Thailand
+    'Thailand': Thailand,
+    'Ireland': Ireland
 }
 
 
@@ -224,6 +226,7 @@ class RainfallRunoff(object):
             - ``GSHA``
             - ``HYSETS``
             - ``HYPE``
+            - ``Ireland``
             - ``Japan``
             - ``LamaHCE``
             - ``LamaHIce``

@@ -34,6 +34,7 @@ from .rr import EStreams
 from .rr import Japan
 from .rr import Thailand
 from .rr import Spain
+from .rr import Ireland
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

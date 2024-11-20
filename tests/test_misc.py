@@ -65,9 +65,9 @@ def test_area_():
 
 def test_fetch_static_features():
     out = ds.fetch_static_features(countries='IE')
-    assert out.shape == (464, 184), out.shape
+    assert out.shape == (464, 208), out.shape
 
-    test_fetch_static_feature(ds, 'IEEP0281', 15047, 184)
+    test_fetch_static_feature(ds, 'IEEP0281', 15047, 208)
     return
 
 

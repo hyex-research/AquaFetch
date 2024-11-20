@@ -116,6 +116,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 561
      - 
      - `Arciniega-Esparza and Birkel, 2020 <https://zenodo.org/records/4029572>`_
+   * - ``Ireland``
+     - :py:class:`water_datasets.rr.Ireland`
+     - 464
+     -
+     - `EPA Ireland <https://epawebapp.epa.ie>`_  
    * - ``Spain``
      - :py:class:`water_datasets.rr.Spain`
      - 889
@@ -181,8 +186,21 @@ The datasets can be accessed individually by their names.
 
    .. automethod:: __init__
 
+.. autoclass:: water_datasets.rr._misc._EStreams
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
 
 .. autoclass:: water_datasets.Arcticnet
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.Bull
    :members:
    :show-inheritance:
 
@@ -309,6 +327,12 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
+.. autoclass:: water_datasets.Ireland
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
 .. autoclass:: water_datasets.rr.Simbi
    :members:
    :show-inheritance:
@@ -324,13 +348,6 @@ The datasets can be accessed individually by their names.
 
 
 .. autoclass:: water_datasets.RRLuleaSweden
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.Bull
    :members:
    :show-inheritance:
 
