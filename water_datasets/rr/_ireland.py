@@ -16,7 +16,7 @@ class Ireland(_EStreams):
     """
     Data of 464 catchments of Ireland. Out of these 464 catchments, 
     280 are from OPW and 184 are from EPA.
-    The observed streamflow data for EPA data is downloaded from 
+    The observed streamflow data for EPA stations is downloaded from 
     https://epawebapp.epa.ie/Hydronet/#Flow while the observed streamflow for OPW 
     stations is downloaded from https://waterlevel.ie/hydro-data/#/overview/Waterlevel.
     It should be that out of 280 OPW stations, streamflow data is available for only 129
@@ -24,7 +24,7 @@ class Ireland(_EStreams):
     The meteorological data, static catchment 
     features and catchment boundaries are
     taken from :py:class:`water_datasets.EStreams` follwoing the works 
-    of `<https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
+    of ` Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
     """

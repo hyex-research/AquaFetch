@@ -20,7 +20,17 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - :py:class:`water_datasets.rr.Arcticnet`
      - 106
      - 
-     - `R-Arcticnet <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_     
+     - `R-Arcticnet <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_
+   * - ``Bull``
+     - :py:class:`water_datasets.Bull`
+     - 484
+     -
+     - `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_
+   * - ``CABra``
+     - :py:class:`water_datasets.rr.CABra`
+     - 735
+     - 
+     - `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_ 
    * - ``CAMELS_AUS``
      - :py:class:`water_datasets.rr.CAMELS_AUS`
      - 222, 561
@@ -61,11 +71,31 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 1555
      - 
      - `Loritz et al., 2024 <https://essd.copernicus.org/preprints/essd-2024-318/>`_
+   * - ``CAMELS_IND``
+     - :py:class:`water_datasets.rr.CAMELS_IND`
+     - 472
+     -
+     - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
    * - ``CAMELS_SE``
      - :py:class:`water_datasets.rr.CAMELS_SE`
      - 50
      -
      - `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_
+   * - ``CCAM``
+     - :py:class:`water_datasets.rr.CCAM`
+     - 111
+     -
+     - `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_
+   * - ``Finland``
+     - :py:class:`water_datasets.rr.Finland`
+     - 669
+     -
+     - `ymparisto.fi <https://wwwi3.ymparisto.fi>`_
+   * - ``GRDCCaravan``
+     - :py:class:`water_datasets.rr.GRDCCaravan`
+     - 5357
+     -
+     - `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ 
    * - ``LamaHCE``
      - :py:class:`water_datasets.rr.LamaHCE`
      - 859
@@ -81,36 +111,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 14425
      -
      - `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
-   * - ``GRDCCaravan``
-     - :py:class:`water_datasets.rr.GRDCCaravan`
-     - 5357
-     -
-     - `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_
-   * - ``Bull``
-     - :py:class:`water_datasets.Bull`
-     - 484
-     -
-     - `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_    
-   * - ``WaterBenchIowa``
-     - :py:class:`water_datasets.rr.WaterBenchIowa`
-     - 125
-     -
-     - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
-   * - ``CCAM``
-     - :py:class:`water_datasets.rr.CCAM`
-     - 111
-     -
-     - `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_
    * - ``RRLuleaSweden``
      - :py:class:`water_datasets.RRLuleaSweden`
      - 1
      -
      - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
-   * - ``CABra``
-     - :py:class:`water_datasets.rr.CABra`
-     - 735
-     - 
-     - `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_ 
    * - ``HYPE``
      - :py:class:`water_datasets.rr.HYPE`
      - 561
@@ -121,6 +126,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 464
      -
      - `EPA Ireland <https://epawebapp.epa.ie>`_  
+   * - ``Italy``
+     - :py:class:`water_datasets.rr.Italy`
+     - 294
+     -
+     - `EPA Ireland <https://epawebapp.epa.ie>`_       
    * - ``Spain``
      - :py:class:`water_datasets.rr.Spain`
      - 889
@@ -131,16 +141,16 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 24
      -
      - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
-   * - ``CAMELS_IND``
-     - :py:class:`water_datasets.rr.CAMELS_IND`
-     - 472
-     -
-     - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
    * - ``Japan``
      - :py:class:`water_datasets.rr.Japan`
      - 751
      -
      - `river.go.jp <http://www1.river.go.jp>`_
+   * - ``Poland``
+     - :py:class:`water_datasets.rr.Poland`
+     - 1287
+     -
+     - `imgw.pl <https://danepubliczne.imgw.pl>`_     
    * - ``Thailand``
      - :py:class:`water_datasets.rr.Thailand`
      - 73
@@ -151,6 +161,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 12004
      -
      - `USGS nwis <https://waterdata.usgs.gov/nwis/>`_
+   * - ``WaterBenchIowa``
+     - :py:class:`water_datasets.rr.WaterBenchIowa`
+     - 125
+     -
+     - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
 
 
 High Level API
@@ -207,7 +222,35 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
+.. autoclass:: water_datasets.rr.CABra
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: water_datasets.rr.CAMELS_AUS
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.CAMELS_BR
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.CAMELS_CH
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.CAMELS_CL
    :members:
    :show-inheritance:
 
@@ -222,13 +265,6 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.CAMELS_BR
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
 .. autoclass:: water_datasets.rr.CAMELS_US
    :members:
    :show-inheritance:
@@ -236,7 +272,7 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.CAMELS_CL
+.. autoclass:: water_datasets.rr.CAMELS_DE
    :members:
    :show-inheritance:
 
@@ -250,14 +286,41 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.LamaHCE
+.. autoclass:: water_datasets.rr._denmark.CAMELS_DK
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+.. autoclass:: water_datasets.CAMELS_IND
    :members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.LamaHIce
+.. autoclass:: water_datasets.rr.CAMELS_SE
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.CCAM
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.Finland
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.GRDCCaravan
    :members:
    :show-inheritance:
 
@@ -278,69 +341,42 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.CCAM
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.CABra
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.CAMELS_CH
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.CAMELS_DE
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.GRDCCaravan
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.CAMELS_SE
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: water_datasets.rr.WaterBenchIowa
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
 .. autoclass:: water_datasets.Ireland
    :members:
    :show-inheritance:
 
    .. automethod:: __init__
 
-.. autoclass:: water_datasets.rr.Simbi
+
+.. autoclass:: water_datasets.rr.Italy
    :members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr.Spain
+.. autoclass:: water_datasets.Japan
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.LamaHCE
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.LamaHIce
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.Poland
    :members:
    :show-inheritance:
 
@@ -354,14 +390,14 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.CAMELS_IND
+.. autoclass:: water_datasets.rr.Simbi
    :members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.Japan
+.. autoclass:: water_datasets.rr.Spain
    :members:
    :show-inheritance:
 
@@ -381,7 +417,7 @@ The datasets can be accessed individually by their names.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr._denmark.CAMELS_DK
+.. autoclass:: water_datasets.rr.WaterBenchIowa
    :members:
    :show-inheritance:
 

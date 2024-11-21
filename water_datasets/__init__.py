@@ -35,6 +35,9 @@ from .rr import Japan
 from .rr import Thailand
 from .rr import Spain
 from .rr import Ireland
+from .rr import Finland
+from .rr import Poland
+from .rr import Italy
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

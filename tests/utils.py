@@ -211,7 +211,6 @@ def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
     return
 
 
-
 def check_dataset(dataset, xds, num_stations, data_len,
                   raise_len_error=True):
     assert isinstance(xds, xr.Dataset), f'xds is of type {xds.__class__.__name__}'
@@ -226,7 +225,6 @@ def check_dataset(dataset, xds, num_stations, data_len,
     for dyn_attr in xds.coords['dynamic_features'].data:
         assert dyn_attr in dataset.dynamic_features, f'{dyn_attr} not in dataset.dynamic_features'
     return
-
 
 
 def check_dataframe(
@@ -292,7 +290,6 @@ def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
     return
 
 
-
 def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataframe=False):
     logger.info(f"testing fetch_dynamic_multiple_stations for {dataset.name} for {n_stns} stations")
     stations = dataset.stations()
@@ -304,7 +301,6 @@ def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataf
         check_dataset(dataset, data, n_stns, stn_data_len)
 
     return
-
 
 
 def test_st_en_with_static_and_dynamic(
@@ -334,7 +330,6 @@ def test_st_en_with_static_and_dynamic(
         else:
             check_dataset(dataset, data, 1, yearly_steps)
     return
-
 
 
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,

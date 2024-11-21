@@ -174,7 +174,7 @@ class Camels(Datasets):
         return catch_ids_map
             
     def stations(self)->List[str]:
-        raise NotImplementedError
+        raise NotImplementedError("The base class must implement this method")
 
     def _read_dynamic_from_csv(self, stations, dynamic_features, st=None,
                                en=None)->dict:

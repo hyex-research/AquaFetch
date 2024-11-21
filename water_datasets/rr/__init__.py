@@ -39,6 +39,10 @@ from ._japan import Japan
 from ._thailand import Thailand
 from ._spain import Spain
 from ._ireland import Ireland
+from ._finland import Finland
+from ._finland import Finland
+from ._poland import Poland
+from ._italy import Italy
 
 
 DATASETS = {
@@ -72,7 +76,10 @@ DATASETS = {
     'Japan': Japan,
     'Spain': Spain,
     'Thailand': Thailand,
-    'Ireland': Ireland
+    'Ireland': Ireland,
+    'Finland': Finland,
+    'Poland': Poland,
+    'Italy': Italy
 }
 
 
@@ -211,25 +218,28 @@ class RainfallRunoff(object):
             - ``CABra``
             - ``CCAM``
             - ``CAMELS_AUS``
-            - ``CAMELS_SE``
-            - ``CAMELS_IND``
             - ``CAMELS_BR``
-            - ``CAMELS_CL``
-            - ``CAMELS_GB``
-            - ``CAMELS_US``
-            - ``CAMELS_DE``
             - ``CAMELS_CH``
-            - ``CAMELS_DK``
+            - ``CAMELS_CL``
+            - ``CAMELS_DE``
             - ``CAMELS_DK0``
+            - ``CAMELS_DK``
+            - ``CAMELS_GB``
+            - ``CAMELS_IND``
+            - ``CAMELS_SE``
+            - ``CAMELS_US``
             - ``EStreams``
+            - ``Finland``
             - ``GRDCCaravan``
             - ``GSHA``
             - ``HYSETS``
             - ``HYPE``
             - ``Ireland``
+            - ``Italy``
             - ``Japan``
             - ``LamaHCE``
             - ``LamaHIce``
+            - ``Poland``
             - ``RRLuleaSweden``
             - ``Simbi``
             - ``Spain``

@@ -27,7 +27,7 @@ class DraixBleone(Camels):
 
 class EStreams(Camels):
     """
-    Hanldes EStreams data following the work of 
+    Handles EStreams data following the work of 
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
     The data is available at `zenodo <https://zenodo.org/records/13961394>`_ .
     It should be noted that this dataset does not contain observed streamflow data.
@@ -465,7 +465,6 @@ class _EStreams(Camels):
     @property
     def end(self)->pd.Timestamp:
         return pd.Timestamp('2023-06-30')
-
 
     def _fetch_dynamic_features(
             self,
