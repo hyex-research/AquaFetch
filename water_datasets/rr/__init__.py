@@ -43,6 +43,7 @@ from ._finland import Finland
 from ._finland import Finland
 from ._poland import Poland
 from ._italy import Italy
+from ._camels import CAMELS_FR
 
 
 DATASETS = {
@@ -79,7 +80,8 @@ DATASETS = {
     'Ireland': Ireland,
     'Finland': Finland,
     'Poland': Poland,
-    'Italy': Italy
+    'Italy': Italy,
+    'CAMELS_FR': CAMELS_FR
 }
 
 
@@ -224,6 +226,7 @@ class RainfallRunoff(object):
             - ``CAMELS_DE``
             - ``CAMELS_DK0``
             - ``CAMELS_DK``
+            - ``CAMELS_FR``
             - ``CAMELS_GB``
             - ``CAMELS_IND``
             - ``CAMELS_SE``

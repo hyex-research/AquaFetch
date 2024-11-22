@@ -3245,7 +3245,6 @@ class CAMELS_IND(Camels):
         "Merged",
         "all_catchments.shp"
     )
-
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
@@ -3303,7 +3302,6 @@ class CAMELS_IND(Camels):
         return pd.Timestamp('2020-12-31')
 
     def _get_map(self, sf_reader, id_index=None, name:str='')->dict:
-
 
         fieldnames = [f[0] for f in sf_reader.fields[1:]]
 
@@ -3422,7 +3420,6 @@ class CAMELS_IND(Camels):
 
         return dyn
 
-
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
@@ -3475,3 +3472,255 @@ class CAMELS_IND(Camels):
         features = check_attributes(features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
+
+
+class CAMELS_FR(Camels):
+    """
+    Dataset of 654 catchments from France following the works of 
+    `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_. 
+    The dataset consists of 344 static catchment features and 22 dynamic features.
+    The dynamic features span from 1970101 to 20211231 with daily timestep.    
+    """
+    url = {
+        "ADDITIONAL_LICENSES.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343463",
+        "CAMELS_FR_attributes.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343464",
+        'CAMELS_FR_geography.zip': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/343465',
+        'CAMELS_FR_time_series.zip': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/343470',
+        'README.md': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/431300',
+        'CAMELS-FR_description.ods': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/348740',
+    }
+
+    def __init__(self,
+                 path=None,
+                 overwrite=False,
+                 **kwargs):
+        super().__init__(path=path, **kwargs)
+
+        self._download(overwrite=overwrite)
+
+        self._stations = self.__stations()
+
+        self._static_features = list(set(self.static_data().columns.to_list()))
+
+        self._dynamic_features = self._read_dyn_stn(self.stations()[0]).columns.to_list()
+
+        if self.to_netcdf:
+            self._maybe_to_netcdf('camels_ind_dyn')
+    
+    @property
+    def daily_ts_path(self)->os.PathLike:
+        return os.path.join(self.path, "CAMELS_FR_time_series", "CAMELS_FR_time_series", "daily")
+    
+    @property
+    def attr_path(self)->os.PathLike:
+        return os.path.join(self.path, "CAMELS_FR_attributes", "CAMELS_FR_attributes")
+    
+    @property
+    def static_attr_path(self)->os.PathLike:
+        return os.path.join(self.attr_path, "static_attributes")
+    
+    @property
+    def ts_stat_path(self)->os.PathLike:
+        return os.path.join(self.attr_path, "time_series_statistics")
+
+    @property
+    def static_features(self)->List[str]:
+        """returns static features for Denmark catchments"""
+        return self._static_features
+    
+    @property
+    def dynamic_features(self)->List[str]:
+        """returns names of dynamic features"""
+        return self._dynamic_features
+
+    @property
+    def start(self)->pd.Timestamp:  # start of data
+        return pd.Timestamp('1970-01-01')
+
+    @property
+    def end(self)->pd.Timestamp:  # end of data
+        return pd.Timestamp('2021-12-31')
+
+    @property
+    def _coords_name(self)->List[str]:
+        return ['sit_latitude', 'sit_longitude']
+
+    @property
+    def _area_name(self) ->str:
+        return 'sit_area_hydro' 
+
+    @property
+    def _q_name(self)->str:
+        return 'tsd_q_mm'
+
+    def __stations(self)->List[str]:
+        return pd.read_csv(os.path.join(
+            self.static_attr_path, 
+            "CAMELS_FR_human_influences_dams.csv"),
+            sep=";",
+            index_col=0).index.to_list()
+
+    def stations(self)->List[str]:
+        return self._stations
+
+    @property
+    def geog_path(self)->os.PathLike:
+        return os.path.join(self.path, "CAMELS_FR_geography", "CAMELS_FR_geography")
+
+    def static_attrs(self)->pd.DataFrame:
+        """
+        combination of topographic + soil + landuse + geology + climate + hydro 
+        + climate + anthropogenic features
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+        """
+        files = glob.glob(f"{self.static_attr_path}/*.csv")
+        dfs = []
+        for f in files:
+            df = pd.read_csv(f, sep=";", index_col=0)
+            df.index = df.index.astype(str)
+            if len(df) == 654:
+                dfs.append(df)
+            elif self.verbosity>1:
+                print(f"skipping {os.path.basename(f)} as it has {len(df)} rows")
+        
+        static_attrs = pd.concat(dfs, axis=1)
+        
+        gen_attrs = pd.read_csv(
+            os.path.join(self.static_attr_path, "CAMELS_FR_site_general_attributes.csv"),
+            sep=";",
+            index_col=0,
+        )
+
+        # in gen_attrs the stn_id has lenght of 8 while in static_attrs it is 10
+        # so adding the last two digits to the gen_attrs
+        _map = {stn[0:-2]:stn for stn in static_attrs.index}
+        gen_attrs = gen_attrs.rename(index=_map)
+
+        if self.verbosity:
+            for stn in static_attrs.index:
+                if stn not in gen_attrs.index:
+                    print(stn, " not found in site_general_attributes.csv")
+
+        static_attrs = pd.concat([gen_attrs, static_attrs], axis=1)
+        return static_attrs
+
+    def ts_attrs(self)->pd.DataFrame:
+        """
+        daily_timeseries statistics of all catchments
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+        """
+        files = glob.glob(f"{self.ts_stat_path}/*.csv")
+        dfs = []
+        for f in files:
+            df = pd.read_csv(f, sep=";", index_col=0)
+            df.index = df.index.astype(str)
+            if len(df) == 654:
+                dfs.append(df)
+            elif self.verbosity>1:
+                print(f"skipping {os.path.basename(f)} as it has {len(df)} rows")
+        
+        return pd.concat(dfs, axis=1)
+
+    def static_data(self)->pd.DataFrame:
+        """
+        static attributes plus timeseries statistics
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+        """
+
+        static_data = pd.concat([
+            self.static_attrs(),
+            self.ts_attrs()
+            ], axis=1)    
+        # remove duplicated columns
+        return static_data.loc[:,~static_data.columns.duplicated()].copy()
+
+    def fetch_static_features(
+            self,
+            stn_id: Union[str, List[str]] = "all",
+            features:Union[str, List[str]] = "all"
+    ) -> pd.DataFrame:
+        """
+        Returns static features of one or more stations.
+
+        Parameters
+        ----------
+            stn_id : str
+                name/id of station/stations of which to extract the data
+            features : list/str, optional (default="all")
+                The name/names of features to fetch. By default, all available
+                static features are returned.
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe of shape (stations, features)
+
+        Examples
+        ---------
+        >>> from water_datasets import CAMELS_FR
+        >>> dataset = CAMELS_FR()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            654
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (472, 210)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('42600042')
+        >>> static_data.shape
+           (1, 210)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'aridity'])
+        >>> static_data.shape
+           (472, 2)
+        >>> data = dataset.fetch_static_features('42600042', features=['slope_mean', 'aridity'])
+        >>> data.shape
+           (1, 2)
+
+        """
+        stations = check_attributes(stn_id, self.stations(), 'stations')
+        features = check_attributes(features, self.static_features, 'static_features')
+        df = self.static_data()
+        return df.loc[stations, features]
+
+    def _read_dyn_stn(self, stn_id:str)->pd.DataFrame:
+        df = pd.read_csv(
+            os.path.join(self.daily_ts_path, f"CAMELS_FR_tsd_{stn_id}.csv"),
+            sep=";",
+            index_col=0,
+            parse_dates=True,
+            comment="#",
+                        )
+        df.columns.name = 'dynamic_features'
+        df.index.name = 'time'
+        return df
+
+    def _read_dynamic_from_csv(
+            self,
+            stations,
+            dynamic_features,
+            st=None,
+            en=None)->dict:
+
+        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        dyn = {stn: self._read_dyn_stn(stn)[features] for stn in stations}
+
+        return dyn

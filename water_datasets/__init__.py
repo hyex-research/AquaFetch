@@ -38,6 +38,7 @@ from .rr import Ireland
 from .rr import Finland
 from .rr import Poland
 from .rr import Italy
+from .rr import CAMELS_FR
 
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador

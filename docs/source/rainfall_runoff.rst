@@ -46,11 +46,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 897
      - 
      - `Chagas et al., 2020 <https://doi.org/10.5194/essd-12-2075-2020>`_
-   * - ``CAMELS_US``
-     - :py:class:`water_datasets.rr.CAMELS_US`
-     - 671
+   * - ``CAMELS_CH``
+     - :py:class:`water_datasets.rr.CAMELS_CH`
+     - 331
      - 
-     - `Newman et al., 2014 <https://gdex.ucar.edu/dataset/camels.html>`_
+     - `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_
    * - ``CAMELS_CL``
      - :py:class:`water_datasets.rr.CAMELS_CL`
      - 516
@@ -61,16 +61,16 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 304
      - 
      - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
-   * - ``CAMELS_CH``
-     - :py:class:`water_datasets.rr.CAMELS_CH`
-     - 331
-     - 
-     - `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_
    * - ``CAMELS_DE``
      - :py:class:`water_datasets.rr.CAMELS_DE`
      - 1555
      - 
      - `Loritz et al., 2024 <https://essd.copernicus.org/preprints/essd-2024-318/>`_
+   * - ``CAMELS_FR``
+     - :py:class:`water_datasets.rr.CAMELS_FR`
+     - 654
+     - 
+     - `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_
    * - ``CAMELS_IND``
      - :py:class:`water_datasets.rr.CAMELS_IND`
      - 472
@@ -81,6 +81,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 50
      -
      - `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_
+   * - ``CAMELS_US``
+     - :py:class:`water_datasets.rr.CAMELS_US`
+     - 671
+     - 
+     - `Newman et al., 2014 <https://gdex.ucar.edu/dataset/camels.html>`_
    * - ``CCAM``
      - :py:class:`water_datasets.rr.CCAM`
      - 111
@@ -291,6 +296,14 @@ The datasets can be accessed individually by their names.
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.CAMELS_FR
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
 
 .. autoclass:: water_datasets.CAMELS_IND
    :members:

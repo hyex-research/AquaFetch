@@ -1,6 +1,5 @@
 
 import os
-import re
 import time
 import concurrent.futures as cf
 from typing import List, Union
@@ -9,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from ..utils import get_cpus
-from ..utils import check_attributes
 from ..utils import merge_shapefiles
 from .._backend import xarray as xr
 from ._gsha import _GSHA
@@ -41,8 +39,6 @@ class Japan(_GSHA):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self._stations = self.__stations()
-
     @property
     def agency_name(self)->str:
         return 'MLIT'
@@ -62,16 +58,6 @@ class Japan(_GSHA):
 
             merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
         return
-
-    # def stations(self)->List[str]:
-    #     return self._stations
-
-    # def __stations(self)->List[str]:
-    #     """
-    #     returns names of only those stations which are also documented
-    #     by GSHA.
-    #     """
-    #     return [stn.split('_')[0] for stn in self.gsha.agency_stations('MLIT')]    
 
     def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single
