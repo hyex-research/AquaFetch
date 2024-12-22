@@ -123,7 +123,7 @@ class CAMELS_US(Camels):
         self.path = path
 
         if os.path.exists(self.path):
-            print(f"dataset is already downloaded at {self.path}")
+            if self.verbosity: print(f"dataset is already downloaded at {self.path}")
         else:
             download(self.url, os.path.join(self.camels_dir, f'CAMELS_US{SEP}CAMELS_US.zip'))
             download(self.catchment_attr_url, os.path.join(self.camels_dir, f"CAMELS_US{SEP}catchment_attrs.zip"))

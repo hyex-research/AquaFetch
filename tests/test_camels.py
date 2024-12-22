@@ -18,7 +18,7 @@ from water_datasets import CAMELS_DK
 from water_datasets.rr import CAMELS_DK0
 from water_datasets import CAMELS_CH
 from water_datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
-from water_datasets import CAMELS_CL, CAMELS_US, LamaHCE, HYSETS, HYPE
+from water_datasets import CAMELS_CL, CAMELS_US, LamaHCE, HYPE
 from water_datasets import WaterBenchIowa
 from water_datasets import CAMELS_DE
 from water_datasets import LamaHIce
@@ -28,8 +28,7 @@ from water_datasets import Simbi
 from water_datasets import Bull
 from water_datasets import CAMELS_IND
 from water_datasets import RainfallRunoff
-from water_datasets import Arcticnet
-from water_datasets import USGS
+from water_datasets import RRLuleaSweden
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -301,14 +300,6 @@ class TestCamels(unittest.TestCase):
         test_dataset(ds_aus, 561, 26388, 187, 26)
         return
 
-    def test_arcticnet(self):
-        dataset = Arcticnet(path=gscad_path)
-        return
-
-    def test_usgs(self):
-        dataset = USGS(path=gscad_path, verbosity=3)
-        test_dataset(dataset, 12004, 25202, 27, 5, test_df=False)
-        return
 
 
 if __name__=="__main__":

@@ -1,18 +1,18 @@
 
 import os
 import site
-import re
-from io import StringIO
 # add the parent directory in the path
 wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
- 
 
 import numpy as np 
  
 from dataretrieval import nwis
 
+from water_datasets import USGS
 from water_datasets.rr._usgs import download_daily_q_nwis, _download_metadata
+
+from utils import test_dataset
 
 site = "14105700"
 
@@ -50,3 +50,8 @@ def test_metadata():
     for i,j in zip(metadata_nwis.values.reshape(-1,), metadata_usgs.values.reshape(-1,)):
         np.testing.assert_array_equal([i], [j])
     return
+
+gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+
+dataset = USGS(path=gscad_path, verbosity=3)
+test_dataset(dataset, 12004, 25202, 27, 5, test_df=False)
