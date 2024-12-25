@@ -282,8 +282,12 @@ class Camels(Datasets):
     def _check_length(self, st, en):
         if st is None:
             st = self.start
+        else:
+            st = pd.Timestamp(st)
         if en is None:
             en = self.end
+        else:
+            en = pd.Timestamp(en)
         return st, en
 
     def to_ts(self, static, st, en, as_ts=False, freq='D'):

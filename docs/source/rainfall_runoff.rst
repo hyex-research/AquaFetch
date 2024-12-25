@@ -156,6 +156,11 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
      - 1287
      -
      - `imgw.pl <https://danepubliczne.imgw.pl>`_     
+   * - ``Portugal``
+     - :py:class:`water_datasets.rr.Portugal`
+     - 280
+     -
+     - `snirh <https://snirh.apambiente.pt>`_      
    * - ``Thailand``
      - :py:class:`water_datasets.rr.Thailand`
      - 73
@@ -390,6 +395,13 @@ The datasets can be accessed individually by their names.
 
 
 .. autoclass:: water_datasets.rr.Poland
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.rr.Portugal
    :members:
    :show-inheritance:
 
