@@ -44,6 +44,17 @@ Busan Beach data
 .. automodule:: water_datasets
    :members: busan_beach
 
+
+CamelsChem
+===================================
+.. autoclass:: water_datasets.CamelsChem
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 Ecoli Mekong River
 ==================
 .. autofunction:: water_datasets.ecoli_mekong

@@ -22,9 +22,9 @@ class Portugal(_EStreams):
     The meteorological data, static catchment 
     features and catchment boundaries are
     taken from :py:class:`water_datasets.EStreams` follwoing the works 
-    of ` Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
+    of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
-    data is available from 1972-01-01 to 2022-06-31 .
+    data is available from 1972-01-01 to 2022-12-31 .
     """
     def __init__(
             self, 
@@ -60,7 +60,7 @@ class Portugal(_EStreams):
         return self._stations
     
     def download_q_data_seq(self):
-
+        """downloads q data sequentially"""
         if self.verbosity: print("Downloading q data sequentially")
 
         start = time.time()
@@ -86,7 +86,7 @@ class Portugal(_EStreams):
         return pd.concat(data, axis=1)
     
     def download_q_data_parallel(self, cpus:int=4):
-
+        """downloads q data in parallel"""
         start = time.time()
 
         data = []
@@ -107,20 +107,28 @@ class Portugal(_EStreams):
 
         tot_time = round ((time.time() - start) / 60, 2)
 
-        print(f"Total Time taken {tot_time} minutes")
+        if self.verbosity: print(f"Total Time taken {tot_time} minutes")
 
         return pd.concat(data, axis=1)
 
     def get_q(
             self, 
             as_dataframe:bool=True,
-            overwrite:bool=False, 
             ):
+        """
+        returns the streamflow data of Portugal as xarray.Dataset or pandas.DataFrame
+
+        Returns
+        -------
+        xarray.Dataset or pandas.DataFrame. If as_dataframe is True, returns pandas.DataFrame
+        with columns as station codes and index as time. If as_dataframe is False, returns
+        xarray.Dataset with station codes as variables and time as dimension.
+        """
         fname = 'daily_q.csv' 
 
         fpath = os.path.join(self.path, fname)
 
-        if not os.path.exists(fpath) or overwrite:
+        if not os.path.exists(fpath) or self.overwrite:
 
             if self.verbosity>1: print(f"Downloading q data at {self.path}")
 
