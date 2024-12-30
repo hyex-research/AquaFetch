@@ -1,7 +1,6 @@
-
 import os
 import time
-from typing import List, Union
+from typing import List, Union, Dict
 import concurrent.futures as cf
 
 import numpy as np
@@ -14,6 +13,28 @@ from ..utils import check_attributes
 from ..utils import merge_shapefiles
 from .camels import Camels
 
+from ._map import (
+    mean_daily_precipitation_with_method,
+    leaf_area_index,
+    daily_actual_evpotranspiration_with_method,
+    daily_potential_evpotranspiration_with_method,
+    download_longwave_radiation_with_method,
+    solar_radiation_with_method,
+    snow_water_equivalent_with_method,
+    mean_daily_air_temp_with_method,
+    mean_daily_windspeed_with_method,
+    u_component_of_daily_wind_with_method,
+    v_component_of_daily_wind_with_method,
+    groundwater_percentages,
+    soil_moisture_layer1,
+    soil_moisture_layer2,
+    soil_moisture_layer3,
+    soil_moisture_layer4,
+)
+
+from ._map import (catchment_area,
+                   gauge_latitude,
+                   )
 
 METEO_MAP = {
     'arcticnet': 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT/Meteorology_arcticnet_AFD_GRDC_IWRIS_MLIT',
@@ -36,9 +57,10 @@ class GSHA(Camels):
     """
     Global streamflow characteristics, hydrometeorology and catchment
     attributes following `Peirong et al., 2023 <https://doi.org/10.5194/essd-16-1559-2024>`_.
+    The data is downloaded from its `zenodo repository <https://zenodo.org/record/8090704>`_.
     It should be noted that this dataset does not contain observed streamflow data.
-    It has 21568 stations, 26 dynamic features with daily timestep, 21 dynamic 
-    features with yearly timestep and 35 static features.
+    It has 21568 stations, 26 dynamic (meteorological + storage) features with daily timestep, 21 dynamic
+    features (landcover + streamflow indices + reservoir) with yearly timestep and 35 static features.
 
     Examples
     --------
@@ -64,15 +86,15 @@ class GSHA(Camels):
     fetch static features for all stations of arcticnet agency
     >>> dataset.fetch_static_features(agency='arcticnet')
     fetch static features for all stations of arcticnet agency
-    >>> ds.fetch_dynamic_features(agency='arcticnet')    
-    
+    >>> ds.fetch_dynamic_features(agency='arcticnet')
+
     """
     url = "https://zenodo.org/record/8090704"
 
     def __init__(self,
                  path=None,
                  overwrite=False,
-                 to_netcdf:bool = True,
+                 to_netcdf: bool = True,
                  **kwargs):
         """
         Parameters
@@ -98,7 +120,7 @@ class GSHA(Camels):
                  'WatershedPolygons.zip',
                  'WatershedsAll.csv'
                  ]
-        #self._download(overwrite=overwrite, files_to_check=files)
+        # self._download(overwrite=overwrite, files_to_check=files)
 
         self._maybe_merge_shapefiles()
 
@@ -111,7 +133,7 @@ class GSHA(Camels):
         wsAll.index = wsAll.pop('station_id')
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
 
-        self.boundary_file=os.path.join(self.path, "boundaries.shp")
+        self.boundary_file = os.path.join(self.path, "boundaries.shp")
         self._create_boundary_id_map(self.boundary_file, 7)
 
         self._daily_dynamic_features = self.__daily_dynamic_features()
@@ -120,7 +142,7 @@ class GSHA(Camels):
         self._static_features = self.__static_features()
 
     @property
-    def agencies(self)->List[str]:
+    def agencies(self) -> List[str]:
         """
         returns the names of agencies as list
 
@@ -140,61 +162,110 @@ class GSHA(Camels):
 
         """
         return self.wsAll.loc[:, 'agency'].unique()
-    
+
     @property
-    def daily_dynamic_features(self)->List[str]:
+    def daily_dynamic_features(self) -> List[str]:
         return self._daily_dynamic_features
 
     @property
-    def yearly_dynamic_features(self)->List[str]:
+    def yearly_dynamic_features(self) -> List[str]:
         return self._yearly_dynamic_features
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+
+        }
+
+
+    @property
+    def dyn_map(self):
+        return {
+            'EP_GLEAM': daily_actual_evpotranspiration_with_method('gleam'),
+            'EP_REA': daily_actual_evpotranspiration_with_method('rea'),
+            'GLEAM_PET': daily_potential_evpotranspiration_with_method('gleam'),
+            'GW': groundwater_percentages(),
+            'HPET_PET': daily_potential_evpotranspiration_with_method('hpet'),
+            'LONGRAD_ERA': download_longwave_radiation_with_method('era5'),
+            'LONGRAD_MERRA': download_longwave_radiation_with_method('merra2'),
+            'P_EMEarth': mean_daily_precipitation_with_method('emearth'),
+            'P_MSWEP': mean_daily_precipitation_with_method('mswep'),
+            'SHORTRAD_ERA': solar_radiation_with_method('era5'),
+            'SHORTRAD_MERRA': solar_radiation_with_method('merra2'),
+            'SML1': soil_moisture_layer1(),
+            'SML2': soil_moisture_layer2(),
+            'SML3': soil_moisture_layer3(),
+            'SML4': soil_moisture_layer4(),
+            'SWDE': snow_water_equivalent_with_method('era5'),  # change m to mm
+            'T_ERA': mean_daily_air_temp_with_method('era5'),  # change from K to C
+            'T_EUSTACE': mean_daily_air_temp_with_method('eustace'),  # change from K to C
+            'T_MERRA': mean_daily_air_temp_with_method('merra2'),  # change from K to C
+            'WINDERA': mean_daily_windspeed_with_method('era5'),
+            'WINDMERRA': mean_daily_windspeed_with_method('merra'),
+            'WINDU_ERA': u_component_of_daily_wind_with_method('era5'),
+            'WINDU_MERRA': u_component_of_daily_wind_with_method('merra'),
+            'WINDV_ERA': v_component_of_daily_wind_with_method('era5'),
+            'WINDV_MERRA': v_component_of_daily_wind_with_method('merra'),
+            'lai': leaf_area_index(),
+        }
+
+    @property
+    def dyn_factors(self):
+        return {
+            snow_water_equivalent_with_method('era5'): lambda x: x * 1000,
+            mean_daily_air_temp_with_method('era5'): lambda x: x - 273.15,
+            mean_daily_air_temp_with_method('eustace'): lambda x: x - 273.15,
+            mean_daily_air_temp_with_method('merra2'): lambda x: x - 273.15,
+        }
 
     def __daily_dynamic_features(self):
         return pd.concat(
             [self.meteo_vars_stn('1001_arcticnet'),
              self.storage_vars_stn('1001_arcticnet'),
-             ], 
-             axis=1
-             ).columns.tolist() + ['lai']
+             ],
+            axis=1
+        ).columns.tolist() + ['lai']
 
     def __yearly_dynamic_features(self):
         return pd.concat(
             [self.lc_variables_stn('1001_arcticnet'),
              self.streamflow_indices_stn('1001_arcticnet'),
              self.reservoir_variables_stn('1001_arcticnet')
-             ], 
-             axis=1
-             ).columns.tolist()
+             ],
+            axis=1
+        ).columns.tolist()
 
     @property
-    def start(self)->pd.Timestamp:
+    def start(self) -> pd.Timestamp:
         return pd.Timestamp('1979-01-01')
 
     @property
-    def end(self)->pd.Timestamp:
+    def end(self) -> pd.Timestamp:
         return pd.Timestamp('2022-12-31')
 
     @property
-    def static_features(self)->List[str]:
-        return self._static_features 
+    def static_features(self) -> List[str]:
+        return self._static_features
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return self.daily_dynamic_features
 
     def __static_features(self):
         return pd.concat(
             [self.atlas('1001_arcticnet'),
              self.uncertainty('1001_arcticnet')
-             ], 
-             axis=1
-             ).columns.tolist() + self.wsAll.columns.tolist()
+             ],
+            axis=1
+        ).columns.tolist() + self.wsAll.columns.tolist()
 
-    def agency_of_stn(self, stn:str)->str:
+    def agency_of_stn(self, stn: str) -> str:
         """find the agency to which a station belongs """
         return self.wsAll.loc[stn, 'agency']
 
-    def agency_stations(self, agency:str)->List[str]:
+    def agency_stations(self, agency: str) -> List[str]:
         """returns the station ids from a particular agency"""
         return self.wsAll[self.wsAll['agency'] == agency].index.tolist()
 
@@ -204,37 +275,37 @@ class GSHA(Camels):
         out_shapefile = os.path.join(self.path, 'boundaries.shp')
 
         if not os.path.exists(out_shapefile):
-
-            shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if filename.endswith('.shp')]
+            shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if
+                         filename.endswith('.shp')]
             merge_shapefiles(shp_files, out_shapefile,
                              add_new_field=True)
         return
 
     def _get_stations(
-            self, 
-            stations:Union[str, List[str]]="all", 
-            agency:Union[str, List[str]]="all"
-            )->List[str]:
+            self,
+            stations: Union[str, List[str]] = "all",
+            agency: Union[str, List[str]] = "all"
+    ) -> List[str]:
         if agency != "all" and stations != 'all':
             raise ValueError("Either provide agency or stations not both")
-        
+
         if agency != "all":
             agency = check_attributes(agency, self.agencies, 'agency')
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
             stations = check_attributes(stations, self.stations(), 'stations')
-        
+
         return stations
 
-    def stn_coords(self, stations:List[str] = "all", agency:List[str] = "all")->pd.DataFrame:
+    def stn_coords(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.DataFrame:
         """
         returns the latitude and longitude of stations
-        
+
         Returns
         -------
         pd.DataFrame
             a pandas DataFrame of shape (n, 2) where n is the number of stations
-        
+
         Examples
         --------
         >>> from water_datasets import GSHA
@@ -247,23 +318,23 @@ class GSHA(Camels):
         stations = self._get_stations(stations, agency)
         return self.wsAll.loc[stations, ['lat', 'long']].copy()
 
-    def stations(self, agency:str = "all")->List[str]:
+    def stations(self, agency: str = "all") -> List[str]:
         """returns names of stations as list"""
         if agency != "all":
             agency = check_attributes(agency, self.agencies, 'agency')
-            return self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()        
-        return self.wsAll.index.tolist()    
+            return self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
+        return self.wsAll.index.tolist()
 
-    def area(self, stations:List[str]="all", agency:List[str] = "all")->pd.Series:
+    def area(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.Series:
         """area of catchments"""
         stations = self._get_stations(stations, agency)
-        return self.wsAll.loc[stations, 'area']    
+        return self.wsAll.loc[stations, 'area']
 
     def uncertainty(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            )->pd.DataFrame:
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ) -> pd.DataFrame:
         """
         Uncertainty estimates of all meteorological variables over all watersheds
 
@@ -274,7 +345,7 @@ class GSHA(Camels):
             - SRAD_uncertainty (%)	Downward shortwave radiation uncertainty estimates (in percentage). Uncertainties are calculated from MERRA-2 and ERA5-land datasets.
             - wind_uncertainty (%)	Wind speed uncertainty estimates (in percentage). The u- and v- components are aggregated on each grid to obtain wind speed. Uncertainties are calculated from MERRA-2 and ERA5-land datasets.
             - pet_uncertainty (%)	Potential evapotranspiration uncertainty estimates (in percentage). Uncertainties are calculated from GLEAM and REA datasets.
-        
+
         Returns
         -------
         pd.DataFrame
@@ -283,7 +354,7 @@ class GSHA(Camels):
         stations = self._get_stations(stations, agency)
 
         fpath = os.path.join(
-            self.path, 
+            self.path,
             "Global_files",
             "Global_files",
             'Uncertainty.csv')
@@ -291,9 +362,9 @@ class GSHA(Camels):
         df = df[~df.index.duplicated(keep='first')]
         return df.loc[stations, :]
 
-    def atlas(self, stations:List[str] = "all", agency:List[str] = "all")->pd.DataFrame:
+    def atlas(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.DataFrame:
         """
-        The link table between GSHA watershed IDs and RiverATLAS 
+        The link table between GSHA watershed IDs and RiverATLAS
         river reach IDs, as well as the selected static attributes
 
         Returns
@@ -304,7 +375,7 @@ class GSHA(Camels):
         stations = self._get_stations(stations, agency)
 
         fpath = os.path.join(
-            self.path, 
+            self.path,
             "Global_files",
             "Global_files",
             'GSHA_ATLAS.csv')
@@ -313,7 +384,7 @@ class GSHA(Camels):
         df = df[~df.index.duplicated(keep='first')]
         return df.loc[stations, :]
 
-    def lc_variables_stn(self, stn:str)->pd.DataFrame:
+    def lc_variables_stn(self, stn: str) -> pd.DataFrame:
         """
         Landcover variables for a given station which have yearly timestep.
         Following three landcover variables are provided:
@@ -330,10 +401,10 @@ class GSHA(Camels):
         return lc_variable_stn(self.path, stn)
 
     def lc_variables(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Landcover variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
@@ -346,7 +417,7 @@ class GSHA(Camels):
         else:
             return {stn: lc_vars[stn] for stn in stations}
 
-    def reservoir_variables_stn(self, stn:str)->pd.DataFrame:
+    def reservoir_variables_stn(self, stn: str) -> pd.DataFrame:
         """
         Reservoir variables for a given station from 1979 to 2020 with yearly timestep.
         Following two reservoir variables are provided:
@@ -362,10 +433,10 @@ class GSHA(Camels):
         return reservoir_vars_stn(self.path, stn)
 
     def reservoir_variables(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Reservoir variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
@@ -378,7 +449,7 @@ class GSHA(Camels):
         else:
             return {stn: lc_vars[stn] for stn in stations}
 
-    def streamflow_indices_stn(self, stn:str)->pd.DataFrame:
+    def streamflow_indices_stn(self, stn: str) -> pd.DataFrame:
         """
         Streamflow indices for a given station which have yearly timestep.
 
@@ -390,10 +461,10 @@ class GSHA(Camels):
         return streamflow_indices_stn(self.path, stn)
 
     def streamflow_indices(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Landcover variables for one or more than one station either
         as xr.Dataset or dictionary. The data has yearly timestep.
@@ -401,18 +472,18 @@ class GSHA(Camels):
         stations = self._get_stations(stations, agency)
 
         lc_vars = streamflow_indices_all_stations(
-            self.path, 
+            self.path,
             to_netcdf=self.to_netcdf,
             verbosity=self.verbosity
-            )
+        )
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
 
-    def lai_stn(self, stn:str)->pd.Series:
+    def lai_stn(self, stn: str) -> pd.Series:
         """
-        Daily leaf area index. As per documentation, due to satellite data quality, 
+        Daily leaf area index. As per documentation, due to satellite data quality,
         some watersheds might have relatively serious data missing issue. The data is
         from 1981-01-01 to 2020-12-31.
 
@@ -424,10 +495,10 @@ class GSHA(Camels):
         return lai_stn(self.path, stn)
 
     def lai(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Leaf Area Index timeseries for one or more than one station either
         as xr.Dataset or pandas DataFrame. The data has daily timestep.
@@ -435,13 +506,13 @@ class GSHA(Camels):
         stations = self._get_stations(stations, agency)
 
         lai = lai_all_stns(
-            self.path, 
+            self.path,
             to_netcdf=self.to_netcdf,
             verbosity=self.verbosity
-            )
+        )
         return lai[stations]
 
-    def meteo_vars_stn(self, stn:str)->pd.DataFrame:
+    def meteo_vars_stn(self, stn: str) -> pd.DataFrame:
         """
         Daily meteorological variables from 1979-01-01 to 2022-12-31 for a given station.
 
@@ -451,11 +522,11 @@ class GSHA(Camels):
             a pandas DataFrame of shape (16071, 19) where n is the number of days
         """
         path = os.path.join(
-            self.path, 
+            self.path,
             METEO_MAP[self.agency_of_stn(stn)],
             f'{stn}.csv'
-            )
-        return meteo_vars_stn(path)
+        )
+        return self._meteo_vars_stn(path)
 
     def meteo_vars_all_stns(self):
         """
@@ -470,23 +541,23 @@ class GSHA(Camels):
 
         meteo_vars = {}
         paths = [os.path.join(
-                self.path, 
-                METEO_MAP[self.agency_of_stn(stn)],
-                f'{stn}.csv') for stn in self.stations()]
+            self.path,
+            METEO_MAP[self.agency_of_stn(stn)],
+            f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or get_cpus() - 2
         start = time.time()
 
-        if self.verbosity: 
+        if self.verbosity:
             print(f"Reading meteorological variables for {len(self.stations())} stations using {cpus} cpus")
-
+        # takes ~ 1538 seconds with 110 cpus
         with cf.ProcessPoolExecutor(cpus) as executor:
             results = executor.map(
-                meteo_vars_stn,
+                self._meteo_vars_stn,
                 paths
             )
 
-        if self.verbosity: print(f"Time taken: {time.time()-start:.2f} seconds")
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
 
         if self.to_netcdf:
             for stn, df in zip(self.stations(), results):
@@ -501,14 +572,14 @@ class GSHA(Camels):
         else:
 
             ds = {stn: df for stn, df in zip(self.stations(), results)}
-        
+
         return ds
 
     def meteo_vars(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Meteorological variables from 1979-01-01 to 2022-12-31 for one or more than one station either
         as xr.Dataset or dictionary. The data has daily timestep.
@@ -529,7 +600,7 @@ class GSHA(Camels):
         else:
             return {stn: meteo_vars[stn] for stn in stations}
 
-    def storage_vars_stn(self, stn:str)->pd.DataFrame:
+    def storage_vars_stn(self, stn: str) -> pd.DataFrame:
         """
         Daily Water storage term variables from 1979-01-01 to 2021-12-31 for a given station.
 
@@ -546,12 +617,12 @@ class GSHA(Camels):
             a pandas DataFrame of shape (15706, 6) where n is the number of days
         """
         path = os.path.join(
-            self.path, 
+            self.path,
             "Storage",
             "Storage",
             f'{stn}.csv'
-            )
-        return storage_vars_stn(path)
+        )
+        return self._storage_vars_stn(path)
 
     def storage_vars_all_stns(self):
         """
@@ -566,23 +637,23 @@ class GSHA(Camels):
 
         storage_vars = {}
         paths = [os.path.join(
-                self.path, 
-                "Storage",
-                "Storage",
-                f'{stn}.csv') for stn in self.stations()]
+            self.path,
+            "Storage",
+            "Storage",
+            f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or get_cpus() - 2
         start = time.time()
 
         if self.verbosity: print(f"Reading storage vars for {len(self.stations())} stations using {cpus} cpus")
-
+        # takes ~ 975 seconds with 110 cpus
         with cf.ProcessPoolExecutor(cpus) as executor:
             results = executor.map(
-                storage_vars_stn,
+                self._storage_vars_stn,
                 paths
             )
 
-        if self.verbosity: print(f"Time taken: {time.time()-start:.2f} seconds")
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
 
         if self.to_netcdf:
 
@@ -590,7 +661,7 @@ class GSHA(Camels):
 
             for stn, df in zip(self.stations(), results):
                 storage_vars[stn] = df
-            
+
             ds = xr.Dataset(storage_vars)
 
             if self.verbosity: print(f"Saving to {nc_path}")
@@ -598,14 +669,14 @@ class GSHA(Camels):
         else:
 
             ds = {stn: df for stn, df in zip(self.stations(), results)}
-        
+
         return ds
 
     def storage_vars(
-            self, 
-            stations:List[str] = "all",
-            agency:List[str] = "all"
-            ):
+            self,
+            stations: List[str] = "all",
+            agency: List[str] = "all"
+    ):
         """
         Water storage term variables from 1979-01-01 to 2021-12-31 for one or more than one station either
         as xr.Dataset or dictionary. The data has daily timestep.
@@ -622,8 +693,8 @@ class GSHA(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all",
-            agency:List[str] = "all",
+            features: Union[str, List[str]] = "all",
+            agency: List[str] = "all",
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -672,22 +743,22 @@ class GSHA(Camels):
         """
 
         stations = self._get_stations(stations, agency)
-        
+
         features = check_attributes(features, self.static_features, 'static_features')
 
         return pd.concat([
             self.atlas(stations),
             self.uncertainty(stations),
             self.wsAll.loc[stations, :]
-            ], 
+        ],
             axis=1
-            ).loc[:, features]
+        ).loc[:, features]
 
     def fetch_stn_dynamic_features(
             self,
-            stn_id:str,
-            dynamic_features = 'all',
-    )->pd.DataFrame:
+            stn_id: str,
+            dynamic_features='all',
+    ) -> pd.DataFrame:
         """
         Fetches all or selected dynamic features of one station.
 
@@ -715,24 +786,24 @@ class GSHA(Camels):
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
-        out =  pd.concat(
+        out = pd.concat(
             [self.meteo_vars_stn(stn_id),
              self.storage_vars_stn(stn_id),
              self.lai_stn(stn_id).rename('lai')
-             ], 
-             axis=1
-             ).loc[:, features]
+             ],
+            axis=1
+        ).loc[:, features]
         out.columns.name = 'dynamic_features'
         return out
 
     def fetch_dynamic_features(
             self,
             stations: Union[List[str], str] = "all",
-            dynamic_features = 'all',
+            dynamic_features='all',
             st=None,
             en=None,
             as_dataframe=False,
-            agency:List[str] = "all",
+            agency: List[str] = "all",
     ):
         """Fetches all or selected dynamic features of one station.
 
@@ -763,7 +834,7 @@ class GSHA(Camels):
         """
 
         stations = self._get_stations(stations, agency)
-        
+
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         st, en = self._check_length(st, en)
@@ -776,7 +847,7 @@ class GSHA(Camels):
 
         if as_dataframe:
             raise NotImplementedError("as_dataframe=True is not implemented yet")
-        
+
         meteo_vars = self.meteo_vars(stations)
         storage_vars = self.storage_vars(stations)
         # since lai does not have 'features' dimension, we need to add it
@@ -786,66 +857,120 @@ class GSHA(Camels):
         ds = ds.rename({'features': 'dynamic_features'})
         return ds.sel(time=slice(st, en))
 
+    def _meteo_vars_stn(self, fpath) -> pd.DataFrame:
+
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f"{fpath} not found")
+
+        df = pd.read_csv(fpath, index_col=0,
+                         )
+
+        df.index = pd.to_datetime(df.index)
+
+        df.index.name = 'time'
+        df.columns.name = 'features'
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        for col, func in self.dyn_factors.items():
+            if col in df.columns:
+                df[col] = df[col].apply(func)
+
+        return df
+
+    def _storage_vars_stn(self, fpath) -> pd.DataFrame:
+
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f"{fpath} not found")
+
+        df = pd.read_csv(fpath, index_col=0,
+                         dtype={'SWDE': np.float32,
+                                'SML1': np.float32,
+                                'SML2': np.float32,
+                                'SML3': np.float32,
+                                'SML4': np.float32,
+                                'GW': np.float32, }
+                         )
+
+        df.index = pd.to_datetime(df.index)
+
+        df.index.name = 'time'
+        df.columns.name = 'features'
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        for col, func in self.dyn_factors.items():
+            if col in df.columns:
+                df[col] = df[col].apply(func)
+
+        return df
+
 
 class _GSHA(Camels):
     """
-    Parent class for those datasets which uses static and dynamic features from 
-    GSHA dataset"""
+    Parent class for those datasets which uses static and dynamic features from
+    GSHA dataset . The following dataset classes are based on this class:
+
+        - py:class:`water_datasets.Japan`
+        - py:class:`water_datasets.Thailand`
+        - py:class:`water_datasets.Spain`
+
+    """
+
     def __init__(
-            self, 
-            gsha_path:Union[str, os.PathLike] = None, 
-            verbosity:int = 1,
+            self,
+            gsha_path: Union[str, os.PathLike] = None,
+            verbosity: int = 1,
             **kwargs):
         super(_GSHA, self).__init__(verbosity=verbosity, **kwargs)
-
 
         if gsha_path is None:
             self.gsha_path = os.path.dirname(self.path)
         else:
             self.gsha_path = gsha_path
-        
-        self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)     
+
+        self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)
 
         self.boundary_file = self.gsha.boundary_file
         self._stations = self.__stations()
 
     @property
-    def start(self)->pd.Timestamp:
+    def start(self) -> pd.Timestamp:
         return pd.Timestamp('1979-01-01')
 
     @property
-    def end(self)->pd.Timestamp:
+    def end(self) -> pd.Timestamp:
         return pd.Timestamp('2022-12-31')
-    
+
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return ['obs_q_cms'] + self.gsha.dynamic_features
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         return self.gsha.static_features
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['lat', 'long']
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'area'
 
     @property
-    def _q_name(self)->str:
+    def _q_name(self) -> str:
         return "obs_q_cms"
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return self._stations
 
-    def __stations(self)->List[str]:
+    def __stations(self) -> List[str]:
         """
         returns names of only those stations which are also documented
         by GSHA.
         """
-        return [stn.split('_')[0] for stn in self.gsha.agency_stations(self.agency_name)]    
+        return [stn.split('_')[0] for stn in self.gsha.agency_stations(self.agency_name)]
 
     def get_boundary(
             self,
@@ -861,7 +986,7 @@ class _GSHA(Camels):
             name/id of catchment
         as_type : str
             'numpy' or 'geopandas'
-        
+
         Examples
         --------
         >>> from water_datasets import Japan
@@ -890,7 +1015,7 @@ class _GSHA(Camels):
     def _fetch_dynamic_features(
             self,
             stations: list,
-            dynamic_features = 'all',
+            dynamic_features='all',
             st=None,
             en=None,
             as_dataframe=False,
@@ -908,7 +1033,7 @@ class _GSHA(Camels):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
                 daily_q = daily_q.loc[st:en, stations]
-            
+
             features.remove('obs_q_cms')
 
         if len(features) == 0:
@@ -920,14 +1045,14 @@ class _GSHA(Camels):
         if daily_q is not None:
             if isinstance(daily_q, xr.Dataset):
                 assert isinstance(data, xr.Dataset), "xarray dataset not supported"
-                data = data.rename({stn:stn.split('_')[0] for stn in data.data_vars})
+                data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
 
                 # first create a new dimension in daily_q named dynamic_features
                 daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
                 # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={stn:stn.split('_')[0] for stn in stations}, inplace=True)
+                data.rename(columns={stn: stn.split('_')[0] for stn in stations}, inplace=True)
                 assert isinstance(data.index, pd.MultiIndex)
                 # data is multiindex dataframe but daily_q is not
                 # first make daily_q multiindex
@@ -945,16 +1070,15 @@ class _GSHA(Camels):
             st=None,
             en=None,
             as_ts=False
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """Fetches static features of station."""
-        if self.verbosity>1:
+        if self.verbosity > 1:
             print('fetching static features')
         stations = check_attributes(station, self.stations(), 'stations')
         stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
         static_feats = self.gsha.fetch_static_features(stations_, static_features).copy()
         static_feats.index = [stn.split('_')[0] for stn in static_feats.index]
         return static_feats
-
 
     def fetch_stations_features(
             self,
@@ -1017,7 +1141,7 @@ class _GSHA(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all",
+            features: Union[str, List[str]] = "all",
             st=None,
             en=None,
             as_ts=False
@@ -1063,19 +1187,18 @@ class _GSHA(Camels):
 
 
 def streamflow_indices_all_stations(
-        ds_path:Union[str, os.PathLike],
-        cpus:int = None,
-        to_netcdf:bool = True,
-        verbosity:int = 1
-        ):
-
+        ds_path: Union[str, os.PathLike],
+        cpus: int = None,
+        to_netcdf: bool = True,
+        verbosity: int = 1
+):
     nc_path = os.path.join(ds_path, 'streamflow_indices.nc')
 
     if to_netcdf and os.path.exists(nc_path):
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or get_cpus() - 2
 
     start = time.time()
 
@@ -1083,22 +1206,22 @@ def streamflow_indices_all_stations(
     paths = [ds_path for _ in range(len(stations))]
 
     if verbosity: print(f"Reading streamflow indices for {len(stations)} stations using {cpus} cpus")
-
+    # takes ~20 seconds with 110 cpus
     with cf.ProcessPoolExecutor(cpus) as executor:
-            
-            results = executor.map(
-                streamflow_indices_stn,
-                paths,
-                stations,
-            )
 
-    if verbosity: print(f"Time taken: {time.time()-start:.2f} seconds")
+        results = executor.map(
+            streamflow_indices_stn,
+            paths,
+            stations,
+        )
+
+    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
 
     if to_netcdf:
 
         encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
 
-        ds = xr.Dataset({str(stn):xr.DataArray(df) for stn, df in zip(stations, results)})
+        ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
         if verbosity: print(f"Saving to {nc_path}")
         ds.to_netcdf(nc_path, encoding=encoding)
     else:
@@ -1108,16 +1231,15 @@ def streamflow_indices_all_stations(
 
 
 def streamflow_indices_stn(
-        ds_path:Union[str, os.PathLike], 
-        stn:str
-        )->pd.DataFrame:
-
+        ds_path: Union[str, os.PathLike],
+        stn: str
+) -> pd.DataFrame:
     fpath = os.path.join(
-        ds_path, 
+        ds_path,
         "StreamflowIndices",
         "StreamflowIndices",
         f'{stn}.csv')
-    
+
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"{ds_path} for station {stn} not found")
 
@@ -1140,7 +1262,7 @@ def streamflow_indices_stn(
                'number of days with Q=0 (days)': np.int32,
                'valid observation days (days)': np.int32,
                }
-                     )
+    )
     df.index = pd.to_datetime(df.index, format='%Y')
 
     df.index.name = 'years'
@@ -1149,20 +1271,20 @@ def streamflow_indices_stn(
     return df
 
 
-def lc_variable_stn(ds_path, stn:str)->pd.DataFrame:
+def lc_variable_stn(ds_path, stn: str) -> pd.DataFrame:
     fpath = os.path.join(
-        ds_path, 
+        ds_path,
         "Landcover",
         "Landcover",
         f'{stn}.csv')
-    
+
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"{ds_path} for station {stn} not found")
 
     df = pd.read_csv(fpath, index_col=0,
-        #dtype={'1- percentile': np.float32}
-        )
-    
+                     # dtype={'1- percentile': np.float32}
+                     )
+
     df.index = pd.to_datetime(df.pop('year'), format='%Y')
 
     df.index.name = 'years'
@@ -1172,19 +1294,18 @@ def lc_variable_stn(ds_path, stn:str)->pd.DataFrame:
 
 
 def lc_vars_all_stns(
-        ds_path:Union[str, os.PathLike],
-        cpus:int = None,
-        to_netcdf:bool = True,
-        verbosity:int = 1
-        ):
-
+        ds_path: Union[str, os.PathLike],
+        cpus: int = None,
+        to_netcdf: bool = True,
+        verbosity: int = 1
+):
     nc_path = os.path.join(ds_path, 'lc_variables.nc')
 
     if to_netcdf and os.path.exists(nc_path):
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or get_cpus() - 2
 
     start = time.time()
 
@@ -1201,34 +1322,34 @@ def lc_vars_all_stns(
             stations,
         )
 
-    print(f"Time taken: {time.time()-start:.2f} seconds")
+    print(f"Time taken: {time.time() - start:.2f} seconds")
 
     if to_netcdf:
 
         encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
 
-        ds = xr.Dataset({stn:xr.DataArray(val) for stn, val in zip(stations, results)})
+        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
         print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)        
+        ds.to_netcdf(nc_path, encoding=encoding)
     else:
         ds = {stn: df for stn, df in zip(stations, results)}
     return ds
 
 
-def reservoir_vars_stn(ds_path, stn:str)->pd.DataFrame:
+def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
     fpath = os.path.join(
-        ds_path, 
+        ds_path,
         "Reservoir",
         "Reservoir",
         f'{stn}.csv')
-    
+
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"{ds_path} for station {stn} not found")
 
     df = pd.read_csv(fpath, index_col=0,
-        dtype={'capacity': np.float32, 'dor': np.float32, 'year': np.int32}
-        )
-    
+                     dtype={'capacity': np.float32, 'dor': np.float32, 'year': np.int32}
+                     )
+
     df.index = pd.to_datetime(df.index, format='%Y')
 
     df.index.name = 'years'
@@ -1238,19 +1359,18 @@ def reservoir_vars_stn(ds_path, stn:str)->pd.DataFrame:
 
 
 def reservoir_vars_all_stns(
-        ds_path:Union[str, os.PathLike],
-        cpus:int = None,
-        to_netcdf:bool = True,
-        verbosity:int = 1
-        ):
-
+        ds_path: Union[str, os.PathLike],
+        cpus: int = None,
+        to_netcdf: bool = True,
+        verbosity: int = 1
+):
     nc_path = os.path.join(ds_path, 'reservoir_variables.nc')
 
     if to_netcdf and os.path.exists(nc_path):
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or get_cpus() - 2
 
     start = time.time()
 
@@ -1267,34 +1387,34 @@ def reservoir_vars_all_stns(
             stations,
         )
 
-    print(f"Time taken: {time.time()-start:.2f} seconds")
+    print(f"Time taken: {time.time() - start:.2f} seconds")
 
     if to_netcdf:
 
         encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
 
-        ds = xr.Dataset({stn:xr.DataArray(val) for stn, val in zip(stations, results)})
+        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
         print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)        
+        ds.to_netcdf(nc_path, encoding=encoding)
     else:
         ds = {stn: df for stn, df in zip(stations, results)}
     return ds
 
 
-def lai_stn(ds_path, stn:str)->pd.Series:
+def lai_stn(ds_path, stn: str) -> pd.Series:
     fpath = os.path.join(
-        ds_path, 
+        ds_path,
         "LAI",
         "LAI",
         f'{stn}.csv')
-    
+
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"{ds_path} for station {stn} not found")
 
     df = pd.read_csv(fpath, index_col='date',
-        dtype={stn: np.float32}
-        )
-    
+                     dtype={stn: np.float32}
+                     )
+
     df.index = pd.to_datetime(df.index)
 
     df.index.name = 'time'
@@ -1303,12 +1423,11 @@ def lai_stn(ds_path, stn:str)->pd.Series:
 
 
 def lai_all_stns(
-        ds_path:Union[str, os.PathLike],
-        cpus:int = None,
-        to_netcdf:bool = True,
-        verbosity:int = 1
-        ):
-
+        ds_path: Union[str, os.PathLike],
+        cpus: int = None,
+        to_netcdf: bool = True,
+        verbosity: int = 1
+):
     if to_netcdf:
         nc_path = os.path.join(ds_path, 'lai.nc')
         if os.path.exists(nc_path):
@@ -1318,7 +1437,7 @@ def lai_all_stns(
         if verbosity: print(f"Reading from pre-existing {ds_path}")
         return pd.read_csv(os.path.join(ds_path, 'lai.csv'), index_col=0)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or get_cpus() - 2
 
     start = time.time()
 
@@ -1335,14 +1454,14 @@ def lai_all_stns(
             stations,
         )
 
-    if verbosity: print(f"Time taken: {time.time()-start:.2f} seconds")
+    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
 
     if to_netcdf:
 
         encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
 
         nc_path = os.path.join(ds_path, 'lai.nc')
-        ds = xr.Dataset({stn:xr.DataArray(val) for stn, val in zip(stations, results)})
+        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
         print(f"Saving to {nc_path}")
         ds.to_netcdf(nc_path, encoding=encoding)
     else:
@@ -1352,41 +1471,3 @@ def lai_all_stns(
         ds.to_csv(csv_path, index=True)
 
     return ds
-
-
-def meteo_vars_stn(fpath)->pd.DataFrame:
-    
-    if not os.path.exists(fpath):
-        raise FileNotFoundError(f"{fpath} not found")
-
-    df = pd.read_csv(fpath, index_col=0,
-        )
-    
-    df.index = pd.to_datetime(df.index)
-
-    df.index.name = 'time'
-    df.columns.name = 'features'
-
-    return df
-
-
-def storage_vars_stn(fpath)->pd.DataFrame:
-    
-    if not os.path.exists(fpath):
-        raise FileNotFoundError(f"{fpath} not found")
-
-    df = pd.read_csv(fpath, index_col=0,
-                     dtype={'SWDE': np.float32,
-                            'SML1': np.float32,
-                            'SML2': np.float32,
-                            'SML3': np.float32,
-                            'SML4': np.float32,
-                            'GW': np.float32,}
-        )
-    
-    df.index = pd.to_datetime(df.index)
-
-    df.index.name = 'time'
-    df.columns.name = 'features'
-
-    return df

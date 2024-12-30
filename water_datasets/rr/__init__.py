@@ -46,7 +46,6 @@ from ._italy import Italy
 from ._camels import CAMELS_FR
 from ._portugal import Portugal
 
-
 DATASETS = {
     "camels": Camels,
     "CAMELS_AUS": CAMELS_AUS,
@@ -89,7 +88,7 @@ DATASETS = {
 
 class RainfallRunoff(object):
     """
-    This is the master class which provides access to all the rainfall-runoff 
+    This is the master class which provides access to all the rainfall-runoff
     datasets. Use this class instead of using the individual dataset classes.
 
     .. list-table:: Naming Convention for dynamic features
@@ -101,7 +100,7 @@ class RainfallRunoff(object):
        * - obs_q_cms
          - observed streamflow in cms
        * - obs_q_mmd
-         - observed streamflow in mm/day  
+         - observed streamflow in mm/day
        * - pcp_mm
          - precipitation in mm
        * - max_temp_C
@@ -132,6 +131,8 @@ class RainfallRunoff(object):
          - downward long wave radiation in watt per meter square
        * - dwn_sw_rad_wm2
          - downward short wave radiation in watt per meter square
+       * - airpres_hpa
+         - Mean air pressure at sea level in hectopascal
 
 
     .. list-table:: Naming Convention for static features
@@ -143,12 +144,12 @@ class RainfallRunoff(object):
        * - guage_lat
          - Latitude of the guage station
        * - guage_long
-         - Longitude of the guage station         
+         - Longitude of the guage station
        * - area_km2
          - catchment area in km2
        * - mean_elev
          - mean elevation in meters
-        
+
     Examples
     --------
     >>> from water_datasets import RainfallRunoff
@@ -190,23 +191,24 @@ class RainfallRunoff(object):
     # with ``static`` and ``dyanic`` keys.
     >>> data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
     >>> data['static'].shape, data['dynamic'].shape
-    ((1, 166), (550784, 1))    
+    ((1, 166), (550784, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (472, 2)
     >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
         18.3861	80.3917
-    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations        
+    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
     """
+
     def __init__(
             self,
-            dataset:str,
+            dataset: str,
             path: Union[str, os.PathLike] = None,
-            overwrite:bool = False,
-            to_netcdf:bool = True,
-            processes:int = None,
-            remove_zip:bool = True,
-            verbosity:int = 1,
+            overwrite: bool = False,
+            to_netcdf: bool = True,
+            processes: int = None,
+            remove_zip: bool = True,
+            verbosity: int = 1,
             **kwargs
     ):
         """
@@ -254,7 +256,7 @@ class RainfallRunoff(object):
             - ``WaterBenchIowa``
 
         path : str
-            path to directory inside which data is located/downloaded. 
+            path to directory inside which data is located/downloaded.
             If provided and the path/dataset exists, then the data will be read
             from this path. If provided and the path/dataset does not exist,
             then the data will be downloaded at this path. If not provided,
@@ -271,7 +273,7 @@ class RainfallRunoff(object):
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`water_datasets.rr.CAMELS_AUS` or ``timestep`` for 
+            For example ``version`` for :py:class:`water_datasets.rr.CAMELS_AUS` or ``timestep`` for
             :py:class:`water_datasets.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
         """
 
@@ -279,14 +281,14 @@ class RainfallRunoff(object):
             raise ValueError(f"Dataset {dataset} not available")
 
         self.dataset = DATASETS[dataset](
-            path=path, 
-            overwrite=overwrite, 
+            path=path,
+            overwrite=overwrite,
             to_netcdf=to_netcdf,
             processes=processes,
             remove_zip=remove_zip,
             verbosity=verbosity,
             **kwargs
-            )
+        )
 
     def __str__(self):
         return f"{self.name} with {len(self.stations())} stations, {self.num_dynamic()} dynamic and {self.num_static()} static features"
@@ -294,23 +296,23 @@ class RainfallRunoff(object):
     def __len__(self):
         return len(self.stations())
 
-    def num_dynamic(self)->int:
+    def num_dynamic(self) -> int:
         """number of dynamic features associated with the dataset"""
         return len(self.dynamic_features)
 
-    def num_static(self)->int:
+    def num_static(self) -> int:
         """number of static features associated with the dataset"""
         return len(self.static_features)
 
     @property
-    def name(self)->str:
+    def name(self) -> str:
         """
         returns name of dataset
         """
         return self.dataset.name
-    
+
     @property
-    def path(self)->str:
+    def path(self) -> str:
         """
         returns path where the data is stored. The default path is
         ~../water_datasets/data
@@ -318,7 +320,7 @@ class RainfallRunoff(object):
         return self.dataset.path
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """
         returns names of static features as python list of strings
 
@@ -329,9 +331,9 @@ class RainfallRunoff(object):
         >>> dataset.static_features
         """
         return self.dataset.static_features
-    
+
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         """
         returns names of dynamic features as python list of strings
 
@@ -347,7 +349,7 @@ class RainfallRunoff(object):
             self,
             stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """Fetches all or selected static attributes of one or more stations.
 
         Parameters
@@ -378,7 +380,7 @@ class RainfallRunoff(object):
     def area(
             self,
             stations: Union[str, List[str]] = "all"
-    ) ->pd.Series:
+    ) -> pd.Series:
         """
         Returns area (Km2) of all/selected catchments as pandas series
 
@@ -418,7 +420,7 @@ class RainfallRunoff(object):
 
         parameters
         ----------
-        stations : 
+        stations :
             It can have following values:
 
                 - int : number of (randomly selected) stations to fetch
@@ -440,16 +442,16 @@ class RainfallRunoff(object):
                   provided, then all static features will be fetched.
                 - list : list of static features to fetch.
                 - None : No static feature will be fetched.
-        st : 
+        st :
             starting date of data to be returned. If None, the data will be
             returned from where it is available.
-        en : 
+        en :
             end date of data to be returned. If None, then the data will be
             returned till the date data is available.
-        as_dataframe : 
+        as_dataframe :
             whether to return dynamic attributes as pandas
             dataframe or as xarray dataset.
-        kwargs : 
+        kwargs :
             keyword arguments
 
         returns
@@ -498,22 +500,22 @@ class RainfallRunoff(object):
 
         parameters
         ----------
-        stations : 
+        stations :
             list of stations for which data is to be fetched.
-        dynamic_features : 
+        dynamic_features :
             list of dynamic features to be fetched.
                 if 'all', then all dynamic features will be fetched.
-        static_features : 
+        static_features :
             list of static features to be fetched.
             If `all`, then all static features will be fetched. If None,
             then no static attribute will be fetched.
-        st : 
+        st :
             start of data to be fetched.
-        en : 
+        en :
             end of data to be fetched.
         as_dataframe : whether to return the data as pandas dataframe. default
                 is xr.Dataset object
-        kwargs dict: 
+        kwargs dict:
             additional keyword arguments
 
         Returns
@@ -547,7 +549,8 @@ class RainfallRunoff(object):
             >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
             ...  as_dataframe=True)
         """
-        return self.dataset.fetch_stations_features(stations, dynamic_features, static_features, st, en, as_dataframe, **kwargs)
+        return self.dataset.fetch_stations_features(stations, dynamic_features, static_features, st, en, as_dataframe,
+                                                    **kwargs)
 
     def fetch_dynamic_features(
             self,
@@ -635,12 +638,12 @@ class RainfallRunoff(object):
 
     def plot_stations(
             self,
-            stations:List[str] = 'all',
+            stations: List[str] = 'all',
             marker='.',
-            ax:plt_Axes = None,
-            show:bool = True,
+            ax: plt_Axes = None,
+            show: bool = True,
             **kwargs
-    )->plt_Axes:
+    ) -> plt_Axes:
         """
         plots coordinates of stations
 
@@ -677,7 +680,7 @@ class RainfallRunoff(object):
     def q_mmd(
             self,
             stations: Union[str, List[str]] = 'all'
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. This is obtained
         by diving ``q``/area
@@ -699,8 +702,8 @@ class RainfallRunoff(object):
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = "all"
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = "all"
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -749,7 +752,7 @@ class RainfallRunoff(object):
             name/id of catchment
         as_type : str
             'numpy' or 'geopandas'
-        
+
         Examples
         --------
         >>> from water_datasets import RainfallRunoff
@@ -764,7 +767,7 @@ class RainfallRunoff(object):
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
-    )->plt.Axes:
+    ) -> plt.Axes:
         """
         plots catchment boundaries
 
@@ -793,7 +796,7 @@ class RainfallRunoff(object):
         """
         return self.dataset.plot_catchment(stn_id, ax, show, **kwargs)
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         """
         returns names of all stations
 
@@ -806,7 +809,7 @@ class RainfallRunoff(object):
         return self.dataset.stations()
 
     @property
-    def start(self)->str:
+    def start(self) -> str:
         """
         returns starting date of data
 
@@ -819,7 +822,7 @@ class RainfallRunoff(object):
         return self.dataset.start
 
     @property
-    def end(self)->str:
+    def end(self) -> str:
         """
         returns end date of data
 
