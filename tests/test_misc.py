@@ -10,15 +10,14 @@ if __name__ == "__main__":
     logging.basicConfig(filename='test_estreams.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 import pandas as pd
-from water_datasets._backend import xarray as xr
 
 from water_datasets.rr import EStreams
 
 from utils import (
-    test_coords, 
-    test_stations, 
-    test_area, 
-    test_boundary, 
+    test_coords,
+    test_stations,
+    test_area,
+    test_boundary,
     test_plot_stations,
     test_fetch_static_feature,
     test_fetch_dynamic_features
@@ -113,3 +112,5 @@ test_boundary(ds)
 test_plot_stations(ds)
 
 test_stations(ds, 15047)
+
+print('All tests passed!')

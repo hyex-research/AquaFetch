@@ -1,4 +1,3 @@
-
 import os
 import logging
 
@@ -26,7 +25,6 @@ def test_stations(dataset, stations_len):
 
 
 def test_coords(dataset):
-
     logger.info(f"testing coords for {dataset.name}")
 
     stations = dataset.stations()
@@ -46,7 +44,6 @@ def test_coords(dataset):
 
 
 def test_plot_stations(dataset):
-
     logger.info(f"testing plot_stations for {dataset.name}")
 
     stations = dataset.stations()
@@ -64,7 +61,6 @@ def test_plot_stations(dataset):
 
 
 def test_area(dataset):
-
     logger.info(f"testing area for {dataset.name}")
 
     stations = dataset.stations()
@@ -84,7 +80,6 @@ def test_area(dataset):
 
 
 def test_q_mmd(dataset):
-
     logger.info(f"testing q_mmd for {dataset.name}")
     stations = dataset.stations()
 
@@ -100,7 +95,6 @@ def test_q_mmd(dataset):
 
 
 def test_boundary(dataset):
-
     logger.info(f"testing get_boundary for {dataset.name}")
 
     boundary = dataset.get_boundary(dataset.stations()[0])
@@ -112,21 +106,23 @@ def test_boundary(dataset):
 
 def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features):
     logger.info(f"testing fetch_static_features method for {dataset.name}")
-    if len(dataset.static_features)>0:
+    if len(dataset.static_features) > 0:
         df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
         df = dataset.fetch_static_features(stn_id, features='all')
 
-        assert isinstance(df, pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
+        assert isinstance(df,
+                          pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
         df = dataset.fetch_static_features("all", features='all')
 
         assert_dataframe(df, dataset)
 
-        assert df.shape == (num_stations, num_static_features), f"{df.shape} Expected {(num_stations, num_static_features)}"
+        assert df.shape == (
+        num_stations, num_static_features), f"{df.shape} Expected {(num_stations, num_static_features)}"
     return
 
 
@@ -140,10 +136,14 @@ def test_fetch_dynamic_features(dataset, stn_id, as_dataframe=False):
     logger.info(f"test_fetch_dynamic_features for {dataset.name} and {stn_id} stations")
     df = dataset.fetch_dynamic_features(stn_id, as_dataframe=as_dataframe)
     if as_dataframe:
-        assert df.unstack().shape[1] == len(dataset.dynamic_features), f'for {dataset.name}, num_dyn_attributes are {df.shape[1]}'
+        assert df.unstack().shape[1] == len(
+            dataset.dynamic_features), f'for {dataset.name}, num_dyn_attributes are {df.shape[1]}'
     else:
         assert isinstance(df, xr.Dataset), f'data is of type {df.__class__.__name__}'
         assert len(df.data_vars) == 1, f'{len(df.data_vars)}'
+
+    dataset.fetch_dynamic_features(stn_id, dynamic_features=dataset.dynamic_features[0])
+
     logger.info(f"Finished test_fetch_dynamic_features for {dataset.name} and {stn_id} stations")
     return
 
@@ -152,7 +152,7 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
                       as_dataframe=False, raise_len_error=True):
     logger.info(f"test_dynamic_data for {dataset.name}")
 
-    if stations ==  'all' and len(dataset.stations()) > 500:
+    if stations == 'all' and len(dataset.stations()) > 500:
         if dataset.timestep == 'D':
             # randomly select 500 stations
             stations = random.sample(dataset.stations(), 500)
@@ -175,7 +175,6 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
 
 
 def test_selected_dynamic_features(dataset, as_dataframe=False):
-
     logger.info(f"test_selected_dynamic_features for {dataset.name}")
     features = dataset.dynamic_features[0:2]
     data = dataset.fetch(dataset.stations()[0], dynamic_features=features, as_dataframe=as_dataframe)
@@ -190,7 +189,6 @@ def test_selected_dynamic_features(dataset, as_dataframe=False):
 
 def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
                   raise_len_error=True):
-
     if as_dataframe:
         logger.info(f"test_all_data for {dataset.name} with as_dataframe=True")
     else:
@@ -228,13 +226,12 @@ def check_dataset(dataset, xds, num_stations, data_len,
 
 
 def check_dataframe(
-        dataset, 
-        df:pd.DataFrame, 
-        num_stations:int, 
-        data_len:int,
+        dataset,
+        df: pd.DataFrame,
+        num_stations: int,
+        data_len: int,
         raise_len_error=True
-        ):
-
+):
     logger.info(f"checking sanity of dataframe of shape {df.shape}")
     assert isinstance(df, pd.DataFrame)
     assert df.shape[1] == num_stations, f'dataset lenth is {df.shape[1]} while target is {num_stations}'
@@ -261,7 +258,7 @@ def test_static_data(dataset, stations, target):
     else:
         logger.info(f"test_static_data for {dataset.name} for {stations} stations expected {target}")
 
-    if len(dataset.static_features)>0:
+    if len(dataset.static_features) > 0:
         df = dataset.fetch(stations=stations, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
         assert len(df) == target, f'length of static df is {len(df)} Expected {target}'
@@ -274,14 +271,16 @@ def test_static_data(dataset, stations, target):
 def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
     logger.info(f"test_attributes for {dataset.name}")
     static_features = dataset.static_features
-    assert len(static_features) == static_attr_len, f'for {dataset.name} static_features are {len(static_features)} and not {static_attr_len}'
+    assert len(
+        static_features) == static_attr_len, f'for {dataset.name} static_features are {len(static_features)} and not {static_attr_len}'
     assert isinstance(static_features, list)
     assert all([isinstance(i, str) for i in static_features])
 
     assert os.path.exists(dataset.path)
 
     dynamic_features = dataset.dynamic_features
-    assert len(dynamic_features) == dyn_attr_len, f'Obtained dynamic attributes: {len(dynamic_features)} Expected: {dyn_attr_len}'
+    assert len(
+        dynamic_features) == dyn_attr_len, f'Obtained dynamic attributes: {len(dynamic_features)} Expected: {dyn_attr_len}'
     assert isinstance(dynamic_features, list)
     assert all([isinstance(i, str) for i in dynamic_features])
 
@@ -312,7 +311,7 @@ def test_st_en_with_static_and_dynamic(
 ):
     logger.info(f"testing {dataset.name} with st and en with both static and dynamic")
 
-    if len(dataset.static_features)>0:
+    if len(dataset.static_features) > 0:
         data = dataset.fetch([station], static_features='all',
                              st=st,
                              en=en, as_dataframe=as_dataframe)
@@ -336,24 +335,24 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
                  test_df=True, yearly_steps=366,
                  raise_len_error=True,
                  st="20040101", en="20041231",
-                 has_q:bool=True,
+                 has_q: bool = True,
                  ):
-
     # check that dynamic attribues from all data can be retrieved.
     test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
     if test_df:
         test_dynamic_data(dataset, 'all', num_stations, dyn_data_len, as_dataframe=True)
 
     # check that dynamic data of 10% of stations can be retrieved
-    test_dynamic_data(dataset, 0.1, int(num_stations*0.1), dyn_data_len, 
+    test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
                       raise_len_error=raise_len_error)
     if test_df:
-        test_dynamic_data(dataset, 0.1, int(num_stations*0.1), dyn_data_len, True,
-                        raise_len_error=raise_len_error)
+        test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len, True,
+                          raise_len_error=raise_len_error)
 
     test_static_data(dataset, 'all', num_stations)  # check that static data of all stations can be retrieved
 
-    test_static_data(dataset, 0.1, int(num_stations*0.1))  # check that static data of 10% of stations can be retrieved
+    test_static_data(dataset, 0.1,
+                     int(num_stations * 0.1))  # check that static data of 10% of stations can be retrieved
 
     test_all_data(dataset, 3, dyn_data_len, raise_len_error=raise_len_error)
 
@@ -369,7 +368,7 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
         test_fetch_dynamic_features(dataset, random.choice(dataset.stations()), True)
 
     # make sure that dynamic data from 3 stations each have correct length/shape
-    test_fetch_dynamic_multiple_stations(dataset, 3,  dyn_data_len)
+    test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len)
     if test_df:
         test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len, True)
 
@@ -379,11 +378,11 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 
     test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()),
                                        yearly_steps=yearly_steps,
-                                       st=st, en=en )
+                                       st=st, en=en)
     if test_df:
         test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), True,
-                                       yearly_steps=yearly_steps,
-                                       st=st, en=en)
+                                           yearly_steps=yearly_steps,
+                                           st=st, en=en)
 
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset, as_dataframe=test_df)

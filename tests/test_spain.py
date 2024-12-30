@@ -7,7 +7,8 @@ site.addsitedir(wd_dir)
 import logging
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='test_spain.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename='test_spain.log', filemode='w', level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
 
 from water_datasets import Spain
 
@@ -20,9 +21,9 @@ gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 ds = Spain(path=gscad_path, verbosity=3)
 
-test_dataset(ds, 
-             num_stations=889, 
-             dyn_data_len=16071, 
+test_dataset(ds,
+             num_stations=889,
+             dyn_data_len=15249,
              num_static_attrs=35,
               num_dyn_attrs=27,
               test_df=False,
