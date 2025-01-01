@@ -273,8 +273,8 @@ class RainfallRunoff(object):
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`water_datasets.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`water_datasets.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
+            For example ``version`` for :py:class:`water_quality.rr.CAMELS_AUS` or ``timestep`` for
+            :py:class:`water_quality.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
         """
 
         if dataset not in DATASETS:
@@ -315,7 +315,7 @@ class RainfallRunoff(object):
     def path(self) -> str:
         """
         returns path where the data is stored. The default path is
-        ~../water_datasets/data
+        ~../water_quality/data
         """
         return self.dataset.path
 

@@ -2,9 +2,9 @@
 ====================
 CAMELS Australia
 ====================
-This example demonstrates how to use the `water_datasets` package to download and 
+This example demonstrates how to use the `water_quality` package to download and
 explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>_` dataset 
-using the :py:class:`water_datasets.rr.RainfallRunoff` class. Although we show it 
+using the :py:class:`water_quality.rr.RainfallRunoff` class. Although we show it
 for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
 """
 import os

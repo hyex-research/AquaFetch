@@ -23,7 +23,7 @@ class Finland(_EStreams):
     https://wwwi3.ymparisto.fi .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works 
+    taken from :py:class:`water_quality.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 2012-01-01 to 2023-06-30.

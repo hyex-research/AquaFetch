@@ -904,7 +904,7 @@ def get_version_info()->dict:
     versions = {
         'numpy': np.__version__,
         'pandas': pd.__version__,
-        'water_datasets': __version__,
+        'water_quality': __version__,
         'python': sys.version,
         'os': os.name
     }

@@ -1,4 +1,3 @@
-
 import os
 import json
 import glob
@@ -15,6 +14,15 @@ from ..utils import get_cpus
 from ..utils import check_attributes, download, _unzip
 
 from .._backend import netCDF4, xarray as xr
+
+from ._map import (
+    observed_streamflow_cms,
+    mean_air_temp,
+    total_precipitation,
+    total_potential_evapotranspiration,
+    simulated_streamflow_cms,
+    actual_evapotranspiration,
+)
 
 # directory separator
 SEP = os.sep
@@ -87,11 +95,11 @@ class CAMELS_US(Camels):
                'hru': f'hru_forcing{SEP}daymet'}
 
     dynamic_features_ = ['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
-                        'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)', 'Flow']
+                         'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)', 'Flow']
 
     def __init__(
             self,
-            data_source:str='basin_mean_daymet',
+            data_source: str = 'basin_mean_daymet',
             path=None,
             **kwargs
     ):
@@ -137,16 +145,16 @@ class CAMELS_US(Camels):
     @property
     def dyn_map(self):
         return {
-        'Flow': 'obs_q_cms',
-        'tmin(C)': 'min_temp_C',
-        'tmax(C)': 'max_temp_C',
-        'prcp(mm/day)': 'pcp_mm',
-        'swe(mm)': 'swe_mm',
-        'pet_mean': 'pet_mm',
+            'Flow': 'obs_q_cms',
+            'tmin(C)': 'min_temp_C',
+            'tmax(C)': 'max_temp_C',
+            'prcp(mm/day)': 'pcp_mm',
+            'swe(mm)': 'swe_mm',
+            'pet_mean': 'pet_mm',
         }
-    
+
     @property
-    def dyn_factors(self)->Dict[str, float]:
+    def dyn_factors(self) -> Dict[str, float]:
         return {
             'obs_q_cms': 0.0283168,
         }
@@ -175,19 +183,19 @@ class CAMELS_US(Camels):
         return cols
 
     @property
-    def _q_name(self)->str:
+    def _q_name(self) -> str:
         return 'obs_q_cms'
-    
+
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'area_gages2'
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['gauge_lat', 'gauge_lon']
 
     def stations(self) -> list:
@@ -208,7 +216,7 @@ class CAMELS_US(Camels):
             dynamic_features: Union[str, list] = 'all',
             st=None,
             en=None,
-            ):
+    ):
         dyn = {}
         for station in stations:
 
@@ -239,10 +247,10 @@ class CAMELS_US(Camels):
                 stn_file = f'{station}_streamflow_qc.txt'
                 if stn_file in cat_dirs:
                     fpath = os.path.join(flow_dir, f'{cat}{SEP}{stn_file}')
-                    q_df = pd.read_csv(fpath, 
-                                        sep=r"\s+",
-                                      names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'],
-                                      engine='python')
+                    q_df = pd.read_csv(fpath,
+                                       sep=r"\s+",
+                                       names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'],
+                                       engine='python')
                     q_df.index = pd.to_datetime(
                         q_df['Year'].map(str) + '-' + q_df['Month'].map(str) + '-' + q_df['Day'].map(str))
 
@@ -250,7 +258,7 @@ class CAMELS_US(Camels):
                 df[['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)', 'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)']],
                 q_df['Flow']],
                 axis=1)
-            
+
             stn_df.columns.name = 'dynamic_features'
             stn_df.index.name = 'time'
             stn_df.rename(columns=self.dyn_map, inplace=True)
@@ -266,7 +274,7 @@ class CAMELS_US(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ):
         """
         gets one or more static features of one or more stations
@@ -378,8 +386,8 @@ class CAMELS_GB(Camels):
     ((1, 290), (164360, 1))
     """
     dynamic_features_ = ["precipitation", "pet", "temperature", "discharge_spec",
-                        "discharge_vol", "peti",
-                        "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
+                         "discharge_vol", "peti",
+                         "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
     def __init__(self, path=None, **kwargs):
         """
@@ -400,20 +408,20 @@ class CAMELS_GB(Camels):
         if not os.path.exists(os.path.join(self.path, 'camels_gb')):
             download(
                 outdir=self.path,
-                url = "https://data-package.ceh.ac.uk/data/8344e4f3-d2ea-44f5-8afa-86d2987543a9.zip",
+                url="https://data-package.ceh.ac.uk/data/8344e4f3-d2ea-44f5-8afa-86d2987543a9.zip",
                 fname="camels_gb.zip"
             )
-            if self.verbosity>0:
+            if self.verbosity > 0:
                 print("unzipping the downloaded file")
             _unzip(self.path, verbosity=self.verbosity)
 
             # rename the folder camels_gb/8344e4f3-d2ea-44f5-8afa-86d2987543a9 to camels_gb/caemls_gb
             shutil.move(
-                os.path.join(self.path, 'camels_gb', '8344e4f3-d2ea-44f5-8afa-86d2987543a9'), 
+                os.path.join(self.path, 'camels_gb', '8344e4f3-d2ea-44f5-8afa-86d2987543a9'),
                 os.path.join(self.path, 'camels_gb', 'camels_gb')
-                )
+            )
         else:
-            if self.verbosity>0:
+            if self.verbosity > 0:
                 print(f"dataset is already available at {self.path}")
 
         self._maybe_to_netcdf('camels_gb_dyn')
@@ -422,24 +430,24 @@ class CAMELS_GB(Camels):
             self.data_path,
             "CAMELS_GB_catchment_boundaries",
             "CAMELS_GB_catchment_boundaries.shp"
-    )
-        
+        )
+
         if not os.path.exists(self.boundary_file):
             _unzip(self.data_path)
-        
+
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-        'discharge_vol': 'obs_q_cms',
-        'discharge_spec': 'obs_q_mmd',
-        'temperature': 'mean_temp_C',
-        'humidity': 'rh_%',
-        'windspeed': 'windspeed_ms',
-        'precipitation': 'pcp_mm',
-        'pet': 'pm_pet_mm',
-        'shorwave_rad': 'dwn_sw_rad_wm2',
+            'discharge_vol': 'obs_q_cms',
+            'discharge_spec': 'obs_q_mmd',
+            'temperature': 'mean_temp_C',
+            'humidity': 'rh_%',
+            'windspeed': 'windspeed_ms',
+            'precipitation': 'pcp_mm',
+            'pet': 'pm_pet_mm',
+            'shorwave_rad': 'dwn_sw_rad_wm2',
         }
 
     @property
@@ -474,9 +482,9 @@ class CAMELS_GB(Camels):
         return cols
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
-    
+
     def stations(self, to_exclude=None):
         # CAMELS_GB_hydromet_timeseries_StationID_number
         path = os.path.join(self.data_path, 'timeseries')
@@ -487,23 +495,23 @@ class CAMELS_GB(Camels):
         return gauge_ids
 
     @property
-    def _mmd_feature_name(self) ->str:
+    def _mmd_feature_name(self) -> str:
         return 'obs_q_mmd'
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'area'
-       
+
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['gauge_lat', 'gauge_lon']
 
     def _read_dynamic_from_csv(
-        self,
-        stations,
-        features: Union[str, list] = 'all',
-        st=None,
-        en=None,
+            self,
+            stations,
+            features: Union[str, list] = 'all',
+            st=None,
+            en=None,
     ):
         """Fetches dynamic attribute/features of one or more station."""
         dyn = {}
@@ -528,7 +536,7 @@ class CAMELS_GB(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Fetches static features of one or more stations for one or
@@ -589,9 +597,9 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    This is a dataset of 561 Australian catchments with 187 static features and 
-    26 dyanmic features for each catchment. The dyanmic features are timeseries 
-    from 1950-01-01 to 2022-03-31. This class Reads CAMELS-AUS dataset of 
+    This is a dataset of 561 Australian catchments with 187 static features and
+    26 dyanmic features for each catchment. The dyanmic features are timeseries
+    from 1950-01-01 to 2022-03-31. This class Reads CAMELS-AUS dataset of
     `Fowler et al., 2024 <https://doi.org/10.5194/essd-2024-263>`_ .
 
     If ``version`` is 1 then this class reads data following `Fowler et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
@@ -651,17 +659,17 @@ class CAMELS_AUS(Camels):
         "04_attributes.zip": "https://download.pangaea.de/dataset/921850/files/",
         "05_hydrometeorology.zip": "https://download.pangaea.de/dataset/921850/files/",
         "CAMELS_AUS_Attributes&Indices_MasterTable.csv": "https://download.pangaea.de/dataset/921850/files/",
-        #"Units_01_TimeseriesData.pdf": "https://download.pangaea.de/dataset/921850/files/",
-        #"Units_02_AttributeMasterTable.pdf": "https://download.pangaea.de/dataset/921850/files/",
+        # "Units_01_TimeseriesData.pdf": "https://download.pangaea.de/dataset/921850/files/",
+        # "Units_02_AttributeMasterTable.pdf": "https://download.pangaea.de/dataset/921850/files/",
     },
-    2: {
-        "01_id_name_metadata.zip": "https://zenodo.org/records/13350616/files/",
-        "02_location_boundary_area.zip": "https://zenodo.org/records/13350616/files/",
-        "03_streamflow.zip": "https://zenodo.org/records/13350616/files/",
-        "04_attributes.zip": "https://zenodo.org/records/13350616/files/",
-        "05_hydrometeorology.zip": "https://zenodo.org/records/13350616/files/",
-        "CAMELS_AUS_Attributes&Indices_MasterTable.csv": "https://zenodo.org/records/13350616/files/",
-    }
+        2: {
+            "01_id_name_metadata.zip": "https://zenodo.org/records/13350616/files/",
+            "02_location_boundary_area.zip": "https://zenodo.org/records/13350616/files/",
+            "03_streamflow.zip": "https://zenodo.org/records/13350616/files/",
+            "04_attributes.zip": "https://zenodo.org/records/13350616/files/",
+            "05_hydrometeorology.zip": "https://zenodo.org/records/13350616/files/",
+            "CAMELS_AUS_Attributes&Indices_MasterTable.csv": "https://zenodo.org/records/13350616/files/",
+        }
     }
 
     folders = {1: {
@@ -696,48 +704,48 @@ class CAMELS_AUS(Camels):
         'vp_deficit_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
         'vp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
     },
-    2: {
-        'streamflow_MLd': f'03_streamflow{SEP}03_streamflow',
-        'streamflow_MLd_inclInfilled': f'03_streamflow{SEP}03_streamflow',
-        'streamflow_mmd': f'03_streamflow{SEP}03_streamflow',
+        2: {
+            'streamflow_MLd': f'03_streamflow{SEP}03_streamflow',
+            'streamflow_MLd_inclInfilled': f'03_streamflow{SEP}03_streamflow',
+            'streamflow_mmd': f'03_streamflow{SEP}03_streamflow',
 
-        'et_morton_actual_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'et_morton_point_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'et_morton_wet_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'et_short_crop_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'et_tall_crop_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'evap_morton_lake_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'evap_pan_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
-        'evap_syn_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'et_morton_actual_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'et_morton_point_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'et_morton_wet_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'et_short_crop_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'et_tall_crop_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'evap_morton_lake_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'evap_pan_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
+            'evap_syn_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
 
-        'precipitation_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
-        'precipitation_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
-        'precipitation_var_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
+            'precipitation_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
+            'precipitation_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
+            'precipitation_var_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries',
 
-        #'solarrad_AWAP': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD{SEP}solarrad_AWAP',
-        'tmax_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
-        'tmin_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
-        'vapourpres_h09_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
-        'vapourpres_h15_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
+            # 'solarrad_AWAP': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD{SEP}solarrad_AWAP',
+            'tmax_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
+            'tmin_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
+            'vapourpres_h09_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
+            'vapourpres_h15_AGCD': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AGCD',
 
-        'mslp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'radiation_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'rh_tmax_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'rh_tmin_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'tmax_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'tmin_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'vp_deficit_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
-        'vp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',        
-    }
+            'mslp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'radiation_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'rh_tmax_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'rh_tmin_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'tmax_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'tmin_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'vp_deficit_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+            'vp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
+        }
     }
 
     def __init__(
             self,
             path: str = None,
-            version:int = 2,
-            to_netcdf:bool = True,
-            overwrite:bool = False,
-            verbosity:int = 1,
+            version: int = 2,
+            to_netcdf: bool = True,
+            overwrite: bool = False,
+            verbosity: int = 1,
             **kwargs
     ):
         """
@@ -762,19 +770,19 @@ class CAMELS_AUS(Camels):
 
         for _file, url in self.urls[version].items():
             fpath = os.path.join(self.path, _file)
-            
+
             if os.path.exists(fpath) and overwrite:
                 os.remove(fpath)
-                if verbosity > 0: print(f"Re-downloading {_file} from {url+ _file} at {fpath}")                
+                if verbosity > 0: print(f"Re-downloading {_file} from {url + _file} at {fpath}")
                 download(url + _file, outdir=self.path, fname=_file)
 
             elif not os.path.exists(fpath):
                 if verbosity > 0:
-                    print(f"Downloading {_file} from {url+ _file} at {fpath}")
+                    print(f"Downloading {_file} from {url + _file} at {fpath}")
                 download(url + _file, outdir=self.path, fname=_file)
             elif verbosity > 0:
                 print(f"{_file} already exists at {self.path}")
-            
+
         # maybe the .zip file has been downloaded previously but not unzipped
         _unzip(self.path, verbosity=verbosity, overwrite=overwrite)
 
@@ -785,27 +793,27 @@ class CAMELS_AUS(Camels):
             self._maybe_to_netcdf('camels_aus_dyn')
 
         self.boundary_file = os.path.join(
-        self.path,
-        "02_location_boundary_area",
-        "02_location_boundary_area",
-        "shp",
-        "CAMELS_AUS_Boundaries_adopted.shp" if self.version==1 else "CAMELS_AUS_v2_Boundaries_adopted.shp"
-    )
+            self.path,
+            "02_location_boundary_area",
+            "02_location_boundary_area",
+            "shp",
+            "CAMELS_AUS_Boundaries_adopted.shp" if self.version == 1 else "CAMELS_AUS_v2_Boundaries_adopted.shp"
+        )
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-        'streamflow_MLd': 'obs_q_cms',
-        'streamflow_mmd': 'obs_q_mmd',
-        'tmin_SILO': 'min_temp_C',
-        'tmax_SILO': 'max_temp_C',
+            'streamflow_MLd': 'obs_q_cms',
+            'streamflow_mmd': 'obs_q_mmd',
+            'tmin_SILO': 'min_temp_C',
+            'tmax_SILO': 'max_temp_C',
         }
 
     @property
     def dyn_factors(self):
         return {
-        'obs_q_cms': 0.01157,
+            'obs_q_cms': 0.01157,
         }
 
     @property
@@ -814,7 +822,7 @@ class CAMELS_AUS(Camels):
 
     @property
     def end(self):
-        return "20181231" if self.version==1 else "20220331"
+        return "20181231" if self.version == 1 else "20220331"
 
     @property
     def location(self):
@@ -854,7 +862,7 @@ class CAMELS_AUS(Camels):
     def q_mmd(
             self,
             stations: Union[str, List[str]] = None
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. This is obtained
         by diving q_cms/area
@@ -874,8 +882,8 @@ class CAMELS_AUS(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                           dynamic_features='obs_q_cms',
-                                           as_dataframe=True)
+                                         dynamic_features='obs_q_cms',
+                                         as_dataframe=True)
         q.index = q.index.get_level_values(0)
         q = q * 0.01157  # mega liter per day to cms
         area_m2 = self.area(stations) * 1e6  # area in m2
@@ -883,11 +891,11 @@ class CAMELS_AUS(Camels):
         return q * 1e3  # to mm/day
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'catchment_area'
-    
+
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['lat_outlet', 'long_outlet']
 
     def _read_static(self, stations, features,
@@ -921,9 +929,9 @@ class CAMELS_AUS(Camels):
         for stn in stations:
             stn_df = pd.DataFrame()
             for attr, attr_df in dyn_attrs.items():
-                #if attr in dynamic_features:
+                # if attr in dynamic_features:
                 stn_df[attr] = attr_df[stn]
-            
+
             stn_df.rename(columns=self.dyn_map, inplace=True)
 
             for col, fact in self.dyn_factors.items():
@@ -939,7 +947,7 @@ class CAMELS_AUS(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all",
+            features: Union[str, List[str]] = "all",
     ) -> pd.DataFrame:
         """Fetches static features of one or more stations as dataframe.
 
@@ -1050,11 +1058,11 @@ class CAMELS_CL(Camels):
     }
 
     dynamic_features_ = ['streamflow_m3s', 'streamflow_mm',
-                        'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
-                        'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
-                        'pet_8d_modis', 'pet_hargreaves',
-                        'swe'
-                        ]
+                         'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
+                         'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
+                         'pet_8d_modis', 'pet_hargreaves',
+                         'swe'
+                         ]
 
     def __init__(self,
                  path: str = None,
@@ -1082,24 +1090,24 @@ class CAMELS_CL(Camels):
         self._maybe_to_netcdf('camels_cl_dyn')
 
         self.boundary_file = os.path.join(
-        path,
-        "CAMELS_CL",
-        "CAMELScl_catchment_boundaries",
-        "CAMELScl_catchment_boundaries",
-        "catchments_camels_cl_v1_3.shp"
-    )
-        
+            path,
+            "CAMELS_CL",
+            "CAMELScl_catchment_boundaries",
+            "CAMELScl_catchment_boundaries",
+            "catchments_camels_cl_v1_3.shp"
+        )
+
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-        'streamflow_m3s': 'obs_q_cms',
-        'streamflow_mm': 'obs_q_mmd',
-        'tmin_cr2met': 'min_temp_C',
-        'tmax_cr2met': 'max_temp_C',
-        'tmean_cr2met': 'mean_temp_C',
-        'precip_mswep': 'pcp_mm',
+            'streamflow_m3s': 'obs_q_cms',
+            'streamflow_mm': 'obs_q_mmd',
+            'tmin_cr2met': 'min_temp_C',
+            'tmax_cr2met': 'max_temp_C',
+            'tmean_cr2met': 'mean_temp_C',
+            'precip_mswep': 'pcp_mm',
         }
 
     @property
@@ -1130,17 +1138,17 @@ class CAMELS_CL(Camels):
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     @property
-    def _mmd_feature_name(self) ->str:
+    def _mmd_feature_name(self) -> str:
         return 'obs_q_mmd'
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'area'
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = "all"
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = "all"
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -1172,7 +1180,7 @@ class CAMELS_CL(Camels):
         df = df.loc[['gauge_lat', 'gauge_lon'], :].transpose()
         df.columns = ['lat', 'long']
         stations = check_attributes(stations, self.stations(), 'stations')
-        df.index  = [index.strip() for index in df.index]
+        df.index = [index.strip() for index in df.index]
         return df.loc[stations, :]
 
     def stations(self) -> list:
@@ -1220,7 +1228,7 @@ class CAMELS_CL(Camels):
         for stn in stations:
             stn_df = pd.DataFrame()
             for attr, attr_df in dyn_attrs.items():
-                #if attr in dynamic_features:
+                # if attr in dynamic_features:
                 stn_df[attr] = attr_df[stn]
 
             stn_df.rename(columns=self.dyn_map, inplace=True)
@@ -1251,7 +1259,7 @@ class CAMELS_CL(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ):
         """
         Returns static features of one or more stations.
@@ -1299,7 +1307,7 @@ class CAMELS_CL(Camels):
 
 class CAMELS_CH(Camels):
     """
-    Data of 331 Swiss catchments from 
+    Data of 331 Swiss catchments from
     `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_ .
     The dataset consists of 209 static catchment features and 9 dynamic features.
     The dynamic features span from 19810101 to 20201231 with daily timestep.
@@ -1349,14 +1357,14 @@ class CAMELS_CH(Camels):
     url = {
         'camels_ch.zip': "https://zenodo.org/record/7957061",
         'DischargeDBHydroCH.zip': 'https://zenodo.org/records/7691294'
-        }
+    }
 
     def __init__(
             self,
             path=None,
-            overwrite:bool = False,
+            overwrite: bool = False,
             to_netcdf: bool = True,
-            timestep:str = 'D',
+            timestep: str = 'D',
             **kwargs
     ):
         """
@@ -1390,80 +1398,80 @@ class CAMELS_CH(Camels):
 
         if to_netcdf:
             self._maybe_to_netcdf('camels_ch_dyn')
-        
+
         self.boundary_file = os.path.join(
-        path,
-        'CAMELS_CH',
-        'camels_ch',
-        'camels_ch',
-        'catchment_delineations',
-        'CAMELS_CH_catchments.shp'
-    )
+            path,
+            'CAMELS_CH',
+            'camels_ch',
+            'camels_ch',
+            'catchment_delineations',
+            'CAMELS_CH_catchments.shp'
+        )
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-        'discharge_vol(m3/s)': 'obs_q_cms',
-        #'discharge_vol(m3/s)': 'sim_q_cms',
-        'discharge_spec(mm/d)': 'obs_q_mmd',
-        'temperature_min(°C)': 'min_temp_C',
-        'temperature_max(°C)': 'max_temp_C',
-        'temperature_mean(°C)': 'mean_temp_C',
-        'precipitation(mm/d)': 'pcp_mm',
-        'swe(mm)': 'swe_mm',
+            'discharge_vol(m3/s)': 'obs_q_cms',
+            # 'discharge_vol(m3/s)': 'sim_q_cms',
+            'discharge_spec(mm/d)': 'obs_q_mmd',
+            'temperature_min(°C)': 'min_temp_C',
+            'temperature_max(°C)': 'max_temp_C',
+            'temperature_mean(°C)': 'mean_temp_C',
+            'precipitation(mm/d)': 'pcp_mm',
+            'swe(mm)': 'swe_mm',
         }
 
     @property
-    def camels_path(self)->Union[str, os.PathLike]:
+    def camels_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, 'camels_ch', 'camels_ch')
 
     @property
-    def static_path(self)->Union[str, os.PathLike]:
+    def static_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.camels_path, 'static_attributes')
 
     @property
-    def dynamic_path(self)->Union[str, os.PathLike]:
+    def dynamic_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.camels_path, 'time_series', 'observation_based')
 
     @property
-    def glacier_attr_path(self)->Union[str, os.PathLike]:
+    def glacier_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_glacier_attributes.csv')
 
     @property
-    def clim_attr_path(self)->Union[str, os.PathLike]:
+    def clim_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_climate_attributes_obs.csv')
 
     @property
-    def geol_attr_path(self)->Union[str, os.PathLike]:
+    def geol_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_geology_attributes.csv')
 
     @property
-    def supp_geol_attr_path(self)->Union[str, os.PathLike]:
+    def supp_geol_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_geology_attributes_supplement.csv')
 
     @property
-    def hum_inf_attr_path(self)->Union[str, os.PathLike]:
+    def hum_inf_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_humaninfluence_attributes.csv')
 
     @property
-    def hydrogeol_attr_path(self)->Union[str, os.PathLike]:
+    def hydrogeol_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_hydrogeology_attributes.csv')
 
     @property
-    def hydrol_attr_path(self)->Union[str, os.PathLike]:
+    def hydrol_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_hydrology_attributes_obs.csv')
 
     @property
-    def lc_attr_path(self)->Union[str, os.PathLike]:
+    def lc_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_landcover_attributes.csv')
 
     @property
-    def soil_attr_path(self)->Union[str, os.PathLike]:
+    def soil_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_soil_attributes.csv')
 
     @property
-    def topo_attr_path(self)->Union[str, os.PathLike]:
+    def topo_attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.static_path, 'CAMELS_CH_topographic_attributes.csv')
 
     @property
@@ -1474,15 +1482,15 @@ class CAMELS_CH(Camels):
     def dynamic_features(self) -> List[str]:
         return self._dynamic_features
 
-    def all_hourly_stations(self)->List[str]:
+    def all_hourly_stations(self) -> List[str]:
         """Names of all stations which have hourly data"""
         return pd.read_excel(
             os.path.join(self.path, 'Inventory_discharge_hydroCH.xlsx'), dtype={'ID': str}
-            )['ID'].values.tolist()
+        )['ID'].values.tolist()
 
-    def hourly_stations(self)->List[str]:
+    def hourly_stations(self) -> List[str]:
         """
-        IDs of those stations which have hourly data and which are also part of 
+        IDs of those stations which have hourly data and which are also part of
         CAMELS-CH dataset
         """
         return [stn for stn in self.all_hourly_stations() if stn in self.stations()]
@@ -1495,9 +1503,9 @@ class CAMELS_CH(Camels):
     def end(self):  # end of data
         return pd.Timestamp('2020-12-31')
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         """Returns station ids for catchments"""
-        stns =  pd.read_csv(
+        stns = pd.read_csv(
             self.glacier_attr_path,
             sep=';',
             skiprows=1
@@ -1505,29 +1513,29 @@ class CAMELS_CH(Camels):
         return [str(stn) for stn in stns]
 
     @property
-    def foen_path(self)->Union[str, os.PathLike]:
+    def foen_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, 'DischargeDBHydroCH', 'DischargeDBHydroCH', 'CH', 'FOEN')
 
-    def foen_stations(self)->List[str]:
+    def foen_stations(self) -> List[str]:
         """Returns all the stations in the FOEN folder"""
         return os.listdir(self.foen_path)
 
-    def read_hourly_q_ch(self, stn:str)->pd.DataFrame:
+    def read_hourly_q_ch(self, stn: str) -> pd.DataFrame:
         stn = f"Q_{stn}_hourly.asc"
         fname = [fname for fname in self.foen_stations() if stn in fname][0]
         fpath = os.path.join(self.foen_path, fname)
 
         q = pd.read_csv(fpath,
-                    sep="\t",
-                    parse_dates=[['YYYY', 'MM', 'DD', 'HH']],
-                    index_col='YYYY_MM_DD_HH',
-                    )
+                        sep="\t",
+                        parse_dates=[['YYYY', 'MM', 'DD', 'HH']],
+                        index_col='YYYY_MM_DD_HH',
+                        )
         q.index = pd.to_datetime(q.index)
         q.columns = ['q_cms']
         q.index.name = "time"
         return q
 
-    def glacier_attrs(self)->pd.DataFrame:
+    def glacier_attrs(self) -> pd.DataFrame:
         """
         returns a dataframe with four columns
             - 'glac_area'
@@ -1545,7 +1553,7 @@ class CAMELS_CH(Camels):
         df.index = df.index.astype(int).astype(str)
         return df
 
-    def climate_attrs(self)->pd.DataFrame:
+    def climate_attrs(self) -> pd.DataFrame:
         """returns 14 climate attributes of catchments.
         """
         df = pd.read_csv(
@@ -1564,11 +1572,11 @@ class CAMELS_CH(Camels):
                 'high_prec_dur': float,
                 'high_prec_timing': str,
                 'low_prec_timing': str
-                         }
-)
+            }
+        )
         return df
 
-    def geol_attrs(self)->pd.DataFrame:
+    def geol_attrs(self) -> pd.DataFrame:
         """15 geological features"""
         df = pd.read_csv(
             self.geol_attr_path,
@@ -1580,7 +1588,7 @@ class CAMELS_CH(Camels):
         df.index = df.index.astype(int).astype(str)
         return df
 
-    def supp_geol_attrs(self)->pd.DataFrame:
+    def supp_geol_attrs(self) -> pd.DataFrame:
         """supplimentary geological features"""
         df = pd.read_csv(
             self.supp_geol_attr_path,
@@ -1593,36 +1601,36 @@ class CAMELS_CH(Camels):
         df.index = df.index.astype(int).astype(str)
         return df
 
-    def human_inf_attrs(self)->pd.DataFrame:
+    def human_inf_attrs(self) -> pd.DataFrame:
         """
         14 athropogenic factors
         """
         df = pd.read_csv(
-    self.hum_inf_attr_path,
-    skiprows=1,
-    sep=';',
-    index_col='gauge_id',
-    dtype={
-        'gauge_id': str,
-        'n_inhabitants': int,
-        'dens_inhabitants': float,
-        'hp_count': int,
-        'hp_qturb': float,
-        'hp_inst_turb': float,
-        'hp_max_power': float,
-        'num_reservoir': int,
-        'reservoir_cap': float,
-        'reservoir_he': float,
-        'reservoir_fs': float,
-        'reservoir_irr': float,
-        'reservoir_nousedata': float,
-        #'reservoir_year_first': int,
-        #'reservoir_year_last': int
-    }
-)
+            self.hum_inf_attr_path,
+            skiprows=1,
+            sep=';',
+            index_col='gauge_id',
+            dtype={
+                'gauge_id': str,
+                'n_inhabitants': int,
+                'dens_inhabitants': float,
+                'hp_count': int,
+                'hp_qturb': float,
+                'hp_inst_turb': float,
+                'hp_max_power': float,
+                'num_reservoir': int,
+                'reservoir_cap': float,
+                'reservoir_he': float,
+                'reservoir_fs': float,
+                'reservoir_irr': float,
+                'reservoir_nousedata': float,
+                # 'reservoir_year_first': int,
+                # 'reservoir_year_last': int
+            }
+        )
         return df
 
-    def hydrogeol_attrs(self)->pd.DataFrame:
+    def hydrogeol_attrs(self) -> pd.DataFrame:
         """10 hydrogeological factors"""
         df = pd.read_csv(
             self.hydrogeol_attr_path,
@@ -1634,27 +1642,27 @@ class CAMELS_CH(Camels):
         df.index = df.index.astype(int).astype(str)
         return df
 
-    def hydrol_attrs(self)->pd.DataFrame:
+    def hydrol_attrs(self) -> pd.DataFrame:
         """14 hydrological parameters + 2 useful infos"""
         df = pd.read_csv(
-    self.hydrol_attr_path,
-    skiprows=1,
-    sep=';',
-    index_col='gauge_id',
-    dtype={
-        'gauge_id': str,
-        'sign_number_of_years': int,
-        'q_mean': float,
-        'runoff_ratio': float, 'stream_elas': float, 'slope_fdc': float,
-        'baseflow_index_landson': float,
-        'hfd_mean': float,
-        'Q5': float, 'Q95': float, 'high_q_freq': float, 'high_q_dur': float,
-        'low_q_freq': float
-    }
-)
+            self.hydrol_attr_path,
+            skiprows=1,
+            sep=';',
+            index_col='gauge_id',
+            dtype={
+                'gauge_id': str,
+                'sign_number_of_years': int,
+                'q_mean': float,
+                'runoff_ratio': float, 'stream_elas': float, 'slope_fdc': float,
+                'baseflow_index_landson': float,
+                'hfd_mean': float,
+                'Q5': float, 'Q95': float, 'high_q_freq': float, 'high_q_dur': float,
+                'low_q_freq': float
+            }
+        )
         return df
 
-    def landcolover_attrs(self)->pd.DataFrame:
+    def landcolover_attrs(self) -> pd.DataFrame:
         """13 landcover parameters"""
         return pd.read_csv(
             self.lc_attr_path,
@@ -1675,11 +1683,11 @@ class CAMELS_CH(Camels):
                 'loose_rock_perc': float,
                 'rock_perc': float,
                 'urban_perc': float,
-            'dom_land_cover': str
+                'dom_land_cover': str
             }
         )
 
-    def soil_attrs(self)->pd.DataFrame:
+    def soil_attrs(self) -> pd.DataFrame:
         """80 soil parameters"""
         df = pd.read_csv(
             self.soil_attr_path,
@@ -1690,7 +1698,7 @@ class CAMELS_CH(Camels):
         df.index = df.index.astype(int).astype(str)
         return df
 
-    def topo_attrs(self)->pd.DataFrame:
+    def topo_attrs(self) -> pd.DataFrame:
         """topographic parameters"""
         df = pd.read_csv(
             self.topo_attr_path,
@@ -1707,7 +1715,7 @@ class CAMELS_CH(Camels):
             self,
             stn_id: Union[str, list] = "all",
             features: Union[str, list] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
 
@@ -1753,19 +1761,19 @@ class CAMELS_CH(Camels):
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = pd.concat(
-    [
-        self.climate_attrs(),
-        self.geol_attrs(),
-        self.supp_geol_attrs(),
-        self.glacier_attrs(),
-        self.human_inf_attrs(),
-        self.hydrogeol_attrs(),
-        self.hydrol_attrs(),
-        self.landcolover_attrs(),
-        self.soil_attrs(),
-        self.topo_attrs(),
-     ],
-    axis=1)
+            [
+                self.climate_attrs(),
+                self.geol_attrs(),
+                self.supp_geol_attrs(),
+                self.glacier_attrs(),
+                self.human_inf_attrs(),
+                self.hydrogeol_attrs(),
+                self.hydrol_attrs(),
+                self.landcolover_attrs(),
+                self.soil_attrs(),
+                self.topo_attrs(),
+            ],
+            axis=1)
         df.index = df.index.astype(str)
 
         features = check_attributes(features, df.columns.tolist(),
@@ -1778,7 +1786,7 @@ class CAMELS_CH(Camels):
             dynamic_features,
             st=None,
             en=None
-    ) ->dict:
+    ) -> dict:
         """
         reads dynamic data of one or more catchments
         """
@@ -1791,7 +1799,7 @@ class CAMELS_CH(Camels):
         }
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id:str)->pd.DataFrame:
+    def _read_dynamic_for_stn(self, stn_id: str) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
@@ -1813,15 +1821,15 @@ class CAMELS_CH(Camels):
         return df
 
     @property
-    def _area_name(self) ->str:
+    def _area_name(self) -> str:
         return 'area'
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['gauge_lat', 'gauge_lon']
 
     @property
-    def _mmd_feature_name(self)->str:
+    def _mmd_feature_name(self) -> str:
         return 'obs_q_mmd'
 
 
@@ -1883,11 +1891,10 @@ class CAMELS_DE(Camels):
     """
     url = "https://zenodo.org/record/12733968"
 
-
     def __init__(
             self,
             path=None,
-            overwrite:bool = False,
+            overwrite: bool = False,
             to_netcdf: bool = True,
             verbosity: int = 1,
             **kwargs
@@ -1910,18 +1917,18 @@ class CAMELS_DE(Camels):
             This will fasten repeated calls to fetch etc. but will
             require netCDF5 package as well as xarray.
         """
-        super().__init__(path=path, verbosity=verbosity,  **kwargs)
+        super().__init__(path=path, verbosity=verbosity, **kwargs)
 
         self._download(overwrite=overwrite)
 
         if to_netcdf and netCDF4 is None:
-            warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")  
+            warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")
             to_netcdf = False
 
         if to_netcdf:
             self._maybe_to_netcdf('camels_de_dyn')
 
-        self.boundary_file = os.path.join(path, "CAMELS_DE", "camels_de", 
+        self.boundary_file = os.path.join(path, "CAMELS_DE", "camels_de",
                                           "CAMELS_DE_catchment_boundaries",
                                           "catchments", "CAMELS_DE_catchments.shp")
         self._create_boundary_id_map(self.boundary_file, 0)
@@ -1929,99 +1936,99 @@ class CAMELS_DE(Camels):
     @property
     def dyn_map(self):
         return {
-        'discharge_vol': 'obs_q_cms',
-        'discharge_spec': 'obs_q_mmd',
-        'temperature_min': 'min_temp_C',
-        'temperature_max': 'max_temp_C',
-        'temperature_mean': 'mean_temp_C',
-        #'precipitation_mean': 'pcp_mm',
-        'precipitation_mean': 'mean_pcp_mm',
-        'precipitation_median': 'median_pcp_mm',
-        'precipitation_stdev': 'std_pcp_mm',
-        'precipitation_min': 'min_pcp_mm',
-        'precipitation_max': 'max_pcp_mm',
-        'humidity_mean': 'mean_rh_%',
-        'humidity_median': 'median_rh_%',
-        'humidity_stdev': 'std_rh_%',
-        'humidity_min': 'min_rh_%',
-        'humidity_max': 'max_rh_%',
+            'discharge_vol': 'obs_q_cms',
+            'discharge_spec': 'obs_q_mmd',
+            'temperature_min': 'min_temp_C',
+            'temperature_max': 'max_temp_C',
+            'temperature_mean': 'mean_temp_C',
+            # 'precipitation_mean': 'pcp_mm',
+            'precipitation_mean': 'mean_pcp_mm',
+            'precipitation_median': 'median_pcp_mm',
+            'precipitation_stdev': 'std_pcp_mm',
+            'precipitation_min': 'min_pcp_mm',
+            'precipitation_max': 'max_pcp_mm',
+            'humidity_mean': 'mean_rh_%',
+            'humidity_median': 'median_rh_%',
+            'humidity_stdev': 'std_rh_%',
+            'humidity_min': 'min_rh_%',
+            'humidity_max': 'max_rh_%',
         }
 
     @property
-    def ts_dir(self)->str:
+    def ts_dir(self) -> str:
         return os.path.join(self.path, 'camels_de', 'timeseries')
 
     @property
-    def clim_attr_path(self)->str:
+    def clim_attr_path(self) -> str:
         return os.path.join(self.path, 'camels_de', 'CAMELS_DE_climatic_attributes.csv')
 
     @property
-    def hum_infl_path(self)->str:
+    def hum_infl_path(self) -> str:
         return os.path.join(self.path, 'camels_de', 'CAMELS_DE_humaninfluence_attributes.csv')
 
     @property
-    def hydrogeol_attr_path(self)->str:
-        return os.path.join(self.path, 'camels_de','CAMELS_DE_hydrogeology_attributes.csv')
-    
-    @property
-    def hydrol_attr_path(self)->str:
-        return os.path.join(self.path, 'camels_de','CAMELS_DE_hydrologic_attributes.csv')
+    def hydrogeol_attr_path(self) -> str:
+        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_hydrogeology_attributes.csv')
 
     @property
-    def lc_attr_path(self)->str:
+    def hydrol_attr_path(self) -> str:
+        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_hydrologic_attributes.csv')
+
+    @property
+    def lc_attr_path(self) -> str:
         return os.path.join(self.path, 'camels_de', 'CAMELS_DE_landcover_attributes.csv')
 
     @property
-    def sim_attr_path(self)->str:
-        return os.path.join(self.path, 'camels_de',  'CAMELS_DE_simulation_benchmark.csv')
+    def sim_attr_path(self) -> str:
+        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_simulation_benchmark.csv')
 
     @property
-    def soil_attr_path(self)->str:
+    def soil_attr_path(self) -> str:
         return os.path.join(self.path, 'camels_de', 'CAMELS_DE_soil_attributes.csv')
 
     @property
-    def topo_attr_path(self)->str:
-        return os.path.join(self.path, 'camels_de',  'CAMELS_DE_topographic_attributes.csv')
+    def topo_attr_path(self) -> str:
+        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_topographic_attributes.csv')
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return [f.split('_')[4].split('.')[0] for f in os.listdir(self.ts_dir)]
 
-    def clim_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.clim_attr_path, index_col='gauge_id', 
-                           #dtype=np.float32
+    def clim_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.clim_attr_path, index_col='gauge_id',
+                           # dtype=np.float32
                            )
-    
-    def hum_infl_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.hum_infl_path, index_col='gauge_id', 
-                           #dtype=np.float32
+
+    def hum_infl_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.hum_infl_path, index_col='gauge_id',
+                           # dtype=np.float32
                            )
-    
-    def hydrogeol_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.hydrogeol_attr_path, index_col='gauge_id', 
-                           #dtype=np.float32
+
+    def hydrogeol_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.hydrogeol_attr_path, index_col='gauge_id',
+                           # dtype=np.float32
                            )
-    
-    def hydrol_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.hydrol_attr_path, index_col='gauge_id', #dtype=np.float32
+
+    def hydrol_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.hydrol_attr_path, index_col='gauge_id',  # dtype=np.float32
                            )
-    
-    def lc_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.lc_attr_path, index_col='gauge_id', #dtype=np.float32
+
+    def lc_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.lc_attr_path, index_col='gauge_id',  # dtype=np.float32
                            )
-    
-    def sim_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.sim_attr_path, index_col='gauge_id', #dtype=np.float32
+
+    def sim_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.sim_attr_path, index_col='gauge_id',  # dtype=np.float32
                            )
-    
-    def soil_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.soil_attr_path, index_col='gauge_id', #dtype=np.float32
+
+    def soil_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.soil_attr_path, index_col='gauge_id',  # dtype=np.float32
                            )
-    
-    def topo_attrs(self)->pd.DataFrame:
-        return pd.read_csv(self.topo_attr_path, index_col='gauge_id', #dtype=np.float32
+
+    def topo_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self.topo_attr_path, index_col='gauge_id',  # dtype=np.float32
                            )
-    
-    def static_data(self)->pd.DataFrame:
+
+    def static_data(self) -> pd.DataFrame:
         return pd.concat([
             self.clim_attrs(),
             self.hum_infl_attrs(),
@@ -2037,7 +2044,7 @@ class CAMELS_DE(Camels):
             self,
             stn_id: Union[str, list] = "all",
             features: Union[str, list] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
 
         Returns static features of one or more stations.
@@ -2090,7 +2097,7 @@ class CAMELS_DE(Camels):
             dynamic_features,
             st="19510101",
             en="20201231"
-    ) ->dict:
+    ) -> dict:
         """
         reads dynamic data of one or more catchments
         """
@@ -2108,12 +2115,12 @@ class CAMELS_DE(Camels):
         else:
             with cf.ProcessPoolExecutor(cpus) as executor:
                 dyn = executor.map(self._read_dynamic_for_stn, stations)
-            
+
             dyn = {stn: df.loc[st: en, features] for stn, df in zip(stations, dyn)}
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id)->pd.DataFrame:
+    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
@@ -2121,10 +2128,10 @@ class CAMELS_DE(Camels):
 
         df = pd.read_csv(
             os.path.join(self.ts_dir, f"CAMELS_DE_hydromet_timeseries_{stn_id}.csv"),
-            #sep=';',
+            # sep=';',
             index_col='date',
             parse_dates=True,
-            #dtype=np.float32
+            # dtype=np.float32
         )
 
         df.rename(columns=self.dyn_map, inplace=True)
@@ -2141,23 +2148,23 @@ class CAMELS_DE(Camels):
         return pd.Timestamp('2020-12-31')
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
-    
+
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         return self.static_data().columns.tolist()
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['gauge_lat', 'gauge_lon']
 
     @property
-    def _area_name(self) ->str:
+    def _area_name(self) -> str:
         return 'area'
 
     @property
-    def _mmd_feature_name(self) ->str:
+    def _mmd_feature_name(self) -> str:
         """Observed catchment-specific discharge (converted to millimetres per day
         using catchment areas"""
         return 'obs_q_mmd'
@@ -2165,10 +2172,10 @@ class CAMELS_DE(Camels):
 
 class GRDCCaravan(Camels):
     """
-    This is a dataset of 5357 catchments from around the globe following the works of 
+    This is a dataset of 5357 catchments from around the globe following the works of
     `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ . The dataset consists of 39
     dynamic (timeseries) features and 211 static features. The dynamic (timeseries) data
-    spands from 1950-01-02 to 2019-05-19. 
+    spands from 1950-01-02 to 2019-05-19.
 
     if xarray + netCDF4 packages are installed then netcdf files will be downloaded
     otherwise csv files will be downloaded and used.
@@ -2224,19 +2231,20 @@ class GRDCCaravan(Camels):
     """
 
     url = {
-        'caravan-grdc-extension-nc.tar.gz': 
+        'caravan-grdc-extension-nc.tar.gz':
             "https://zenodo.org/records/10074416/files/caravan-grdc-extension-nc.tar.gz?download=1",
-        'caravan-grdc-extension-csv.tar.gz': 
+        'caravan-grdc-extension-csv.tar.gz':
             "https://zenodo.org/records/10074416/files/caravan-grdc-extension-csv.tar.gz?download=1"
     }
+
     def __init__(
             self,
             path=None,
-            overwrite:bool = False,
+            overwrite: bool = False,
             verbosity: int = 1,
             **kwargs
     ):
-        
+
         if xr is None:
             self.ftype == 'csv'
             if "caravan-grdc-extension-nc.tar.gz" in self.url:
@@ -2245,23 +2253,23 @@ class GRDCCaravan(Camels):
             self.ftype = 'netcdf'
             if "caravan-grdc-extension-csv.tar.gz" in self.url:
                 self.url.pop("caravan-grdc-extension-csv.tar.gz")
-        
+
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
         for _file, url in self.url.items():
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
                 if self.verbosity > 0:
-                    print(f"Downloading {_file} from {url+ _file}")
-                download(url + _file, outdir=self.path, fname=_file,)
-                _unzip(self.path)        
+                    print(f"Downloading {_file} from {url + _file}")
+                download(url + _file, outdir=self.path, fname=_file, )
+                _unzip(self.path)
             elif self.verbosity > 0:
-                print(f"{_file} at {self.path} already exists")                
+                print(f"{_file} at {self.path} already exists")
 
         self.boundary_file = os.path.join(
-            self.shapefiles_path, 
+            self.shapefiles_path,
             'grdc_basin_shapes.shp'
-            )
+        )
         self._create_boundary_id_map(self.boundary_file, 0)
 
         # so that we dont have to read the files again and again
@@ -2274,13 +2282,13 @@ class GRDCCaravan(Camels):
     @property
     def dyn_map(self):
         return {
-        'streamflow': 'obs_q_cms',
-        'temperature_2m_mean': 'mean_temp_C',
-        'temperature_2m_min': 'min_temp_C',
-        'temperature_2m_min': 'max_temp_C',
-        'total_precipitation_sum': 'pcp_mm',
+            'streamflow': 'obs_q_cms',
+            'temperature_2m_mean': 'mean_temp_C',
+            'temperature_2m_min': 'min_temp_C',
+            'temperature_2m_min': 'max_temp_C',
+            'total_precipitation_sum': 'pcp_mm',
         }
-    
+
     @property
     def static_features(self):
         return self._static_attributes
@@ -2292,38 +2300,38 @@ class GRDCCaravan(Camels):
     @property
     def shapefiles_path(self):
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv', 
+            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
                                 'shapefiles', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc', 
+        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
                             'shapefiles', 'grdc')
 
     @property
     def attrs_path(self):
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv', 
+            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
                                 'attributes', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc', 
+        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
                             'attributes', 'grdc')
-    
+
     @property
-    def ts_path(self)->os.PathLike:
+    def ts_path(self) -> os.PathLike:
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv', 
+            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
                                 'timeseries', 'grdc')
 
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc', 
+        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
                             'timeseries', self.ftype, 'grdc')
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return self._stations
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['gauge_lat', 'gauge_lon']
 
     @property
-    def _area_name(self) ->str:
-        return 'area'    
+    def _area_name(self) -> str:
+        return 'area'
 
     @property
     def start(self):
@@ -2334,19 +2342,19 @@ class GRDCCaravan(Camels):
         return pd.Timestamp("20230519")
 
     @property
-    def _q_name(self) ->str:
+    def _q_name(self) -> str:
         return 'obs_q_cms'
-        
-    def other_attributes(self)->pd.DataFrame:
+
+    def other_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_other_grdc.csv'), index_col='gauge_id')
-    
-    def hydroatlas_attributes(self)->pd.DataFrame:
+
+    def hydroatlas_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_hydroatlas_grdc.csv'), index_col='gauge_id')
-    
-    def caravan_attributes(self)->pd.DataFrame:
+
+    def caravan_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_caravan_grdc.csv'), index_col='gauge_id')
-    
-    def static_data(self)->pd.DataFrame:
+
+    def static_data(self) -> pd.DataFrame:
         return pd.concat([
             self.other_attributes(),
             self.hydroatlas_attributes(),
@@ -2409,14 +2417,14 @@ class GRDCCaravan(Camels):
 
         if static_features is not None:
             static = self.fetch_static_features(station, static_features)
-        
+
         return {'static': static, 'dynamic': df[dynamic_features]}
 
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = "all",
             features: Union[str, list] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
 
         Returns static features of one or more stations.
@@ -2464,11 +2472,11 @@ class GRDCCaravan(Camels):
         return df.loc[stations, features]
 
     def _read_dynamic_from_csv(
-            self, 
-            stations, 
-            dynamic_features, 
+            self,
+            stations,
+            dynamic_features,
             st=None,
-            en=None)->dict:
+            en=None) -> dict:
 
         dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
         stations = check_attributes(stations, self.stations())
@@ -2480,7 +2488,7 @@ class GRDCCaravan(Camels):
                     self._read_dynamic_for_stn,
                     stations,
                 )
-            dyn = {stn:data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
+            dyn = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         else:
             dyn = {
                 stn: self._read_dynamic_for_stn(stn).loc[st: en, dynamic_features] for stn in stations
@@ -2488,7 +2496,7 @@ class GRDCCaravan(Camels):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id)->pd.DataFrame:
+    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
         if self.ftype == "netcdf":
             fpath = os.path.join(self.ts_path, f'{stn_id}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
@@ -2505,11 +2513,11 @@ class GRDCCaravan(Camels):
 
 class CAMELS_SE(Camels):
     """
-    Dataset of 50 Swedish catchments following the works of 
-    `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ . 
+    Dataset of 50 Swedish catchments following the works of
+    `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ .
     The dataset consists of 76 static catchment features and 4 dynamic features.
     The dynamic features span from 19610101 to 20201231 with daily timestep.
-    
+
     Examples
     --------
     >>> from water_datasets import CAMELS_SE
@@ -2557,7 +2565,7 @@ class CAMELS_SE(Camels):
     >>> dataset.stn_coords('5')  # returns coordinates of station whose id is GRDC_3664802
         68.0356	21.9758
     >>> dataset.stn_coords(['5', '200'])  # returns coordinates of two stations
-    
+
     """
 
     url = {
@@ -2569,9 +2577,9 @@ class CAMELS_SE(Camels):
     def __init__(
             self,
             path: str = None,
-            to_netcdf:bool = True,
-            overwrite:bool = False,
-            verbosity:int = 1,
+            to_netcdf: bool = True,
+            overwrite: bool = False,
+            verbosity: int = 1,
             **kwargs
     ):
         """
@@ -2587,16 +2595,16 @@ class CAMELS_SE(Camels):
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
                 if verbosity > 0:
-                    print(f"Downloading {_file} from {url+ _file}")
-                download(url, outdir=self.path, fname=_file,)
+                    print(f"Downloading {_file} from {url + _file}")
+                download(url, outdir=self.path, fname=_file, )
                 _unzip(self.path)
             else:
-                if self.verbosity> 0: print(f"{_file} at {self.path} already exists")
+                if self.verbosity > 0: print(f"{_file} at {self.path} already exists")
 
-        self.boundary_file = os.path.join(self.path, 
-                                                  'catchment_GIS_shapefiles', 
-                                                  'catchment_GIS_shapefiles', 
-                                                  'Sweden_catchments_50_boundaries_WGS84.shp')
+        self.boundary_file = os.path.join(self.path,
+                                          'catchment_GIS_shapefiles',
+                                          'catchment_GIS_shapefiles',
+                                          'Sweden_catchments_50_boundaries_WGS84.shp')
 
         self._create_boundary_id_map(self.boundary_file, 0)
 
@@ -2605,7 +2613,7 @@ class CAMELS_SE(Camels):
         self._dynamic_features = self._read_dynamic_for_stn(self.stations()[0], nrows=2).columns.tolist()
 
         if to_netcdf and netCDF4 is None:
-            warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")  
+            warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")
             to_netcdf = False
 
         if to_netcdf:
@@ -2614,18 +2622,18 @@ class CAMELS_SE(Camels):
     @property
     def dyn_map(self):
         return {
-        'Qobs_m3s': 'obs_q_cms',
-        'Qobs_mm': 'obs_q_mmd',
-        'Tobs_C': 'mean_temp_C',
-        'Pobs_mm': 'pcp_mm',
+            'Qobs_m3s': 'obs_q_cms',
+            'Qobs_mm': 'obs_q_mmd',
+            'Tobs_C': 'mean_temp_C',
+            'Pobs_mm': 'pcp_mm',
         }
 
     @property
     def static_features(self):
         return self._static_features
-    
+
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         return self._dynamic_features
 
     @property
@@ -2633,20 +2641,20 @@ class CAMELS_SE(Camels):
         return os.path.join(self.path, 'catchment properties', 'catchment properties')
 
     @property
-    def ts_dir(self)->os.PathLike:
+    def ts_dir(self) -> os.PathLike:
         return os.path.join(self.path, 'catchment time series', 'catchment time series')
 
     @property
-    def _mmd_feature_name(self) ->str:
-        return 'obs_q_cms'   
+    def _mmd_feature_name(self) -> str:
+        return 'obs_q_cms'
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['Latitude_WGS84', 'Longitude_WGS84']
 
     @property
-    def _area_name(self) ->str:
-        return 'Area_km2'  
+    def _area_name(self) -> str:
+        return 'Area_km2'
 
     @property
     def start(self):
@@ -2656,48 +2664,48 @@ class CAMELS_SE(Camels):
     def end(self):
         return pd.Timestamp("20201231")
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return self._stations
-    
-    def landcover(self)->pd.DataFrame:
+
+    def landcover(self) -> pd.DataFrame:
         return pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_landcover.csv'), 
+            os.path.join(self.properties_path, 'catchments_landcover.csv'),
             index_col='ID', dtype={'ID': str})
-    
-    def physical_properties(self)->pd.DataFrame:
+
+    def physical_properties(self) -> pd.DataFrame:
         return pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_physical_properties.csv'), 
+            os.path.join(self.properties_path, 'catchments_physical_properties.csv'),
             index_col='ID', dtype={'ID': str})
-    
-    def soil_classes(self)->pd.DataFrame:
+
+    def soil_classes(self) -> pd.DataFrame:
         df = pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_soil_classes.csv'), 
+            os.path.join(self.properties_path, 'catchments_soil_classes.csv'),
             index_col='ID', dtype={'ID': str})
         df.columns = [f"{c}_sc" for c in df.columns]
         return df
-    
-    def hydro_signatures_1961_2020(self)->pd.DataFrame:
+
+    def hydro_signatures_1961_2020(self) -> pd.DataFrame:
         df = pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_hydrological_signatures_1961_2020.csv'), 
+            os.path.join(self.properties_path, 'catchments_hydrological_signatures_1961_2020.csv'),
             index_col='ID', dtype={'ID': str})
         df.columns = [f"{c}_hs" for c in df.columns]
         return df
 
-    def hydro_signatures_CNP_1961_1990(self)->pd.DataFrame:
+    def hydro_signatures_CNP_1961_1990(self) -> pd.DataFrame:
         df = pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_hydrological_signatures_CNP1_1961_1990.csv'), 
-            index_col='ID', dtype={'ID': str})    
+            os.path.join(self.properties_path, 'catchments_hydrological_signatures_CNP1_1961_1990.csv'),
+            index_col='ID', dtype={'ID': str})
         df.columns = [f"{c}_CNP_61_90" for c in df.columns]
         return df
 
-    def hydro_signatures_CNP_1990_2020(self)->pd.DataFrame:
+    def hydro_signatures_CNP_1990_2020(self) -> pd.DataFrame:
         df = pd.read_csv(
-            os.path.join(self.properties_path, 'catchments_hydrological_signatures_CNP2_1991_2020.csv'), 
-            index_col='ID', dtype={'ID': str})      
+            os.path.join(self.properties_path, 'catchments_hydrological_signatures_CNP2_1991_2020.csv'),
+            index_col='ID', dtype={'ID': str})
         df.columns = [f"{c}_CNP_91_20" for c in df.columns]
         return df
 
-    def static_data(self)->pd.DataFrame:
+    def static_data(self) -> pd.DataFrame:
         return pd.concat([
             self.landcover(),
             self.physical_properties(),
@@ -2705,15 +2713,15 @@ class CAMELS_SE(Camels):
             self.hydro_signatures_1961_2020(),
             self.hydro_signatures_CNP_1961_1990(),
             self.hydro_signatures_CNP_1990_2020()
-        ], axis=1)    
- 
+        ], axis=1)
+
     def _read_dynamic_from_csv(
             self,
             stations,
             dynamic_features,
             st="1961-01-01",
             en="2020-12-31"
-    ) ->dict:
+    ) -> dict:
         """
         reads dynamic data of one or more catchments
         """
@@ -2727,7 +2735,7 @@ class CAMELS_SE(Camels):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id, nrows=None)->pd.DataFrame:
+    def _read_dynamic_for_stn(self, stn_id, nrows=None) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
@@ -2744,7 +2752,7 @@ class CAMELS_SE(Camels):
             parse_dates=[['Year', 'Month', 'Day']],
             dtype={'Qobs_m3s': np.float32, 'Qobs_mm': np.float32, 'Pobs_mm': np.float32, 'Tobs_C': np.float32},
             nrows=nrows,
-        )   
+        )
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
 
@@ -2758,7 +2766,7 @@ class CAMELS_SE(Camels):
             self,
             stn_id: Union[str, list] = "all",
             features: Union[str, list] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
 
         Returns static features of one or more stations.
@@ -2803,16 +2811,16 @@ class CAMELS_SE(Camels):
         df = self.static_data().copy()
         features = check_attributes(features, self.static_features,
                                     "static features")
-        return df.loc[stations, features]        
+        return df.loc[stations, features]
 
 
 class CAMELS_DK(Camels):
     """
-    This is an updated version of :py class: `water_datasets.rr.CAMELS_DK0` 
+    This is an updated version of :py class: `water_quality.rr.CAMELS_DK0`
     dataset . This dataset was presented
-    by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is 
+    by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is
     available at `dataverse <https://dataverse.geus.dk/dataset.xhtml?persistentId=doi:10.22008/FK2/AZXSYP>`_ .
-    This dataset consists of 119 static and 13 dynamic features from 3330 danish catchments. 
+    This dataset consists of 119 static and 13 dynamic features from 3330 danish catchments.
     The dynamic (time series) features span from 1989-01-02 to 2023-12-31 with daily timestep.
     However, the streamflow observations are available for only 304 catchments.
 
@@ -2869,7 +2877,7 @@ class CAMELS_DK(Camels):
         (304, 2)
     >>> dataset.stn_coords('54130033')  # returns coordinates of station whose id is GRDC_3664802
         6131379.493	559057.7232
-    >>> dataset.stn_coords(['54130033', '13210113'])  # returns coordinates of two stations    
+    >>> dataset.stn_coords(['54130033', '13210113'])  # returns coordinates of two stations
     """
 
     url = {
@@ -2905,7 +2913,7 @@ class CAMELS_DK(Camels):
     def __init__(self,
                  path=None,
                  overwrite=False,
-                 to_netcdf:bool = True,
+                 to_netcdf: bool = True,
                  **kwargs):
         """
         Parameters
@@ -2927,97 +2935,98 @@ class CAMELS_DK(Camels):
         super(CAMELS_DK, self).__init__(path=path, **kwargs)
         self._download(overwrite=overwrite)
 
-        #self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
+        # self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
         self._static_features = self.static_data().columns.to_list()
         self._dynamic_features = self._read_csv(self.stations()[0]).columns.to_list()
 
         if to_netcdf:
             self._maybe_to_netcdf('camels_dk_dyn')
-        
+
         self.boundary_file = os.path.join(
-        self.path,
-        "CAMELS_DK_304_gauging_catchment_boundaries.shp"
-    )   
+            self.path,
+            "CAMELS_DK_304_gauging_catchment_boundaries.shp"
+        )
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-            'Qobs': 'obs_q_cms',
-            'temperature': 'mean_temp_C',
-            'precipitation': 'pcp_mm',
-            'pet': 'makkink_pet_mm',
-            'Qsim': 'sim_q_cms',
+            'Qobs': observed_streamflow_cms(),
+            'temperature': mean_air_temp(),
+            'precipitation': total_precipitation(),
+            'pet': total_potential_evapotranspiration(),  # todo: should we write method (makkink)
+            'Qsim': simulated_streamflow_cms(),
+            "DKM_eta": actual_evapotranspiration()
         }
 
     @property
     def gaug_catch_path(self):
         return os.path.join(self.path, "Gauged_catchments", "Gauged_catchments")
-    
+
     @property
     def climate_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_climate.csv")
-    
+
     @property
     def geology_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_geology.csv")
-    
+
     @property
     def landuse_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_landuse.csv")
-    
+
     @property
     def soil_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_soil.csv")
-    
+
     @property
     def topography_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_topography.csv")
-    
+
     @property
     def signature_obs_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_signature_obs_based.csv")
-    
+
     @property
     def signature_sim_fpath(self):
         return os.path.join(self.path, "CAMELS_DK_signature_sim_based.csv")
-    
+
     def climate_data(self):
         df = pd.read_csv(self.climate_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def geology_data(self):
         df = pd.read_csv(self.geology_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def landuse_data(self):
         df = pd.read_csv(self.landuse_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def soil_data(self):
         df = pd.read_csv(self.soil_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def topography_data(self):
         df = pd.read_csv(self.topography_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def signature_obs_data(self):
         df = pd.read_csv(self.signature_obs_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
+
     def signature_sim_data(self):
         df = pd.read_csv(self.signature_sim_fpath, index_col=0)
         df.index = df.index.astype(str)
         return df
-    
-    def static_data(self)->pd.DataFrame:
+
+    def static_data(self) -> pd.DataFrame:
         """combination of topographic + soil + landuse + geology + climate features
 
         Returns
@@ -3032,49 +3041,50 @@ class CAMELS_DK(Camels):
                           self.topography_data()
                           ], axis=1)
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return [fname.split(".csv")[0].split('_')[4] for fname in os.listdir(self.gaug_catch_path)]
 
-    def _read_csv(self, stn:str)->pd.DataFrame:
+    def _read_csv(self, stn: str) -> pd.DataFrame:
         fpath = os.path.join(self.gaug_catch_path, f"CAMELS_DK_obs_based_{stn}.csv")
         df = pd.read_csv(os.path.join(fpath), parse_dates=True, index_col='time')
         df.columns.name = 'dynamic_features'
         df.pop('catch_id')
         df = df.astype(np.float32)
 
-        for old_name, new_name in self.dyn_map.items():
-            if old_name in df.columns:
-                df.rename(columns={old_name: new_name}, inplace=True)
-        return df        
+        df.rename(columns=self.dyn_map, inplace=True)
+        # for old_name, new_name in self.dyn_map.items():
+        #     if old_name in df.columns:
+        #         df.rename(columns={old_name: new_name}, inplace=True)
+        return df
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         """returns names of dynamic features"""
         return self._dynamic_features
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """returns static features for Denmark catchments"""
         return self._static_features
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['catch_outlet_lat', 'catch_outlet_lon']
 
     @property
-    def _area_name(self) ->str:
-        return 'catch_area' 
+    def _area_name(self) -> str:
+        return 'catch_area'
 
     @property
-    def _q_name(self)->str:
-        return 'Qobs'
-    
+    def _q_name(self) -> str:
+        return 'obs_q_cms'
+
     @property
-    def start(self)->pd.Timestamp:  # start of data
+    def start(self) -> pd.Timestamp:  # start of data
         return pd.Timestamp('1989-01-02 00:00:00')
 
     @property
-    def end(self)->pd.Timestamp:  # end of data
+    def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2023-12-31 00:00:00')
 
     def _read_dynamic_from_csv(
@@ -3082,8 +3092,7 @@ class CAMELS_DK(Camels):
             stations,
             dynamic_features,
             st=None,
-            en=None)->dict:
-
+            en=None) -> dict:
         features = check_attributes(dynamic_features, self.dynamic_features)
 
         dyn = {stn: self._read_csv(stn)[features] for stn in stations}
@@ -3093,7 +3102,7 @@ class CAMELS_DK(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -3142,7 +3151,7 @@ class CAMELS_DK(Camels):
         features = check_attributes(features, self.static_features)
         df = self.static_data()
         return df.loc[stations, features]
-    
+
     def transform_coords(self, coords):
         """
         Transforms the coordinates to the required format.
@@ -3153,11 +3162,11 @@ class CAMELS_DK(Camels):
 
 class CAMELS_IND(Camels):
     """
-    Dataset of 472 catchments from Republic of India following the works of 
-    `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_. 
+    Dataset of 472 catchments from Republic of India following the works of
+    `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_.
     The dataset consists of 210 static catchment features and 20 dynamic features.
     The dynamic features span from 19800101 to 20201231 with daily timestep.
-    
+
     Examples
     ---------
     >>> from water_datasets import CAMELS_IND
@@ -3211,27 +3220,27 @@ class CAMELS_IND(Camels):
         (472, 2)
     >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
         18.3861	80.3917
-    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations    
+    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
     """
     url = "https://zenodo.org/records/13221214"
 
     def __init__(self,
                  path=None,
                  overwrite=False,
-                 to_netcdf:bool = True,
+                 to_netcdf: bool = True,
                  **kwargs):
         super(CAMELS_IND, self).__init__(path=path, **kwargs)
-        self._download(overwrite=overwrite)    
+        self._download(overwrite=overwrite)
 
         names = pd.read_csv(
             os.path.join(self.static_path, "camels_India_name.txt"),
             sep=";",
             index_col=0,
             dtype={0: str}
-            )
+        )
         id_str = names.index.to_list()
         id_int = names.index.astype(int).to_list()
-        self.id_map = {str(k):v for k,v in zip(id_int, id_str)}
+        self.id_map = {str(k): v for k, v in zip(id_int, id_str)}
 
         self._static_features = self.static_data().columns.to_list()
         self._dynamic_features = self._read_dyn_csv(self.stations()[0]).columns.to_list()
@@ -3240,68 +3249,68 @@ class CAMELS_IND(Camels):
             self._maybe_to_netcdf('camels_ind_dyn')
 
         self.boundary_file = os.path.join(
-        self.path,
-        "shapefiles_catchment",
-        "Merged",
-        "all_catchments.shp"
-    )
+            self.path,
+            "shapefiles_catchment",
+            "Merged",
+            "all_catchments.shp"
+        )
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def dyn_map(self):
         return {
-        #'streamflow_cms': 'obs_q_cms',
-        'tmin(C)': 'min_temp_C',
-        'tmax(C)': 'max_temp_C',
-        'tavg(C)': 'mean_temp_C',
-        'prcp(mm/day)': 'pcp_mm',
-        'rel_hum(%)': 'rh_%',
-        'wind(m/s)': 'windspeed_ms'
+            # 'streamflow_cms': 'obs_q_cms',
+            'tmin(C)': 'min_temp_C',
+            'tmax(C)': 'max_temp_C',
+            'tavg(C)': 'mean_temp_C',
+            'prcp(mm/day)': 'pcp_mm',
+            'rel_hum(%)': 'rh_%',
+            'wind(m/s)': 'windspeed_ms'
         }
 
     @property
-    def static_path(self)->os.PathLike:
+    def static_path(self) -> os.PathLike:
         return os.path.join(self.path, "attributes_txt")
 
     @property
-    def q_path(self)->os.PathLike:
+    def q_path(self) -> os.PathLike:
         return os.path.join(self.path, "streamflow_timeseries")
-    
+
     @property
-    def forcings_path(self)->os.PathLike:
+    def forcings_path(self) -> os.PathLike:
         return os.path.join(self.path, "catchment_mean_forcings")
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         """returns names of dynamic features"""
         return self._dynamic_features
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """returns static features for Denmark catchments"""
         return self._static_features
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['cwc_lat', 'cwc_lon']
 
     @property
-    def _area_name(self) ->str:
-        return 'cwc_area' 
+    def _area_name(self) -> str:
+        return 'cwc_area'
 
     @property
-    def _q_name(self)->str:
+    def _q_name(self) -> str:
         return 'obs_q_cms'
-    
+
     @property
-    def start(self)->pd.Timestamp:  # start of data
+    def start(self) -> pd.Timestamp:  # start of data
         return pd.Timestamp('1980-01-01')
 
     @property
-    def end(self)->pd.Timestamp:  # end of data
+    def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31')
 
-    def _get_map(self, sf_reader, id_index=None, name:str='')->dict:
+    def _get_map(self, sf_reader, id_index=None, name: str = '') -> dict:
 
         fieldnames = [f[0] for f in sf_reader.fields[1:]]
 
@@ -3322,14 +3331,14 @@ class CAMELS_IND(Camels):
 
         return catch_ids_map
 
-    def stn_forcing_path(self, stn:str)->os.PathLike:
+    def stn_forcing_path(self, stn: str) -> os.PathLike:
         return os.path.join(
-            self.forcings_path, 
-            self.id_map.get(stn)[0:2], 
+            self.forcings_path,
+            self.id_map.get(stn)[0:2],
             f"{self.id_map.get(stn)}.csv"
-            )
+        )
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         """
         returns names of stations a list
 
@@ -3341,13 +3350,13 @@ class CAMELS_IND(Camels):
             sep=";",
             index_col=0,
             dtype={0: str}
-            ).index.to_list()
+        ).index.to_list()
 
         return [str(int(stn)) for stn in stns]
 
-    def static_data(self)->pd.DataFrame:
+    def static_data(self) -> pd.DataFrame:
         """
-        combination of topographic + soil + landuse + geology + climate + hydro 
+        combination of topographic + soil + landuse + geology + climate + hydro
         + climate + anthropogenic features
 
         Returns
@@ -3362,10 +3371,10 @@ class CAMELS_IND(Camels):
             df = pd.read_csv(f, sep=";", index_col=0)
             df.index = df.index.astype(str)
             dfs.append(df)
-        
+
         return pd.concat(dfs, axis=1)
 
-    def _read_q(self, stn:str = None,)->pd.DataFrame:
+    def _read_q(self, stn: str = None, ) -> pd.DataFrame:
         """reads observed streamflow data"""
         fpath = os.path.join(self.q_path, f"streamflow_observed.csv")
 
@@ -3376,23 +3385,23 @@ class CAMELS_IND(Camels):
             cols = None
 
         df = pd.read_csv(os.path.join(fpath),
-                        index_col='year_month_day',
-                        parse_dates=[['year', 'month', 'day']],
-                        usecols = cols,
-                        )
+                         index_col='year_month_day',
+                         parse_dates=[['year', 'month', 'day']],
+                         usecols=cols,
+                         )
 
-        return df.astype(np.float32)    
+        return df.astype(np.float32)
 
-    def _read_forcings(self, stn:str)->pd.DataFrame:
+    def _read_forcings(self, stn: str) -> pd.DataFrame:
         """reads the foring data for a given station"""
         fpath = self.stn_forcing_path(stn)
-        df = pd.read_csv(fpath, 
-                        index_col='year_month_day',
-                        parse_dates=[['year', 'month', 'day']],                         
-                        )
-        return df.astype(np.float32)    
+        df = pd.read_csv(fpath,
+                         index_col='year_month_day',
+                         parse_dates=[['year', 'month', 'day']],
+                         )
+        return df.astype(np.float32)
 
-    def _read_dyn_csv(self, stn:str)->pd.DataFrame:
+    def _read_dyn_csv(self, stn: str) -> pd.DataFrame:
         """reads dynamic data for a given station"""
         q = self._read_q(stn)[stn]
         q.name = "obs_q_cms"
@@ -3411,7 +3420,7 @@ class CAMELS_IND(Camels):
             stations,
             dynamic_features,
             st=None,
-            en=None)->dict:
+            en=None) -> dict:
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         stations = check_attributes(stations, self.stations(), 'stations')
@@ -3423,7 +3432,7 @@ class CAMELS_IND(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -3476,10 +3485,10 @@ class CAMELS_IND(Camels):
 
 class CAMELS_FR(Camels):
     """
-    Dataset of 654 catchments from France following the works of 
-    `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_. 
+    Dataset of 654 catchments from France following the works of
+    `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_.
     The dataset consists of 344 static catchment features and 22 dynamic features.
-    The dynamic features span from 1970101 to 20211231 with daily timestep.    
+    The dynamic features span from 1970101 to 20211231 with daily timestep.
     """
     url = {
         "ADDITIONAL_LICENSES.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343463",
@@ -3506,70 +3515,70 @@ class CAMELS_FR(Camels):
 
         if self.to_netcdf:
             self._maybe_to_netcdf('camels_ind_dyn')
-    
+
     @property
-    def daily_ts_path(self)->os.PathLike:
+    def daily_ts_path(self) -> os.PathLike:
         return os.path.join(self.path, "CAMELS_FR_time_series", "CAMELS_FR_time_series", "daily")
-    
+
     @property
-    def attr_path(self)->os.PathLike:
+    def attr_path(self) -> os.PathLike:
         return os.path.join(self.path, "CAMELS_FR_attributes", "CAMELS_FR_attributes")
-    
+
     @property
-    def static_attr_path(self)->os.PathLike:
+    def static_attr_path(self) -> os.PathLike:
         return os.path.join(self.attr_path, "static_attributes")
-    
+
     @property
-    def ts_stat_path(self)->os.PathLike:
+    def ts_stat_path(self) -> os.PathLike:
         return os.path.join(self.attr_path, "time_series_statistics")
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """returns static features for Denmark catchments"""
         return self._static_features
-    
+
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         """returns names of dynamic features"""
         return self._dynamic_features
 
     @property
-    def start(self)->pd.Timestamp:  # start of data
+    def start(self) -> pd.Timestamp:  # start of data
         return pd.Timestamp('1970-01-01')
 
     @property
-    def end(self)->pd.Timestamp:  # end of data
+    def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2021-12-31')
 
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         return ['sit_latitude', 'sit_longitude']
 
     @property
-    def _area_name(self) ->str:
-        return 'sit_area_hydro' 
+    def _area_name(self) -> str:
+        return 'sit_area_hydro'
 
     @property
-    def _q_name(self)->str:
+    def _q_name(self) -> str:
         return 'tsd_q_mm'
 
-    def __stations(self)->List[str]:
+    def __stations(self) -> List[str]:
         return pd.read_csv(os.path.join(
-            self.static_attr_path, 
+            self.static_attr_path,
             "CAMELS_FR_human_influences_dams.csv"),
             sep=";",
             index_col=0).index.to_list()
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return self._stations
 
     @property
-    def geog_path(self)->os.PathLike:
+    def geog_path(self) -> os.PathLike:
         return os.path.join(self.path, "CAMELS_FR_geography", "CAMELS_FR_geography")
 
-    def static_attrs(self)->pd.DataFrame:
+    def static_attrs(self) -> pd.DataFrame:
         """
-        combination of topographic + soil + landuse + geology + climate + hydro 
+        combination of topographic + soil + landuse + geology + climate + hydro
         + climate + anthropogenic features
 
         Returns
@@ -3584,11 +3593,11 @@ class CAMELS_FR(Camels):
             df.index = df.index.astype(str)
             if len(df) == 654:
                 dfs.append(df)
-            elif self.verbosity>1:
+            elif self.verbosity > 1:
                 print(f"skipping {os.path.basename(f)} as it has {len(df)} rows")
-        
+
         static_attrs = pd.concat(dfs, axis=1)
-        
+
         gen_attrs = pd.read_csv(
             os.path.join(self.static_attr_path, "CAMELS_FR_site_general_attributes.csv"),
             sep=";",
@@ -3597,7 +3606,7 @@ class CAMELS_FR(Camels):
 
         # in gen_attrs the stn_id has lenght of 8 while in static_attrs it is 10
         # so adding the last two digits to the gen_attrs
-        _map = {stn[0:-2]:stn for stn in static_attrs.index}
+        _map = {stn[0:-2]: stn for stn in static_attrs.index}
         gen_attrs = gen_attrs.rename(index=_map)
 
         if self.verbosity:
@@ -3608,7 +3617,7 @@ class CAMELS_FR(Camels):
         static_attrs = pd.concat([gen_attrs, static_attrs], axis=1)
         return static_attrs
 
-    def ts_attrs(self)->pd.DataFrame:
+    def ts_attrs(self) -> pd.DataFrame:
         """
         daily_timeseries statistics of all catchments
 
@@ -3624,12 +3633,12 @@ class CAMELS_FR(Camels):
             df.index = df.index.astype(str)
             if len(df) == 654:
                 dfs.append(df)
-            elif self.verbosity>1:
+            elif self.verbosity > 1:
                 print(f"skipping {os.path.basename(f)} as it has {len(df)} rows")
-        
+
         return pd.concat(dfs, axis=1)
 
-    def static_data(self)->pd.DataFrame:
+    def static_data(self) -> pd.DataFrame:
         """
         static attributes plus timeseries statistics
 
@@ -3642,14 +3651,14 @@ class CAMELS_FR(Camels):
         static_data = pd.concat([
             self.static_attrs(),
             self.ts_attrs()
-            ], axis=1)    
+        ], axis=1)
         # remove duplicated columns
-        return static_data.loc[:,~static_data.columns.duplicated()].copy()
+        return static_data.loc[:, ~static_data.columns.duplicated()].copy()
 
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -3699,14 +3708,14 @@ class CAMELS_FR(Camels):
         df = self.static_data()
         return df.loc[stations, features]
 
-    def _read_dyn_stn(self, stn_id:str)->pd.DataFrame:
+    def _read_dyn_stn(self, stn_id: str) -> pd.DataFrame:
         df = pd.read_csv(
             os.path.join(self.daily_ts_path, f"CAMELS_FR_tsd_{stn_id}.csv"),
             sep=";",
             index_col=0,
             parse_dates=True,
             comment="#",
-                        )
+        )
         df.columns.name = 'dynamic_features'
         df.index.name = 'time'
         return df
@@ -3716,7 +3725,7 @@ class CAMELS_FR(Camels):
             stations,
             dynamic_features,
             st=None,
-            en=None)->dict:
+            en=None) -> dict:
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         stations = check_attributes(stations, self.stations(), 'stations')

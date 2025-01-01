@@ -24,7 +24,7 @@ class Poland(_EStreams):
     https://danepubliczne.imgw.pl .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works 
+    taken from :py:class:`water_quality.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -144,20 +144,20 @@ def download_single_file(year, month:str):
 
     try:
         df = pd.read_csv(
-            url, 
-            compression='zip', 
-            encoding="ISO-8859-1",  
-            engine='python',
-            on_bad_lines="skip",
-            names=['stn_id', 'year', 'day', 'q_cms', 'month'],
-            usecols=[0, 3, 5, 7, 9],
-            # sometimes casting month to int fails
-            dtype={'stn_id': str, 'year': 'int', 'day': 'int', 'q_cms': np.float32, #'month': 'int'
-                   },
-            #parse_dates={'date': ['year', 'month', 'day']},
-            #index_col='date',
-            na_values=[99999.999]
-            )
+                        url,
+                        compression='zip',
+                        encoding="ISO-8859-1",
+                        engine='python',
+                        on_bad_lines="skip",
+                        names=['stn_id', 'year', 'day', 'q_cms', 'month'],
+                        usecols=[0, 3, 5, 7, 9],
+                        # sometimes casting month to int fails
+                        dtype={'stn_id': str, 'year': 'int', 'day': 'int', 'q_cms': np.float32, #'month': 'int'
+                               },
+                        #parse_dates={'date': ['year', 'month', 'day']},
+                        #index_col='date',
+                        na_values=[99999.999]
+                        )
     except HTTPError:
         raise Exception(f"Failed to download {url}")
 

@@ -1,6 +1,6 @@
 
 import os
-import site   # so that water_datasets directory is in path
+import site   # so that water_quality directory is in path
 import random
 import logging
 import unittest

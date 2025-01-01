@@ -464,7 +464,7 @@ class Simbi(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import Simbi
+        >>> from water_quality import Simbi
         >>> dataset = Simbi()
         get all static data of all stations
         >>> stns = dataset.static_data_stations()

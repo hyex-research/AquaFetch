@@ -27,7 +27,7 @@ class Italy(_EStreams):
     http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works 
+    taken from :py:class:`water_quality.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.

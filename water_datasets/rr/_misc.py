@@ -10,15 +10,15 @@ from ..utils import get_cpus
 from ..utils import check_attributes
 from .camels import Camels
 
-from ._map import (mean_daily_air_pressure,
-                   min_daily_air_pressure,
-                   mean_daily_precipitation,
-                   mean_daily_potential_evpotranspiration,
-                   mean_daily_rel_hum,
-                   mean_daily_air_temp,
-                   mean_daily_windspeed,
-                   max_daily_air_temp,
-                   min_daily_air_temp,
+from ._map import (mean_air_pressure,
+                   min_air_pressure,
+                   total_precipitation,
+                   mean_potential_evapotranspiration,
+                   mean_rel_hum,
+                   mean_air_temp,
+                   mean_windspeed,
+                   max_air_temp,
+                   min_air_temp,
                    solar_radiation,
                    )
 
@@ -79,15 +79,15 @@ class EStreams(Camels):
     @property
     def dyn_map(self):
         return {
-            't_min': min_daily_air_temp(),
-            't_max': max_daily_air_temp(),
-            't_mean': mean_daily_air_temp(),
-            'p_mean': mean_daily_precipitation(),
-            'pet_mean': mean_daily_potential_evpotranspiration(),
-            'rh_mean': mean_daily_rel_hum(),
-            'sp_min': min_daily_air_pressure(),
+            't_min': min_air_temp(),
+            't_max': max_air_temp(),
+            't_mean': mean_air_temp(),
+            'p_mean': total_precipitation(),
+            'pet_mean': mean_potential_evapotranspiration(),
+            'rh_mean': mean_rel_hum(),
+            'sp_min': min_air_pressure(),
             'swr_mean': solar_radiation(),
-            'ws_mean': mean_daily_windspeed()
+            'ws_mean': mean_windspeed()
         }
 
     def static_data(self) -> pd.DataFrame:

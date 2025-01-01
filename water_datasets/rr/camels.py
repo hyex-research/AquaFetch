@@ -1,4 +1,3 @@
-
 import os
 import random
 import warnings
@@ -12,7 +11,6 @@ from .._backend import netCDF4
 from .._backend import shapefile
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
 from ..utils import check_attributes
-
 
 # directory separator
 SEP = os.sep
@@ -69,12 +67,12 @@ class Camels(Datasets):
 
     def __init__(
             self,
-            path:str = None,
-            timestep:str = "D",
-            id_idx_in_bndry_shape:int = None,
-            to_netcdf:bool = True,
-            overwrite:bool = False,
-            verbosity:int = 1,
+            path: str = None,
+            timestep: str = "D",
+            id_idx_in_bndry_shape: int = None,
+            to_netcdf: bool = True,
+            overwrite: bool = False,
+            verbosity: int = 1,
             **kwargs
     ):
         """
@@ -87,7 +85,7 @@ class Camels(Datasets):
                 then the data will be downloaded in this directory. If not provided,
                 then the data will be downloaded in the default directory.
             timestep : str
-                
+
             verbosity : int
                 0: no message will be printed
             kwargs : dict
@@ -105,25 +103,25 @@ class Camels(Datasets):
         self.to_netcdf = to_netcdf
 
     @property
-    def dyn_map(self)->Dict[str, str]:
+    def dyn_map(self) -> Dict[str, str]:
         return {}
 
     @property
-    def dyn_factors(self)->Dict[str, float]:
+    def dyn_factors(self) -> Dict[str, float]:
         return {}
 
     def _create_boundary_id_map(self, boundary_file, id_idx_in_bndry_shape):
 
         if boundary_file is None:
             return
-        
+
         if shapefile is None:
             warnings.warn("shapefile module is not installed. Please install it to use boundary file")
             return
 
         from shapefile import Reader
 
-        if self.verbosity>1:
+        if self.verbosity > 1:
             print(f"loading boundary file {boundary_file}")
 
         assert os.path.exists(boundary_file), f"{boundary_file} does not exist"
@@ -140,14 +138,14 @@ class Camels(Datasets):
             bndry_sf.encoding = 'ISO-8859-1'
 
         self.bndry_id_map = self._get_map(bndry_sf,
-                                        id_index=id_idx_in_bndry_shape,
-                                        name="bndry_shape")
-    
+                                          id_index=id_idx_in_bndry_shape,
+                                          name="bndry_shape")
+
         bndry_sf.close()
         return
 
     @staticmethod
-    def _get_map(sf_reader, id_index=None, name:str='')->Dict[str, int]:
+    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
 
         fieldnames = [f[0] for f in sf_reader.fields[1:]]
 
@@ -164,27 +162,27 @@ class Camels(Datasets):
 
         if os.path.basename(sf_reader.shapeName) in ["CAMELS_CH_catchments"]:
             catch_ids_map = {
-            str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
+                str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
+            }
         else:
             catch_ids_map = {
-            str(rec[id_index]): idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
+                str(rec[id_index]): idx for idx, rec in enumerate(sf_reader.iterRecords())
+            }
 
         return catch_ids_map
-            
-    def stations(self)->List[str]:
+
+    def stations(self) -> List[str]:
         raise NotImplementedError("The base class must implement this method")
 
     def _read_dynamic_from_csv(self, stations, dynamic_features, st=None,
-                               en=None)->dict:
+                               en=None) -> dict:
         raise NotImplementedError
 
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = None,
             features: Union[str, list] = None
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """Fetches all or selected static features of one or more stations.
 
         Parameters
@@ -224,22 +222,22 @@ class Camels(Datasets):
         raise NotImplementedError
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         """name of feature from static_features to be used as area"""
         raise NotImplementedError
 
     @property
-    def _mmd_feature_name(self)->str:
+    def _mmd_feature_name(self) -> str:
         return None
 
     @property
-    def _q_name(self)->str:
+    def _q_name(self) -> str:
         return None
-    
+
     @property
-    def _coords_name(self)->List[str]:
+    def _coords_name(self) -> List[str]:
         """
-        names of features from static_features to be used as station 
+        names of features from static_features to be used as station
         coordinates (lat, long)
         """
         raise NotImplementedError
@@ -247,7 +245,7 @@ class Camels(Datasets):
     def area(
             self,
             stations: Union[str, List[str]] = 'all'
-    ) ->pd.Series:
+    ) -> pd.Series:
         """
         Returns area (Km2) of all/selected catchments as pandas series
 
@@ -321,7 +319,7 @@ class Camels(Datasets):
         Fetches the features of one or more stations.
 
         Arguments:
-            stations :  
+            stations :
                 It can have following values:
                     - int : number of (randomly selected) stations to fetch
                     - float : fraction of (randomly selected) stations to fetch
@@ -411,10 +409,10 @@ class Camels(Datasets):
     def fetch_stations_features(
             self,
             stations: Union[str, List[str]],
-            dynamic_features:Union[str, List[str]] = 'all',
-            static_features:Union[str, List[str]] = None,
+            dynamic_features: Union[str, List[str]] = 'all',
+            static_features: Union[str, List[str]] = None,
             st: Union[str, pd.Timestamp] = None,
-            en:Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
             as_dataframe: bool = False,
             **kwargs
     ):
@@ -422,22 +420,22 @@ class Camels(Datasets):
 
         parameters
         ----------
-        stations : 
+        stations :
             list of stations for which data is to be fetched.
-        dynamic_features : 
+        dynamic_features :
             list of dynamic features to be fetched.
             if ``all``, then all dynamic features will be fetched.
         static_features : list of static features to be fetched.
             If ``all``, then all static features will be fetched. If None,
             `then no static attribute will be fetched.
-        st : 
+        st :
             start of data to be fetched.
-        en : 
+        en :
             end of data to be fetched.
-        as_dataframe : 
+        as_dataframe :
             whether to return the dynamic data as pandas dataframe. default
             is xr.Dataset object
-        kwargs dict: 
+        kwargs dict:
             additional keyword arguments
 
         Returns
@@ -514,7 +512,7 @@ class Camels(Datasets):
     def fetch_dynamic_features(
             self,
             stn_id: str,
-            dynamic_features = 'all',
+            dynamic_features='all',
             st=None,
             en=None,
             as_dataframe=False
@@ -625,12 +623,12 @@ class Camels(Datasets):
 
     def plot_stations(
             self,
-            stations:List[str] = 'all',
+            stations: List[str] = 'all',
             marker='.',
-            ax:plt_Axes = None,
-            show:bool = True,
+            ax: plt_Axes = None,
+            show: bool = True,
             **kwargs
-    )->plt_Axes:
+    ) -> plt_Axes:
         """
         plots coordinates of stations
 
@@ -665,8 +663,8 @@ class Camels(Datasets):
         xy = self.stn_coords(stations)
 
         ax = easy_mpl.plot(xy.loc[:, 'long'].values,
-                  xy.loc[:, 'lat'].values,
-                  marker, ax=ax, show=False, **kwargs)
+                           xy.loc[:, 'lat'].values,
+                           marker, ax=ax, show=False, **kwargs)
 
         if show:
             plt.show()
@@ -676,7 +674,7 @@ class Camels(Datasets):
     def q_mmd(
             self,
             stations: Union[str, List[str]] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. This is obtained
         by diving ``q``/area
@@ -696,16 +694,17 @@ class Camels(Datasets):
         """
 
         stations = check_attributes(stations, self.stations())
-        
+
         if self._mmd_feature_name is None:
-            q = self.fetch_stations_features(stations,
-                                            dynamic_features=self._q_name,
-                                            as_dataframe=True)
+            q = self.fetch_stations_features(
+                stations,
+                dynamic_features=self._q_name,  # todo: we should always use obs_q_cms
+                as_dataframe=True)
             q.index = q.index.get_level_values(0)
             area_m2 = self.area(stations) * 1e6  # area in m2
             q = (q / area_m2) * 86400  # cms to m/day
-            return q  * 1e3  # to mm/day
-        
+            return q * 1e3  # to mm/day
+
         else:
 
             q = self.fetch_stations_features(
@@ -717,8 +716,8 @@ class Camels(Datasets):
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = 'all'
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = 'all'
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -757,7 +756,7 @@ class Camels(Datasets):
 
         return df.loc[stations, :]
 
-    def transform_coords(self, xyz:np.ndarray)->np.ndarray:
+    def transform_coords(self, xyz: np.ndarray) -> np.ndarray:
         """
         transforms coordinates from projected to geographic
 
@@ -779,7 +778,7 @@ class Camels(Datasets):
             name/id of catchment
         as_type : str
             'numpy' or 'geopandas'
-        
+
         Examples
         --------
         >>> from water_datasets import CAMELS_SE
@@ -809,7 +808,7 @@ class Camels(Datasets):
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
-    )->plt.Axes:
+    ) -> plt.Axes:
         """
         plots catchment boundaries
 
@@ -841,7 +840,7 @@ class Camels(Datasets):
         if isinstance(catchment, np.ndarray):
             if catchment.ndim == 2:
                 ax = easy_mpl.plot(catchment[:, 0], catchment[:, 1],
-                        show=False, ax=ax, **kwargs)
+                                   show=False, ax=ax, **kwargs)
             else:
                 raise NotImplementedError
         # elif isinstance(catchment, geojson.geometry.Polygon):
@@ -862,13 +861,14 @@ class Camels(Datasets):
         return ax
 
 
-def _handle_dynamic(dyn, as_dataframe:bool):
+def _handle_dynamic(dyn, as_dataframe: bool):
     if as_dataframe and isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
         # if the dyn is a dictionary of key, DataFames, we will return a MultiIndex
-        # dataframe instead of a dictionary        
-        dyn = xr.Dataset(dyn).to_dataframe(['time', 'dynamic_features'])  # todo wiered that we have to first convert to xr.Dataset and then to DataFrame
+        # dataframe instead of a dictionary
+        dyn = xr.Dataset(dyn).to_dataframe(['time',
+                                            'dynamic_features'])  # todo wiered that we have to first convert to xr.Dataset and then to DataFrame
     elif isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
         # dyn is a dictionary of key, DataFames and we have to return xr Dataset
-        #dyn = pd.concat(dyn, axis=0, keys=dyn.keys())
+        # dyn = pd.concat(dyn, axis=0, keys=dyn.keys())
         dyn = xr.Dataset(dyn)
     return dyn

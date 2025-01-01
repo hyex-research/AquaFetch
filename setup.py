@@ -44,7 +44,7 @@ all_requirements = min_requirements + extra_requires
 
 setup(
 
-    name='water_datasets',
+    name='water_quality',
 
     version="0.0.1",
 
@@ -80,9 +80,9 @@ setup(
         'Programming Language :: Python :: 3.12',
     ],
 
-    packages=['water_datasets',
-              'water_datasets/water_quality',
-              'water_datasets/rr',
+    packages=['water_quality',
+              'water_quality/water_quality',
+              'water_quality/rr',
               ],
 
     install_requires=min_requirements,

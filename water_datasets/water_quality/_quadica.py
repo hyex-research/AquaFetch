@@ -125,7 +125,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import Quadica
+            >>> from water_quality import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.wrtds_annual()
 
@@ -172,7 +172,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import Quadica
+            >>> from water_quality import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.pet() # -> (828, 1386)
         """
@@ -220,7 +220,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import Quadica
+            >>> from water_quality import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.avg_temp() # -> (828, 1388)
         """
@@ -266,7 +266,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import Quadica
+            >>> from water_quality import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.precipitation() # -> (828, 1388)
         """
@@ -363,7 +363,7 @@ class Quadica(Datasets):
 
         Examples
         ---------
-        >>> from water_datasets import Quadica
+        >>> from water_quality import Quadica
         >>> dataset = Quadica()
         >>> cat_features = dataset.catchment_attributes()
         ... # get attributes of only selected stations
@@ -462,7 +462,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import Quadica
+        >>> from water_quality import Quadica
         >>> dataset = Quadica()
         >>> mon_dyn, mon_cat = dataset.fetch_monthly(max_nan_tol=None)
         ... # However, mon_dyn contains data for all parameters and many of which have

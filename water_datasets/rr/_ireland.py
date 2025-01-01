@@ -23,7 +23,7 @@ class Ireland(_EStreams):
     stations. 
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works 
+    taken from :py:class:`water_quality.EStreams` follwoing the works
     of ` Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -379,7 +379,6 @@ def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
                         )
     except HTTPError:
         warnings.warn(f"Failed to download {stn}", UserWarning)
-        failiures += 1
         df = pd.Series(name=stn)
 
     df.index = pd.to_datetime(df.pop('timestamp'))

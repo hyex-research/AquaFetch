@@ -50,7 +50,7 @@ def ecoli_mekong(
 
     Examples
     --------
-        >>> from water_datasets import ecoli_mekong
+        >>> from water_quality import ecoli_mekong
         >>> ecoli_data = ecoli_mekong()
         >>> ecoli_data.shape
         (1602, 10)
@@ -89,7 +89,7 @@ def ecoli_mekong_2016(
 
     Examples
     --------
-        >>> from water_datasets import ecoli_mekong_2016
+        >>> from water_quality import ecoli_mekong_2016
         >>> ecoli = ecoli_mekong_2016()
         >>> ecoli.shape
         (58, 10)
@@ -145,7 +145,7 @@ def ecoli_houay_pano(
 
     Examples
     --------
-        >>> from water_datasets import ecoli_houay_pano
+        >>> from water_quality import ecoli_houay_pano
         >>> ecoli = ecoli_houay_pano()
         >>> ecoli.shape
         (413, 10)
@@ -189,7 +189,7 @@ def ecoli_mekong_laos(
 
     Examples
     --------
-        >>> from water_datasets import ecoli_mekong_laos
+        >>> from water_quality import ecoli_mekong_laos
         >>> ecoli = ecoli_mekong_laos()
         >>> ecoli.shape
         (1131, 10)

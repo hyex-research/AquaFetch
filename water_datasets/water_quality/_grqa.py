@@ -670,7 +670,7 @@ class GRQA(Datasets):
 
         Example
         --------
-        >>> from water_datasets import GRQA
+        >>> from water_quality import GRQA
         >>> dataset = GRQA()
         >>> df = dataset.fetch_parameter()
         fetch data for only one country

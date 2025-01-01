@@ -1,11 +1,17 @@
-
 import os
-from typing import Union, List
+from typing import Union, List, Dict
 
 import pandas as pd
 
 from .camels import Camels
 from ..utils import check_attributes
+
+from ._map import (
+    total_precipitation,
+    mean_air_temp,
+    total_potential_evapotranspiration_with_method,
+    actual_evapotranspiration,
+)
 
 
 class CAMELS_DK(Camels):
@@ -69,7 +75,7 @@ class CAMELS_DK(Camels):
     def __init__(self,
                  path=None,
                  overwrite=False,
-                 to_netcdf:bool = True,
+                 to_netcdf: bool = True,
                  **kwargs):
         """
         Parameters
@@ -92,69 +98,82 @@ class CAMELS_DK(Camels):
         self.path = path
         self._download(overwrite=overwrite)
 
+        self._static_features = self.__static_features()
+        self._dynamic_features = self.__dynamic_features()
+
         self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
 
         if to_netcdf:
             self._maybe_to_netcdf('camelsdk_dyn')
-        
+
         self.boundary_file = os.path.join(
-        path,
-        "CAMELS_DK",
-        "Caravan_extension_DK",
-        "Caravan_extension_DK",
-        "Caravan_extension_DK",
-        "shapefiles",
-        "camelsdk",
-        "camelsdk_basin_shapes.shp"
-    )
-        
+            path,
+            "CAMELS_DK",
+            "Caravan_extension_DK",
+            "Caravan_extension_DK",
+            "Caravan_extension_DK",
+            "shapefiles",
+            "camelsdk",
+            "camelsdk_basin_shapes.shp"
+        )
+
         self._create_boundary_id_map(self.boundary_file, 3)
 
     @property
     def csv_path(self):
         return os.path.join(self.path, "Caravan_extension_DK",
-                        "Caravan_extension_DK", "Caravan_extension_DK",
-                        "timeseries", "csv", "camelsdk")
+                            "Caravan_extension_DK", "Caravan_extension_DK",
+                            "timeseries", "csv", "camelsdk")
 
     @property
     def nc_path(self):
         return os.path.join(self.path, "Caravan_extension_DK",
-                        "Caravan_extension_DK", "Caravan_extension_DK",
-                        "timeseries", "netcdf", "camelsdk")
+                            "Caravan_extension_DK", "Caravan_extension_DK",
+                            "timeseries", "netcdf", "camelsdk")
 
     @property
     def other_attr_fpath(self):
         """returns path to attributes_other_camelsdk.csv file
         """
         return os.path.join(self.path, "Caravan_extension_DK",
-                        "Caravan_extension_DK", "Caravan_extension_DK",
-                        "attributes", "camelsdk", "attributes_other_camelsdk.csv")
+                            "Caravan_extension_DK", "Caravan_extension_DK",
+                            "attributes", "camelsdk", "attributes_other_camelsdk.csv")
 
     @property
     def caravan_attr_fpath(self):
         """returns path to attributes_caravan_camelsdk.csv file
         """
         return os.path.join(self.path, "Caravan_extension_DK",
-                        "Caravan_extension_DK", "Caravan_extension_DK",
-                        "attributes", "camelsdk",
+                            "Caravan_extension_DK", "Caravan_extension_DK",
+                            "attributes", "camelsdk",
                             "attributes_caravan_camelsdk.csv")
-    def stations(self)->List[str]:
+
+    def stations(self) -> List[str]:
         return [fname.split(".csv")[0][9:] for fname in os.listdir(self.csv_path)]
 
-    def _read_csv(self, stn:str)->pd.DataFrame:
+    def _read_csv(self, stn: str) -> pd.DataFrame:
         fpath = os.path.join(self.csv_path, f"camelsdk_{stn}.csv")
         df = pd.read_csv(os.path.join(fpath))
         df.index = pd.to_datetime(df.pop('date'))
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
         return df
 
     @property
-    def dynamic_features(self)->List[str]:
+    def dynamic_features(self) -> List[str]:
         """returns names of dynamic features"""
+        return self._dynamic_features
+
+    def __dynamic_features(self) -> List[str]:
         return self._read_csv('100006').columns.to_list()
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """returns static features for Denmark catchments"""
+        return self._static_features
+
+    def __static_features(self) -> List[str]:
         caravan = pd.read_csv(self.caravan_attr_fpath)
         _ = caravan.pop('gauge_id')
         other = pd.read_csv(self.other_attr_fpath)
@@ -169,14 +188,18 @@ class CAMELS_DK(Camels):
         return pd.Timestamp('1981-01-02 00:00:00')
 
     @property
-    def end(self)->pd.Timestamp:  # end of data
+    def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31 00:00:00')
 
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        return {
+        }
 
     def q_mmd(
             self,
             stations: Union[str, List[str]] = 'all'
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. This is obtained
         by diving ``streamflow``/area
@@ -196,14 +219,14 @@ class CAMELS_DK(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                           dynamic_features='streamflow',
-                                           as_dataframe=True)
+                                         dynamic_features='obs_q_cms',
+                                         as_dataframe=True)
         q.index = q.index.get_level_values(0)
         area_m2 = self.area(stations) * 1e6  # area in m2
         q = (q / area_m2) * 86400  # cms to m/day
         return q * 1e3  # to mm/day
 
-    def _area_name(self, stn:str)->str:
+    def _area_name(self, stn: str) -> str:
         return "area"
 
     # def area(
@@ -227,7 +250,7 @@ class CAMELS_DK(Camels):
 
     #     Examples
     #     ---------
-    #     >>> from water_datasets import CAMELS_DK
+    #     >>> from water_quality import CAMELS_DK
     #     >>> dataset = CAMELS_DK()
     #     >>> dataset.area()  # returns area of all stations
     #     >>> dataset.stn_coords('100010')  # returns area of station whose id is 912101A
@@ -250,8 +273,8 @@ class CAMELS_DK(Camels):
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = 'all'
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = 'all'
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -298,8 +321,7 @@ class CAMELS_DK(Camels):
             stations,
             dynamic_features,
             st=None,
-            en=None)->dict:
-
+            en=None) -> dict:
         features = check_attributes(dynamic_features, self.dynamic_features)
 
         dyn = {stn: self._read_csv(stn)[features] for stn in stations}
@@ -309,7 +331,7 @@ class CAMELS_DK(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = 'all',
-            features:Union[str, List[str]] = 'all'
+            features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -358,8 +380,8 @@ class CAMELS_DK(Camels):
         features = check_attributes(features, self.static_features)
 
         df = pd.concat([self.hyd_atlas_attributes(),
-                   self.other_static_attributes(),
-                   self.caravan_static_attributes()], axis=1)
+                        self.other_static_attributes(),
+                        self.caravan_static_attributes()], axis=1)
         return df.loc[stations, features]
 
     @property
@@ -371,7 +393,7 @@ class CAMELS_DK(Camels):
                             "attributes", "camelsdk",
                             "attributes_hydroatlas_camelsdk.csv")
 
-    def hyd_atlas_attributes(self, stations='all')->pd.DataFrame:
+    def hyd_atlas_attributes(self, stations='all') -> pd.DataFrame:
         """
         Returns
         --------

@@ -1,4 +1,3 @@
-
 import os
 import glob
 import concurrent.futures as cf
@@ -9,6 +8,13 @@ import pandas as pd
 
 from .camels import Camels
 from ..utils import check_attributes, get_cpus
+from ._map import (
+    min_air_temp,
+    max_air_temp,
+    mean_air_temp,
+    total_potential_evapotranspiration_with_method,
+    total_precipitation_with_method,
+)
 
 # directory separator
 SEP = os.sep
@@ -85,7 +91,7 @@ class CAMELS_BR(Camels):
                'temperature_max': '13_CAMELS_BR_temperature_max_cpc'
                }
 
-    def __init__(self, path=None, verbosity:int = 1, **kwargs):
+    def __init__(self, path=None, verbosity: int = 1, **kwargs):
         """
         parameters
         ----------
@@ -104,23 +110,23 @@ class CAMELS_BR(Camels):
         self._maybe_to_netcdf('camels_dyn_br')
 
         self.boundary_file = os.path.join(
-        path,
-        "CAMELS_BR",
-        "14_CAMELS_BR_catchment_boundaries",
-        "14_CAMELS_BR_catchment_boundaries",
-        "camels_br_catchments.shp"
-    )
+            path,
+            "CAMELS_BR",
+            "14_CAMELS_BR_catchment_boundaries",
+            "14_CAMELS_BR_catchment_boundaries",
+            "camels_br_catchments.shp"
+        )
         self._create_boundary_id_map(self.boundary_file, 3)
 
     @property
     def dyn_map(self):
         return {
-        'streamflow_mm': 'obs_q_mmd',
-        'temperature_min': 'min_temp_C',
-        'temperature_max': 'max_temp_C',
-        'temperature_mean': 'mean_temp_C',
-        'precipitation_mswep': 'pcp_mm',
-        'potential_evapotransp_gleam': 'gleam_pet_mm',
+            'streamflow_mm': 'obs_q_mmd',
+            'temperature_min': min_air_temp(),
+            'temperature_max': max_air_temp(),
+            'temperature_mean': mean_air_temp(),
+            'precipitation_mswep': total_precipitation_with_method('mswep'),
+            'potential_evapotransp_gleam': total_potential_evapotranspiration_with_method('gleam'),
         }
 
     @property
@@ -156,11 +162,10 @@ class CAMELS_BR(Camels):
 
     @property
     def dynamic_features(self) -> List[str]:
-        feats =  list(CAMELS_BR.folders.keys())
+        feats = list(CAMELS_BR.folders.keys())
         feats.remove('simulated_streamflow_m3s')
         feats.remove('streamflow_m3s_raw')
         return feats
-
 
     @property
     def static_attribute_categories(self):
@@ -197,7 +202,7 @@ class CAMELS_BR(Camels):
     def q_mmd(
             self,
             stations: Union[str, List[str]] = "all"
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. he name of
         original timeseries is ``streamflow_mm``.
@@ -217,18 +222,18 @@ class CAMELS_BR(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                           dynamic_features='obs_q_mmd',
-                                           as_dataframe=True)
+                                         dynamic_features='obs_q_mmd',
+                                         as_dataframe=True)
         q.index = q.index.get_level_values(0)
-        #area_m2 = self.area(stations) * 1e6  # area in m2
-        #q = (q / area_m2) * 86400  # cms to m/day
+        # area_m2 = self.area(stations) * 1e6  # area in m2
+        # q = (q / area_m2) * 86400  # cms to m/day
         return q  # * 1e3  # to mm/day
-    
+
     def area(
             self,
             stations: Union[str, List[str]] = "all",
-            source:str = "gsim",
-    ) ->pd.Series:
+            source: str = "gsim",
+    ) -> pd.Series:
         """
         Returns area (Km2) of all catchments as pandas series
 
@@ -273,8 +278,8 @@ class CAMELS_BR(Camels):
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = 'all'
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = 'all'
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -310,14 +315,14 @@ class CAMELS_BR(Camels):
 
         return df.loc[stations, :]
 
-    def all_stations(self, feature:str) -> List[str]:
+    def all_stations(self, feature: str) -> List[str]:
         """Tells all station ids for which a data of a specific attribute is available."""
         p = self.folders[feature]
         return [f.split('_')[0] for f in os.listdir(os.path.join(self.path, p, p))]
 
     def stations(
             self,
-            ) -> List[str]:
+    ) -> List[str]:
         """
         Returns a list of station ids.
 
@@ -331,7 +336,7 @@ class CAMELS_BR(Camels):
     def fetch_raw_streamflow(
             self,
             station_id: str = None
-            )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
 
@@ -346,10 +351,10 @@ class CAMELS_BR(Camels):
 
         if station_id is None:
             station_id = self.all_stations('streamflow_m3s_raw')
-        
+
         if not isinstance(station_id, list):
             station_id = [station_id]
-        
+
         raw_q = []
         for stn in station_id:
             self._read_dynamic_feature('streamflow_m3s_raw', stn)
@@ -358,7 +363,7 @@ class CAMELS_BR(Camels):
     def fetch_simulated_streamflow(
             self,
             station_id: str = None
-            )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
 
@@ -373,7 +378,7 @@ class CAMELS_BR(Camels):
 
         if station_id is None:
             station_id = self.all_stations('simulated_streamflow_m3s')
-        
+
         if not isinstance(station_id, list):
             station_id = [station_id]
 
@@ -388,7 +393,7 @@ class CAMELS_BR(Camels):
             attributes: Union[str, list] = 'all',
             st=None,
             en=None,
-            )->Dict[str, pd.DataFrame]:
+    ) -> Dict[str, pd.DataFrame]:
         """
         returns the dynamic/time series attribute/attributes for one station id.
 
@@ -421,7 +426,7 @@ class CAMELS_BR(Camels):
                     print(f"completed {idx} stations")
         else:
 
-            if self.verbosity>0:
+            if self.verbosity > 0:
                 print(f"getting data for {len(stations)} stations using {cpus} cpus")
 
             features = [features for _ in range(len(stations))]
@@ -439,8 +444,7 @@ class CAMELS_BR(Camels):
     def get_dynamic_features(self, stn_id, features, st=None, en=None):
         feature_dfs = []
         for feature, path in self.folders.items():
-
-            #if feature in features:
+            # if feature in features:
             feature_df = self._read_dynamic_feature(path, feature, stn_id, st, en)
             feature_dfs.append(feature_df)
 
@@ -468,13 +472,13 @@ class CAMELS_BR(Camels):
             df = df.loc[st:en, feature]
         else:
             raise FileNotFoundError(f"file {fname} not found at {path}")
-    
+
         return df.astype(np.float32)
 
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         fetches static feature/features of one or mroe stations
@@ -571,8 +575,8 @@ class CABra(Camels):
     def __init__(self,
                  path=None,
                  overwrite=False,
-                 to_netcdf:bool = True,
-                 met_src:str = 'ens',
+                 to_netcdf: bool = True,
+                 met_src: str = 'ens',
                  **kwargs):
         """
         Parameters
@@ -612,8 +616,7 @@ class CABra(Camels):
         self._create_boundary_id_map(self.boundary_file, 2)
 
     @staticmethod
-    def _get_map(sf_reader, id_index=None, name:str='')->Dict[str, int]:
-
+    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
 
         fieldnames = [f[0] for f in sf_reader.fields[1:]]
 
@@ -629,38 +632,38 @@ class CABra(Camels):
             id_index = 0
 
         catch_ids_map = {
-        str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-    }
+            str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
+        }
         return catch_ids_map
-    
+
     @property
     def dyn_map(self):
         return {
-        'Streamflow': 'obs_q_cms',
-        'tmin_ens': 'ens_min_temp_C',
-        'tmax_ens': 'ens_max_temp_C',
-        'tmin_era5': 'era5_min_temp_C',
-        'tmax_era5': 'era5_max_temp_C',
-        'tmin_ref': 'ref_min_temp_C',
-        'tmax_ref': 'ref_max_temp_C',
-        'p_ens': 'ens_pcp_mm',
-        'p_ref': 'ref_pcp_mm',
-        'p_era5': 'era5_pcp_mm',
-        'rh_ens': 'ens_rh_%',
-        'rh_era5': 'era5_rh_%',
-        'rh_ref': 'ref_rh_%',
-        'wnd_ens': 'ens_windspeed_ms',
-        'wnd_era5': 'era5_windspeed_ms',
-        'wnd_ref': 'ref_windspeed_ms',
-        'pet_pm': 'pm_pet_mm',
-        'pet_pt': 'pt_pet_mm',
-        'pet_hg': 'hg_pet_mm'
+            'Streamflow': 'obs_q_cms',
+            'tmin_ens': 'ens_min_temp_C',
+            'tmax_ens': 'ens_max_temp_C',
+            'tmin_era5': 'era5_min_temp_C',
+            'tmax_era5': 'era5_max_temp_C',
+            'tmin_ref': 'ref_min_temp_C',
+            'tmax_ref': 'ref_max_temp_C',
+            'p_ens': 'ens_pcp_mm',
+            'p_ref': 'ref_pcp_mm',
+            'p_era5': 'era5_pcp_mm',
+            'rh_ens': 'ens_rh_%',
+            'rh_era5': 'era5_rh_%',
+            'rh_ref': 'ref_rh_%',
+            'wnd_ens': 'ens_windspeed_ms',
+            'wnd_era5': 'era5_windspeed_ms',
+            'wnd_ref': 'ref_windspeed_ms',
+            'pet_pm': 'pm_pet_mm',
+            'pet_pt': 'pt_pet_mm',
+            'pet_hg': 'hg_pet_mm'
         }
 
     @property
     def q_path(self):
         return os.path.join(self.path, "CABra_streamflow_daily_series",
-                      "CABra_daily_streamflow")
+                            "CABra_daily_streamflow")
 
     @property
     def attr_path(self):
@@ -670,7 +673,7 @@ class CABra(Camels):
     def dynamic_features(self) -> List[str]:
         return self._dynamic_features
 
-    def __dynamic_features(self)->List[str]:
+    def __dynamic_features(self) -> List[str]:
         stn = self.stations()[0]
         df = pd.concat([self._read_q_from_csv(stn), self._read_meteo_from_csv(stn)], axis=1)
         cols = df.columns.to_list()
@@ -678,35 +681,35 @@ class CABra(Camels):
         return cols
 
     @property
-    def static_features(self)->List[str]:
+    def static_features(self) -> List[str]:
         """names of static features"""
         return pd.concat(
             [
                 self.climate_attrs(),
-               self.general_attrs(),
-               self.geology_attrs(),
-               self.gw_attrs(),
-               self.hydro_distrub_attrs(),
-               self.lc_attrs(),
-               self.soil_attrs(),
-               self.q_attrs(),
-               self.topology_attrs()], axis=1).columns.to_list()
+                self.general_attrs(),
+                self.geology_attrs(),
+                self.gw_attrs(),
+                self.hydro_distrub_attrs(),
+                self.lc_attrs(),
+                self.soil_attrs(),
+                self.q_attrs(),
+                self.topology_attrs()], axis=1).columns.to_list()
 
-    def stations(self)->List[str]:
+    def stations(self) -> List[str]:
         return self.add_attrs().index.astype(str).to_list()
 
     @property
-    def start(self)->pd.Timestamp:
+    def start(self) -> pd.Timestamp:
         return pd.Timestamp("1980-10-01")
 
     @property
-    def end(self)->pd.Timestamp:
+    def end(self) -> pd.Timestamp:
         return pd.Timestamp("2010-09-30")
 
     def q_mmd(
             self,
             stations: Union[str, List[str]] = 'all'
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per day. It is obtained
         by dividing ``Streamflow`` time series by area
@@ -726,21 +729,21 @@ class CABra(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                           dynamic_features='obs_q_cms',
-                                           as_dataframe=True)
+                                         dynamic_features='obs_q_cms',
+                                         as_dataframe=True)
         q.index = q.index.get_level_values(0)
         area_m2 = self.area(stations) * 1e6  # area in m2
         q = (q / area_m2) * 86400  # cms to m/day
-        return q  * 1e3  # to mm/day
+        return q * 1e3  # to mm/day
 
     @property
-    def _area_name(self)->str:
+    def _area_name(self) -> str:
         return 'catch_area'
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = 'all'
-    ) ->pd.DataFrame:
+            stations: Union[str, List[str]] = 'all'
+    ) -> pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
         with ``long`` and ``lat`` as columns.
@@ -773,7 +776,7 @@ class CABra(Camels):
         stations = check_attributes(stations, self.stations())
         return df.loc[stations, :]
 
-    def add_attrs(self)->pd.DataFrame:
+    def add_attrs(self) -> pd.DataFrame:
         """
         Returns additional catchment attributes
         """
@@ -792,7 +795,7 @@ class CABra(Camels):
         add_attributes.index = add_attributes.pop('CABra_ID')
         return add_attributes
 
-    def climate_attrs(self)->pd.DataFrame:
+    def climate_attrs(self) -> pd.DataFrame:
         """
         returns climate attributes for all catchments
         """
@@ -815,20 +818,19 @@ class CABra(Camels):
                   }
 
         clim_attrs = pd.read_csv(fpath, sep='\t',
-                                     names=list(dtypes.keys()),
-                                     dtype=dtypes,
-                                     encoding_errors='ignore',
-                                     header=6)
+                                 names=list(dtypes.keys()),
+                                 dtype=dtypes,
+                                 encoding_errors='ignore',
+                                 header=6)
         clim_attrs.index = clim_attrs.pop('CABra_ID')
         return clim_attrs
 
-    def general_attrs(self)->pd.DataFrame:
+    def general_attrs(self) -> pd.DataFrame:
         """
         returns general attributes for all catchments
         """
         fpath = os.path.join(self.attr_path,
                              "CABra_general_attributes.txt")
-
 
         dtypes = {"CABra_ID": int,  # todo shouldn't it be str?
                   "ANA_ID": int,
@@ -844,15 +846,14 @@ class CABra(Camels):
 
         gen_attrs = pd.read_csv(fpath,
                                 sep='\t',
-                                     names=list(dtypes.keys()),
-                                     dtype=dtypes,
-                                     encoding_errors='ignore',
-                                     header=6)
+                                names=list(dtypes.keys()),
+                                dtype=dtypes,
+                                encoding_errors='ignore',
+                                header=6)
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-
-    def geology_attrs(self)->pd.DataFrame:
+    def geology_attrs(self) -> pd.DataFrame:
         """
         returns geological attributes for all catchments
         """
@@ -868,15 +869,15 @@ class CABra(Camels):
                   }
 
         gen_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                             dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=6)
+                                sep='\t',
+                                names=list(dtypes.keys()),
+                                dtype=dtypes,
+                                encoding_errors='ignore',
+                                header=6)
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def gw_attrs(self)->pd.DataFrame:
+    def gw_attrs(self) -> pd.DataFrame:
         """
         returns groundwater attributes for all catchments
 
@@ -898,15 +899,15 @@ class CABra(Camels):
                   }
 
         gen_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                             dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=7)
+                                sep='\t',
+                                names=list(dtypes.keys()),
+                                dtype=dtypes,
+                                encoding_errors='ignore',
+                                header=7)
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def hydro_distrub_attrs(self)->pd.DataFrame:
+    def hydro_distrub_attrs(self) -> pd.DataFrame:
         """
         returns geological attributes for all catchments
         """
@@ -927,15 +928,15 @@ class CABra(Camels):
                   }
 
         gen_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                             dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=8)
+                                sep='\t',
+                                names=list(dtypes.keys()),
+                                dtype=dtypes,
+                                encoding_errors='ignore',
+                                header=8)
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def lc_attrs(self)->pd.DataFrame:
+    def lc_attrs(self) -> pd.DataFrame:
         """
         returns land cover attributes for all catchments
         """
@@ -962,15 +963,15 @@ class CABra(Camels):
                   }
 
         lc_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                             dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=6)
+                               sep='\t',
+                               names=list(dtypes.keys()),
+                               dtype=dtypes,
+                               encoding_errors='ignore',
+                               header=6)
         lc_attrs.index = lc_attrs.pop('CABra_ID')
         return lc_attrs
 
-    def soil_attrs(self)->pd.DataFrame:
+    def soil_attrs(self) -> pd.DataFrame:
         """
         returns soil attributes for all catchments
         """
@@ -990,15 +991,15 @@ class CABra(Camels):
                   }
 
         soil_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                            dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=7)
+                                 sep='\t',
+                                 names=list(dtypes.keys()),
+                                 dtype=dtypes,
+                                 encoding_errors='ignore',
+                                 header=7)
         soil_attrs.index = soil_attrs.pop('CABra_ID')
         return soil_attrs
 
-    def q_attrs(self)->pd.DataFrame:
+    def q_attrs(self) -> pd.DataFrame:
         """
         returns streamflow attributes for all catchments
         """
@@ -1032,17 +1033,16 @@ class CABra(Camels):
         dtypes.pop('q_lcv')
         dtypes.pop('fdc_slope')
         q_attrs = pd.read_csv(fpath,
-                                sep='\t',
-                                names=names,
-                                dtype=dtypes,
-                                encoding_errors='ignore',
-                                header=7)
+                              sep='\t',
+                              names=names,
+                              dtype=dtypes,
+                              encoding_errors='ignore',
+                              header=7)
 
         q_attrs.index = q_attrs.pop('CABra_ID')
         return q_attrs
 
-
-    def topology_attrs(self)->pd.DataFrame:
+    def topology_attrs(self) -> pd.DataFrame:
         """
         returns topology attributes for all catchments
         """
@@ -1061,15 +1061,15 @@ class CABra(Camels):
                   }
 
         gen_attrs = pd.read_csv(fpath,
-                             sep='\t',
-                             names=list(dtypes.keys()),
-                             dtype=dtypes,
-                             encoding_errors='ignore',
-                             header=7)
+                                sep='\t',
+                                names=list(dtypes.keys()),
+                                dtype=dtypes,
+                                encoding_errors='ignore',
+                                header=7)
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def _read_q_from_csv(self, stn_id:str)->pd.DataFrame:
+    def _read_q_from_csv(self, stn_id: str) -> pd.DataFrame:
         q_fpath = os.path.join(self.q_path, f"CABra_{stn_id}_streamflow.txt")
 
         df = pd.read_csv(q_fpath, sep='\t',
@@ -1078,7 +1078,7 @@ class CABra(Camels):
                          dtype={'Year': np.int16,
                                 'Month': np.int16,
                                 'Day': np.int16,
-                                #'Streamflow': np.float32,
+                                # 'Streamflow': np.float32,
                                 'Quality': np.int16}
                          )
         df.rename(columns=self.dyn_map, inplace=True)
@@ -1087,8 +1087,8 @@ class CABra(Camels):
 
     def _read_meteo_from_csv(
             self,
-            stn_id:str,
-            source="ens")->pd.DataFrame:
+            stn_id: str,
+            source="ens") -> pd.DataFrame:
 
         meteo_path = os.path.join(self.path,
                                   'CABra_climate_daily_series',
@@ -1124,14 +1124,14 @@ class CABra(Camels):
                              names=list(dtypes.keys()),
                              dtype=dtypes,
                              header=12)
-        
+
         df.rename(columns=self.dyn_map, inplace=True)
         return df
 
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = 'all',
-            features:Union[str, List[str]] = 'all'
+            features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -1181,14 +1181,14 @@ class CABra(Camels):
         features = check_attributes(features, self.static_features)
 
         df = pd.concat([self.climate_attrs(),
-                   self.general_attrs(),
-                   self.geology_attrs(),
-                   self.gw_attrs(),
-                   self.hydro_distrub_attrs(),
-                   self.lc_attrs(),
-                   self.soil_attrs(),
-                   self.q_attrs(),
-                   self.topology_attrs()], axis=1)
+                        self.general_attrs(),
+                        self.geology_attrs(),
+                        self.gw_attrs(),
+                        self.hydro_distrub_attrs(),
+                        self.lc_attrs(),
+                        self.soil_attrs(),
+                        self.q_attrs(),
+                        self.topology_attrs()], axis=1)
 
         df.index = df.index.astype(str)
         # drop duplicate columns
@@ -1201,7 +1201,7 @@ class CABra(Camels):
             dynamic_features,
             st=None,
             en=None
-    )->dict:
+    ) -> dict:
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
@@ -1209,13 +1209,14 @@ class CABra(Camels):
 
         qs = [self._read_q_from_csv(stn_id=stn_id) for stn_id in stations]
         q_idx = pd.to_datetime(
-            qs[0]['Year'].astype(str) + '-' + qs[0]['Month'].astype(str)+'-' + qs[0]['Day'].astype(str))
+            qs[0]['Year'].astype(str) + '-' + qs[0]['Month'].astype(str) + '-' + qs[0]['Day'].astype(str))
 
         meteos = [
             self._read_meteo_from_csv(stn_id=stn_id, source=self.met_src) for stn_id in stations]
         # 10 because first 10 stations don't have data for "ref" source
         met_idx = pd.to_datetime(
-            meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str)+'-' + meteos[10]['Day'].astype(str))
+            meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
+                str))
 
         met_cols = [col for col in meteos[0].columns if col not in ['Year', 'Month', 'Day']]
 
@@ -1223,7 +1224,7 @@ class CABra(Camels):
 
         for stn, q, meteo in zip(self.stations(), qs, meteos):
 
-            if len(meteo)==0:
+            if len(meteo) == 0:
                 meteo = pd.DataFrame(meteo, index=met_idx)
             else:
                 meteo.index = met_idx
@@ -1231,7 +1232,7 @@ class CABra(Camels):
 
             stn_df = pd.concat(
                 [meteo[met_cols].astype(np.float32), q[['Quality', 'obs_q_cms']]], axis=1)[features]
-            
+
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
 
