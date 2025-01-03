@@ -70,8 +70,23 @@ from ._datasets import gw_punjab
 from ._datasets import RRAlpineCatchments
 
 
-from ._wwt import mg_photodegradation
-from ._wwt import ec_removal_biochar
+from .water_treatment import ec_removal_biochar
+from .water_treatment import cr_removal
+from .water_treatment import po4_removal_biochar
+from .water_treatment import heavy_metal_removal
+from .water_treatment import industrial_dye_removal
+from .water_treatment import heavy_metal_removal_Shen
+from .water_treatment import P_recovery
+from .water_treatment import N_recovery
+
+from .water_treatment import mg_degradation
+from .water_treatment import dye_removal
+from .water_treatment import dichlorophenoxyacetic_acid_removal
+
+from .water_treatment import micropollutant_removal_osmosis
+from .water_treatment import ion_transport_via_reverse_osmosis
+
+from .water_treatment import cyanobacteria_disinfection
 
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand

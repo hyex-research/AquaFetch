@@ -1091,4 +1091,19 @@ def merge_shapefiles(
         new_field_val_maker=new_field_val_maker,
         ignore_previous_fields=ignore_previous_fields
         )
-    return    
+    return
+
+def encode_cols(
+        df:pd.DataFrame,
+        cols:List[str],
+        encoding:str,
+)->tuple:
+    encoders = {}
+
+    for col in cols:
+        if encoding == "ohe":
+            df, _, encoders[col] = ohe_column(df, col)
+        elif encoding == "le":
+            df, encoders[col] = le_column(df, col)
+
+    return df, encoders
