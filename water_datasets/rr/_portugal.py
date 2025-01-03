@@ -4,7 +4,7 @@ import time
 import warnings
 import requests
 from io import StringIO
-from typing import Union, List
+from typing import Union, List, Dict
 from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
@@ -12,6 +12,13 @@ import pandas as pd
 from ._misc import _EStreams
 from ..utils import get_cpus
 from .._backend import xarray as xr
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Portugal(_EStreams):
@@ -37,6 +44,16 @@ class Portugal(_EStreams):
 
         fpath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_sawicz': slope('no_unit'),
+                'lon': gauge_longitude(),
+
+        }
 
     @property
     def country_name(self)->str:

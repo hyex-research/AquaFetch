@@ -4,7 +4,7 @@ import re
 import time
 import requests
 from io import StringIO
-from typing import List, Union
+from typing import List, Union, Dict
 from requests.exceptions import JSONDecodeError
 from concurrent.futures import ProcessPoolExecutor
 
@@ -16,6 +16,13 @@ from .._backend import netCDF4, shapefile, xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
 from ._hysets import HYSETS
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 DAILY_START = "1820-01-01"
 DAILY_END = "2024-05-30"
@@ -70,6 +77,16 @@ class USGS(Camels):
 
         self._static_features = self.__static_features()
         self.boundary_file = self.hysets.boundary_file
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+            'Drainage_Area_km2': catchment_area(),
+            'Centroid_Lat_deg_N': gauge_latitude(),
+            'Slope_deg': slope('degrees'),
+            'Centroid_Lon_deg_E': gauge_longitude(),
+
+        }
 
     @property
     def start(self)->str:

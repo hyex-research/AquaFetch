@@ -3,7 +3,7 @@ import time
 import zipfile
 import warnings
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Dict
 import concurrent.futures as cf
 from urllib.error import HTTPError
 
@@ -13,6 +13,13 @@ import pandas as pd
 from ._misc import _EStreams
 from ..utils import get_cpus
 from .._backend import xarray as xr
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 # todo: why concatenating the 1077 stations in prior to 2023 and 833 
 # stations from 2023 become 1181? Like a lot of new stations come in 2023?
@@ -37,6 +44,16 @@ class Poland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_sawicz': slope('no_unit'),
+                'lon': gauge_longitude(),
+
+        }
 
     @property
     def country_name(self)->str:

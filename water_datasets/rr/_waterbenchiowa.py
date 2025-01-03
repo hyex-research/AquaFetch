@@ -1,11 +1,19 @@
 
 import os
-from typing import List, Union
+from typing import List, Union, Dict
 
 import pandas as pd
 
 from .camels import Camels
 from ..utils import check_attributes
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
 
 
 class WaterBenchIowa(Camels):
@@ -49,6 +57,13 @@ class WaterBenchIowa(Camels):
         self._download()
 
         self._maybe_to_netcdf('WaterBenchIowa.nc')
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+            'area': catchment_area(),
+            'slope': slope('perc'),
+        }
 
     @property
     def dyn_map(self):

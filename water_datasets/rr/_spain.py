@@ -1,11 +1,18 @@
 import os
-from typing import Union
+from typing import Union, Dict
 
 import numpy as np
 import pandas as pd
 
 from .._backend import xarray as xr
 from ._gsha import _GSHA
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Spain(_GSHA):
@@ -37,6 +44,15 @@ class Spain(_GSHA):
             "GUADALQUIVIR", "GUADIANA", "JUCAR", "MIÑO-SIL",
             "SEGURA", "TAJO"
         ]
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+
+        }
 
     @property
     def end(self)->pd.Timestamp:

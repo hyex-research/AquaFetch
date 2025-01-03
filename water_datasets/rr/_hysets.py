@@ -1,6 +1,6 @@
 
 import os
-from typing import Union, List
+from typing import Union, List, Dict
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,13 @@ import pandas as pd
 from .camels import Camels
 from .._backend import shapefile, xarray as xr
 from ..utils import check_attributes, sanity_check
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class HYSETS(Camels):
@@ -155,6 +162,16 @@ class HYSETS(Camels):
                                           "HYSETS_watershed_boundaries", 
                                           "HYSETS_watershed_boundaries_20200730.shp")
         self._create_boundary_id_map(self.boundary_file, 2)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'Drainage_Area_km2': catchment_area(),
+                'Centroid_Lat_deg_N': gauge_latitude(),
+                'Slope_deg': slope('degrees'),
+                'Centroid_Lon_deg_E': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):

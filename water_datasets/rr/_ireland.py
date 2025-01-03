@@ -1,7 +1,7 @@
 
 import os
 import warnings
-from typing import Union, List
+from typing import Union, List, Dict
 from urllib.error import HTTPError
 from concurrent.futures import ProcessPoolExecutor
 
@@ -10,6 +10,13 @@ import pandas as pd
 from ._misc import _EStreams
 from ..utils import get_cpus
 from .._backend import xarray as xr
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Ireland(_EStreams):
@@ -36,6 +43,16 @@ class Ireland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_sawicz': slope(''),
+                'lon': gauge_longitude(),
+
+        }
 
     @property
     def country_name(self)->str:

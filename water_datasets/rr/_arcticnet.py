@@ -1,11 +1,18 @@
 
 import os
-from typing import List, Union
+from typing import List, Union, Dict
 
 import pandas as pd
 
 from .._backend import xarray as xr
 from ._gsha import _GSHA
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Arcticnet(_GSHA):
@@ -35,6 +42,15 @@ class Arcticnet(_GSHA):
         self._stations = [stn for stn in self.all_stations() if stn in self.gsha_arctic_stns()]
 
         self._static_features = self.gsha.static_features
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+
+        }
 
     @property
     def end(self)->pd.Timestamp:

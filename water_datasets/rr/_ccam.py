@@ -1,7 +1,7 @@
 
 import os
 import json
-from typing import Union, List
+from typing import Union, List, Dict
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,13 @@ from .._backend import shapefile
 from .._backend import xarray as xr
 from ..utils import merge_shapefiles
 from ..utils import check_attributes, dateandtime_now
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class CCAM(Camels):
@@ -118,6 +125,16 @@ class CCAM(Camels):
                                 ignore_previous_fields=True, verbosity=self.verbosity)
 
             self._create_boundary_id_map(self.boundary_file, 2)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope': slope('mkm-1'),
+                'lat': gauge_latitude(),
+                'lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):

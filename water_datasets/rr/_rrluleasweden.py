@@ -1,11 +1,18 @@
 
 import os
-from typing import Union
+from typing import Union, Dict
 
 import pandas as pd
 
 from .._datasets import Datasets
 from ..utils import check_st_en
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class RRLuleaSweden(Datasets):
@@ -18,6 +25,7 @@ class RRLuleaSweden(Datasets):
         super().__init__(path=path, **kwargs)
         self.path = path
         self._download()
+
 
     def fetch(
             self,

@@ -24,6 +24,13 @@ from ._map import (
     actual_evapotranspiration,
 )
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
 # directory separator
 SEP = os.sep
 
@@ -141,6 +148,16 @@ class CAMELS_US(Camels):
         self.dataset_dir = os.path.join(self.path, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
 
         self._maybe_to_netcdf('camels_us_dyn')
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area_gages2': catchment_area(),
+                'slope_mean': slope('mkm-1'),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -436,6 +453,16 @@ class CAMELS_GB(Camels):
             _unzip(self.data_path)
 
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope_fdc': slope(''),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -802,6 +829,16 @@ class CAMELS_AUS(Camels):
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'catchment_area': catchment_area(),
+                'maen_slope_pct': slope('%'),
+                'lat_centroide': gauge_latitude(),
+                'long_centroid': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             'streamflow_MLd': 'obs_q_cms',
@@ -1098,6 +1135,16 @@ class CAMELS_CL(Camels):
         )
 
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope_mean': slope('mkm-1'),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -1408,6 +1455,16 @@ class CAMELS_CH(Camels):
             'CAMELS_CH_catchments.shp'
         )
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope_mean': slope('degrees'),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -1934,6 +1991,16 @@ class CAMELS_DE(Camels):
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope_fdc': slope(''),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             'discharge_vol': 'obs_q_cms',
@@ -2280,6 +2347,15 @@ class GRDCCaravan(Camels):
         self.dyn_fname = ''
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             'streamflow': 'obs_q_cms',
@@ -2620,6 +2696,16 @@ class CAMELS_SE(Camels):
             self._maybe_to_netcdf('camels_se_dyn')
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'Area_km2': catchment_area(),
+                'slope_mean_degree': slope('degrees'),
+                'Latitude_WGS84': gauge_latitude(),
+                'Longitude_WGS84': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             'Qobs_m3s': 'obs_q_cms',
@@ -2949,6 +3035,16 @@ class CAMELS_DK(Camels):
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'catch_area': catchment_area(),
+                'slope_mean': slope('mkm-1'),
+                'catch_outlet_lat': gauge_latitude(),
+                'catch_outlet_lon': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             'Qobs': observed_streamflow_cms(),
@@ -3257,6 +3353,16 @@ class CAMELS_IND(Camels):
         self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'cwc_area': catchment_area(),
+                'slope_mean': slope('degrees'),
+                'cwc_lat': gauge_latitude(),
+                'cwc_lon': gauge_longitude(),
+
+        }
+
+    @property
     def dyn_map(self):
         return {
             # 'streamflow_cms': 'obs_q_cms',
@@ -3515,6 +3621,15 @@ class CAMELS_FR(Camels):
 
         if self.to_netcdf:
             self._maybe_to_netcdf('camels_ind_dyn')
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'hyd_slope_fdc': slope(''),
+                'sit_latitude': gauge_latitude(),
+                'sit_longitude': gauge_longitude(),
+
+        }
 
     @property
     def daily_ts_path(self) -> os.PathLike:

@@ -16,6 +16,13 @@ from ._map import (
     total_precipitation_with_method,
 )
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
 # directory separator
 SEP = os.sep
 
@@ -117,6 +124,16 @@ class CAMELS_BR(Camels):
             "camels_br_catchments.shp"
         )
         self._create_boundary_id_map(self.boundary_file, 3)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'slope_mean': slope('degrees'),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -614,6 +631,16 @@ class CABra(Camels):
 
         self.boundary_file = os.path.join(self.path, "CABra_boundaries", "CABra_boundaries.shp")
         self._create_boundary_id_map(self.boundary_file, 2)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'catch_area': catchment_area(),
+                'catch_slope': slope('perc'),
+                'latitude': gauge_latitude(),
+                'longitude': gauge_longitude(),
+
+        }
 
     @staticmethod
     def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:

@@ -2,7 +2,7 @@
 import os
 import time
 import concurrent.futures as cf
-from typing import List, Union
+from typing import List, Union, Dict
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,13 @@ from ..utils import get_cpus
 from ..utils import merge_shapefiles
 from .._backend import xarray as xr
 from ._gsha import _GSHA
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 # the dates for data to be downloaded 
 START_YEAR = 1979
@@ -38,6 +45,15 @@ class Japan(_GSHA):
     
         if not os.path.exists(self.path):
             os.makedirs(self.path)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+
+        }
 
     @property
     def agency_name(self)->str:

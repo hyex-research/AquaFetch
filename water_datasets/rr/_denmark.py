@@ -13,6 +13,13 @@ from ._map import (
     actual_evapotranspiration,
 )
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
 
 class CAMELS_DK(Camels):
     """
@@ -118,6 +125,16 @@ class CAMELS_DK(Camels):
         )
 
         self._create_boundary_id_map(self.boundary_file, 3)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'catch_area': catchment_area(),
+                'catch_outlet_lat': gauge_latitude(),
+                'slope_mean': slope('mkm-1'),
+                'catch_outlet_lon': gauge_longitude(),
+
+        }
 
     @property
     def csv_path(self):

@@ -1,11 +1,18 @@
 
 import os
-from typing import Union
+from typing import Union, Dict
 
 import pandas as pd
 
 from .._backend import xarray as xr
 from ._gsha import _GSHA
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Thailand(_GSHA):
@@ -55,6 +62,15 @@ class Thailand(_GSHA):
             **kwargs)
 
         self._download(overwrite=overwrite)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+
+        }
 
     @property
     def agency_name(self)->str:

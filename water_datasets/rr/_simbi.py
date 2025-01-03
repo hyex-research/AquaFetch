@@ -1,11 +1,18 @@
 
 import os
-from typing import List, Union
+from typing import List, Union, Dict
 
 import pandas as pd
 
 from .camels import Camels
 from ..utils import check_attributes
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 
 class Simbi(Camels):
@@ -60,6 +67,16 @@ class Simbi(Camels):
         self._create_boundary_id_map(self.boundary_file, 1)
 
         self.dyn_fname = ''
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'Area': catchment_area(),
+                'Lat_Cent': gauge_latitude(),
+                'Slope': slope('degrees'),
+                'Lon_Cent': gauge_longitude(),
+
+        }
     
     @property
     def static_features(self):

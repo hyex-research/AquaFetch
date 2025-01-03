@@ -304,5 +304,5 @@ def gauge_latitude()->str:
 def gauge_longitude()->str:
     return "long"
 
-def EVP_uncertainty()->str:
-    return "evpu_perc"
+def slope(unit)->str:
+    return f"slope_{unit}"

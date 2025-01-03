@@ -34,6 +34,13 @@ from ._map import (
     mean_air_pressure,
 )
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
 SEP = os.sep
 
 
@@ -131,6 +138,16 @@ class LamaHCE(Camels):
                                       f'lamah_{data_type}_{timestep}_dyn.nc')
 
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area_calc': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_mean': slope('mkm-1'),
+                'lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
@@ -749,6 +766,16 @@ class LamaHIce(LamaHCE):
                          overwrite=overwrite,
                          to_netcdf=to_netcdf,
                          **kwargs)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area_calc_basin': catchment_area(),
+                'lat_gauge': gauge_latitude(),
+                'slope_mean_basin': slope('mkm-1'),
+                'lon_gauge': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):

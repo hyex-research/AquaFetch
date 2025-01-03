@@ -32,6 +32,14 @@ from ._map import (
     soil_moisture_layer4,
 )
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
+
+
 METEO_MAP = {
     'arcticnet': 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT/Meteorology_arcticnet_AFD_GRDC_IWRIS_MLIT',
     'AFD': 'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT/Meteorology_arcticnet_AFD_GRDC_IWRIS_MLIT',
@@ -172,6 +180,8 @@ class GSHA(Camels):
         return {
                 'area': catchment_area(),
                 'lat': gauge_latitude(),
+                'slp_dg_uav': slope('degrees'),
+                'long': gauge_longitude(),
 
         }
 

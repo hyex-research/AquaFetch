@@ -1,5 +1,5 @@
 import os
-from typing import List, Union
+from typing import List, Union, Dict
 import concurrent.futures as cf
 
 import pandas as pd
@@ -20,6 +20,13 @@ from ._map import (
     mean_dewpoint_temperature,
     mean_potential_evaporation,
 )
+
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+    slope
+    )
 
 BUL_COLUMNS = [
     'snow_depth_water_equivalent_mean_BULL', 'surface_net_solar_radiation_mean_BULL',
@@ -136,6 +143,15 @@ class Bull(Camels):
         self._create_boundary_id_map(self.boundary_file, 0)
 
         self.dyn_fname = ''
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'gauge_lat': gauge_latitude(),
+                'gauge_lon': gauge_longitude(),
+
+        }
 
     @property
     def dyn_map(self):
