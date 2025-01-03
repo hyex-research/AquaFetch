@@ -1,147 +1,20 @@
 
 import os
-from typing import Union, Tuple, Any, List
+from typing import Union, Tuple, Any, List, Dict
 
 import numpy as np
 import pandas as pd
 
-from .utils import encode_column, LabelEncoder, OneHotEncoder
+from ..utils import encode_column, LabelEncoder, OneHotEncoder
 
-
-def mg_photodegradation(
-        inputs: list = None,
-        target: str = "Efficiency (%)",
-        encoding:str = None
-)->Tuple[pd.DataFrame,
-         Union[LabelEncoder, OneHotEncoder, Any],
-         Union[LabelEncoder, OneHotEncoder, Any]]:
-    """
-    This data is about photocatalytic degradation of melachite green dye using
-    nobel metal dobe BiFeO3. For further description of this data see
-    `Jafari et al., 2023 <https://doi.org/10.1016/j.jhazmat.2022.130031>`_ and
-    for the use of this data for removal efficiency prediction `see <https://github.com/ZeeshanHJ/Photocatalytic_Performance_Prediction>`_ .
-    This dataset consists of 1200 points collected during ~135 experiments.
-
-    Parameters
-    ----------
-        inputs : list, optional
-            features to use as input. By default following features are used as input
-
-                - ``Catalyst_type``
-                - ``Surface area``
-                - ``Pore Volume``
-                - ``Catalyst_loading (g/L)``
-                - ``Light_intensity (W)``
-                - ``time (min)``
-                - ``solution_pH``
-                - ``HA (mg/L)``
-                - ``Anions``
-                - ``Ci (mg/L)``
-                - ``Cf (mg/L)``
-
-        target : str, optional, default="Efficiency (%)"
-            features to use as target. By default ``Efficiency (%)`` is used as target
-            which is photodegradation removal efficiency of dye from wastewater. Following
-            are valid target names
-
-                - ``Efficiency (%)``
-                - ``k_first``
-                - ``k_2nd``
-
-        encoding : str, default=None
-            type of encoding to use for the two categorical features i.e., ``Catalyst_type``
-            and ``Anions``, to convert them into numberical. Available options are ``ohe``,
-            ``le`` and None. If ohe is selected the original input columns are replaced
-            with ohe hot encoded columns. This will result in 6 columns for Anions and
-            15 columns for Catalyst_type.
-
-    Returns
-    -------
-    data : pd.DataFrame
-        a pandas dataframe consisting of input and output features. The default
-        setting will result in dataframe shape of (1200, 12)
-    cat_encoder :
-        catalyst encoder
-    an_encoder :
-        encoder for anions
-
-    Examples
-    --------
-    >>> from ai4water.datasets import mg_photodegradation
-    >>> mg_data, catalyst_encoder, anion_encoder = mg_photodegradation()
-    >>> mg_data.shape
-    (1200, 12)
-    ... # the default encoding is None, but if we want to use one hot encoder
-    >>> mg_data_ohe, cat_enc, an_enc = mg_photodegradation(encoding="ohe")
-    >>> mg_data_ohe.shape
-    (1200, 31)
-    >>> cat_enc.inverse_transform(mg_data_ohe.iloc[:, 9:24].values)
-    >>> an_enc.inverse_transform(mg_data_ohe.iloc[:, 24:30].values)
-    ... # if we want to use label encoder
-    >>> mg_data_le, cat_enc, an_enc = mg_photodegradation(encoding="le")
-    >>> mg_data_le.shape
-    (1200, 12)
-    >>> cat_enc.inverse_transform(mg_data_le.iloc[:, 9].values.astype(int))
-    >>> an_enc.inverse_transform(mg_data_le.iloc[:, 10].values.astype(int))
-    ... # By default the target is efficiency but if we want
-    ... # to use first order k as target
-    >>> mg_data_k, _, _ = mg_photodegradation(target="k_first")
-    ... # if we want to use 2nd order k as target
-    >>> mg_data_k2, _, _ = mg_photodegradation(target="k_2nd")
-
-    """
-
-    df = pd.read_csv(
-    "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
-    )
-    default_inputs = ['Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
-                      'Light_intensity (W)', 'time (min)', 'solution_pH', 'HA (mg/L)',
-                      'Ci (mg/L)', 'Cf (mg/L)', 'Catalyst_type', 'Anions',
-                      ]
-    default_targets = ['Efficiency (%)', 'k_first', 'k_2nd']
-
-    # first order
-    df["k_first"] = np.log(df["Ci (mg/L)"] / df["Cf (mg/L)"]) / df["time (min)"]
-
-    # k second order
-    df["k_2nd"] = ((1 / df["Cf (mg/L)"]) - (1 / df["Ci (mg/L)"])) / df["time (min)"]
-
-    if inputs is None:
-        inputs = default_inputs
-
-    if not isinstance(target, list):
-        if isinstance(target, str):
-            target = [target]
-    elif isinstance(target, list):
-        pass
-    else:
-        target = default_targets
-
-    assert isinstance(target, list)
-
-    assert all(trgt in default_targets for trgt in target)
-
-    df = df[inputs + target]
-
-    # consider encoding of categorical features
-    cat_encoder, an_encoder = None, None
-    if encoding:
-        df, cols_added, cat_encoder = encode_column(df, "Catalyst_type", encoding)
-        df, an_added, an_encoder = encode_column(df, "Anions", encoding)
-
-        # move the target to the end
-        for t in target:
-            df[t] = df.pop(t)
-
-    return df, cat_encoder, an_encoder
 
 
 def ec_removal_biochar(
         input_features:List[str]=None,
         encoding:str = None
-)->Tuple[pd.DataFrame, dict]:
+)->Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    Data of removal of emerging pollutants from wastewater
+    Data of removal of emerging contaminants/pollutants from wastewater
     using biochar. The data consists of three types of features,
     1) adsorption experimental conditions, 2) elemental composition of
     adsorbent (biochar) and parameters representing
@@ -193,7 +66,7 @@ def ec_removal_biochar(
 
     Examples
     --------
-    >>> from ai4water.datasets import ec_removal_biochar
+    >>> from water_datasets import ec_removal_biochar
     >>> data, *_ = ec_removal_biochar()
     >>> data.shape
     (3757, 27)
@@ -298,3 +171,58 @@ def ec_removal_biochar(
         "adsorption_type": adspt_enc
     }
     return data, encoders
+
+
+def po4_removal_biochar():
+    """
+    `Iftikhar et al., 2023 <https://doi.org/10.1016/j.chemosphere.2024.144031>`_
+    """
+    url = "https://github.com/Sara-Iftikhar/po4_removal_ml/blob/main/scripts/master_sheet_0802.xlsx"
+    return
+
+
+def cr_removal():
+    """
+    `Ishtiaq et al., 2024 <https://doi.org/10.1016/j.jece.2024.112238>`_
+    """
+
+    url = "https://gitlab.com/atrcheema/envai103/-/blob/main/data/data.csv"
+    return
+
+
+def heavy_metal_removal():
+    """
+    `Jaffari et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132773>`_
+    """
+    return
+
+
+def heavy_metal_removal_Shen():
+    """
+    `Shen et al., 2024 <https://doi.org/10.1016/j.jhazmat.2024.133442>`_
+    """
+    return
+
+
+def industrial_dye_removal():
+    """
+    `Iftikhar et al., 2023 <https://doi.org/10.1016/j.seppur.2023.124891>`_
+    """
+    url = "https://github.com/Sara-Iftikhar/ai4adsorption/blob/main/scripts/Dyes%20data.xlsx"
+    return
+
+
+def P_recovery():
+    """
+    `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
+    """
+    url = "https://zenodo.org/records/14586314/files/P_recovery.csv?download=1"
+    return
+
+
+def N_recovery():
+    """
+    `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
+    """
+    url = "https://zenodo.org/records/14586314/files/N_recovery.csv?download=1"
+    return
