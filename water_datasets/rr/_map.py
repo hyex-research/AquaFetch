@@ -292,6 +292,15 @@ def min_dewpoint_temperature_at_2m()->str:
 def min_dewpoint_temperature_with_method(method:str)->str:
     return f"{method}_min_dewpoint_C"
 
+# vapor pressure
+
+def mean_vapor_pressure()->str:
+    return "vp_hpa"
+
+
+def mean_vapor_pressure_with_method(specifier)->str:
+    return f"{specifier}_vp_hpa"
+
 
 # ****STATIC FEATURES****
 

@@ -18,10 +18,17 @@ from .._backend import netCDF4, xarray as xr
 from ._map import (
     observed_streamflow_cms,
     mean_air_temp,
+    min_air_temp_with_method,
+    max_air_temp_with_method,
+    mean_air_temp_with_method,
     total_precipitation,
+    total_precipitation_with_method,
     total_potential_evapotranspiration,
     simulated_streamflow_cms,
     actual_evapotranspiration,
+    actual_evapotranspiration_with_method,
+    solar_radiation_with_method,
+    mean_vapor_pressure_with_method,
 )
 
 from ._map import (
@@ -461,7 +468,6 @@ class CAMELS_GB(Camels):
                 'slope_fdc': slope(''),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
@@ -835,16 +841,25 @@ class CAMELS_AUS(Camels):
                 'maen_slope_pct': slope('%'),
                 'lat_centroide': gauge_latitude(),
                 'long_centroid': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-            'streamflow_MLd': 'obs_q_cms',
+            'streamflow_MLd': observed_streamflow_cms(),
             'streamflow_mmd': 'obs_q_mmd',
-            'tmin_SILO': 'min_temp_C',
-            'tmax_SILO': 'max_temp_C',
+            'tmin_SILO': min_air_temp_with_method('silo'),
+            'tmax_SILO': max_air_temp_with_method('silo'),
+            'tmin_AWAP': min_air_temp_with_method('awap'),
+            'tmax_AWAP': max_air_temp_with_method('awap'),
+            'et_morton_actual_SILO': actual_evapotranspiration_with_method('silo_morton'),
+            #'et_morton_point_SILO': actual_evapotranspiration_with_method('silo_morton'),
+            #'et_short_crop_SILO': 
+            'precipitation_AWAP': total_precipitation_with_method('awap'),
+            'precipitation_SILO': total_precipitation_with_method('silo'),
+            'solarrad_AWAP': solar_radiation_with_method('awap'),  # convert MJ/m2/day to W/m2
+            'radiation_SILO': solar_radiation_with_method('silo'),  # convert MJ/m2/day to W/m2
+            'vp_SILO': mean_vapor_pressure_with_method('silo'),
         }
 
     @property

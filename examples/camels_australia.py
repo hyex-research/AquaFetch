@@ -2,9 +2,9 @@
 ====================
 CAMELS Australia
 ====================
-This example demonstrates how to use the `water_quality` package to download and
+This example demonstrates how to use the `water_datasets` package to download and
 explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>_` dataset 
-using the :py:class:`water_quality.rr.RainfallRunoff` class. Although we show it
+using the :py:class:`water_datasets.rr.RainfallRunoff` class. Although we show it
 for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
 """
 import os
@@ -13,6 +13,7 @@ import site
 if __name__ == '__main__':
     wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath('__file__')))))
     #wd_dir = os.path.dirname(os.path.realpath('__file__'))
+    #wd_dir = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
     print(wd_dir)
     site.addsitedir(wd_dir)
 
@@ -272,7 +273,7 @@ df
 dataset.dynamic_features
 # get only selected dynamic features
 data = dataset.fetch(1, as_dataframe=True,
-dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'obs_q_cms']).unstack()
+dynamic_features=['awap_max_temp_C', 'awap_pcp_mm', 'silo_morton_aet_mm', 'obs_q_cms']).unstack()
 data.shape
 
 # %%

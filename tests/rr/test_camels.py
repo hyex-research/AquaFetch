@@ -10,7 +10,6 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
 import pandas as pd
-import xarray as xr
 
 from water_datasets import CABra
 from water_datasets import CCAM
@@ -18,10 +17,9 @@ from water_datasets import CAMELS_DK
 from water_datasets.rr import CAMELS_DK0
 from water_datasets import CAMELS_CH
 from water_datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
-from water_datasets import CAMELS_CL, CAMELS_US, LamaHCE, HYPE
+from water_datasets import CAMELS_CL, CAMELS_US, HYPE
 from water_datasets import WaterBenchIowa
 from water_datasets import CAMELS_DE
-from water_datasets import LamaHIce
 from water_datasets import GRDCCaravan
 from water_datasets import CAMELS_SE
 from water_datasets import Simbi
@@ -69,34 +67,6 @@ class TestCamels(unittest.TestCase):
         ds_cl = CAMELS_CL(os.path.join(gscad_path, 'CAMELS'))
         test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
                      num_static_attrs=104, num_dyn_attrs=12)
-        return
-
-    def test_lamah(self):
-        stations = {'D': [859, 859, 454], 'H': [859, 859, 454]}
-        static = {'D': [80, 81, 80], 'H': [84, 81, 80]}
-        num_dyn_attrs = {'D': 22, 'H': 16}
-        len_dyn_data = {'D': 14244, 'H': 341856}
-        test_df = True
-        yearly_steps = {'D': 366, 'H': 8784}
-
-        for idx, dt in enumerate(LamaHCE._data_types):
-
-            for ts in ['H', 'D']:
-
-                if ts =='H':
-                    test_df=False
-
-                #if ts in ['D']:
-
-                logger.info(f'checking for {dt} at {ts} time step')
-
-                ds_eu = LamaHCE(timestep=ts, data_type=dt, path=gscad_path)
-
-                test_dataset(ds_eu, stations[ts][idx],
-                                len_dyn_data[ts], static[ts][idx], 
-                                num_dyn_attrs=num_dyn_attrs[ts],
-                                test_df=test_df, 
-                                yearly_steps=yearly_steps[ts])
         return
 
     def test_br(self):
@@ -222,34 +192,6 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 1555, 25568, 111, 21)
         return
 
-    def test_lamahice(self):
-        
-        stations = {
-            'D': [111, 107,  107],
-            'H': [76]
-            }
-        length = {'D': 26298, 'H': 412825}
-        num_dynamic = {'D': 36, 'H': 28}
-        yr_steps = {'D': 366, 'H': 8784}
-
-        for idx, data_type in enumerate(['total_upstrm', #'intermediate_all', 'intermediate_lowimp'
-                          ]):
-
-            for timestep in ['H', 'D']:
-                
-                logger.info(f'checking for {data_type}, {timestep}')
-
-                dataset = LamaHIce(path=gscad_path, timestep=timestep, data_type=data_type)
-
-                test_dataset(dataset, 
-                             stations[timestep][idx], 
-                             length[timestep], 
-                             154, 
-                             num_dynamic[timestep],
-                             yearly_steps=yr_steps[timestep]
-                             )
-        return
-
     def test_grdccaravan(self):
         dataset = GRDCCaravan(path=gscad_path)
         test_dataset(dataset, 5357, 26801, 211, 39)
@@ -299,7 +241,6 @@ class TestCamels(unittest.TestCase):
                                  overwrite=True)
         test_dataset(ds_aus, 561, 26388, 187, 26)
         return
-
 
 
 if __name__=="__main__":

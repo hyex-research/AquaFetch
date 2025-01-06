@@ -349,6 +349,9 @@ class LamaHCE(Camels):
 
         if dynamic_features is not None:
 
+            if self.verbosity>2:
+                print(f'fetching data for {len(dynamic_features)} dynamic features for {len(stations)} stations')
+
             dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
             if netCDF4 is None or not self.all_ncs_exist:
@@ -470,13 +473,23 @@ class LamaHCE(Camels):
     def _make_ds_from_ncs(self, dynamic_features, stations, st, en):
         """makes xarray Dataset by reading multiple .nc files"""
 
+        if self.verbosity>1:
+            print(f'fetching data for {len(dynamic_features)} dynamic features for {len(stations)} stations')
+
         dyns = []
-        for f in dynamic_features:
+        for idx, f in enumerate(dynamic_features):
             dyn_fpath = os.path.join(self.path, f"{self.data_type}_{self.timestep}", f'{f}.nc')
             dyn = xr.open_dataset(dyn_fpath)  # daataset
             dyns.append(dyn[stations].sel(time=slice(st, en)))
 
-        return xr.concat(dyns, dim='dynamic_features')  # dataset
+            if self.verbosity>3:
+                print(f'{idx}: {f} read')
+
+        xds = xr.concat(dyns, dim='dynamic_features')  # dataset todo: taking too much time!
+
+        if self.verbosity>3:
+            print(f'concatenated')
+        return xds
 
     def fetch_static_features(
             self,
@@ -508,7 +521,7 @@ class LamaHCE(Camels):
         df = self.static_data()
 
         static_features = check_attributes(features, self.static_features, 'static features')
-        stations = check_attributes(stn_id, self.stations())
+        stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = df[static_features]
 
@@ -562,16 +575,16 @@ class LamaHCE(Camels):
         df.index.name = "time"
         return df
 
+    def met_fname(self, station):
+        ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        return os.path.join(
+            self.data_type_dir,
+            f'2_timeseries{SEP}{ts_folder}{SEP}ID_{station}.csv')
+
     def _read_met_for_station(self, station, features):
         if isinstance(features, list):
             features = features.copy()
             [features.remove(itm) for itm in ['q_cms', 'ckhs'] if itm in features]
-
-        ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
-
-        met_fname = os.path.join(
-            self.data_type_dir,
-            f'2_timeseries{SEP}{ts_folder}{SEP}ID_{station}.csv')
 
         usecols = None
         met_dtype = {
@@ -609,7 +622,7 @@ class LamaHCE(Camels):
 
                 # usecols = ['YYYY', 'MM', 'DD'] + features
 
-            met_df = pd.read_csv(met_fname, sep=';', dtype=met_dtype,
+            met_df = pd.read_csv(self.met_fname(station), sep=';', dtype=met_dtype,
                                  # usecols=usecols
                                  )
 
@@ -635,7 +648,7 @@ class LamaHCE(Camels):
                 'surf_net_therm_rad': np.float32
             })
 
-            met_df = pd.read_csv(met_fname, sep=';', dtype=met_dtype,  # usecols=usecols
+            met_df = pd.read_csv(self.met_fname(station), sep=';', dtype=met_dtype,  # usecols=usecols
                                  )
 
             periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
@@ -799,12 +812,22 @@ class LamaHIce(LamaHCE):
         }
 
     @property
+    def dyn_factors(self) -> Dict[str, float]:
+        return {}
+
+    @property
     def q_dir(self):
-        directory = 'CAMELS_AT'
+        #directory = 'lamah_ice'
         if self.timestep == 'H':
-            directory = 'CAMELS_AT1'
+            return os.path.join(
+                self.path, 
+                    "lamah_ice_hourly", 
+                    "lamah_ice_hourly",
+                    'D_gauges', '2_timeseries')
         # self.path/CAMELS_AT/data_type_dir
-        return os.path.join(self.path, f'{directory}', 'D_gauges', '2_timeseries')
+        return os.path.join(self.path, "lamah_ice", 
+                            "lamah_ice",
+                            'D_gauges', '2_timeseries')
 
     @property
     def boundary_file(self):
@@ -848,6 +871,12 @@ class LamaHIce(LamaHCE):
             return os.path.join(self.gauges_path, "2_timeseries", "hourly")
         return os.path.join(self.gauges_path, "2_timeseries", "daily")
 
+    def met_fname(self, station):
+        ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        return os.path.join(
+                self.data_type_dir,
+                f'2_timeseries{SEP}{ts_folder}{SEP}meteorological_data{SEP}ID_{station}.csv')
+
     def stations(self) -> List[str]:
         """
         returns names of stations as a list
@@ -858,6 +887,9 @@ class LamaHIce(LamaHCE):
         """
         returns static data of all stations
         """
+
+        if self.verbosity>2:
+            print('reading static data')
         return pd.concat([self.basin_attributes(), self.gauge_attributes()], axis=1)
 
     def gauge_attributes(self) -> pd.DataFrame:
@@ -947,16 +979,19 @@ class LamaHIce(LamaHCE):
             catchment/basin attributes
         """
         cat = self.catchment_attributes()
-        wat_bal_all = self.wat_bal_attrs()
-        wat_bal_filt = self.wat_bal_unfiltered()
 
-        df = pd.concat([cat, wat_bal_all, wat_bal_filt], axis=1)
+        if self.timestep == 'D' and self.data_type == 'total_upstrm':
+            wat_bal_all = self.wat_bal_attrs()
+            wat_bal_filt = self.wat_bal_unfiltered()
+            df = pd.concat([cat, wat_bal_all, wat_bal_filt], axis=1)
+        else:
+            df = cat
         df.columns = [col + '_basin' for col in df.columns]
         return df
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = None,
+            stn_id: Union[str, list] = 'all',
             features: Union[str, list] = None
     ) -> pd.DataFrame:
 
@@ -967,7 +1002,7 @@ class LamaHIce(LamaHCE):
         df.index = df.index.astype(str)
 
         static_features = check_attributes(features, self.static_features, 'static features')
-        stations = check_attributes(stn_id, self.stations())
+        stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = df.loc[stations, static_features]
 
@@ -1031,10 +1066,14 @@ class LamaHIce(LamaHCE):
         stations = check_attributes(stations, self.stations(), 'stations')
 
         cpus = self.processes or min(get_cpus(), 16)
+        if len(stations)<=10: cpus=1
 
-        if cpus == 1 or len(stations) <= 10:
+        if self.verbosity>1:
+            print(f"fetching streamflow for {len(stations)} stations with {cpus} cpus")
+
+        if cpus == 1:
             qs = []
-            for stn in stations:  # todo, this can be parallelized
+            for stn in stations:
                 qs.append(self.fetch_stn_q(stn, qc_flag=qc_flag))
         else:
             qc_flag = [qc_flag for _ in range(len(stations))]
@@ -1045,7 +1084,9 @@ class LamaHIce(LamaHCE):
                     qc_flag
                 ))
 
-        return pd.concat(qs, axis=1)
+        df = pd.concat(qs, axis=1)
+        df.columns = stations
+        return df
 
     def fetch_stn_q(
             self,
@@ -1112,8 +1153,10 @@ class LamaHIce(LamaHCE):
         """
         fpath = os.path.join(self._clim_ts_path(), f"ID_{stn}.csv")
 
+        timestep = {'H': 'h', 'D': 'd'}[self.timestep]
+
         if not os.path.exists(fpath):
-            return pd.DataFrame(index=pd.date_range(self.start, self.end, freq=self.timestep))
+            return pd.DataFrame(index=pd.date_range(self.start, self.end, freq=timestep))
 
         dtypes = {
             "YYYY": np.int32,
@@ -1169,8 +1212,8 @@ class LamaHIce(LamaHCE):
             p = "lamah_ice_hourly"
         return os.path.join(self.path, p, p, self.DTYPES[self.data_type])
 
-    @property
-    def dynamic_features(self):
+    #@property
+    def __dynamic_features(self):
         station = self.stations()[0]
         df = self.fetch_stn_meteo(station, nrows=2)  # this takes time
         cols = df.columns.to_list()
@@ -1190,37 +1233,43 @@ class LamaHIce(LamaHCE):
 
         cpus = self.processes or get_cpus()
 
+        if self.verbosity>1: 
+            print(f"reading dynamic data for {len(stations)} stations with {cpus} cpus")
+
         if cpus > 1:
 
             dynamic_features = [dynamic_features for _ in range(len(stations))]
 
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
-                    self._read_dynamic_for_stn,
+                    self.read_ts_of_station,
                     stations,
-                    dynamic_features
+                    #dynamic_features
                 )
 
-            results = {stn: data[dynamic_features[0]] for stn, data in zip(stations, results)}
+            results = {stn: data for stn, data in zip(stations, results)}
         else:
             results = {}
             for idx, stn in enumerate(stations):
-                results[stn] = self._read_dynamic_for_stn(stn, dynamic_features)
+                results[stn] = self.read_ts_of_station(stn)
 
                 if idx % 10 == 0:
                     print(f"processed {idx} stations")
 
         return results
 
-    def _read_dynamic_for_stn(
+    def read_ts_of_station(
             self,
             stn_id: str,
-            dynamic_features
+            # dynamic_features
     ) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
         """
+
+        if self.verbosity>2:
+            print(f"reading data for {stn_id}")
 
         q = self.fetch_stn_q(stn_id)
         met = self.fetch_stn_meteo(stn_id)

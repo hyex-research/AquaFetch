@@ -137,9 +137,15 @@ class Camels(Datasets):
         ]:
             bndry_sf.encoding = 'ISO-8859-1'
 
+        if self.verbosity > 2:
+            print(f"loaded boundary file {boundary_file}")
+
         self.bndry_id_map = self._get_map(bndry_sf,
                                           id_index=id_idx_in_bndry_shape,
                                           name="bndry_shape")
+        
+        if self.verbosity>2:
+            print(f"created boundary id map of length {len(self.bndry_id_map)}")
 
         bndry_sf.close()
         return

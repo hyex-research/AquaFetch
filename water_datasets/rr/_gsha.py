@@ -182,9 +182,7 @@ class GSHA(Camels):
                 'lat': gauge_latitude(),
                 'slp_dg_uav': slope('degrees'),
                 'long': gauge_longitude(),
-
         }
-
 
     @property
     def dyn_map(self):
