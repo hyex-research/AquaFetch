@@ -14,8 +14,43 @@ from ..utils import check_st_en
 class Quadica(Datasets):
     """
     This is dataset of water quality parameters of Germany from 828 stations
-    from 1950 to 2018 following the work of `Ebeling et al., 2022 <https://doi.org/10.5194/essd-14-3715-2022>`_ . The time-step
-    is monthly and annual but the monthly timeseries data is not continuous.
+    from 1950 to 2018 following the work of `Ebeling et al., 2022 <https://doi.org/10.5194/essd-14-3715-2022>`_ . 
+    The time-step is monthly and annual but the monthly timeseries data is not continuous.
+
+    Examples
+    --------
+    >>> from water_datasets import Quadica
+    >>> dataset = Quadica()
+    >>> df = dataset.wrtds_monthly()
+    >>> df.shape
+    (50186, 47)
+    >>> df = dataset.wrtds_annual()
+    >>> df.shape
+    (4213, 46)
+    >>> df = dataset.pet()
+    >>> df.shape
+    (828, 1386)
+    >>> df = dataset.avg_temp()
+    >>> df.shape
+    (828, 1388)
+    >>> df = dataset.precipitation()
+    >>> df.shape
+    (828, 1388)
+    >>> df = dataset.catchment_attributes()
+    >>> df.shape
+    (1386, 113)
+    >>> df = dataset.metadata()
+    >>> df.shape
+    (1386, 60)
+    >>> df = dataset.monthly_medians()
+    >>> df.shape
+    (16629, 18)
+    >>> df = dataset.annual_medians()
+    >>> df.shape
+    (24393, 18)
+    >>> df = dataset.fetch_monthly()
+    >>> df[0].shape
+    (50186, 47)
 
     """
     url = {

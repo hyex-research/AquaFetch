@@ -28,15 +28,9 @@ A python package to downlaod and preprocess water datasets for hydrological, wat
 
 .. toctree::
    :maxdepth: 2
-   :caption: Scripts
+   :caption: Examples
 
    auto_examples/index
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Notebooks
-
    _notebooks/main
 
 

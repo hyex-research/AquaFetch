@@ -198,6 +198,9 @@ class RainfallRunoff(object):
     >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
         18.3861	80.3917
     >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+
+    See :ref:`sphx_glr_auto_examples_camels_australia.py` for more comprehensive usage example.
+
     """
 
     def __init__(
