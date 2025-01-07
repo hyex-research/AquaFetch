@@ -214,29 +214,10 @@ def dye_removal(
 
 
 def dichlorophenoxyacetic_acid_removal(
-
+    parameters: Union[str, List[str]] = "all",
+    encoding: str = None,
 ):
     """
     Data for photodegradation of 2,4-dichlorophenoxyacetic acid using gold-doped bismuth ferrite
     """
     return
-
-
-def maybe_download_and_read_data(url: str, file_name: str, **kwargs) -> pd.DataFrame:
-    """
-    Download and read data from the given url
-    """
-    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    fpath = os.path.join(path, file_name)
-
-    if os.path.exists(fpath):
-        df = pd.read_csv(fpath, index_col="index")
-    else:
-        df = pd.read_csv(
-            url, index_col="index")
-        df.to_csv(fpath, index=True, index_label="index")
-
-    return df
-

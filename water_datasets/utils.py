@@ -167,8 +167,8 @@ def bar(current_size, total_size, width):
 
 
 def check_attributes(
-        attributes, 
-        check_against: list, 
+        attributes:Union[str, List[str]],
+        check_against: List[str],
         attribute_name:str = ''
         ) -> List[str]:
 
@@ -1107,3 +1107,31 @@ def encode_cols(
             df, encoders[col] = le_column(df, col)
 
     return df, encoders
+
+
+def maybe_download_and_read_data(
+        url: str,
+        file_name: str,
+        **kwargs
+) -> pd.DataFrame:
+    """
+    Download and read tabular (csv/xlsx) data from the given url
+    """
+    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    fpath = os.path.join(path, file_name)
+
+    if os.path.exists(fpath):
+        df = pd.read_csv(fpath, index_col="index", **kwargs)
+    else:
+        if url.endswith(".csv"):
+          df = pd.read_csv(url, index_col="index", **kwargs)
+        elif url.endswith(".xlsx"):\
+            df = pd.read_excel(url, index_col="index", **kwargs)
+        else:
+            raise ValueError(f"Unknown extension: {url.split('.')}")
+
+        df.to_csv(fpath, index=True, index_label="index")
+
+    return df

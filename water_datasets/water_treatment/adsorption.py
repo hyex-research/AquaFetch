@@ -5,12 +5,18 @@ from typing import Union, Tuple, Any, List, Dict
 import numpy as np
 import pandas as pd
 
-from ..utils import encode_column, LabelEncoder, OneHotEncoder
+from ..utils import (
+    check_attributes,
+    LabelEncoder,
+    OneHotEncoder,
+    maybe_download_and_read_data,
+    encode_cols
+)
 
 
 
 def ec_removal_biochar(
-        input_features:List[str]=None,
+        parameters: Union[str, List[str]] = "all",
         encoding:str = None
 )->Tuple[pd.DataFrame, Dict[str, Any]]:
     """
@@ -98,26 +104,22 @@ def ec_removal_biochar(
     {'Competative', 'Single'}
 
     """
-    fpath = os.path.join(os.path.dirname(__file__), "data", 'qe_biochar_ec.csv')
+    #fpath = os.path.join(os.path.dirname(__file__), "data", 'qe_biochar_ec.csv')
     url = 'https://raw.githubusercontent.com/ZeeshanHJ/Adsorption-capacity-prediction-for-ECs/main/Raw_data.csv'
 
-    if os.path.exists(fpath):
-        data = pd.read_csv(fpath)
-    else:
-        data = pd.read_csv(url)
-        # remove space in 'Pyrolysis temperature '
-        data['Pyrolysis temperature'] = data.pop('Pyrolysis temperature ')
+    data = maybe_download_and_read_data(url, 'ec_removal_biochar.csv')
 
-        data['Adsorbent'] = data.pop('Adsorbent')
-        data['Pollutant'] = data.pop('Pollutant')
-        data['Wastewater type'] = data.pop('Wastewater type')
-        data['Adsorption type'] = data.pop('Adsorption type')
+    # remove space in 'Pyrolysis temperature '
+    data['Pyrolysis temperature'] = data.pop('Pyrolysis temperature ')
 
-        data['Capacity'] = data.pop('Capacity')
+    data['Adsorbent'] = data.pop('Adsorbent')
+    data['Pollutant'] = data.pop('Pollutant')
+    data['Wastewater type'] = data.pop('Wastewater type')
+    data['Adsorption type'] = data.pop('Adsorption type')
 
-        data.to_csv(fpath, index=False)
+    data['Capacity'] = data.pop('Capacity')
 
-    def_inputs = [
+    def_paras = [
         'Pyrolysis temperature',
         'Pyrolysis time',
         'C',
@@ -144,85 +146,156 @@ def ec_removal_biochar(
         'Pollutant',
         'Wastewater type',
         'Adsorption type',
+        'Capacity'
     ]
 
-    if input_features is not None:
-        assert isinstance(input_features, list)
-        assert all([feature in def_inputs for feature in input_features])
-    else:
-        input_features = def_inputs
+    parameters = check_attributes(parameters, def_paras, 'parameters')
 
-    data = data[input_features + ['Capacity']]
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
 
-    ads_enc, pol_enc, wwt_enc, adspt_enc = None, None, None, None
-    if encoding:
-        data, _, ads_enc = encode_column(data, 'Adsorbent', encoding)
-        data, _, pol_enc = encode_column(data, 'Pollutant', encoding)
-        data, _, wwt_enc = encode_column(data, 'Wastewater type', encoding)
-        data, _, adspt_enc = encode_column(data, 'Adsorption type', encoding)
+    data = data[parameters]
 
-        # putting capacity at the end
-        data['Capacity'] = data.pop('Capacity')
-
-    encoders = {
-        "adsorbent": ads_enc,
-        "pollutant": pol_enc,
-        "ww_type": wwt_enc,
-        "adsorption_type": adspt_enc
-    }
     return data, encoders
 
 
-def po4_removal_biochar():
+def po4_removal_biochar(
+        parameters:Union[str, List[str]] = None,
+        encoding:str = None,
+)->Tuple[pd.DataFrame, Dict[str, Union[LabelEncoder, OneHotEncoder, Any]]]:
     """
     `Iftikhar et al., 2023 <https://doi.org/10.1016/j.chemosphere.2024.144031>`_
     """
     url = "https://github.com/Sara-Iftikhar/po4_removal_ml/blob/main/scripts/master_sheet_0802.xlsx"
-    return
+    data = maybe_download_and_read_data(url, "master_sheet_0802.csv")
+
+    def_paras = []
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
 
 
-def cr_removal():
+def cr_removal(
+        parameters: Union[str, List[str]] = "all",
+        encoding:str = None
+):
     """
     `Ishtiaq et al., 2024 <https://doi.org/10.1016/j.jece.2024.112238>`_
     """
 
     url = "https://gitlab.com/atrcheema/envai103/-/blob/main/data/data.csv"
-    return
+    data = maybe_download_and_read_data(url, "cr_removal.csv")
+
+    def_paras = []
+
+    if parameters is not None:
+        assert isinstance(parameters, list)
+        assert all([feature in def_paras for feature in parameters])
+    else:
+        parameters = parameters
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
 
 
-def heavy_metal_removal():
+def heavy_metal_removal(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+):
     """
     `Jaffari et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132773>`_
     """
-    return
+
+    url = "https://gitlab.com/atrcheema/envai103/-/blob/main/data/data.csv"
+    data = maybe_download_and_read_data(url, "cr_removal.csv")
+
+    def_paras = []
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
 
 
-def heavy_metal_removal_Shen():
+def heavy_metal_removal_Shen(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+):
     """
     `Shen et al., 2024 <https://doi.org/10.1016/j.jhazmat.2024.133442>`_
     """
     return
 
 
-def industrial_dye_removal():
+def industrial_dye_removal(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+):
     """
     `Iftikhar et al., 2023 <https://doi.org/10.1016/j.seppur.2023.124891>`_
     """
     url = "https://github.com/Sara-Iftikhar/ai4adsorption/blob/main/scripts/Dyes%20data.xlsx"
-    return
+    data = maybe_download_and_read_data(url, "cr_removal.csv")
+
+    def_paras = []
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
 
 
-def P_recovery():
+def P_recovery(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+):
     """
     `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
     """
     url = "https://zenodo.org/records/14586314/files/P_recovery.csv?download=1"
-    return
+    data = maybe_download_and_read_data(url, "cr_removal.csv")
+
+    def_paras = []
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
 
 
-def N_recovery():
+def N_recovery(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+):
     """
     `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
     """
     url = "https://zenodo.org/records/14586314/files/N_recovery.csv?download=1"
-    return
+
+    data = maybe_download_and_read_data(url, "cr_removal.csv")
+
+    def_paras = []
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+
+    data = data[parameters]
+
+    return data, encoders
