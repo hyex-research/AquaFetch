@@ -6,6 +6,9 @@
 Welcome to water-datasets!
 ==========================
 
+water-datasets is a python package to downlaod and preprocess water datasets for hydrological, water quality and wastewater treatment applications.
+
+
 .. toctree::
    :maxdepth: 2
 
@@ -17,20 +20,9 @@ Welcome to water-datasets!
    :caption: API
 
    rainfall_runoff
-   hydro
    water_quality
-   laos
+   wwt
    misc
-
-
-Datasets
-========
-.. autoclass:: water_datasets.mtropics.Datasets
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
 
 
 .. toctree::

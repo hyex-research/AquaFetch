@@ -2,16 +2,6 @@ Miscellaneous
 ****************
 
 
-Photodegradation of Melachite Green
-===================================
-.. autofunction:: water_datasets.mg_photodegradation
-
-
-Removal of Emerging contaminants using biochar
-==============================================
-.. autofunction:: water_datasets.ec_removal_biochar
-
-
 Groundwater of Punjab region
 ===================================
 .. autofunction:: water_datasets.gw_punjab
@@ -39,6 +29,26 @@ WeatherJena
 SWECanada
 =========
 .. autoclass:: water_datasets.SWECanada
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+MtropicsLaos
+=============
+.. autoclass:: water_datasets.mtropics.MtropicsLaos
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+Datasets
+========
+.. autoclass:: water_datasets.mtropics.Datasets
    :members:
    :undoc-members:
    :show-inheritance:
