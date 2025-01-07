@@ -611,6 +611,23 @@ class GRQA(Datasets):
     """
     Global River Water Quality Archive following the work of 
     `Virro et al., 2021 <https://essd.copernicus.org/articles/13/5483/2021/>`_.
+
+    Examples
+    --------
+    >>> from water_datasets import GRQA
+    >>> ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
+    >>> print(ds.parameters)
+    42
+    >>> len(ds.parameters)
+    >>> country = "Pakistan"
+    >>> len(ds.fetch_parameter('TEMP', country=country))
+    1324
+    >>> df = ds.fetch_parameter("TEMP", country=country)
+    >>> print(df.shape)
+    (1324, 38)
+    >>> df = ds.fetch_parameter("NH4N", country=country)
+    >>> print(df.shape)
+    (28, 36)
     """
 
     url = 'https://zenodo.org/record/7056647#.YzBzDHZByUk'

@@ -6,13 +6,14 @@
 Welcome to water-datasets!
 ==========================
 
-water-datasets is a python package to downlaod and preprocess water datasets for hydrological, water quality and wastewater treatment applications.
+A python package to downlaod and preprocess water datasets for hydrological, water quality and wastewater treatment applications.
 
 
 .. toctree::
    :maxdepth: 2
 
    installation
+   quickstart
 
 
 .. toctree::
