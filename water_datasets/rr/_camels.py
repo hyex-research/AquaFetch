@@ -17,18 +17,33 @@ from .._backend import netCDF4, xarray as xr
 
 from ._map import (
     observed_streamflow_cms,
+    observed_streamflow_mmd,
     mean_air_temp,
-    min_air_temp_with_method,
-    max_air_temp_with_method,
-    mean_air_temp_with_method,
+    min_air_temp_with_specifier,
+    max_air_temp_with_specifier,
+    max_air_temp,
+    min_air_temp,
+    mean_air_temp_with_specifier,
     total_precipitation,
-    total_precipitation_with_method,
+    total_precipitation_with_specifier,
     total_potential_evapotranspiration,
+    total_potential_evapotranspiration_with_specifier,
     simulated_streamflow_cms,
     actual_evapotranspiration,
-    actual_evapotranspiration_with_method,
-    solar_radiation_with_method,
-    mean_vapor_pressure_with_method,
+    actual_evapotranspiration_with_specifier,
+    solar_radiation_with_specifier,
+    mean_vapor_pressure,
+    mean_vapor_pressure_with_specifier,
+    mean_rel_hum,
+    mean_rel_hum_with_specifier,
+    rel_hum_with_specifier,
+    mean_windspeed,
+    u_component_of_wind,
+    v_component_of_wind,
+    solar_radiation,
+    downward_longwave_radiation,
+    snow_water_equivalent,
+    mean_specific_humidity,
 )
 
 from ._map import (
@@ -163,24 +178,25 @@ class CAMELS_US(Camels):
                 'slope_mean': slope('mkm-1'),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-            'Flow': 'obs_q_cms',
-            'tmin(C)': 'min_temp_C',
-            'tmax(C)': 'max_temp_C',
-            'prcp(mm/day)': 'pcp_mm',
-            'swe(mm)': 'swe_mm',
-            'pet_mean': 'pet_mm',
+            'Flow': observed_streamflow_cms(),  # todo : check units
+            'tmin(C)': min_air_temp(),
+            'tmax(C)': max_air_temp(),
+            'prcp(mm/day)': total_precipitation(),
+            'swe(mm)': snow_water_equivalent(),
+            'pet_mean': total_potential_evapotranspiration(),
+            'vp(Pa)': mean_vapor_pressure(),  # todo: convert frmo Pa to hpa
+            'srad(W/m2)': solar_radiation(),
         }
 
     @property
     def dyn_factors(self) -> Dict[str, float]:
         return {
-            'obs_q_cms': 0.0283168,
+            observed_streamflow_cms(): 0.0283168,
         }
 
     @property
@@ -208,7 +224,7 @@ class CAMELS_US(Camels):
 
     @property
     def _q_name(self) -> str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -472,15 +488,18 @@ class CAMELS_GB(Camels):
 
     @property
     def dyn_map(self):
+        # table 1 in https://essd.copernicus.org/articles/12/2459/2020/#&gid=1&pid=1
         return {
-            'discharge_vol': 'obs_q_cms',
-            'discharge_spec': 'obs_q_mmd',
-            'temperature': 'mean_temp_C',
-            'humidity': 'rh_%',
-            'windspeed': 'windspeed_ms',
-            'precipitation': 'pcp_mm',
-            'pet': 'pm_pet_mm',
-            'shorwave_rad': 'dwn_sw_rad_wm2',
+            'discharge_vol': observed_streamflow_cms(),
+            'discharge_spec': observed_streamflow_mmd(),
+            'temperature': mean_air_temp(),
+            'humidity': mean_rel_hum(),  # todo: convert from g/kg to %
+            'windspeed': mean_windspeed(),
+            'precipitation': total_precipitation(),
+            'pet': total_potential_evapotranspiration(),
+            'peti': total_potential_evapotranspiration_with_specifier('intercep'),
+            'shortwave_rad': solar_radiation(),
+            'longwave_rad': downward_longwave_radiation(),
         }
 
     @property
@@ -529,7 +548,7 @@ class CAMELS_GB(Camels):
 
     @property
     def _mmd_feature_name(self) -> str:
-        return 'obs_q_mmd'
+        return observed_streamflow_mmd()
 
     @property
     def _area_name(self) -> str:
@@ -845,27 +864,39 @@ class CAMELS_AUS(Camels):
 
     @property
     def dyn_map(self):
+        # table 2 in https://essd.copernicus.org/articles/13/3847/2021/#&gid=1&pid=1
+
         return {
             'streamflow_MLd': observed_streamflow_cms(),
-            'streamflow_mmd': 'obs_q_mmd',
-            'tmin_SILO': min_air_temp_with_method('silo'),
-            'tmax_SILO': max_air_temp_with_method('silo'),
-            'tmin_AWAP': min_air_temp_with_method('awap'),
-            'tmax_AWAP': max_air_temp_with_method('awap'),
-            'et_morton_actual_SILO': actual_evapotranspiration_with_method('silo_morton'),
-            #'et_morton_point_SILO': actual_evapotranspiration_with_method('silo_morton'),
-            #'et_short_crop_SILO': 
-            'precipitation_AWAP': total_precipitation_with_method('awap'),
-            'precipitation_SILO': total_precipitation_with_method('silo'),
-            'solarrad_AWAP': solar_radiation_with_method('awap'),  # convert MJ/m2/day to W/m2
-            'radiation_SILO': solar_radiation_with_method('silo'),  # convert MJ/m2/day to W/m2
-            'vp_SILO': mean_vapor_pressure_with_method('silo'),
+            'streamflow_mmd': observed_streamflow_mmd(),
+            'tmin_SILO': min_air_temp_with_specifier('silo'),
+            'tmax_SILO': max_air_temp_with_specifier('silo'),
+            'tmin_AWAP': min_air_temp_with_specifier('awap'),
+            'tmax_AWAP': max_air_temp_with_specifier('awap'),
+            'et_morton_actual_SILO': actual_evapotranspiration_with_specifier('silo_morton'),
+            'et_morton_point_SILO': actual_evapotranspiration_with_specifier('silo_morton_point'),
+            'et_short_crop_SILO': actual_evapotranspiration_with_specifier('silo_short_crop'),
+            'et_tall_crop_SILO': actual_evapotranspiration_with_specifier('silo_tall_crop'),
+            'precipitation_AWAP': total_precipitation_with_specifier('awap'),
+            'precipitation_SILO': total_precipitation_with_specifier('silo'),
+            'solarrad_AWAP': solar_radiation_with_specifier('awap'),  # convert MJ/m2/day to W/m2
+            'radiation_SILO': solar_radiation_with_specifier('silo'),  # convert MJ/m2/day to W/m2
+            'vp_SILO': mean_vapor_pressure_with_specifier('silo'),
+            'vprp_AWAP': mean_vapor_pressure_with_specifier('awap'),
+            'rh_tmax_SILO': mean_rel_hum_with_specifier('silo_tmax'),
+            'rh_tmin_SILO': mean_rel_hum_with_specifier('silo_tmin'),
+            'vapourpres_h09_AGCD': mean_vapor_pressure_with_specifier('agcd_h09'),
+            'vapourpres_h15_AGCD': mean_vapor_pressure_with_specifier('agcd_h15'),
+            'tmin_AGCD': min_air_temp_with_specifier('agcd'),
+            'tmax_AGCD': max_air_temp_with_specifier('agcd'),
+            'precipitation_AGCD': total_precipitation_with_specifier('agcd'),
+            #'mslp_SILO': mean_sea_level_pressure_with_specifier('silo'),
         }
 
     @property
     def dyn_factors(self):
         return {
-            'obs_q_cms': 0.01157,
+            observed_streamflow_cms(): 0.01157,
         }
 
     @property
@@ -932,9 +963,9 @@ class CAMELS_AUS(Camels):
             are catchment/station ids.
 
         """
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
         q = self.fetch_stations_features(stations,
-                                         dynamic_features='obs_q_cms',
+                                         dynamic_features=observed_streamflow_cms(),
                                          as_dataframe=True)
         q.index = q.index.get_level_values(0)
         q = q * 0.01157  # mega liter per day to cms
@@ -1158,18 +1189,22 @@ class CAMELS_CL(Camels):
                 'slope_mean': slope('mkm-1'),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-            'streamflow_m3s': 'obs_q_cms',
-            'streamflow_mm': 'obs_q_mmd',
-            'tmin_cr2met': 'min_temp_C',
-            'tmax_cr2met': 'max_temp_C',
-            'tmean_cr2met': 'mean_temp_C',
-            'precip_mswep': 'pcp_mm',
+            'streamflow_m3s': observed_streamflow_cms(),
+            'streamflow_mm': observed_streamflow_mmd(),
+            'tmin_cr2met': min_air_temp(),
+            'tmax_cr2met': max_air_temp(),
+            'tmean_cr2met': mean_air_temp(),
+            'precip_mswep': total_precipitation_with_specifier('mswep'),
+            'precip_tmpa': total_precipitation_with_specifier('tmpa'),
+            'precip_cr2met': total_precipitation_with_specifier('cr2met'),
+            'precip_chirps': total_precipitation_with_specifier('chirps'),
+            'pet_hargreaves': total_potential_evapotranspiration_with_specifier('hargreaves'),
+            'pet_8d_modis': total_potential_evapotranspiration_with_specifier('modis'),
         }
 
     @property
@@ -1201,7 +1236,7 @@ class CAMELS_CL(Camels):
 
     @property
     def _mmd_feature_name(self) -> str:
-        return 'obs_q_mmd'
+        return observed_streamflow_mmd()
 
     @property
     def _area_name(self) -> str:
@@ -1478,20 +1513,20 @@ class CAMELS_CH(Camels):
                 'slope_mean': slope('degrees'),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
+        # table 1 in https://essd.copernicus.org/articles/15/5755/2023/
         return {
-            'discharge_vol(m3/s)': 'obs_q_cms',
+            'discharge_vol(m3/s)': observed_streamflow_cms(),
             # 'discharge_vol(m3/s)': 'sim_q_cms',
-            'discharge_spec(mm/d)': 'obs_q_mmd',
-            'temperature_min(°C)': 'min_temp_C',
-            'temperature_max(°C)': 'max_temp_C',
-            'temperature_mean(°C)': 'mean_temp_C',
-            'precipitation(mm/d)': 'pcp_mm',
-            'swe(mm)': 'swe_mm',
+            'discharge_spec(mm/d)': observed_streamflow_mmd(),
+            'temperature_min(°C)': min_air_temp(),
+            'temperature_max(°C)': max_air_temp(),
+            'temperature_mean(°C)': mean_air_temp(),
+            'precipitation(mm/d)': total_precipitation(),
+            'swe(mm)': snow_water_equivalent(),
         }
 
     @property
@@ -1902,13 +1937,13 @@ class CAMELS_CH(Camels):
 
     @property
     def _mmd_feature_name(self) -> str:
-        return 'obs_q_mmd'
+        return observed_streamflow_mmd()
 
 
 class CAMELS_DE(Camels):
     """
-    This is the data from 1555 german catchments following the work of
-    `Loritz et al., 2024 <https://doi.org/10.5194/essd-2024-318>`_ .
+    This is the data from 1555 German catchments following the work of
+    `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_ .
     The data is downloaded from `zenodo <https://zenodo.org/record/12733968>`_ .
     This data consists of 155 static and 21 dynamic features. The dynamic features
     span from 1951-01-01 to 2020-12-31 with daily timestep.
@@ -2012,28 +2047,34 @@ class CAMELS_DE(Camels):
                 'slope_fdc': slope(''),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
+        # table 1 in https://essd.copernicus.org/articles/16/5625/2024/#&gid=1&pid=1
         return {
-            'discharge_vol': 'obs_q_cms',
-            'discharge_spec': 'obs_q_mmd',
-            'temperature_min': 'min_temp_C',
-            'temperature_max': 'max_temp_C',
-            'temperature_mean': 'mean_temp_C',
+            'discharge_vol': observed_streamflow_cms(),
+            'discharge_spec': observed_streamflow_mmd(),
+            'temperature_min': min_air_temp(),
+            'temperature_max': max_air_temp(),
+            'temperature_mean': mean_air_temp(),
             # 'precipitation_mean': 'pcp_mm',
-            'precipitation_mean': 'mean_pcp_mm',
-            'precipitation_median': 'median_pcp_mm',
-            'precipitation_stdev': 'std_pcp_mm',
-            'precipitation_min': 'min_pcp_mm',
-            'precipitation_max': 'max_pcp_mm',
-            'humidity_mean': 'mean_rh_%',
-            'humidity_median': 'median_rh_%',
-            'humidity_stdev': 'std_rh_%',
-            'humidity_min': 'min_rh_%',
-            'humidity_max': 'max_rh_%',
+            'precipitation_mean': total_precipitation_with_specifier('mean'), # todo: is it mean or total?
+            'precipitation_median': total_precipitation_with_specifier('median'),
+            'precipitation_stdev': total_precipitation_with_specifier('std'),
+            'precipitation_min': total_precipitation_with_specifier('min'),
+            'precipitation_max': total_precipitation_with_specifier('max'),
+            'humidity_mean': mean_rel_hum(),
+            'humidity_median': rel_hum_with_specifier('med'),
+            'humidity_stdev': rel_hum_with_specifier('std'),
+            'humidity_min': rel_hum_with_specifier('min'),
+            'humidity_max': rel_hum_with_specifier('max'),
+            # 'water_level':  # observed daily water level,
+            'radiation_global_stdev': solar_radiation_with_specifier('std'),
+            'radiation_global_min': solar_radiation_with_specifier('min'),
+            'radiation_global_median': solar_radiation_with_specifier('med'),
+            'radiation_global_mean': solar_radiation_with_specifier('mean'),
+            'radiation_global_max': solar_radiation_with_specifier('max'),
         }
 
     @property
@@ -2249,357 +2290,7 @@ class CAMELS_DE(Camels):
     def _mmd_feature_name(self) -> str:
         """Observed catchment-specific discharge (converted to millimetres per day
         using catchment areas"""
-        return 'obs_q_mmd'
-
-
-class GRDCCaravan(Camels):
-    """
-    This is a dataset of 5357 catchments from around the globe following the works of
-    `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ . The dataset consists of 39
-    dynamic (timeseries) features and 211 static features. The dynamic (timeseries) data
-    spands from 1950-01-02 to 2019-05-19.
-
-    if xarray + netCDF4 packages are installed then netcdf files will be downloaded
-    otherwise csv files will be downloaded and used.
-
-    Examples
-    --------
-    >>> from water_datasets import GRDCCaravan
-    >>> dataset = GRDCCaravan()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.shape
-       (26801, 39)
-    get name of all stations as list
-    >>> stns = dataset.stations()
-    >>> len(stns)
-       5357
-    get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-       (1045239, 535)
-    The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
-    get data by station id
-    >>> df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True).unstack()
-    >>> df.shape
-         (26800, 39)
-    get names of available dynamic features
-    >>> dataset.dynamic_features
-    get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'streamflow']).unstack()
-    >>> data.shape
-        (26800, 4)
-    get names of available static features
-    >>> dataset.static_features
-    ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-        (1045239, 10)
-    when we get both static and dynamic data, the returned data is a dictionary
-    with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
-        ((1, 211), (1045200, 1))
-    >>> coords = dataset.stn_coords() # returns coordinates of all stations
-    >>> coords.shape
-        (5357, 2)
-    >>> dataset.stn_coords('GRDC_3664802')  # returns coordinates of station whose id is GRDC_3664802
-        -26.2271	-51.0771
-    >>> dataset.stn_coords(['GRDC_3664802', 'GRDC_1159337'])  # returns coordinates of two stations
-
-    """
-
-    url = {
-        'caravan-grdc-extension-nc.tar.gz':
-            "https://zenodo.org/records/10074416/files/caravan-grdc-extension-nc.tar.gz?download=1",
-        'caravan-grdc-extension-csv.tar.gz':
-            "https://zenodo.org/records/10074416/files/caravan-grdc-extension-csv.tar.gz?download=1"
-    }
-
-    def __init__(
-            self,
-            path=None,
-            overwrite: bool = False,
-            verbosity: int = 1,
-            **kwargs
-    ):
-
-        if xr is None:
-            self.ftype == 'csv'
-            if "caravan-grdc-extension-nc.tar.gz" in self.url:
-                self.url.pop("caravan-grdc-extension-nc.tar.gz")
-        else:
-            self.ftype = 'netcdf'
-            if "caravan-grdc-extension-csv.tar.gz" in self.url:
-                self.url.pop("caravan-grdc-extension-csv.tar.gz")
-
-        super().__init__(path=path, verbosity=verbosity, **kwargs)
-
-        for _file, url in self.url.items():
-            fpath = os.path.join(self.path, _file)
-            if not os.path.exists(fpath) and not overwrite:
-                if self.verbosity > 0:
-                    print(f"Downloading {_file} from {url + _file}")
-                download(url + _file, outdir=self.path, fname=_file, )
-                _unzip(self.path)
-            elif self.verbosity > 0:
-                print(f"{_file} at {self.path} already exists")
-
-        self.boundary_file = os.path.join(
-            self.shapefiles_path,
-            'grdc_basin_shapes.shp'
-        )
-        self._create_boundary_id_map(self.boundary_file, 0)
-
-        # so that we dont have to read the files again and again
-        self._stations = self.other_attributes().index.to_list()
-        self._static_attributes = self.static_data().columns.tolist()
-        self._dynamic_attributes = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
-
-        self.dyn_fname = ''
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'gauge_lat': gauge_latitude(),
-                'gauge_lon': gauge_longitude(),
-
-        }
-
-    @property
-    def dyn_map(self):
-        return {
-            'streamflow': 'obs_q_cms',
-            'temperature_2m_mean': 'mean_temp_C',
-            'temperature_2m_min': 'min_temp_C',
-            'temperature_2m_min': 'max_temp_C',
-            'total_precipitation_sum': 'pcp_mm',
-        }
-
-    @property
-    def static_features(self):
-        return self._static_attributes
-
-    @property
-    def dynamic_features(self):
-        return self._dynamic_attributes
-
-    @property
-    def shapefiles_path(self):
-        if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
-                                'shapefiles', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
-                            'shapefiles', 'grdc')
-
-    @property
-    def attrs_path(self):
-        if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
-                                'attributes', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
-                            'attributes', 'grdc')
-
-    @property
-    def ts_path(self) -> os.PathLike:
-        if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
-                                'timeseries', 'grdc')
-
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
-                            'timeseries', self.ftype, 'grdc')
-
-    def stations(self) -> List[str]:
-        return self._stations
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['gauge_lat', 'gauge_lon']
-
-    @property
-    def _area_name(self) -> str:
-        return 'area'
-
-    @property
-    def start(self):
-        return pd.Timestamp("19500102")
-
-    @property
-    def end(self):
-        return pd.Timestamp("20230519")
-
-    @property
-    def _q_name(self) -> str:
-        return 'obs_q_cms'
-
-    def other_attributes(self) -> pd.DataFrame:
-        return pd.read_csv(os.path.join(self.attrs_path, 'attributes_other_grdc.csv'), index_col='gauge_id')
-
-    def hydroatlas_attributes(self) -> pd.DataFrame:
-        return pd.read_csv(os.path.join(self.attrs_path, 'attributes_hydroatlas_grdc.csv'), index_col='gauge_id')
-
-    def caravan_attributes(self) -> pd.DataFrame:
-        return pd.read_csv(os.path.join(self.attrs_path, 'attributes_caravan_grdc.csv'), index_col='gauge_id')
-
-    def static_data(self) -> pd.DataFrame:
-        return pd.concat([
-            self.other_attributes(),
-            self.hydroatlas_attributes(),
-            self.caravan_attributes(),
-        ], axis=1)
-
-    def fetch_station_features(
-            self,
-            station: str,
-            dynamic_features: Union[str, list, None] = 'all',
-            static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
-            st: Union[str, None] = None,
-            en: Union[str, None] = None,
-            **kwargs
-    ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetches features for one station.
-
-        Parameters
-        -----------
-            station :
-                station id/gauge id for which the data is to be fetched.
-            dynamic_features : str/list, optional
-                names of dynamic features/attributes to fetch
-            static_features :
-                names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
-            st : str,optional
-                starting point from which the data to be fetched. By default,
-                the data will be fetched from where it is available.
-            en : str, optional
-                end point of data to be fetched. By default the dat will be fetched
-
-        Returns
-        -------
-        Dict
-            dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic features for a station/gauge_id
-
-        Examples
-        --------
-            >>> from water_datasets import GRDCCaravan
-            >>> dataset = GRDCCaravan()
-            >>> dataset.fetch_station_features('912101A')
-        """
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
-
-        if self.ftype == "netcdf":
-            fpath = os.path.join(self.ts_path, f'{station}.nc')
-            df = xr.open_dataset(fpath).to_dataframe()
-        else:
-            fpath = os.path.join(self.ts_path, f'{station}.csv')
-            df = pd.read_csv(fpath, index_col='date', parse_dates=True)
-
-        df.rename(columns=self.dyn_map, inplace=True)
-
-        if static_features is not None:
-            static = self.fetch_static_features(station, static_features)
-
-        return {'static': static, 'dynamic': df[dynamic_features]}
-
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, list] = "all",
-            features: Union[str, list] = "all"
-    ) -> pd.DataFrame:
-        """
-
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a pandas dataframe of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from water_datasets import GRDCCaravan
-        >>> dataset = GRDCCaravan()
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (1555, 111)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('DE110010')
-        >>> static_data.shape
-           (1, 111)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> static_data.shape
-           (1555, 3)
-        >>> data = dataset.fetch_static_features('DE110000', features=['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> data.shape
-           (1, 3)
-        """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
-
-        df = self.static_data()
-        features = check_attributes(features, df.columns.tolist(),
-                                    "static features")
-        return df.loc[stations, features]
-
-    def _read_dynamic_from_csv(
-            self,
-            stations,
-            dynamic_features,
-            st=None,
-            en=None) -> dict:
-
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
-        stations = check_attributes(stations, self.stations())
-
-        if len(stations) > 10:
-            cpus = self.processes or min(get_cpus(), 64)
-            with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
-                results = executor.map(
-                    self._read_dynamic_for_stn,
-                    stations,
-                )
-            dyn = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
-        else:
-            dyn = {
-                stn: self._read_dynamic_for_stn(stn).loc[st: en, dynamic_features] for stn in stations
-            }
-
-        return dyn
-
-    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
-        if self.ftype == "netcdf":
-            fpath = os.path.join(self.ts_path, f'{stn_id}.nc')
-            df = xr.load_dataset(fpath).to_dataframe()
-        else:
-            fpath = os.path.join(self.ts_path, f'{stn_id}.csv')
-            df = pd.read_csv(fpath, index_col='date', parse_dates=True)
-
-        df.rename(columns=self.dyn_map, inplace=True)
-
-        df.index.name = 'time'
-        df.columns.name = 'dynamic_features'
-        return df
+        return observed_streamflow_mmd()
 
 
 class CAMELS_SE(Camels):
@@ -2717,16 +2408,15 @@ class CAMELS_SE(Camels):
                 'slope_mean_degree': slope('degrees'),
                 'Latitude_WGS84': gauge_latitude(),
                 'Longitude_WGS84': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-            'Qobs_m3s': 'obs_q_cms',
-            'Qobs_mm': 'obs_q_mmd',
-            'Tobs_C': 'mean_temp_C',
-            'Pobs_mm': 'pcp_mm',
+            'Qobs_m3s': observed_streamflow_cms(),
+            'Qobs_mm': observed_streamflow_mmd(),
+            'Tobs_C': mean_air_temp(),
+            'Pobs_mm': total_precipitation(),
         }
 
     @property
@@ -2747,7 +2437,7 @@ class CAMELS_SE(Camels):
 
     @property
     def _mmd_feature_name(self) -> str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     @property
     def _coords_name(self) -> List[str]:
@@ -2917,7 +2607,7 @@ class CAMELS_SE(Camels):
 
 class CAMELS_DK(Camels):
     """
-    This is an updated version of :py class: `water_quality.rr.CAMELS_DK0`
+    This is an updated version of :py class: `water_datasets.rr.CAMELS_DK0`
     dataset . This dataset was presented
     by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is
     available at `dataverse <https://dataverse.geus.dk/dataset.xhtml?persistentId=doi:10.22008/FK2/AZXSYP>`_ .
@@ -3056,11 +2746,11 @@ class CAMELS_DK(Camels):
                 'slope_mean': slope('mkm-1'),
                 'catch_outlet_lat': gauge_latitude(),
                 'catch_outlet_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
+        # table 1 in https://essd.copernicus.org/preprints/essd-2024-292/essd-2024-292.pdf
         return {
             'Qobs': observed_streamflow_cms(),
             'temperature': mean_air_temp(),
@@ -3188,7 +2878,7 @@ class CAMELS_DK(Camels):
 
     @property
     def _q_name(self) -> str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     @property
     def start(self) -> pd.Timestamp:  # start of data
@@ -3374,19 +3064,33 @@ class CAMELS_IND(Camels):
                 'slope_mean': slope('degrees'),
                 'cwc_lat': gauge_latitude(),
                 'cwc_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
+        # Table A1
         return {
             # 'streamflow_cms': 'obs_q_cms',
-            'tmin(C)': 'min_temp_C',
-            'tmax(C)': 'max_temp_C',
-            'tavg(C)': 'mean_temp_C',
-            'prcp(mm/day)': 'pcp_mm',
-            'rel_hum(%)': 'rh_%',
-            'wind(m/s)': 'windspeed_ms'
+            'tmin(C)': min_air_temp(),
+            'tmax(C)': max_air_temp(),
+            'tavg(C)': mean_air_temp(),
+            'prcp(mm/day)': total_precipitation(),
+            'rel_hum(%)': mean_rel_hum(),
+            'wind(m/s)': mean_windspeed(),
+            'wind_u(m/s)': u_component_of_wind(), 
+            'wind_v(m/s)': v_component_of_wind(),
+            # surface downward short-wave radiation flux
+            'srad_sw(w/m2)': solar_radiation(),
+            # surface downward long-wave radiation flux
+            'srad_lw(w/m2)': downward_longwave_radiation(),
+            #'sm_lvl2(kg/m2)',   # soil moisture of layer 1 (0-0.1 m below ground)
+            #'sm_lvl2(kg/m2)', 
+            #'sm_lvl3(kg/m2)', 
+            #'sm_lvl4(kg/m2)': ,
+            'pet_gleam(mm/day)': total_potential_evapotranspiration_with_specifier('gleam'),
+            'pet(mm/day)': total_potential_evapotranspiration(),
+            'aet_gleam(mm/day)': actual_evapotranspiration_with_specifier('gleam'),
+            #'evap_canopy(kg/m2/s)': evaporation
         }
 
     @property
@@ -3421,7 +3125,7 @@ class CAMELS_IND(Camels):
 
     @property
     def _q_name(self) -> str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     @property
     def start(self) -> pd.Timestamp:  # start of data
@@ -3525,7 +3229,7 @@ class CAMELS_IND(Camels):
     def _read_dyn_csv(self, stn: str) -> pd.DataFrame:
         """reads dynamic data for a given station"""
         q = self._read_q(stn)[stn]
-        q.name = "obs_q_cms"
+        q.name = observed_streamflow_cms()
         df = pd.concat([self._read_forcings(stn), pd.DataFrame(q)], axis=1)
         df.columns.name = 'dynamic_features'
         df.index.name = "time"
@@ -3643,7 +3347,33 @@ class CAMELS_FR(Camels):
                 'hyd_slope_fdc': slope(''),
                 'sit_latitude': gauge_latitude(),
                 'sit_longitude': gauge_longitude(),
+        }
 
+    @property
+    def dyn_map(self)->Dict[str, str]:
+        return {
+            # streamflow in liters per second
+            'tsd_q_l': observed_streamflow_cms(),
+            # streamflow in milimeters per day
+            'tsd_q_mm': observed_streamflow_mmd(),
+            'tsd_wind': mean_windspeed(),
+            'tsd_temp_min': min_air_temp(),  # minimum air temperature over the period (18h day-1, 18h day]
+            'tsd_temp_max': max_air_temp(),  # maximum air temperature over the period (18h day-1, 18h day]
+            'tsd_temp': mean_air_temp(),  # mean air temperature over the period (18h day-1, 18h day]
+            # short wave visible radiation over the period (0h day, 0h day+1]
+            'tsd_rad_ssi': solar_radiation(),  # todo: convert from J cm⁻² to W m⁻²
+            # long wave atmospheric radiation over the period (0h day, 0h day+1]
+            'tsd_rad_dli': downward_longwave_radiation(), # todo : convert from J cm⁻² to W m⁻²
+            # specific air humidity over the period (0h day, 0h day+1]
+            'tsd_humid': mean_specific_humidity(),
+            # PET over the period (0h day, 0h day+1] (Penman-Monteith method with a modified albedo when snow lies on the ground)
+            'tsd_pet_pm': total_potential_evapotranspiration_with_specifier('pm'),
+            'tsd_pet_pe': total_potential_evapotranspiration_with_specifier('pe'),
+            'tsd_pet_ou': total_potential_evapotranspiration_with_specifier('ou'),
+            # total precipitation (liquid + solid) over the period (6h day, 6h day+1]
+            'tsd_prec': total_precipitation(),
+            # solid fraction of precipitation over the period (6h day, 6h day+1]
+            'tsd_prec_solid_frac': total_precipitation_with_specifier('solfrac'),  # todo : check its units?
         }
 
     @property

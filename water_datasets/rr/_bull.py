@@ -9,16 +9,29 @@ from .._backend import netCDF4
 from .._backend import xarray as xr
 from ..utils import check_attributes, get_cpus
 from ._map import (
-    total_potential_evapotranspiration_with_method,
+    total_potential_evapotranspiration_with_specifier,
     solar_radiation,
-    max_air_temp_with_method,
-    min_air_temp_with_method,
-    mean_air_temp_with_method,
-    total_precipitation_with_method,
+    max_solar_radiation,
+    min_solar_radiation,
+    mean_thermal_radiation,
+    max_thermal_radiation,
+    min_themal_radiation,
+    max_air_temp_with_specifier,
+    min_air_temp_with_specifier,
+    mean_air_temp_with_specifier,
+    total_precipitation_with_specifier,
     max_dewpoint_temperature,
     min_dewpoint_temperature,
     mean_dewpoint_temperature,
+    mean_dewpoint_temperature_with_specifier,
     mean_potential_evaporation,
+    observed_streamflow_cms,
+    max_dewpoint_temperature,
+    snow_water_equivalent,
+    min_snow_water_equivalent,
+    max_snow_water_equivalent,
+    u_component_of_wind_with_specifier,
+    v_component_of_wind_with_specifier
 )
 
 from ._map import (
@@ -150,7 +163,6 @@ class Bull(Camels):
                 'area': catchment_area(),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
@@ -160,24 +172,42 @@ class Bull(Camels):
             'dewpoint_temperature_2m_mean_BULL': mean_dewpoint_temperature(),
             'dewpoint_temperature_2m_min_BULL': min_dewpoint_temperature(),  # todo: are we considering height
             'potential_evaporation_sum_BULL': mean_potential_evaporation(),  # todo: is it mean or total?
-            'streamflow': 'obs_q_cms',
-            'potential_evapotranspiration_AEMET': total_potential_evapotranspiration_with_method('AEMET'),
-            'potential_evapotranspiration_EMO1_arc': total_potential_evapotranspiration_with_method('EMO1arc'),
-            'potential_evapotranspiration_ERA5_Land': total_potential_evapotranspiration_with_method('ERA5Land'),
+            'streamflow': observed_streamflow_cms(),
+            'potential_evapotranspiration_AEMET': total_potential_evapotranspiration_with_specifier('AEMET'),
+            'potential_evapotranspiration_EMO1_arc': total_potential_evapotranspiration_with_specifier('EMO1arc'),
+            'potential_evapotranspiration_ERA5_Land': total_potential_evapotranspiration_with_specifier('ERA5Land'),
             'surface_net_solar_radiation_mean_BULL': solar_radiation(),
-            'temperature_max_AEMET': max_air_temp_with_method('AEMET'),
-            'temperature_max_EMO1_arc': max_air_temp_with_method('EMO1arc'),
-            'temperature_max_ERA5_Land': max_air_temp_with_method('ERA5Land'),
-            'temperature_mean_AEMET': mean_air_temp_with_method('AEMET'),
-            'temperature_mean_EMO1_arc': mean_air_temp_with_method('EMO1arc'),
-            'temperature_mean_ERA5_Land': mean_air_temp_with_method('ERA5Land'),
-            'temperature_min_AEMET': min_air_temp_with_method('AEMET'),
-            'temperature_min_EMO1_arc': min_air_temp_with_method('EMO1arc'),
-            'temperature_min_ERA5_Land': min_air_temp_with_method('ERA5Land'),
-            'total_precipitation_AEMET': total_precipitation_with_method('AEMET'),
-            'total_precipitation_EMO1_arc': total_precipitation_with_method('EMO1arc'),
-            'total_precipitation_ERA5_Land': total_precipitation_with_method('ERA5Land'),
-            'total_precipitation_sum_BULL': total_precipitation_with_method('BULL'),
+            'surface_net_solar_radiation_max_BULL': max_solar_radiation(),
+            'surface_net_solar_radiation_min_BULL': min_solar_radiation(),
+            'surface_net_thermal_radiation_max_BULL': max_thermal_radiation(),
+            'surface_net_thermal_radiation_mean_BULL': mean_thermal_radiation(),
+            'surface_net_thermal_radiation_min_BULL': min_themal_radiation(),
+            'temperature_max_AEMET': max_air_temp_with_specifier('AEMET'),
+            'temperature_max_EMO1_arc': max_air_temp_with_specifier('EMO1arc'),
+            'temperature_max_ERA5_Land': max_air_temp_with_specifier('ERA5Land'),
+            'temperature_mean_AEMET': mean_air_temp_with_specifier('AEMET'),
+            'temperature_mean_EMO1_arc': mean_air_temp_with_specifier('EMO1arc'),
+            'temperature_mean_ERA5_Land': mean_air_temp_with_specifier('ERA5Land'),
+            'temperature_min_AEMET': min_air_temp_with_specifier('AEMET'),
+            'temperature_min_EMO1_arc': min_air_temp_with_specifier('EMO1arc'),
+            'temperature_min_ERA5_Land': min_air_temp_with_specifier('ERA5Land'),
+            'total_precipitation_AEMET': total_precipitation_with_specifier('AEMET'),
+            'total_precipitation_EMO1_arc': total_precipitation_with_specifier('EMO1arc'),
+            'total_precipitation_ERA5_Land': total_precipitation_with_specifier('ERA5Land'),
+            'total_precipitation_sum_BULL': total_precipitation_with_specifier('BULL'),
+            'snow_depth_water_equivalent_max_BULL': max_snow_water_equivalent(),
+            'snow_depth_water_equivalent_mean_BULL': snow_water_equivalent(),
+            'snow_depth_water_equivalent_min_BULL': min_snow_water_equivalent(),
+            #'surface_pressure_max_BULL':   # todo: is it same as air pressure
+            'temperature_2m_max_BULL': max_air_temp_with_specifier('2m'),
+            'temperature_2m_mean_BULL': mean_air_temp_with_specifier('2m'),
+            'temperature_2m_min_BULL': min_air_temp_with_specifier('2m'),
+            'u_component_of_wind_10m_max_BULL': u_component_of_wind_with_specifier('max_10m'),
+            'u_component_of_wind_10m_mean_BULL': u_component_of_wind_with_specifier('mean_10m'),
+            'u_component_of_wind_10m_min_BULL': u_component_of_wind_with_specifier('min_10m'),
+            'v_component_of_wind_10m_max_BULL': v_component_of_wind_with_specifier('max_10m'),
+            'v_component_of_wind_10m_mean_BULL': v_component_of_wind_with_specifier('mean_10m'),
+            'v_component_of_wind_10m_min_BULL': v_component_of_wind_with_specifier('min_10m'),
         }
 
     @property
@@ -362,7 +392,7 @@ class Bull(Camels):
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
-        df.columns = [col + '_BULL' for col in df.columns]
+        df.columns = [col + '_BULL' for col in df.columns]  # todo: why are we adding _BULL to the columns
         if len(df.columns) == 15:
             # add missing columns
             for col in BUL_COLUMNS:

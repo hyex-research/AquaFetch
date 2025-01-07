@@ -14,22 +14,23 @@ from ..utils import merge_shapefiles
 from .camels import Camels
 
 from ._map import (
-    total_precipitation_with_method,
+    total_precipitation_with_specifier,
     leaf_area_index,
-    actual_evapotranspiration_with_method,
-    total_potential_evapotranspiration_with_method,
-    download_longwave_radiation_with_method,
-    solar_radiation_with_method,
-    snow_water_equivalent_with_method,
-    mean_air_temp_with_method,
-    mean_windspeed_with_method,
-    u_component_of_wind_with_method,
-    v_component_of_wind_with_method,
+    actual_evapotranspiration_with_specifier,
+    total_potential_evapotranspiration_with_specifier,
+    download_longwave_radiation_with_specifier,
+    solar_radiation_with_specifier,
+    snow_water_equivalent_with_specifier,
+    mean_air_temp_with_specifier,
+    mean_windspeed_with_specifier,
+    u_component_of_wind_with_specifier,
+    v_component_of_wind_with_specifier,
     groundwater_percentages,
     soil_moisture_layer1,
     soil_moisture_layer2,
     soil_moisture_layer3,
     soil_moisture_layer4,
+    observed_streamflow_cms,
 )
 
 from ._map import (
@@ -187,41 +188,41 @@ class GSHA(Camels):
     @property
     def dyn_map(self):
         return {
-            'EP_GLEAM': actual_evapotranspiration_with_method('gleam'),
-            'EP_REA': actual_evapotranspiration_with_method('rea'),
-            'GLEAM_PET': total_potential_evapotranspiration_with_method('gleam'),
+            'EP_GLEAM': actual_evapotranspiration_with_specifier('gleam'),
+            'EP_REA': actual_evapotranspiration_with_specifier('rea'),
+            'GLEAM_PET': total_potential_evapotranspiration_with_specifier('gleam'),
             'GW': groundwater_percentages(),
-            'HPET_PET': total_potential_evapotranspiration_with_method('hpet'),
-            'LONGRAD_ERA': download_longwave_radiation_with_method('era5'),
-            'LONGRAD_MERRA': download_longwave_radiation_with_method('merra2'),
-            'P_EMEarth': total_precipitation_with_method('emearth'),
-            'P_MSWEP': total_precipitation_with_method('mswep'),
-            'SHORTRAD_ERA': solar_radiation_with_method('era5'),
-            'SHORTRAD_MERRA': solar_radiation_with_method('merra2'),
+            'HPET_PET': total_potential_evapotranspiration_with_specifier('hpet'),
+            'LONGRAD_ERA': download_longwave_radiation_with_specifier('era5'),
+            'LONGRAD_MERRA': download_longwave_radiation_with_specifier('merra2'),
+            'P_EMEarth': total_precipitation_with_specifier('emearth'),
+            'P_MSWEP': total_precipitation_with_specifier('mswep'),
+            'SHORTRAD_ERA': solar_radiation_with_specifier('era5'),
+            'SHORTRAD_MERRA': solar_radiation_with_specifier('merra2'),
             'SML1': soil_moisture_layer1(),
             'SML2': soil_moisture_layer2(),
             'SML3': soil_moisture_layer3(),
             'SML4': soil_moisture_layer4(),
-            'SWDE': snow_water_equivalent_with_method('era5'),  # change m to mm
-            'T_ERA': mean_air_temp_with_method('era5'),  # change from K to C
-            'T_EUSTACE': mean_air_temp_with_method('eustace'),  # change from K to C
-            'T_MERRA': mean_air_temp_with_method('merra2'),  # change from K to C
-            'WINDERA': mean_windspeed_with_method('era5'),
-            'WINDMERRA': mean_windspeed_with_method('merra'),
-            'WINDU_ERA': u_component_of_wind_with_method('era5'),
-            'WINDU_MERRA': u_component_of_wind_with_method('merra'),
-            'WINDV_ERA': v_component_of_wind_with_method('era5'),
-            'WINDV_MERRA': v_component_of_wind_with_method('merra'),
+            'SWDE': snow_water_equivalent_with_specifier('era5'),  # change m to mm
+            'T_ERA': mean_air_temp_with_specifier('era5'),  # change from K to C
+            'T_EUSTACE': mean_air_temp_with_specifier('eustace'),  # change from K to C
+            'T_MERRA': mean_air_temp_with_specifier('merra2'),  # change from K to C
+            'WINDERA': mean_windspeed_with_specifier('era5'),
+            'WINDMERRA': mean_windspeed_with_specifier('merra'),
+            'WINDU_ERA': u_component_of_wind_with_specifier('era5'),
+            'WINDU_MERRA': u_component_of_wind_with_specifier('merra'),
+            'WINDV_ERA': v_component_of_wind_with_specifier('era5'),
+            'WINDV_MERRA': v_component_of_wind_with_specifier('merra'),
             'lai': leaf_area_index(),
         }
 
     @property
     def dyn_factors(self):
         return {
-            snow_water_equivalent_with_method('era5'): lambda x: x * 1000,
-            mean_air_temp_with_method('era5'): lambda x: x - 273.15,
-            mean_air_temp_with_method('eustace'): lambda x: x - 273.15,
-            mean_air_temp_with_method('merra2'): lambda x: x - 273.15,
+            snow_water_equivalent_with_specifier('era5'): lambda x: x * 1000,
+            mean_air_temp_with_specifier('era5'): lambda x: x - 273.15,
+            mean_air_temp_with_specifier('eustace'): lambda x: x - 273.15,
+            mean_air_temp_with_specifier('merra2'): lambda x: x - 273.15,
         }
 
     def __daily_dynamic_features(self):
@@ -948,7 +949,7 @@ class _GSHA(Camels):
 
     @property
     def dynamic_features(self) -> List[str]:
-        return ['obs_q_cms'] + self.gsha.dynamic_features
+        return [observed_streamflow_cms()] + self.gsha.dynamic_features
 
     @property
     def static_features(self) -> List[str]:
@@ -964,7 +965,7 @@ class _GSHA(Camels):
 
     @property
     def _q_name(self) -> str:
-        return "obs_q_cms"
+        return observed_streamflow_cms()
 
     def stations(self) -> List[str]:
         return self._stations
@@ -1031,14 +1032,14 @@ class _GSHA(Camels):
 
         daily_q = None
 
-        if 'obs_q_cms' in features:
+        if observed_streamflow_cms() in features:
             daily_q = self.get_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
                 daily_q = daily_q.loc[st:en, stations]
 
-            features.remove('obs_q_cms')
+            features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
             return daily_q
@@ -1052,7 +1053,7 @@ class _GSHA(Camels):
                 data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
 
                 # first create a new dimension in daily_q named dynamic_features
-                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
                 # -1 because the data in .nc files hysets starts with 0

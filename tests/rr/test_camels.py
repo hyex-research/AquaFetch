@@ -1,29 +1,25 @@
 
 import os
-import site   # so that water_quality directory is in path
-import random
+import site   # so that water_datasets directory is in path
 import logging
 import unittest
 
 # add the parent directory in the path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import pandas as pd
 
-from water_datasets import CABra
 from water_datasets import CCAM
 from water_datasets import CAMELS_DK
 from water_datasets.rr import CAMELS_DK0
 from water_datasets import CAMELS_CH
-from water_datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
+from water_datasets import CAMELS_GB, CAMELS_AUS
 from water_datasets import CAMELS_CL, CAMELS_US, HYPE
 from water_datasets import WaterBenchIowa
 from water_datasets import CAMELS_DE
-from water_datasets import GRDCCaravan
 from water_datasets import CAMELS_SE
 from water_datasets import Simbi
-from water_datasets import Bull
 from water_datasets import CAMELS_IND
 from water_datasets import RainfallRunoff
 from water_datasets import RRLuleaSweden
@@ -67,17 +63,6 @@ class TestCamels(unittest.TestCase):
         ds_cl = CAMELS_CL(os.path.join(gscad_path, 'CAMELS'))
         test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
                      num_static_attrs=104, num_dyn_attrs=12)
-        return
-
-    def test_br(self):
-        ds_br = CAMELS_BR(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(ds_br, 897, 14245, 67, 10)
-        return
-
-    def test_cabra(self):
-        for source in ['era5', 'ref', 'ens']:
-            dataset = CABra(path=gscad_path, met_src=source)
-            test_dataset(dataset, 735, 10957, 97, 12)
         return
 
     def test_us(self):
@@ -192,11 +177,6 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 1555, 25568, 111, 21)
         return
 
-    def test_grdccaravan(self):
-        dataset = GRDCCaravan(path=gscad_path)
-        test_dataset(dataset, 5357, 26801, 211, 39)
-        return
-
     def test_camels_se(self):
         dataset = CAMELS_SE(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 50, 21915, 76, 4)
@@ -223,11 +203,6 @@ class TestCamels(unittest.TestCase):
     def test_camels_dk():
         dataset = CAMELS_DK(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 304, 12782, 119, 13)
-        return
-
-    def test_bull(self):
-        dataset = Bull(path=gscad_path)
-        test_dataset(dataset, 484, 25932, 214, 55)
         return
 
     def test_india(self):

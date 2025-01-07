@@ -13,6 +13,24 @@ from ..utils import merge_shapefiles
 from ..utils import check_attributes, dateandtime_now
 
 from ._map import (
+    observed_streamflow_cms,
+    observed_streamflow_mmd,
+    min_air_temp,
+    max_air_temp,
+    mean_air_temp,
+    mean_rel_hum,
+    mean_daily_evaporation,
+    max_daily_ground_surface_temp,
+    min_daily_ground_surface_temp,
+    mean_daily_ground_surface_temp,
+    total_precipitation,
+    sunshine_duration,
+    max_windspeed,
+    min_windspeed,
+    mean_windspeed,
+)
+
+from ._map import (
     catchment_area,
     gauge_latitude,
     gauge_longitude,
@@ -133,17 +151,24 @@ class CCAM(Camels):
                 'slope': slope('mkm-1'),
                 'lat': gauge_latitude(),
                 'lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-        'q': 'obs_q_mmd',
-        'tem_min': 'min_temp_C',
-        'tem_max': 'max_temp_C',
-        'tem_mean': 'mean_temp_C',
-        'rhu': 'rh_%',
+        'q': observed_streamflow_mmd(),
+        'tem_min': min_air_temp(),
+        'tem_max': max_air_temp(),
+        'tem_mean': mean_air_temp(),
+        'rhu': mean_rel_hum(),
+        'evp': mean_daily_evaporation(),
+        'gst_max': max_daily_ground_surface_temp(),
+        'gst_min': min_daily_ground_surface_temp(),
+        'gst_mean': mean_daily_ground_surface_temp(),
+        'pre': total_precipitation(),
+        'ssd': sunshine_duration(),
+        'win_max': max_windspeed(),
+        'win_mean': mean_windspeed(),
         }
 
     @property

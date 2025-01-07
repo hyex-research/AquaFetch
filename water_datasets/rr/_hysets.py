@@ -10,6 +10,14 @@ from .._backend import shapefile, xarray as xr
 from ..utils import check_attributes, sanity_check
 
 from ._map import (
+    observed_streamflow_cms,
+    min_air_temp,
+    max_air_temp,
+    total_precipitation,
+    snow_water_equivalent,
+    )
+
+from ._map import (
     catchment_area,
     gauge_latitude,
     gauge_longitude,
@@ -170,16 +178,16 @@ class HYSETS(Camels):
                 'Centroid_Lat_deg_N': gauge_latitude(),
                 'Slope_deg': slope('degrees'),
                 'Centroid_Lon_deg_E': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
-        'discharge': 'obs_q_cms', 
-        'tasmin': 'min_temp_C',
-        'tasmax': 'max_temp_C',
-        'pr': 'pcp_mm',
+        'discharge': observed_streamflow_cms(), 
+        'tasmin': min_air_temp(),
+        'tasmax': max_air_temp(),
+        'pr': total_precipitation(),
+        'swe': snow_water_equivalent()
         }
 
     def _maybe_to_netcdf(self, fname: str):

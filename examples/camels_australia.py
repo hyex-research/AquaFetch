@@ -3,7 +3,7 @@
 CAMELS Australia
 ====================
 This example demonstrates how to use the `water_datasets` package to download and
-explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>_` dataset 
+explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>`_ dataset 
 using the :py:class:`water_datasets.rr.RainfallRunoff` class. Although we show it
 for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
 """
@@ -273,7 +273,7 @@ df
 dataset.dynamic_features
 # get only selected dynamic features
 data = dataset.fetch(1, as_dataframe=True,
-dynamic_features=['awap_max_temp_C', 'awap_pcp_mm', 'silo_morton_aet_mm', 'obs_q_cms']).unstack()
+dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
 data.shape
 
 # %%

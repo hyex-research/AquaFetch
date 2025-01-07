@@ -9,7 +9,7 @@ from ..utils import check_attributes
 from ._map import (
     total_precipitation,
     mean_air_temp,
-    total_potential_evapotranspiration_with_method,
+    total_potential_evapotranspiration_with_specifier,
     actual_evapotranspiration,
 )
 
@@ -33,6 +33,7 @@ class CAMELS_DK(Camels):
     Please note that there is an updated version of this dataset following the works
     of `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ . This dataset
     is associated with the CAMELS_DK class which can be imported as follows:
+
     >>> from water_datasets import CAMELS_DK
 
     Examples
@@ -133,7 +134,6 @@ class CAMELS_DK(Camels):
                 'catch_outlet_lat': gauge_latitude(),
                 'slope_mean': slope('mkm-1'),
                 'catch_outlet_lon': gauge_longitude(),
-
         }
 
     @property

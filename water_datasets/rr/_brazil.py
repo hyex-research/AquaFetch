@@ -12,8 +12,17 @@ from ._map import (
     min_air_temp,
     max_air_temp,
     mean_air_temp,
-    total_potential_evapotranspiration_with_method,
-    total_precipitation_with_method,
+    mean_air_temp_with_specifier,
+    min_air_temp_with_specifier,
+    max_air_temp_with_specifier,
+    total_potential_evapotranspiration_with_specifier,
+    actual_evapotranspiration_with_specifier,
+    total_precipitation_with_specifier,
+    observed_streamflow_cms,
+    observed_streamflow_mmd,
+    mean_rel_hum_with_specifier,
+    mean_windspeed_with_specifier,
+    solar_radiation_with_specifier,
 )
 
 from ._map import (
@@ -132,24 +141,29 @@ class CAMELS_BR(Camels):
                 'slope_mean': slope('degrees'),
                 'gauge_lat': gauge_latitude(),
                 'gauge_lon': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
+        # table 1 in paper
         return {
-            'streamflow_mm': 'obs_q_mmd',
+            'streamflow_mm': observed_streamflow_mmd(),
             'temperature_min': min_air_temp(),
             'temperature_max': max_air_temp(),
             'temperature_mean': mean_air_temp(),
-            'precipitation_mswep': total_precipitation_with_method('mswep'),
-            'potential_evapotransp_gleam': total_potential_evapotranspiration_with_method('gleam'),
+            'precipitation_mswep': total_precipitation_with_specifier('mswep'),
+            'precipitation_chirps': total_precipitation_with_specifier('chirps'),
+            'precipitation_cpc': total_precipitation_with_specifier('cpc'),
+            'potential_evapotransp_gleam': total_potential_evapotranspiration_with_specifier('gleam'),
+            'evapotransp_gleam': actual_evapotranspiration_with_specifier('gleam'),
+            'evapotransp_mgb': actual_evapotranspiration_with_specifier('mgb'),
         }
 
     @property
     def dyn_generators(self):
         return {
-            'obs_q_cms': self.func1,
+            # new column to be created : (old column, function to be applied)
+            observed_streamflow_cms(): (observed_streamflow_mmd(), self.func1),
         }
 
     def func1(self, x):
@@ -179,10 +193,10 @@ class CAMELS_BR(Camels):
 
     @property
     def dynamic_features(self) -> List[str]:
-        feats = list(CAMELS_BR.folders.keys())
-        feats.remove('simulated_streamflow_m3s')
-        feats.remove('streamflow_m3s_raw')
-        return feats
+        features = list(CAMELS_BR.folders.keys())
+        features.remove('simulated_streamflow_m3s')
+        features.remove('streamflow_m3s_raw')
+        return [self.dyn_map.get(feature, feature) for feature in features] + list(self.dyn_generators.keys())
 
     @property
     def static_attribute_categories(self):
@@ -239,7 +253,7 @@ class CAMELS_BR(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                         dynamic_features='obs_q_mmd',
+                                         dynamic_features=observed_streamflow_mmd(),
                                          as_dataframe=True)
         q.index = q.index.get_level_values(0)
         # area_m2 = self.area(stations) * 1e6  # area in m2
@@ -423,7 +437,7 @@ class CAMELS_BR(Camels):
 
         """
 
-        features = check_attributes(attributes, self.dynamic_features)
+        features = check_attributes(attributes, self.dynamic_features, 'dynamic_features')
 
         if st is None:
             st = self.start
@@ -437,7 +451,7 @@ class CAMELS_BR(Camels):
         if cpus == 1:
             for idx, stn_id in enumerate(stations):
                 # making one separate dataframe for one station
-                dyn[stn_id] = self.get_dynamic_features(self, stn_id, features).loc[st:en]
+                dyn[stn_id] = self.get_dynamic_features(stn_id, features).loc[st:en]
 
                 if idx % 20 == 0:
                     print(f"completed {idx} stations")
@@ -461,11 +475,17 @@ class CAMELS_BR(Camels):
     def get_dynamic_features(self, stn_id, features, st=None, en=None):
         feature_dfs = []
         for feature, path in self.folders.items():
-            # if feature in features:
-            feature_df = self._read_dynamic_feature(path, feature, stn_id, st, en)
+            if feature in ['simulated_streamflow_m3s', 'streamflow_m3s_raw']:
+                continue
+            feature_df = self._read_dynamic_feature(path, feature=feature, stn_id=stn_id, st=st, en=en)
             feature_dfs.append(feature_df)
 
         stn_df = pd.concat(feature_dfs, axis=1)
+
+        for new_col, (old_col, func) in self.dyn_generators.items():
+            if old_col in stn_df.columns:
+                stn_df[new_col] = func(stn_df[old_col])
+
         stn_df.columns.name = 'dynamic_features'
         stn_df.index.name = 'time'
         return stn_df
@@ -474,19 +494,17 @@ class CAMELS_BR(Camels):
         path = os.path.join(self.path, f'{folder}{SEP}{folder}')
         # supposing that the filename starts with stn_id and has .txt extension.
         fname = [f for f in os.listdir(path) if f.startswith(str(stn_id)) and f.endswith('.txt')]
+        assert len(fname) == 1, f"{len(fname)} {stn_id} in {folder} for {feature}"
         fname = fname[0]
         if os.path.exists(os.path.join(path, fname)):
             df = pd.read_csv(os.path.join(path, fname), sep=' ')
             df.index = pd.to_datetime(df[['year', 'month', 'day']])
             df = df.drop(['year', 'month', 'day'], axis=1)
 
-            # df.rename(columns = self.dyn_map, inplace=True)
+            df = pd.DataFrame(df.loc[st:en, feature])
 
-            # for col in self.dyn_generators:
-            #     if col in df.columns:
-            #         df[col] = self.dyn_generators[col](df[col])
+            df.rename(columns = self.dyn_map, inplace=True)
 
-            df = df.loc[st:en, feature]
         else:
             raise FileNotFoundError(f"file {fname} not found at {path}")
 
@@ -622,6 +640,7 @@ class CABra(Camels):
         self._download(overwrite=overwrite)
 
         self._dynamic_features = self.__dynamic_features()
+        self._static_features = self.__static_features()
 
         self.dyn_fname = os.path.join(self.path,
                                       f'cabra_{met_src}_dyn.nc')
@@ -639,7 +658,6 @@ class CABra(Camels):
                 'catch_slope': slope('perc'),
                 'latitude': gauge_latitude(),
                 'longitude': gauge_longitude(),
-
         }
 
     @staticmethod
@@ -665,26 +683,31 @@ class CABra(Camels):
 
     @property
     def dyn_map(self):
+        # table 3 in the paper https://hess.copernicus.org/articles/25/3105/2021/#&gid=1&pid=1
         return {
-            'Streamflow': 'obs_q_cms',
-            'tmin_ens': 'ens_min_temp_C',
-            'tmax_ens': 'ens_max_temp_C',
-            'tmin_era5': 'era5_min_temp_C',
-            'tmax_era5': 'era5_max_temp_C',
-            'tmin_ref': 'ref_min_temp_C',
-            'tmax_ref': 'ref_max_temp_C',
-            'p_ens': 'ens_pcp_mm',
-            'p_ref': 'ref_pcp_mm',
-            'p_era5': 'era5_pcp_mm',
-            'rh_ens': 'ens_rh_%',
-            'rh_era5': 'era5_rh_%',
-            'rh_ref': 'ref_rh_%',
-            'wnd_ens': 'ens_windspeed_ms',
-            'wnd_era5': 'era5_windspeed_ms',
-            'wnd_ref': 'ref_windspeed_ms',
-            'pet_pm': 'pm_pet_mm',
-            'pet_pt': 'pt_pet_mm',
-            'pet_hg': 'hg_pet_mm'
+            'Streamflow': observed_streamflow_cms(),
+            'tmin_ens': min_air_temp_with_specifier('ens'),
+            'tmax_ens': max_air_temp_with_specifier('ens'),
+            'tmin_era5': min_air_temp_with_specifier('era5'),
+            'tmax_era5': max_air_temp_with_specifier('era5'),
+            'tmin_ref': min_air_temp_with_specifier('ref'),
+            'tmax_ref': max_air_temp_with_specifier('ref'),
+            'p_ens': total_precipitation_with_specifier('ens'),
+            'p_ref': total_precipitation_with_specifier('ref'),
+            'p_era5': total_precipitation_with_specifier('era5'),
+            'rh_ens': mean_rel_hum_with_specifier('ens'),
+            'rh_era5': mean_rel_hum_with_specifier('era5'),
+            'rh_ref': mean_rel_hum_with_specifier('ref'),
+            'wnd_ens': mean_windspeed_with_specifier('ens'),
+            'wnd_era5': mean_windspeed_with_specifier('era5'),
+            'wnd_ref': mean_windspeed_with_specifier('ref'),
+            'et_ens': actual_evapotranspiration_with_specifier('ens'),
+            'pet_pm': total_potential_evapotranspiration_with_specifier('pm'),
+            'pet_pt': total_potential_evapotranspiration_with_specifier('pt'),
+            'pet_hg': total_potential_evapotranspiration_with_specifier('hg'),
+            'srad_ens': solar_radiation_with_specifier('ens'),  # todo: change units from MJ/m2/day to W/m2
+            'srad_era5': solar_radiation_with_specifier('era5'),
+            'srad_ref': solar_radiation_with_specifier('ref'),
         }
 
     @property
@@ -710,6 +733,9 @@ class CABra(Camels):
     @property
     def static_features(self) -> List[str]:
         """names of static features"""
+        return self._static_features
+
+    def __static_features(self) -> List[str]:
         return pd.concat(
             [
                 self.climate_attrs(),
@@ -756,7 +782,7 @@ class CABra(Camels):
         """
         stations = check_attributes(stations, self.stations())
         q = self.fetch_stations_features(stations,
-                                         dynamic_features='obs_q_cms',
+                                         dynamic_features=observed_streamflow_cms(),
                                          as_dataframe=True)
         q.index = q.index.get_level_values(0)
         area_m2 = self.area(stations) * 1e6  # area in m2
@@ -1109,7 +1135,7 @@ class CABra(Camels):
                                 'Quality': np.int16}
                          )
         df.rename(columns=self.dyn_map, inplace=True)
-        df['obs_q_cms'] = df['obs_q_cms'].astype(np.float32)
+        df[observed_streamflow_cms()] = df[observed_streamflow_cms()].astype(np.float32)
         return df
 
     def _read_meteo_from_csv(
@@ -1232,11 +1258,20 @@ class CABra(Camels):
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
+        if self.verbosity>1:
+            print(f"getting data for {len(dynamic_features)} and for {len(stations)} stations")
+
         # qs and meteo data has different index
+
+        if self.verbosity>2:
+            print("getting streamflow data")
 
         qs = [self._read_q_from_csv(stn_id=stn_id) for stn_id in stations]
         q_idx = pd.to_datetime(
             qs[0]['Year'].astype(str) + '-' + qs[0]['Month'].astype(str) + '-' + qs[0]['Day'].astype(str))
+
+        if self.verbosity>2:
+            print("getting meteo data")
 
         meteos = [
             self._read_meteo_from_csv(stn_id=stn_id, source=self.met_src) for stn_id in stations]
@@ -1258,7 +1293,7 @@ class CABra(Camels):
             q.index = q_idx
 
             stn_df = pd.concat(
-                [meteo[met_cols].astype(np.float32), q[['Quality', 'obs_q_cms']]], axis=1)[features]
+                [meteo[met_cols].astype(np.float32), q[['Quality', observed_streamflow_cms()]]], axis=1)[features]
 
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
