@@ -24,10 +24,10 @@ from ._map import (
 class Portugal(_EStreams):
     """
     Data of 280 catchments of Portugal.
-    The observed streamflow data stations is downloaded from 
+    The observed streamflow data is downloaded from 
     https://snirh.apambiente.pt .
     The meteorological data, static catchment 
-    features and catchment boundaries are
+    features and catchment boundaries for the 280 catchments are
     taken from :py:class:`water_quality.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
@@ -52,7 +52,6 @@ class Portugal(_EStreams):
                 'lat': gauge_latitude(),
                 'slope_sawicz': slope('no_unit'),
                 'lon': gauge_longitude(),
-
         }
 
     @property

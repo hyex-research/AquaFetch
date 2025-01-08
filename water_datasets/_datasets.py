@@ -132,8 +132,6 @@
 
 # Water Quality
 # https://zenodo.org/record/1495558#.YExqFtyRWUk
-#https://www.nature.com/articles/sdata201798#Sec18
-# https://www.nature.com/articles/s41597-020-0455-1#Sec11
 
 # Flow
 # https://zenodo.org/record/3941890#.YExp5NyRWUk
