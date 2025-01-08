@@ -9,11 +9,14 @@ import datetime
 import warnings
 import zipfile
 import tempfile
+from io import BytesIO
 import urllib.request as ulib
 from typing import Union, List
 import urllib.parse as urlparse
 import array
 from struct import pack, unpack, calcsize, error, Struct
+
+import requests
 
 import numpy as np
 import pandas as pd
@@ -1093,6 +1096,7 @@ def merge_shapefiles(
         )
     return
 
+
 def encode_cols(
         df:pd.DataFrame,
         cols:List[str],
@@ -1117,7 +1121,8 @@ def maybe_download_and_read_data(
     """
     Download and read tabular (csv/xlsx) data from the given url
     """
-    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+    #path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+    path = os.path.join(os.path.dirname(__file__), "data")
     if not os.path.exists(path):
         os.makedirs(path)
     fpath = os.path.join(path, file_name)
@@ -1125,13 +1130,34 @@ def maybe_download_and_read_data(
     if os.path.exists(fpath):
         df = pd.read_csv(fpath, index_col="index", **kwargs)
     else:
-        if url.endswith(".csv"):
-          df = pd.read_csv(url, index_col="index", **kwargs)
+        if url.startswith("https://ars.els-cdn.com"):
+            df = download_with_requests(url)
+        elif url.startswith("https://pubs.acs.org"):
+            df = download_with_requests(url)
+        elif url.endswith(".csv"):
+          df = pd.read_csv(url,**kwargs)
         elif url.endswith(".xlsx"):\
-            df = pd.read_excel(url, index_col="index", **kwargs)
+            df = pd.read_excel(url, **kwargs)
         else:
             raise ValueError(f"Unknown extension: {url.split('.')}")
 
         df.to_csv(fpath, index=True, index_label="index")
+
+    return df
+
+
+def download_with_requests(url)->pd.DataFrame:
+    # Add headers if needed (you may need to adjust these)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        # Use BytesIO for binary data/excel sheets
+        data = BytesIO(response.content)
+        df = pd.read_excel(data)
+    else:
+        raise ValueError(f"{response.status_code}: Failed to download data from {url}")  
 
     return df

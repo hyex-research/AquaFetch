@@ -1,11 +1,19 @@
-import os
+
+__all__ = ["mg_degradation", "dye_removal", "dichlorophenoxyacetic_acid_removal"]
+
 from typing import Union, Tuple, Any, List
 
 import numpy as np
 import pandas as pd
 
-from ..utils import encode_column, LabelEncoder, OneHotEncoder, encode_cols
-
+from ..utils import (
+    encode_column,
+    check_attributes,
+    LabelEncoder,
+    OneHotEncoder,
+    maybe_download_and_read_data,
+    encode_cols
+)
 
 def mg_degradation(
         inputs: List[str] = None,
@@ -66,7 +74,7 @@ Union[LabelEncoder, OneHotEncoder, Any]]:
 
     Examples
     --------
-    >>> from ai4water.datasets import mg_degradation
+    >>> from water_datasets import mg_degradation
     >>> mg_data, catalyst_encoder, anion_encoder = mg_degradation()
     >>> mg_data.shape
     (1200, 12)
@@ -90,9 +98,9 @@ Union[LabelEncoder, OneHotEncoder, Any]]:
 
     """
 
-    df = pd.read_csv(
-        "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
-    )
+    url = "https://raw.githubusercontent.com/ZeeshanHJ/Photocatalytic_Performance_Prediction/main/Raw%20data.csv"
+    df = maybe_download_and_read_data(url, "mg_degradation.csv")
+
     default_inputs = ['Surface area', 'Pore Volume', 'Catalyst_loading (g/L)',
                       'Light_intensity (W)', 'time (min)', 'solution_pH', 'HA (mg/L)',
                       'Ci (mg/L)', 'Cf (mg/L)', 'Catalyst_type', 'Anions',
@@ -174,8 +182,8 @@ def dye_removal(
 
     """
 
-    url = "https://gitlab.com/atrcheema/bajwachor/-/blob/main/scripts/data/230613_Photocatalysis_with_Zeeshan_data_CMKim_Updated.csv"
-    df = maybe_download_and_read_data(url, "dye_removal_data.csv")
+    url = "https://gitlab.com/atrcheema/bajwachor/-/raw/main/scripts/data/230613_Photocatalysis_with_Zeeshan_data_CMKim_Updated.csv"
+    df = maybe_download_and_read_data(url, "dye_removal.csv")
 
     # first order k following https://doi.org/10.1016/j.seppur.2019.116195
     k = np.log(df["Ci"] / df["Cf"]) / df["Time (m)"]
@@ -196,16 +204,41 @@ def dye_removal(
     # when no anions are present, represent them as N/A
     df.loc[df['Anions'].isin(['0', 'without Anion']), "Anions"] = "N/A"
 
+    default_inputs = [
+        'Catalyst', 'Hydrothermal synthesis time (min)',
+       'Energy Band gap (Eg) eV', 'C (At%)', 'O (At%)', 'Fe (At%)', 'Al (At%)',
+       'Ni (At%)', 'Mo (At%)', 'S (At%)', 'Bi', 'Ag', 'Pd', 'Pt',
+       'Surface area (m2/g)', 'Pore volume (cm3/g)', 'Pore size (nm)',
+       'volume (L)',
+
+        # consider one of loading or catalysing loadnig
+        'loading (g)', #'Catalyst_loading_mg',
+       'Light intensity (watt)', 'Light source distance (cm)', 'Time (m)',
+
+       'Dye',
+
+        # pollutant (dye) properties)
+        'log_Kw', 'hydrogen_bonding_acceptor_count', 'hydrogen_bonding_donor_count',
+        'solubility (g/L)', 'molecular_wt (g/mol)', 'pka1', 'pka2',
+
+        # instead of Ci we consider Dye Concentration
+        'Dye concentration (mg/L)', 'Solution pH', #'Ci',
+        'HA (mg/L)',
+       'Anions',
+
+        #'Mass ratio (Catalyst/Dye)'
+    ]
+
     if inputs is None:
         inputs = default_inputs
 
-    if outputs is None:
-        outputs = ['Efficiency']
-    else:
-        if not isinstance(outputs, list):
-            outputs = [outputs]
+    # if outputs is None:
+    #     outputs = ['Efficiency']
+    # else:
+    #     if not isinstance(outputs, list):
+    #         outputs = [outputs]
 
-    df = df[inputs + outputs]
+    df = df[inputs]
 
     # consider encoding of categorical features
     df, encoders = encode_cols(df, ["Catalyst", "Dye", "Anions"], encoding)
@@ -220,4 +253,7 @@ def dichlorophenoxyacetic_acid_removal(
     """
     Data for photodegradation of 2,4-dichlorophenoxyacetic acid using gold-doped bismuth ferrite
     """
-    return
+
+    url = "https://gitlab.com/atrcheema/envai106/-/raw/main/data/data.xlsx"
+    data = maybe_download_and_read_data(url, "dichlorophenoxyacetic_acid_removal.xlsx")
+    return data, {}

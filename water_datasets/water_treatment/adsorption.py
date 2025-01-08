@@ -1,8 +1,8 @@
 
-import os
+__all__ = ["ec_removal_biochar", "po4_removal_biochar", "cr_removal", "heavy_metal_removal"]
+
 from typing import Union, Tuple, Any, List, Dict
 
-import numpy as np
 import pandas as pd
 
 from ..utils import (
@@ -12,7 +12,6 @@ from ..utils import (
     maybe_download_and_read_data,
     encode_cols
 )
-
 
 
 def ec_removal_biochar(
@@ -159,20 +158,25 @@ def ec_removal_biochar(
 
 
 def po4_removal_biochar(
-        parameters:Union[str, List[str]] = None,
+        parameters:Union[str, List[str]] = "all",
         encoding:str = None,
 )->Tuple[pd.DataFrame, Dict[str, Union[LabelEncoder, OneHotEncoder, Any]]]:
     """
     `Iftikhar et al., 2023 <https://doi.org/10.1016/j.chemosphere.2024.144031>`_
     """
-    url = "https://github.com/Sara-Iftikhar/po4_removal_ml/blob/main/scripts/master_sheet_0802.xlsx"
-    data = maybe_download_and_read_data(url, "master_sheet_0802.csv")
+    url = "https://github.com/Sara-Iftikhar/po4_removal_ml/raw/main/scripts/master_sheet_0802.xlsx"
+    data = maybe_download_and_read_data(url, "po4_removal_biochar.csv")
 
-    def_paras = []
+    def_paras = ['Adsorbent', 'Feedstock', 'Pyrolysis_temp',
+                              'Heating rate (oC)', 'Pyrolysis_time (min)',
+                              'C', 'O', 'Surface area', 'Adsorption_time (min)',
+                              'Ci_ppm', 'solution pH', 'rpm', 'Volume (L)',
+                              'loading (g)', 'adsorption_temp',
+                              'Ion Concentration (mM)', 'ion_type']
 
     parameters = check_attributes(parameters, def_paras, 'parameters')
 
-    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+    data, encoders = encode_cols(data, ['Adsorbent', 'Feedstock', 'ion_type'], encoding)
 
     data = data[parameters]
 
@@ -187,18 +191,28 @@ def cr_removal(
     `Ishtiaq et al., 2024 <https://doi.org/10.1016/j.jece.2024.112238>`_
     """
 
-    url = "https://gitlab.com/atrcheema/envai103/-/blob/main/data/data.csv"
+    url = "https://gitlab.com/atrcheema/envai103/-/raw/main/data/data.csv"
     data = maybe_download_and_read_data(url, "cr_removal.csv")
 
-    def_paras = []
+    cf = data['final conc.']
+    ci = data['Initial conc.']
+    v = data['Volume (L)']
+    m = data['loading (g)']
+    qe = ((ci - cf) * v) / m
+    qe = qe.fillna(0.0)
+    data['Adsorption capacity'] = qe
 
-    if parameters is not None:
-        assert isinstance(parameters, list)
-        assert all([feature in def_paras for feature in parameters])
-    else:
-        parameters = parameters
+    data["Removal Efficiency"] = ((ci - cf) / ci) * 100
 
-    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+    def_paras = ['Adsorbent', 'NaOH conc. (M)', 'Surface area',
+                      'Pore volume', 'C (At%)',
+                  'Al (At%)', 'Nb (At%)', 'O (At%)', 'Na (At%)', 'Pore size ',
+                  'Adsorption time', 'Initial conc.',
+                  'loading (g)', 'Solution pH', 'Cycle number']
+
+    parameters = check_attributes(parameters, def_paras, 'parameters')
+
+    data, encoders = encode_cols(data, ['Adsorbent'], encoding)
 
     data = data[parameters]
 
@@ -213,14 +227,26 @@ def heavy_metal_removal(
     `Jaffari et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132773>`_
     """
 
-    url = "https://gitlab.com/atrcheema/envai103/-/blob/main/data/data.csv"
-    data = maybe_download_and_read_data(url, "cr_removal.csv")
+    url = "https://gitlab.com/atrcheema/envai103/-/raw/main/data/data.csv"
+    data = maybe_download_and_read_data(url, "heavy_metal_removal.csv")
 
-    def_paras = []
+    # data.columns = ['Adsorbent', 'Feedstock', 'Pyrolysis_temp', 'Heating rate (oC)',
+    #        'Pyrolysis_time (min)', 'C', 'H', 'O', 'N', 'Ash', 'H/C', 'O/C', 'N/C',
+    #        '(O+N/C)', 'Surface area', 'Pore volume', 'Average pore size',
+    #        'inorganics',
+    #                 'radius (pm)', 'hydra_radius_pm', 'First_ionic_IE_KJ/mol',
+    #                 'Adsorption_time (min)', 'Ci', 'solution pH', 'rpm',
+    #        'Volume (L)', 'loading (g)', 'g/L', 'adsorption_temp',
+    #        'Ion Concentration (M)', 'Anion_type', 'DOM', 'Cf', 'qe']
+
+    def_paras = ['Adsorbent', 'NaOH conc. (M)', 'Surface area', 'Pore volume', 'C (At%)',
+       'Al (At%)', 'Nb (At%)', 'O (At%)', 'Na (At%)', 'Pore size ',
+       'Adsorption time', 'Initial conc.', 'loading (g/L)', 'Volume (L)',
+       'loading (g)', 'Solution pH', 'Cycle number', 'final conc.']
 
     parameters = check_attributes(parameters, def_paras, 'parameters')
 
-    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+    data, encoders = encode_cols(data, ['Adsorbent', 'Feedstock', 'inorganics', 'Anion_type'], encoding)
 
     data = data[parameters]
 
@@ -234,7 +260,11 @@ def heavy_metal_removal_Shen(
     """
     `Shen et al., 2024 <https://doi.org/10.1016/j.jhazmat.2024.133442>`_
     """
-    return
+
+    url = "https://ars.els-cdn.com/content/image/1-s2.0-S0304389424000207-mmc2.xlsx"
+
+    data = maybe_download_and_read_data(url, "heavy_metal_removal_Shen.csv")
+    return data, {}
 
 
 def industrial_dye_removal(
@@ -244,14 +274,14 @@ def industrial_dye_removal(
     """
     `Iftikhar et al., 2023 <https://doi.org/10.1016/j.seppur.2023.124891>`_
     """
-    url = "https://github.com/Sara-Iftikhar/ai4adsorption/blob/main/scripts/Dyes%20data.xlsx"
-    data = maybe_download_and_read_data(url, "cr_removal.csv")
+    url = "https://github.com/Sara-Iftikhar/ai4adsorption/raw/main/scripts/Dyes%20data.xlsx"
+    data = maybe_download_and_read_data(url, "industrial_dye_removal.csv")
 
-    def_paras = []
+    def_paras = ['Adsorbent', 'Dye']
 
     parameters = check_attributes(parameters, def_paras, 'parameters')
 
-    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+    data, encoders = encode_cols(data, ['Adsorbent', 'Dye'], encoding)
 
     data = data[parameters]
 
@@ -265,14 +295,15 @@ def P_recovery(
     """
     `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
     """
-    url = "https://zenodo.org/records/14586314/files/P_recovery.csv?download=1"
-    data = maybe_download_and_read_data(url, "cr_removal.csv")
+    url = "https://zenodo.org/records/14586314/files/P_recovery.csv"
+    data = maybe_download_and_read_data(url, "P_recovery.csv")
 
-    def_paras = []
+    def_paras = ['stir(rpm)', 't(min)', 'T(℃)', 'pH', 'N:P', 'Mg:P', 'P_initial(mg/L)',
+       'P_recovery(%)']
 
     parameters = check_attributes(parameters, def_paras, 'parameters')
 
-    data, encoders = encode_cols(data, ['Adsorbent', 'Pollutant', 'Wastewater type', 'Adsorption type'], encoding)
+    data, encoders = encode_cols(data, [], encoding)
 
     data = data[parameters]
 
@@ -286,11 +317,12 @@ def N_recovery(
     """
     `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
     """
-    url = "https://zenodo.org/records/14586314/files/N_recovery.csv?download=1"
+    url = "https://zenodo.org/records/14586314/files/N_recovery.csv"
 
-    data = maybe_download_and_read_data(url, "cr_removal.csv")
+    data = maybe_download_and_read_data(url, "N_recovery.csv")
 
-    def_paras = []
+    def_paras = ['stir(rpm)', 't(min)', 'T(℃)', 'pH', 'N:P', 'Mg: N', 'P_initial(mg/L)',
+       'N_recovery(%)']
 
     parameters = check_attributes(parameters, def_paras, 'parameters')
 
