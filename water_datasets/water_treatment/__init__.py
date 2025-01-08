@@ -2,10 +2,9 @@
 # https://doi.org/10.1016/j.cej.2021.130649
 # https://doi.org/10.1007/s42773-022-00183-w
 # https://doi.org/10.1007/s42773-024-00303-8
-# https://doi.org/10.1016/j.scitotenv.2024.173939
+# https://doi.org/10.1016/j.scitotenv.2024.173939  hydrothermal liquefaction
 # https://doi.org/10.1016/j.energy.2024.133707
 # https://doi.org/10.1016/j.scitotenv.2024.176780
-# https://doi.org/10.1016/j.envpol.2024.123667  # 5800
 
 from .adsorption import ec_removal_biochar
 from .adsorption import cr_removal
