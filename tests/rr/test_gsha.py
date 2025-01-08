@@ -12,9 +12,14 @@ if __name__ == "__main__":
 import pandas as pd
 from water_datasets._backend import xarray as xr
 
-from water_datasets.rr._gsha import GSHA
+from water_datasets import Thailand
+from water_datasets import GSHA
+from water_datasets import Japan
+from water_datasets import Arcticnet
+from water_datasets import Spain
 
 from utils import (
+    test_dataset,
     test_coords, 
     test_stations, 
     test_area, 
@@ -230,3 +235,54 @@ test_fetch_static_features()
 test_fetch_dynamic_features_()
 
 print('All tests passed!')
+
+
+ds = Thailand(path=gscad_path, verbosity=3)
+
+test_dataset(ds, 
+             num_stations=73, 
+             dyn_data_len=7305, 
+             num_static_attrs=35,
+              num_dyn_attrs=27,
+              test_df=False,
+              st="1992-01-01",
+              en="1992-12-31",
+              )
+
+
+ds = Japan(path=gscad_path, verbosity=3)
+
+test_dataset(ds, 
+             num_stations=751, 
+             dyn_data_len=16071, 
+             num_static_attrs=35,
+              num_dyn_attrs=27,
+              test_df=False,
+              )
+
+
+ds = Arcticnet(path=gscad_path, verbosity=3)
+
+test_dataset(ds, 
+             num_stations=106, 
+             dyn_data_len=16071, 
+             num_static_attrs=35,
+              num_dyn_attrs=27,
+              test_df=False,
+              st="1992-01-01",
+              en="1992-12-31",
+              )
+
+
+
+ds = Spain(path=gscad_path, verbosity=3)
+
+test_dataset(ds,
+             num_stations=889,
+             dyn_data_len=15249,
+             num_static_attrs=35,
+              num_dyn_attrs=27,
+              test_df=False,
+              st="1992-01-01",
+              en="1992-12-31",
+              )

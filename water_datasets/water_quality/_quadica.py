@@ -662,7 +662,7 @@ class Quadica(Datasets):
 
         Example
         --------
-        >>> from ai4water.datasets import Quadica
+        >>> from water_datasets import Quadica
         ... # initialize the Quadica class
         >>> dataset = Quadica()
         ... # define the input features

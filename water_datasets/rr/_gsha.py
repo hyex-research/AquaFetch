@@ -1,3 +1,13 @@
+
+__all__ = [
+    'GSHA', 
+    '_GSHA', 
+    'Japan'
+    'Arcticnet',
+    'Spain',
+    'Thailand'
+    ]
+
 import os
 import time
 from typing import List, Union, Dict
@@ -916,9 +926,9 @@ class _GSHA(Camels):
     Parent class for those datasets which uses static and dynamic features from
     GSHA dataset . The following dataset classes are based on this class:
 
-        - py:class:`water_quality.Japan`
-        - py:class:`water_quality.Thailand`
-        - py:class:`water_quality.Spain`
+        - py:class:`water_datasets.Japan`
+        - py:class:`water_datasets.Thailand`
+        - py:class:`water_datasets.Spain`
 
     """
 
@@ -1476,3 +1486,693 @@ def lai_all_stns(
         ds.to_csv(csv_path, index=True)
 
     return ds
+
+
+# the dates for data to be downloaded 
+START_YEAR = 1979
+END_YEAR = 2023
+
+
+class Japan(_GSHA):
+    """
+    Data of 694 catchments of Japan from 
+    `river.go.jp website <http://www1.river.go.jp>`_ .
+    The meteorological data static catchment features and catchment boundaries 
+    taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
+    the number of staic features are 35 and dynamic features are 27 and the
+    data is available from 1979-01-01 to 2022-12-31.
+    """
+
+    def __init__(
+            self, 
+            path:Union[str, os.PathLike] = None,
+            gsha_path:Union[str, os.PathLike] = None,
+            verbosity:int=1,
+            **kwargs):
+        super().__init__(path=path, verbosity=verbosity, 
+                         gsha_path=gsha_path, **kwargs)
+    
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+
+        }
+
+    @property
+    def agency_name(self)->str:
+        return 'MLIT'
+
+    def _maybe_move_and_merge_shpfiles(self):
+
+        out_shp_file = os.path.join(self.path, "boundaries.shp")
+
+        if not os.path.exists(out_shp_file):
+            df = self.gsha._coords()
+            jpn_stns = df.loc[df['agency'] == 'MLIT']
+            shp_path = os.path.join(self.gsha.path, "WatershedPolygons", 
+                                    "WatershedPolygons")
+            shp_files = [os.path.join(shp_path, f"{filename}.shp") for filename in jpn_stns['station_id'].values]
+            for f in shp_files:
+                assert os.path.exists(f)
+
+            merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
+        return
+
+    def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
+        """reads daily streamflow for all stations and puts them in a single
+        file named data.csv. If data.csv is already present, then it is read
+        and its contents are returned as dataframe.
+        """
+
+        if self.timestep in ('daily', 'D'):
+            df = download_daily_data(
+                self.stations(), 
+                self.path, 
+                verbosity=self.verbosity,
+                cpus=self.processes
+                )
+        else:
+            df = self.get_hourly_data(cpus=self.processes)
+
+        df.index.name = 'time'
+
+        if as_dataframe:
+            return df
+        
+        df = xr.Dataset({stn: xr.DataArray(df.loc[:, stn]) for stn in df.columns})
+        return df
+
+    def get_hourly_data(self, cpus=None):
+
+        hourly_file = os.path.join(self.path, 'hourly_data.csv')
+
+        if os.path.exists(hourly_file):
+            print(f"reading hourly data from {hourly_file}")
+            return pd.read_csv(hourly_file, index_col=0)
+
+        path = os.path.join(self.path, 'hourly_files')
+        
+        if self.verbosity>0: print(f"preparing hourly data using {cpus} cpus")
+
+        stn_qs = []
+        for idx, stn in enumerate(self.stations()):
+            stn_q = download_hourly_stn(path, stn=stn, cpus=cpus, verbosity=self.verbosity)
+
+            if self.verbosity>0: print(f"{idx} {stn}, {len(stn_q)}, {stn_q.index[0]}")
+            
+            stn_qs.append(stn_q)
+        
+        q = pd.concat(stn_qs, axis=1)
+
+        q.to_csv(hourly_file)
+        return q
+
+
+def download_daily_stn_yr(
+        stn:str="309191289913130",
+        yr:int=1979,
+)->pd.Series:
+    """downloads daily data for a year for a station"""
+
+    url = f'http://www1.river.go.jp/cgi-bin/DspWaterData.exe?KIND=7&ID={stn}&BGNDATE={yr}0131&ENDDATE={yr}1231&KAWABOU=NO'
+    df = pd.read_html(url, encoding='EUC-JP')[1].loc[2:, 1:].reset_index(drop=True)
+
+    # make a dictionary with months as keys and number of days as values
+    days_in_month = {1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+
+    # if it is a leap year, change the number of days in February
+    if yr % 4 == 0:
+        days_in_month[2] = 29
+
+    assert len(df)<13, len(df)
+
+    yearly_data = []
+    for i in range(0, len(df)):
+        row = df.iloc[i, 0:days_in_month[i+1]]
+        yearly_data.append(row)
+
+    stn_data = pd.concat(yearly_data).reset_index(drop=True)
+    stn_data.index = pd.date_range(start=f'{yr}-01-01', end=f'{yr}-12-31', freq='D')
+    stn_data.name = stn
+
+    return stn_data
+
+
+def download_daily_data(
+        stations:List[str], 
+        path:Union[str, os.PathLike], 
+        verbosity:int=1,
+        cpus:int=None
+        ):
+    """downloads daily data for all stations"""
+    csv_path = os.path.join(path, 'daily_q.csv')
+
+    if os.path.exists(csv_path):
+        if verbosity:
+            print(f"reading daily data from {csv_path}")
+        return pd.read_csv(csv_path, index_col=0, parse_dates=True)
+
+    years = range(START_YEAR, END_YEAR+1)
+    stations_ = [[stn]*len(years) for stn in stations]
+    # flatten the list
+    stations_ = [item for sublist in stations_ for item in sublist]
+    years_ = list(years) * len(stations)
+
+    cpus = cpus or get_cpus()-2
+
+    if verbosity:
+        print(f"downloading daily data for {len(stations)} stations from {years[0]} to {years[-1]}")
+    
+    if verbosity>1:
+        print(f"Total function calls: {len(stations_)} with {cpus} cpus")
+
+    start = time.time()
+    with cf.ProcessPoolExecutor(cpus) as executor:
+        results = executor.map(download_daily_stn_yr, stations_, years_)
+    
+    if verbosity:
+        print(f"total time taken to download data: {time.time() - start}")
+
+    all_data = []
+    for stn in stations:
+        stn_data = []
+        for yr in years:
+            stn_yr_data = next(results)
+            stn_data.append(stn_yr_data)
+        
+        stn_data = pd.concat(stn_data, axis=0)
+        stn_data.name = stn
+
+        if verbosity>2:
+            print(f"total number of years: {yr} for {stn} with shape {stn_data.shape}")
+
+        all_data.append(stn_data)
+    
+    if verbosity>2:
+        print(f"total number of stations: {len(all_data)} each with shape {all_data[0].shape}")
+    
+    all_data = pd.concat(all_data, axis=1)
+
+    all_data = all_data.replace({'−': np.nan, '欠測': np.nan})
+    all_data = all_data.astype(np.float32)    
+    if verbosity:
+        print(f"saving daily data to {csv_path} with shape {all_data.shape}")
+    all_data.to_csv(csv_path)
+    return
+
+
+def download_hourly_stn_day(
+        stn:str="309191289913130", 
+        st:str="20211227",
+        en:str="20211227"
+        ):
+    """download hourly data for a single day for a single station"""
+    url = f"http://www1.river.go.jp/cgi-bin/SrchSiteSuiData2.exe?SUIKEI=90336000&BGNDATE={st}&ENDDATE={en}&ID={stn}:0202;"
+    
+    data = pd.read_html(url)[0]       
+    df = data.iloc[7:]
+    df.columns = ['date', 'time', stn]
+
+    if len(df)>0:
+        # make sure that we have data for all 24 hours
+        assert len(df) == 24, len(df)
+    else:
+        df.pop(stn)
+        df.insert(2, stn, [np.nan for _ in range(24)])
+
+    df.index = pd.date_range(pd.Timestamp(st), periods=24, freq="H")
+
+    return df[stn]
+
+
+def download_hourly_stn(
+        path:Union[str, os.PathLike],
+        stn:str="301031281101030", 
+        st_yr:int=1980, 
+        en_yr:int=2024,
+        cpus:int=64,
+        verbosity:int = 1
+        )->pd.Series:
+    
+    fpath = os.path.join(path, f"{stn}.csv")
+    if os.path.exists(fpath):
+        if verbosity>0: print(f"{stn} already exists")
+        return pd.read_csv(fpath, index_col=0)
+    
+    starts, ends = [], [] 
+    for yr in range(st_yr, en_yr):
+
+        if yr % 4 == 0:
+            n_days = 366
+        else:
+            n_days = 365
+
+        for j_day in range(0, n_days):
+            # convert jday to date
+            date = pd.Timestamp(f"{yr}-01-01") + pd.Timedelta(days=j_day)
+            st = date.strftime("%Y%m%d")
+            en = date.strftime("%Y%m%d")
+
+            starts.append(st)
+            ends.append(en)
+
+    stations = [stn for _ in range(len(starts))]
+    with cf.ProcessPoolExecutor(cpus) as executor:
+        results = executor.map(download_hourly_stn_day, stations, starts, ends)
+
+    yr_df = []
+    for res in results:
+        yr_df.append(res)
+
+    q = pd.concat(yr_df)
+
+    # replace "欠測" with np.nan
+    q = q.replace("欠測", np.nan)
+    q = q.replace('-', np.nan)
+
+    q = q.dropna().astype(np.float32).sort_index()
+
+    # drop duplicated index
+    q = q[~q.index.duplicated(keep='first')]
+
+    q.to_csv(fpath)
+    return q
+
+
+class Arcticnet(_GSHA):
+    """
+    Data of 106 catchments of arctic region from 
+    `r-arcticnet project <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_ .
+    The meteorological data static catchment features and catchment boundaries 
+    taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
+    the number of staic features are 35 and dynamic features are 27 and the
+    data is available from 1979-01-01 to 2003-12-31.
+    """
+
+    def __init__(
+            self, 
+            path:Union[str, os.PathLike] = None,
+            gsha_path:Union[str, os.PathLike] = None,
+            verbosity:int=1,
+            **kwargs):
+        super().__init__(path=path, gsha_path=gsha_path, verbosity=verbosity, **kwargs)
+    
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        self.metadata = self.get_metadata()
+        self._get_q()
+
+        self._stations = [stn for stn in self.all_stations() if stn in self.gsha_arctic_stns()]
+
+        self._static_features = self.gsha.static_features
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+        }
+
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp('2003-12-31')
+    
+    def stations(self)->List[str]:
+        return self._stations
+
+    def all_stations(self):
+        return self.metadata.index.astype(str).tolist()
+
+    @property
+    def agency_name(self)->str:
+        return 'arcticnet'
+
+    def get_metadata(self):
+        metadata_path = os.path.join(self.path, "metadata.csv")
+        if not os.path.exists(metadata_path):
+            df = pd.read_csv(
+                "https://www.r-arcticnet.sr.unh.edu/v4.0/russia-arcticnet/Daily_SiteAttributes.txt", 
+                #"https://www.r-arcticnet.sr.unh.edu/v4.0/data/SiteAttributes.txt",
+                sep="\t",
+                encoding_errors='ignore',
+                )
+            df.index = df.pop('Code')
+            df.to_csv(metadata_path, index=True)
+        else:
+            df = pd.read_csv(metadata_path, index_col=0)
+        return df
+
+    def get_q(self, as_dataframe:bool=True):
+        nc_path = os.path.join(self.path, "daily_q.nc")
+
+        if os.path.exists(nc_path):
+            if self.verbosity:
+                print(f"Reading {nc_path}")
+            q_ds = xr.open_dataset(nc_path)
+        else:
+            q_ds = xr.Dataset({stn:self.get_stn_q(stn) for stn in self.stations()})
+            # rename dimension/coordinate to 'time' in q_ds
+            q_ds = q_ds.rename({'dim_0':'time'})
+
+            encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in self.stations()}
+            if self.verbosity:
+                print(f"Writing {nc_path}")
+            q_ds.to_netcdf(nc_path, encoding=encoding)
+
+        if as_dataframe:
+            q_ds = q_ds.to_dataframe()
+        return q_ds
+
+    def _get_q(self, as_dataframe:bool=True):
+        q_path = os.path.join(self.path, "daily_q.csv")
+        if not os.path.exists(q_path):
+            df = pd.read_csv(
+                "https://www.r-arcticnet.sr.unh.edu/v4.0/russia-arcticnet/discharge_m3_s_UNH-UCLA.txt", 
+                #"https://www.r-arcticnet.sr.unh.edu/v4.0/data/Discharge_ms.txt",
+                sep="\t")
+            df.to_csv(q_path)
+        else:
+            df = pd.read_csv(q_path, index_col=0)
+        return df
+
+    def get_stn_q(self, stn: str):
+        q = self._get_q()
+        stn_q = q.loc[q['Code']==int(stn), :].copy()
+
+        stn_q.drop('Code', axis=1, inplace=True)
+
+        # Function to check leap year and adjust February days
+        def adjust_feb_days(year):
+            if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0):
+                return 29
+            return 28
+
+        month_days1 = {
+            'Jan': 31, 'Feb': 28, # February will be adjusted dynamically
+            'Mar': 31, 'Apr': 30, 'May': 31, 'Jun': 30,
+            'Jul': 31, 'Aug': 31, 'Sep': 30, 'Oct': 31,
+            'Nov': 30, 'Dec': 31
+        }
+
+        # Prepare a mapping of month names to the number of days
+        month_days2 = {
+            1: 31, 2: 28, # February will be adjusted dynamically
+            3: 31, 4: 30, 5: 31, 6: 30,
+            7: 31, 8: 31, 9: 30, 10: 31,
+            11: 30, 12: 31
+        }
+
+        # Melt the DataFrame to convert it from wide format to long format
+        df_long = stn_q.melt(id_vars=['Year', 'Day'], value_vars=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        var_name='Month', value_name='Value')
+
+        month_to_int = {month: i + 1 for i, month in enumerate(month_days1.keys())}
+        df_long['Month'] = df_long['Month'].map(month_to_int).astype(int)
+
+        def get_days_in_month(row):
+            try:
+                if int(row.Month) == 2:
+                    return adjust_feb_days(row.Year)
+                return month_days2[int(row.Month)]
+            except KeyError as e:
+                print(f"KeyError encountered: {e} with row details: {row}")
+                return None  # Or handle the error as needed
+
+        df_long['DaysInMonth'] = df_long.apply(get_days_in_month, axis=1)
+
+        # Filter out invalid days (e.g., February 30)
+        df_long = df_long[df_long['Day'] <= df_long['DaysInMonth']]
+
+        # Create a datetime column from the Year, Month, Day
+        df_long.index = pd.to_datetime(df_long[['Year', 'Month', 'Day']])
+
+        return pd.Series(df_long['Value'], name=str(stn))        
+
+    def gsha_arctic_stns(self)->List[str]:
+
+        df = self.gsha.wsAll.copy()
+        return [stn.split('_')[0] for stn in df[df.index.str.endswith('_arcticnet')].index]
+
+
+class Spain(_GSHA):
+    """
+    Data of 889 catchments of Spain from 
+    `ceh-es <https://ceh-flumen64.cedex.es>`_ website.
+    The meteorological data static catchment features and catchment boundaries 
+    taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
+    the number of staic features are 35 and dynamic features are 27 and the
+    data is available from 1979-01-01 to 2020-09-30.
+    """
+
+    def __init__(
+            self, 
+            path:Union[str, os.PathLike] = None,
+            gsha_path:Union[str, os.PathLike] = None,
+            overwrite:bool=False,
+            verbosity:int=1,
+            **kwargs):
+        super().__init__(
+            path=path, 
+            gsha_path=gsha_path, 
+            overwrite=overwrite,
+            verbosity=verbosity,
+            **kwargs)
+
+        self.areas = [
+            "CANTABRICO", "DUERO", "EBRO", "GALICIA COSTA",
+            "GUADALQUIVIR", "GUADIANA", "JUCAR", "MIÑO-SIL",
+            "SEGURA", "TAJO"
+        ]
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+        }
+
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp('2020-09-30')
+    
+    @property
+    def agency_name(self)->str:
+        return 'AFD'
+    
+    def daily_q_all_areas(self)->pd.DataFrame:
+        """Daily data of gauging stations in river from all areas
+
+        Retuns
+        ------
+        16_806_305 rows x 3
+        """
+        dfs = []
+        for area in self.areas:
+            df = self.daily_q_area(area)
+            dfs.append(df)
+
+        return pd.concat(dfs)
+
+    def daily_q_area(self, area:str)->pd.DataFrame:
+        """Reads Daily data of gauging stations in river which is in afliq.csv file"""
+
+        url = f"https://ceh-flumen64.cedex.es/anuarioaforos//anuario-2019-2020/{area}/afliq.csv"
+
+        df = pd.read_csv(url, #os.path.join(self.path, area, "afliq.csv"),
+                         sep=';')
+
+        idx = pd.to_datetime(df.pop('fecha'), dayfirst=True)
+        df.index = idx
+        df.index.name = "date"
+        df.columns = ['stations', 'height_m', "q_cms"]
+        return df
+
+    def get_q(self, as_dataframe:bool=True):
+        """
+        returns daily q of all stations
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe of shape (39721, 1447)
+        """
+
+        fpath = os.path.join(self.path, 'daily_q.csv')
+
+        if os.path.exists(fpath):
+            data= pd.read_csv(fpath, index_col='Unnamed: 0')
+            data.index = pd.to_datetime(data.index)
+            data.index.name = 'time'
+            if as_dataframe:
+                return data
+            return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
+
+        q = self.daily_q_all_areas()
+
+        st = []
+        en = []
+        for g_name, grp in q.groupby('stations'):
+            st.append(grp.sort_index().index[0])
+            en.append(grp.sort_index().index[-1])
+
+        start = pd.to_datetime(st).sort_values()[0]
+        end = pd.to_datetime(en).sort_values()[-1]
+
+        daily_qs = []
+        for stn, stn_df in q.groupby('stations'):
+            q_ts = pd.Series(name=stn,
+                             index=pd.date_range(start, end=end, freq="d"),
+                             dtype=np.float32)
+            q_ts[stn_df.index] = stn_df['q_cms']
+            daily_qs.append(q_ts)
+
+        data = pd.concat(daily_qs, axis=1)
+
+        data.to_csv(fpath)
+
+        data.index.name = 'time'
+
+        if as_dataframe:
+            return data
+    
+        return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
+
+
+class Thailand(_GSHA):
+    """
+    Data of 73 catchments of Thailand from 
+    `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_ .
+    The meteorological data static catchment features and catchment boundaries 
+    taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
+    the number of staic features are 35 and dynamic features are 27 and the
+    data is available from 1980-01-01 to 1999-12-31.
+    """
+    url = {
+'disc_d_1980_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1980_RIDall.zip',
+'disc_d_1981_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1981_RIDall.zip',
+'disc_d_1982_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1982_RIDall.zip',
+'disc_d_1983_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1983_RIDall.zip',
+'disc_d_1984_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1984_RIDall.zip',
+'disc_d_1985_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1985_RIDall.zip',
+'disc_d_1986_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1986_RIDall.zip',
+'disc_d_1987_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1987_RIDall.zip',
+'disc_d_1988_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1988_RIDall.zip',
+'disc_d_1989_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1989_RIDall.zip',
+'disc_d_1990_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1990_RIDall.zip',
+'disc_d_1991_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1991_RIDall.zip',
+'disc_d_1992_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1992_RIDall.zip',
+'disc_d_1993_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1993_RIDall.zip',
+'disc_d_1994_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1994_RIDall.zip',
+'disc_d_1995_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1995_RIDall.zip',
+'disc_d_1996_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1996_RIDall.zip',
+'disc_d_1997_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1997_RIDall.zip',
+'disc_d_1998_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1998_RIDall.zip',
+'disc_d_1999_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1999_RIDall.zip',
+    }
+
+    def __init__(
+            self, 
+            path:Union[str, os.PathLike] = None,
+            gsha_path:Union[str, os.PathLike] = None,
+            overwrite:bool=False,
+            verbosity:int=1,
+            **kwargs):
+        super().__init__(
+            path=path, 
+            gsha_path=gsha_path, 
+            overwrite=overwrite,
+            verbosity=verbosity,
+            **kwargs)
+
+        self._download(overwrite=overwrite)
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area': catchment_area(),
+                'lat': gauge_latitude(),
+                'long': gauge_longitude(),
+        }
+
+    @property
+    def agency_name(self)->str:
+        return 'RID'
+
+    @property
+    def start(self)->pd.Timestamp:
+        return pd.Timestamp('1980-01-01')
+
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp('1999-12-31')
+
+    def get_q(self, as_dataframe:bool=True):
+        """reads q"""
+
+        fpath = os.path.join(self.path, 'daily_q.csv')
+
+        if os.path.exists(fpath):
+            if self.verbosity:
+                print(f"Reading {fpath}")
+            data = pd.read_csv(fpath, index_col=0, parse_dates=True)
+            if as_dataframe:
+                return data
+            return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
+
+        datas = []
+        for year in range(1980, 2000):
+            data = self._read_year(year)
+            datas.append(data)
+
+        data = pd.concat(datas)
+        #data.columns = [column.replace('.', '_') for column in data.columns.tolist()]
+        data.index.name = 'time'
+
+        if self.verbosity:
+            print(f"Writing {fpath}")
+        data.to_csv(fpath)
+
+        if as_dataframe:
+            return data
+
+        return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
+
+    def _read_year(self, year:int):
+        year_path = os.path.join(self.path, f'disc_d_{year}_RIDall')
+        yr_dfs = []
+        stn_ids = []
+
+        ndays = 365
+        if year%4==0:
+            ndays = 366
+
+        for file in os.listdir(year_path):
+            fpath = os.path.join(year_path, file)
+
+            df = pd.read_csv(
+                fpath,
+                sep='\t',
+                names=['index', 'q_cms'],
+                nrows=ndays,
+                na_values=-9999.0,
+            )
+
+            df.index = pd.to_datetime(df.pop('index'))
+
+            yr_dfs.append(df)
+
+            stn_id = file.split('RID')[1].split('_m3s')[0]
+            stn_ids.append(stn_id)
+
+        df = pd.concat(yr_dfs, axis=1)
+        df.columns = stn_ids
+        return df

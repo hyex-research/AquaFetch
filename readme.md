@@ -16,6 +16,93 @@ Using GitHub link for the latest code
 
 	python -m pip install git+https://github.com/AtrCheema/water-datasets.git
 
+
+## USage
+```python
+from water_datasets import RainfallRunoff
+dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
+df = dataset.fetch(stations=1, as_dataframe=True)
+df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+df.columns = df.columns.get_level_values('dynamic_features')
+df.shape
+   (21184, 26)
+... # get name of all stations as list
+stns = dataset.stations()
+len(stns)
+   222
+... # get data of 10 % of stations as dataframe
+df = dataset.fetch(0.1, as_dataframe=True)
+df.shape
+   (550784, 22)
+... # The returned dataframe is a multi-indexed data
+df.index.names == ['time', 'dynamic_features']
+    True
+... # get data by station id
+df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+df.shape
+    (21184, 26)
+... # get names of available dynamic features
+dataset.dynamic_features
+... # get only selected dynamic features
+data = dataset.fetch(1, as_dataframe=True,
+...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+data.shape
+   (21184, 4)
+... # get names of available static features
+dataset.static_features
+... # get data of 10 random stations
+df = dataset.fetch(10, as_dataframe=True)
+df.shape  # remember this is a multiindexed dataframe
+   (21184, 260)
+# when we get both static and dynamic data, the returned data is a dictionary
+# with ``static`` and ``dyanic`` keys.
+data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+data['static'].shape, data['dynamic'].shape
+((1, 166), (550784, 1))
+coords = dataset.stn_coords() # returns coordinates of all stations
+coords.shape
+    (472, 2)
+dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
+    18.3861 80.3917
+dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+```
+
+```python
+from water_datasets import busan_beach
+dataframe = busan_beach()
+dataframe.shape
+(1446, 14)
+dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
+dataframe.shape
+(1446, 15)
+
+from water_datasets import GRQA
+ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
+print(ds.parameters)
+len(ds.parameters)
+country = "Pakistan"
+len(ds.fetch_parameter('TEMP', country=country))
+```
+
+```python
+from water_datasets import ec_removal_biochar
+data, *_ = ec_removal_biochar()
+data.shape
+(3757, 27)
+data, encoders = ec_removal_biochar(encoding="le")
+data.shape
+(3757, 27)
+
+from water_datasets import mg_degradation
+mg_data, catalyst_encoder, anion_encoder = mg_degradation()
+mg_data.shape
+(1200, 12)
+... # the default encoding is None, but if we want to use one hot encoder
+mg_data_ohe, cat_enc, an_enc = mg_degradation(encoding="ohe")
+mg_data_ohe.shape
+(1200, 31)
+```
+
 ## Summary of Rainfall Runoff Datasets
 
 | Name           | Num. of daily stations | Num. of hourly stations | Num. of dynamic features | Num. of static features | Temporal Coverage | Spatial Coverage                            | Ref.                                                                                                        |

@@ -5,8 +5,8 @@ from typing import Union, List
 
 import pandas as pd
 
-from ._datasets import Datasets
-from .utils import check_st_en
+from .._datasets import Datasets
+from ..utils import check_st_en
 
 
 class GRiMeDB(Datasets):

@@ -437,8 +437,8 @@ def _unzip(
 
 class OneHotEncoder(object):
     """
-    >>> from ai4water.datasets import mg_photodegradation
-    >>> data, _, _ = mg_photodegradation()
+    >>> from water_datasets import mg_degradation
+    >>> data, _, _ = mg_degradation()
     >>> cat_enc1 = OneHotEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
     >>> _cat = cat_enc1.inverse_transform(cat_)
@@ -463,8 +463,8 @@ class OneHotEncoder(object):
 
 class LabelEncoder(object):
     """
-    >>> from ai4water.datasets import mg_photodegradation
-    >>> data, _, _ = mg_photodegradation()
+    >>> from water_datasets import mg_degradation
+    >>> data, _, _ = mg_degradation()
     >>> cat_enc1 = LabelEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
     >>> _cat = cat_enc1.inverse_transform(cat_)

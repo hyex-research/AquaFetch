@@ -35,19 +35,24 @@ from ._simbi import Simbi
 from ._denmark import CAMELS_DK as CAMELS_DK0
 from ._bull import Bull
 from ._camels import CAMELS_IND
-from ._arcticnet import Arcticnet
+from ._gsha import Arcticnet
 from ._usgs import USGS
-from ._misc import EStreams
-from ._japan import Japan
-from ._thailand import Thailand
-from ._spain import Spain
-from ._ireland import Ireland
-from ._finland import Finland
-from ._finland import Finland
-from ._poland import Poland
-from ._italy import Italy
+from ._estreams import EStreams
+from ._gsha import Japan
+from ._gsha import Thailand
+from ._gsha import Spain
+from ._estreams import Ireland
+from ._estreams import Finland
+from ._estreams import Finland
+from ._estreams import Poland
+from ._estreams import Italy
 from ._camels import CAMELS_FR
-from ._portugal import Portugal
+from ._estreams import Portugal
+# following are not available with RainfallRunoff class yet
+from ._npctr import NPCTRCatchments
+from .mtropics import MtropicsLaos
+from .mtropics import MtropcsThailand
+from .mtropics import MtropicsVietnam
 
 
 DATASETS = {
@@ -89,12 +94,7 @@ DATASETS = {
     'Portugal': Portugal,
 }
 
-
-class RainfallRunoff(object):
-    """
-    This is the master class which provides access to all the rainfall-runoff
-    datasets. Use this class instead of using the individual dataset classes.
-
+"""
     .. list-table:: Naming Convention for dynamic features
        :widths: 20 30
        :header-rows: 1
@@ -153,6 +153,12 @@ class RainfallRunoff(object):
          - catchment area in km2
        * - mean_elev
          - mean elevation in meters
+"""
+class RainfallRunoff(object):
+    """
+    This  class provides access to all the rainfall-runoff
+    datasets. For simiplity and resusability, use this class 
+    instead of using the individual dataset classes.
 
     Examples
     --------

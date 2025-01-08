@@ -195,7 +195,7 @@ import os
 import glob
 import random
 import warnings
-from typing import Union, List
+from typing import Union
 
 import numpy as np
 import pandas as pd

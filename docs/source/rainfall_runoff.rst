@@ -180,7 +180,9 @@ class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to
 
 High Level API
 ==============
-It consists of a unified interface to access all the datasets. The datasets are accessed by their names.
+The high level API is provided by :py:class:`water_datasets.rr.RainfallRunoff` 
+class to provide a unified and easy-to-use interface to access all the datasets. 
+The datasets are accessed by their names.
 
 .. autoclass:: water_datasets.rr.RainfallRunoff
    :members:
@@ -192,8 +194,8 @@ It consists of a unified interface to access all the datasets. The datasets are 
 
 Low Level API
 =============
-The datasets can be accessed individually by their names.
-
+The low level API provides access to each individual dataset classes.
+This provides more control over the datasets.
 
 
 .. autoclass:: water_datasets.rr.Camels

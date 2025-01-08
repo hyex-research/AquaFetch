@@ -8,12 +8,12 @@ from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 
-from ._backend import shape, mapping, unary_union
-from ._backend import xarray as xr, fiona, shapefile
+from .._backend import shape, mapping, unary_union
+from .._backend import xarray as xr, fiona, shapefile
 
-from ._datasets import Datasets, maybe_download
+from .._datasets import Datasets, maybe_download
 
-from .utils import check_attributes, check_st_en, find_records, Resampler
+from ..utils import check_attributes, check_st_en, find_records, Resampler
 
 
 class MtropicsLaos(Datasets):

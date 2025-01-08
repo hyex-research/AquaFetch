@@ -32,8 +32,6 @@ class SanFranciscoBay(Datasets):
     )->pd.DataFrame:
         """
 
-
-
         Parameters
         ----------
         parameters : Union[str, List[str]], optional

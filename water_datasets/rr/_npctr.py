@@ -2,15 +2,12 @@
 __all__ = ["NPCTRCatchments"]
 
 import os
-from typing import Union, List, Tuple
+from typing import Union, List
 
-import numpy as np
 import pandas as pd
 
-from ._backend import xarray as xr
-
-from ._datasets import Datasets
-from .utils import check_attributes, sanity_check, check_st_en
+from .._datasets import Datasets
+from ..utils import check_attributes
 
 
 class NPCTRCatchments(Datasets):
@@ -104,7 +101,7 @@ class NPCTRCatchments(Datasets):
 
         Examples
         ---------
-        >>> from ai4water.datasets import NPCTRCatchments
+        >>> from water_datasets import NPCTRCatchments
         >>> dataset = NPCTRCatchments()
         """
         _verify_timestep(timestep)

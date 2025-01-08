@@ -41,6 +41,52 @@ from .rr import Italy
 from .rr import CAMELS_FR
 from .rr import Portugal
 
+from .rr import MtropicsLaos
+from .rr import MtropcsThailand
+from .rr import MtropicsVietnam
+from .rr import NPCTRCatchments
+
+
+# *** Waste Water Treatment ***
+from .water_treatment import ec_removal_biochar
+from .water_treatment import cr_removal
+from .water_treatment import po4_removal_biochar
+from .water_treatment import heavy_metal_removal
+from .water_treatment import industrial_dye_removal
+from .water_treatment import heavy_metal_removal_Shen
+from .water_treatment import P_recovery
+from .water_treatment import N_recovery
+
+from .water_treatment import mg_degradation
+from .water_treatment import dye_removal
+from .water_treatment import dichlorophenoxyacetic_acid_removal
+
+from .water_treatment import micropollutant_removal_osmosis
+from .water_treatment import ion_transport_via_reverse_osmosis
+
+from .water_treatment import cyanobacteria_disinfection
+
+
+# *** Water Quality ***
+from .water_quality import Quadica
+from .water_quality import GRQA
+from .water_quality import Swatch
+from .water_quality import RC4USCoast
+from .water_quality import DoceRiver
+from .water_quality import SeluneRiver
+from .water_quality import busan_beach
+from .water_quality import RiverChemSiberia
+from .water_quality import SyltRoads
+from .water_quality import ecoli_mekong_laos
+from .water_quality import ecoli_houay_pano
+from .water_quality import ecoli_mekong_2016
+from .water_quality import ecoli_mekong
+from .water_quality import CamelsChem
+from .water_quality import SanFranciscoBay
+from .water_quality import GRiMeDB
+
+# *** Miscellaneous ***
+
 from ._datasets import Weisssee
 from ._datasets import WaterChemEcuador
 from ._datasets import WaterChemVictoriaLakes
@@ -68,58 +114,14 @@ from ._datasets import EtpPcpSamoylov
 from ._datasets import SWECanada
 from ._datasets import gw_punjab
 from ._datasets import RRAlpineCatchments
-
-
-from .water_treatment import ec_removal_biochar
-from .water_treatment import cr_removal
-from .water_treatment import po4_removal_biochar
-from .water_treatment import heavy_metal_removal
-from .water_treatment import industrial_dye_removal
-from .water_treatment import heavy_metal_removal_Shen
-from .water_treatment import P_recovery
-from .water_treatment import N_recovery
-
-from .water_treatment import mg_degradation
-from .water_treatment import dye_removal
-from .water_treatment import dichlorophenoxyacetic_acid_removal
-
-from .water_treatment import micropollutant_removal_osmosis
-from .water_treatment import ion_transport_via_reverse_osmosis
-
-from .water_treatment import cyanobacteria_disinfection
-
-from .mtropics import MtropicsLaos
-from .mtropics import MtropcsThailand
-from .mtropics import MtropicsVietnam
-
-
-from ._grimedb import GRiMeDB
-from ._npctr import NPCTRCatchments
 from ._hyperspectral import SoilPhosphorus
-
-
-from .water_quality import Quadica
-from .water_quality import GRQA
-from .water_quality import Swatch
-from .water_quality import RC4USCoast
-from .water_quality import DoceRiver
-from .water_quality import SeluneRiver
-from .water_quality import busan_beach
-from .water_quality import RiverChemSiberia
-from .water_quality import SyltRoads
-from .water_quality import ecoli_mekong_laos
-from .water_quality import ecoli_houay_pano
-from .water_quality import ecoli_mekong_2016
-from .water_quality import ecoli_mekong
-from .water_quality import CamelsChem
-from .water_quality import SanFranciscoBay
 
 
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
 
     DeprecationWarning("load_nasdaq is deprecated and will be removed in future versions."
-                       "See ai4water.datasets to get an appropriate dataset")
+                       "See water_datasets to get an appropriate dataset")
 
     fname = os.path.join(os.path.dirname(__file__), "data", "nasdaq100_padding.csv")
 

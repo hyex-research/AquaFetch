@@ -15,7 +15,6 @@ from ._map import (
     )
 
 
-
 class WaterBenchIowa(Camels):
     """
     Rainfall run-off dataset for Iowa (US) following the work of
