@@ -112,6 +112,7 @@ from .water_quality import ecoli_houay_pano
 from .water_quality import ecoli_mekong_2016
 from .water_quality import ecoli_mekong
 from .water_quality import CamelsChem
+from .water_quality import SanFranciscoBay
 
 
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):

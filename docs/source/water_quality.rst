@@ -39,6 +39,20 @@ Water Quality
    .. automethod:: __init__
 
 
+.. autoclass:: water_datasets.SyltRoads
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.SanFranciscoBay
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autofunction:: water_datasets.ecoli_mekong
 
 

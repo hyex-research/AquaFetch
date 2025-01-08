@@ -20,3 +20,4 @@ from ._mtropics import ecoli_houay_pano
 from ._mtropics import ecoli_mekong_2016
 from ._mtropics import ecoli_mekong
 from ._camels_chem import CamelsChem
+from ._misc import SanFranciscoBay

@@ -22,7 +22,7 @@ class SyltRoads(Datasets):
 
     Examples
     --------
-    >>> from ai4water.datasets import SyltRoads
+    >>> from water_datasets import SyltRoads
     >>> ds = SyltRoads()
 
     """
