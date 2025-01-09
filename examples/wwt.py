@@ -31,9 +31,11 @@ from water_datasets import (
     heavy_metal_removal_Shen,
     P_recovery,
     N_recovery,
+    As_recovery,
     mg_degradation,
     dye_removal,
     dichlorophenoxyacetic_acid_removal,
+    pms_removal,
     micropollutant_removal_osmosis,
     ion_transport_via_reverse_osmosis,
     cyanobacteria_disinfection
@@ -76,6 +78,10 @@ print(data.shape)
 data, _ = N_recovery()
 print(data.shape)
 
+# %%
+data, _ = As_recovery()
+print(data.shape)
+
 
 # %%
 # Photocatalysis
@@ -90,6 +96,10 @@ print(data.shape)
 
 # %%
 data, _ = dichlorophenoxyacetic_acid_removal()
+print(data.shape)
+
+# %%
+data, _ = pms_removal()
 print(data.shape)
 
 # %%

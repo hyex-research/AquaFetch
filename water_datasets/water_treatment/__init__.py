@@ -14,10 +14,12 @@ from .adsorption import industrial_dye_removal
 from .adsorption import heavy_metal_removal_Shen
 from .adsorption import P_recovery
 from .adsorption import N_recovery
+from .adsorption import As_recovery
 
 from .photocatalysis import mg_degradation
 from .photocatalysis import dye_removal
 from .photocatalysis import dichlorophenoxyacetic_acid_removal
+from .photocatalysis import pms_removal
 
 from .membrane import micropollutant_removal_osmosis
 from .membrane import ion_transport_via_reverse_osmosis

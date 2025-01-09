@@ -331,3 +331,15 @@ def N_recovery(
     data = data[parameters]
 
     return data, encoders
+
+
+def As_recovery(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None
+)->Tuple[pd.DataFrame, Dict[str, Any]]:
+    """
+    `Huang et al., 2023 <https://doi.org/10.1016/j.watres.2024.122815>`_
+    """
+    url = "https://ars.els-cdn.com/content/image/1-s2.0-S0043135424017147-mmc2.xlsx"
+    data = maybe_download_and_read_data(url, "As_recovery.csv")
+    return data, {}

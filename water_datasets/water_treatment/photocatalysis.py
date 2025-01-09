@@ -257,3 +257,16 @@ def dichlorophenoxyacetic_acid_removal(
     url = "https://gitlab.com/atrcheema/envai106/-/raw/main/data/data.xlsx"
     data = maybe_download_and_read_data(url, "dichlorophenoxyacetic_acid_removal.xlsx")
     return data, {}
+
+
+def pms_removal(
+    parameters: Union[str, List[str]] = "all",
+    encoding: str = None,
+):
+    """
+    Data for photodegradation of phenol using peroxymonosulfate
+    """
+
+    url = "https://gitlab.com/atrcheema/envai105/-/raw/main/data/Final_data_sheet_0716.xlsx"
+    data = maybe_download_and_read_data(url, "pms_removal.xlsx")
+    return data, {}
