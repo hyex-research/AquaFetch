@@ -1,7 +1,8 @@
 Waste Water Treatment
 **********************
-This module contains datasets related to waste water treatment 
+This sub-module contains datasets related to waste water treatment 
 with various methods like adsorption, photocatalysis, membrane, sonolysis etc.
+
 
 Adsorption
 ==============
@@ -13,6 +14,7 @@ Adsorption
 .. autofunction:: water_datasets.heavy_metal_removal_Shen
 .. autofunction:: water_datasets.P_recovery
 .. autofunction:: water_datasets.N_recovery
+.. autofunction:: water_datasets.As_recovery
 
 
 Photocatalysis
@@ -20,6 +22,7 @@ Photocatalysis
 .. autofunction:: water_datasets.mg_degradation
 .. autofunction:: water_datasets.dye_removal
 .. autofunction:: water_datasets.dichlorophenoxyacetic_acid_removal
+.. autofunction:: water_datasets.pms_removal
 
 
 Membrane

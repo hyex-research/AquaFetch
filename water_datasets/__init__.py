@@ -56,10 +56,12 @@ from .water_treatment import industrial_dye_removal
 from .water_treatment import heavy_metal_removal_Shen
 from .water_treatment import P_recovery
 from .water_treatment import N_recovery
+from .water_treatment import As_recovery
 
 from .water_treatment import mg_degradation
 from .water_treatment import dye_removal
 from .water_treatment import dichlorophenoxyacetic_acid_removal
+from .water_treatment import pms_removal
 
 from .water_treatment import micropollutant_removal_osmosis
 from .water_treatment import ion_transport_via_reverse_osmosis
