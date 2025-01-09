@@ -12,21 +12,31 @@ The datasets are downloaded only once upon their first use.
 
 ## Installation
 
-Using GitHub link for the latest code
+The package can be installed using GitHub link from the master branch
 
 	python -m pip install git+https://github.com/AtrCheema/water-datasets.git
 
+To install from a specific branch such as ``dev`` branch which contains more recent code
+
+	python -m pip install git+https://github.com/AtrCheema/water-datasets.git@dev
+
+The above code will install minimal depencies required to use the library which include
+numpy, pandas and requests. To install the library with full list of dependencies use the
+``all`` option during installation.
+
+	python -m pip install "water_datasets[all] @ git+https://github.com/AtrCheema/water_datasets.git"
+
+This will install addtional optional depencdies which include xarray, pyshp, netCDF and easy_mpl.
 
 ## Usage
 The library contains three types of datasets i.e. rainfall-runoff, surface water quality and wastewater
 treatment. Below we show brief usage for each of these three types of datasets. For detailed usage
 examples see [docs](https://water-datasets.readthedocs.io/en/latest/index.html)
 
-The core of rainfall-runoff datasets is [``RainfallRunoff``](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.RainfallRunoff) class. This class
-can be used to fetch dynamic features (catchment averaged hydrometeorological data at daily or sub-daily timesteps),
-static features (catchment features related to topography, soil, landuse-landcover or hydrological indices which have constant value over time)
-and catchment boundary. The followign example shows how to fetch data for [CAMELS_AUS](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.CAMELS_AUS). However, the method is exactly same for all
-the [available rainfall-runoff datasets](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#id36)
+The core of ``rr`` sub-module is the [``RainfallRunoff``](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.RainfallRunoff) class. This class
+fetches dynamic features (catchment averaged hydrometeorological data at daily or sub-daily timesteps),
+static features (catchment characteristics related to topography, soil, land use-land cover, or hydrological indices that have constant values over time)
+and the catchment boundary. The following example demonstrates how to fetch data for [CAMELS_AUS](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.CAMELS_AUS). However, the method is the same for all [available rainfall-runoff datasets](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#id36).
 
 ```python
 from water_datasets import RainfallRunoff
@@ -36,31 +46,31 @@ df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we ha
 df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
    (21184, 26)
-... # get name of all stations as list
+# get name of all stations as list
 stns = dataset.stations()
 len(stns)
    222
-... # get data of 10 % of stations as dataframe
+# get data of 10 % of stations as dataframe
 df = dataset.fetch(0.1, as_dataframe=True)
 df.shape
    (550784, 22)
-... # The returned dataframe is a multi-indexed data
+# The returned dataframe is a multi-indexed data
 df.index.names == ['time', 'dynamic_features']
     True
-... # get data by station id
+# get data by station id
 df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
 df.shape
     (21184, 26)
-... # get names of available dynamic features
+# get names of available dynamic features
 dataset.dynamic_features
-... # get only selected dynamic features
+# get only selected dynamic features
 data = dataset.fetch(1, as_dataframe=True,
 ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
 data.shape
    (21184, 4)
-... # get names of available static features
+# get names of available static features
 dataset.static_features
-... # get data of 10 random stations
+# get data of 10 random stations
 df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe
    (21184, 260)
@@ -114,7 +124,7 @@ from water_datasets import mg_degradation
 mg_data, catalyst_encoder, anion_encoder = mg_degradation()
 mg_data.shape
 (1200, 12)
-... # the default encoding is None, but if we want to use one hot encoder
+# the default encoding is None, but if we want to use one hot encoder
 mg_data_ohe, cat_enc, an_enc = mg_degradation(encoding="ohe")
 mg_data_ohe.shape
 (1200, 31)

@@ -29,9 +29,6 @@ Water Quality
    .. automethod:: __init__
 
 
-.. autofunction:: water_datasets.busan_beach
-
-
 .. autoclass:: water_datasets.CamelsChem
    :members:
    :show-inheritance:
@@ -51,6 +48,9 @@ Water Quality
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+.. autofunction:: water_datasets.busan_beach
 
 
 .. autofunction:: water_datasets.ecoli_mekong
