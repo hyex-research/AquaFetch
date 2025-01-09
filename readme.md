@@ -17,7 +17,17 @@ Using GitHub link for the latest code
 	python -m pip install git+https://github.com/AtrCheema/water-datasets.git
 
 
-## USage
+## Usage
+The library contains three types of datasets i.e. rainfall-runoff, surface water quality and wastewater
+treatment. Below we show brief usage for each of these three types of datasets. For detailed usage
+examples see [docs](https://water-datasets.readthedocs.io/en/latest/index.html)
+
+The core of rainfall-runoff datasets is [``RainfallRunoff``](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.RainfallRunoff) class. This class
+can be used to fetch dynamic features (catchment averaged hydrometeorological data at daily or sub-daily timesteps),
+static features (catchment features related to topography, soil, landuse-landcover or hydrological indices which have constant value over time)
+and catchment boundary. The followign example shows how to fetch data for [CAMELS_AUS](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.CAMELS_AUS). However, the method is exactly same for all
+the [available rainfall-runoff datasets](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#id36)
+
 ```python
 from water_datasets import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
@@ -67,6 +77,10 @@ dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
 dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
 ```
 
+The datasets related to surface water quality are available using functional or objected-oriented API
+depending upon the complexity of the dataset. The following example shows usage of two surface water
+quality related datasets. For complete name of Python functions and classes see [documentation](https://water-datasets.readthedocs.io/en/latest/water_quality.html)
+
 ```python
 from water_datasets import busan_beach
 dataframe = busan_beach()
@@ -83,6 +97,9 @@ len(ds.parameters)
 country = "Pakistan"
 len(ds.fetch_parameter('TEMP', country=country))
 ```
+
+The datasets for wastewater treatment are all available in function API design. These datasets consist of experimental conducted
+to remove certain pollutants from wastewater. For complete list of functions, see [documentation](https://water-datasets.readthedocs.io/en/latest/wwt.html)
 
 ```python
 from water_datasets import ec_removal_biochar
