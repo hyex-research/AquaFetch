@@ -36,6 +36,7 @@ def ec_removal_biochar(
     ----------
     parameters :
         By default following features are used as input
+
             - ``adsorbent``
             - ``pyrolysis_temperature``
             - ``pyrolysis_time``
@@ -183,39 +184,40 @@ def po4_removal_biochar(
     ----------
     parameters :
         The parameters of the adsorption. It must be one of the following:
-        - ``adsorbent``
-        - ``feedstock``
-        - ``activation``
-        - ``pyrolysis_temp``
-        - ``heating_rate``
-        - ``pyrolysis_time``
-        - ``C_%``
-        - ``H_%``
-        - ``O_%``
-        - ``N_%``
-        - ``S_%``
-        - ``Ca_%``
-        - ``ash``
-        - ``H/C``
-        - ``O/C``
-        - ``N/C``
-        - ``(O+N/C)``
-        - ``surface_area``
-        - ``pore_volume``
-        - ``avg_pore_size``
-        - ``adsorption_time_min``
-        - ``Ci_ppm``
-        - ``solution_pH``
-        - ``rpm``
-        - ``volume_l``
-        - ``loading_g``
-        - ``loading_g/L``
-        - ``adsorption_temp``
-        - ``ion_concentration_mM``
-        - ``ion_type``
-        - ``final_conf``
-        - ``qe``
-        - ``efficiency``
+
+            - ``adsorbent``
+            - ``feedstock``
+            - ``activation``
+            - ``pyrolysis_temp``
+            - ``heating_rate``
+            - ``pyrolysis_time``
+            - ``C_%``
+            - ``H_%``
+            - ``O_%``
+            - ``N_%``
+            - ``S_%``
+            - ``Ca_%``
+            - ``ash``
+            - ``H/C``
+            - ``O/C``
+            - ``N/C``
+            - ``(O+N/C)``
+            - ``surface_area``
+            - ``pore_volume``
+            - ``avg_pore_size``
+            - ``adsorption_time_min``
+            - ``Ci_ppm``
+            - ``solution_pH``
+            - ``rpm``
+            - ``volume_l``
+            - ``loading_g``
+            - ``loading_g/L``
+            - ``adsorption_temp``
+            - ``ion_concentration_mM``
+            - ``ion_type``
+            - ``final_conf``
+            - ``qe``
+            - ``efficiency``
 
     encoding : str, default=None
         the type of encoding to use for categorical parameters. If not None, it should
@@ -286,7 +288,8 @@ def cr_removal(
     Parameters
     ----------
     parameters :
-        By default following parameters are used as input
+        By default following parameters are used
+
             - ``adsorbent``
             - ``NaOH_conc_M``
             - ``surface_area``
@@ -400,7 +403,8 @@ def heavy_metal_removal(
     Parameters
     ----------
     parameters :
-        By default following parameters are used as input
+        By default following parameters are used
+
             - ``adsorbent``
             - ``NaOH_conc_M``
             - ``surface_area``
@@ -500,7 +504,8 @@ def heavy_metal_removal_Shen(
     Parameters
     ----------
         parameters :
-            By default following parameters are used as input
+            By default following parameters are used
+
                 - ``heavy_metal``
                 - ``hm_label``
                 - ``ph_bichar``
@@ -600,7 +605,8 @@ def industrial_dye_removal(
     Parameters
     ----------
         parameters : 
-            By default following parameters are used as input
+            By default following parameters are used
+
                 - ``adsorbent``
                 - ``calcination_temperature``
                 - ``calcination_time_min``
@@ -722,6 +728,7 @@ def P_recovery(
     ----------
     parameters :
         parameters to use as input. By default following parameters are used
+
             - ``stir(rpm)``
             - ``t(min)``
             - ``T(℃)``
@@ -785,6 +792,7 @@ def N_recovery(
     ----------
     parameters :
         parameters to use as input. By default following parameters are used
+
             - ``stir(rpm)``
             - ``t(min)``
             - ``T(℃)``

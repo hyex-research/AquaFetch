@@ -51,11 +51,11 @@ def mg_degradation(
                 - ``k_2nd``
 
         encoding : str, default=None
-            type of encoding to use for the two categorical features i.e., ``Catalyst_type``
-            and ``Anions``, to convert them into numberical. Available options are ``ohe``,
+            type of encoding to use for the two categorical features i.e., ``catalyst_type``
+            and ``anions``, to convert them into numberical. Available options are ``ohe``,
             ``le`` and None. If ``ohe`` is selected the original input columns are replaced
             with ohe hot encoded columns. This will result in 6 columns for Anions and
-            15 columns for Catalyst_type.
+            15 columns for catalyst_type.
 
     Returns
     --------
@@ -246,9 +246,7 @@ def dye_removal(
     'Light intensity (watt)': 'light_intensity_watt',
         'Light source distance (cm)': 'light_source_dist_cm',
         'Time (m)': 'time_m',
-
     'Dye': 'dye',
-
         # pollutant (dye) properties)
     'log_Kw': 'log_kw',
         'hydrogen_bonding_acceptor_count': 'hydrogen_bonding_accep_count',
@@ -309,6 +307,7 @@ def dichlorophenoxyacetic_acid_removal(
     ----------
     parameters : list, optional
         features to use as input. It must be a subset of the following features
+
             - ``catalyst``
             - ``surface_area``
             - ``pore_volume``
@@ -410,6 +409,7 @@ def pms_removal(
     ----------
         parameters : list, optional
             Names of the parameters to use. By default following parameters are used
+
                 - ``time_min``
                 - ``catalyst_type``
                 - ``magnetization_Ms_emu/g``

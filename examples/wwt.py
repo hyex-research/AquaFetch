@@ -121,7 +121,7 @@ print(data.columns)
 # Photocatalysis
 # --------------
 
-data, _, _ = mg_degradation()
+data, _ = mg_degradation()
 print(data.shape)
 
 # %%
