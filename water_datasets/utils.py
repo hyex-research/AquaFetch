@@ -13,8 +13,6 @@ from io import BytesIO
 import urllib.request as ulib
 from typing import Union, List
 import urllib.parse as urlparse
-import array
-from struct import pack, unpack, calcsize, error, Struct
 
 import requests
 
@@ -57,9 +55,9 @@ DATA_FILES = {
 
 
 def download(
-        url:str, 
-        outdir:os.PathLike=None,
-        fname:str = None
+        url: str,
+        outdir: Union[str, os.PathLike] = None,
+        fname: str = None
         )->os.PathLike:
     """
     High level function, which downloads URL into tmp file in current
@@ -438,11 +436,11 @@ def _unzip(
 class OneHotEncoder(object):
     """
     >>> from water_datasets import mg_degradation
-    >>> data, _, _ = mg_degradation()
+    >>> data, _ = mg_degradation()
     >>> cat_enc1 = OneHotEncoder()
-    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> cat_ = cat_enc1.fit_transform(data['catalyst_type'].values)
     >>> _cat = cat_enc1.inverse_transform(cat_)
-    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    >>> all([a==b for a,b in zip(data['catalyst_type'].values, _cat)])
     """
     def fit(self, X:np.ndarray):
         assert len(X) == X.size
@@ -464,11 +462,11 @@ class OneHotEncoder(object):
 class LabelEncoder(object):
     """
     >>> from water_datasets import mg_degradation
-    >>> data, _, _ = mg_degradation()
+    >>> data, _ = mg_degradation()
     >>> cat_enc1 = LabelEncoder()
-    >>> cat_ = cat_enc1.fit_transform(data['Catalyst_type'].values)
+    >>> cat_ = cat_enc1.fit_transform(data['catalyst_type'].values)
     >>> _cat = cat_enc1.inverse_transform(cat_)
-    >>> all([a==b for a,b in zip(data['Catalyst_type'].values, _cat)])
+    >>> all([a==b for a,b in zip(data['catalyst_type'].values, _cat)])
     """
     def fit(self, X):
         assert len(X) == X.size
@@ -490,20 +488,6 @@ class LabelEncoder(object):
         return pd.Series(X).map(self.mapper_).values
 
 
-def encode_column(
-        df:pd.DataFrame,
-        col_name:str,
-        encoding:str
-)->tuple:
-    """encode a column in a dataframe according the encoding type"""
-    if encoding == "ohe":
-        return ohe_column(df, col_name)
-    elif encoding == "le":
-        return le_column(df, col_name)
-    else:
-        raise ValueError
-
-
 def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
     """one hot encode a column in datatrame"""
     assert isinstance(col_name, str)
@@ -513,7 +497,7 @@ def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
     ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
     cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
 
-    df[cols_added] = ohe_cat
+    df = pd.concat([df, pd.DataFrame(ohe_cat, columns=cols_added)], axis=1)
 
     df.pop(col_name)
 
@@ -684,7 +668,8 @@ def get_record_in_col(shp_reader, i, col_no):
 
 
 class Resampler(object):
-    """Resamples time-series data from one frequency to another frequency.
+    """
+    Resamples time-series data from one frequency to another frequency.
     """
     min_in_freqs = {
         'MIN': 1,
@@ -1108,7 +1093,7 @@ def encode_cols(
         if encoding == "ohe":
             df, _, encoders[col] = ohe_column(df, col)
         elif encoding == "le":
-            df, encoders[col] = le_column(df, col)
+            df, _, encoders[col] = le_column(df, col)
 
     return df, encoders
 
@@ -1121,7 +1106,6 @@ def maybe_download_and_read_data(
     """
     Download and read tabular (csv/xlsx) data from the given url
     """
-    #path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
     path = os.path.join(os.path.dirname(__file__), "data")
     if not os.path.exists(path):
         os.makedirs(path)
@@ -1136,7 +1120,7 @@ def maybe_download_and_read_data(
             df = download_with_requests(url)
         elif url.endswith(".csv"):
           df = pd.read_csv(url,**kwargs)
-        elif url.endswith(".xlsx"):\
+        elif url.endswith(".xlsx"):
             df = pd.read_excel(url, **kwargs)
         else:
             raise ValueError(f"Unknown extension: {url.split('.')}")

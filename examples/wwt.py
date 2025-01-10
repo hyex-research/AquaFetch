@@ -49,38 +49,72 @@ from water_datasets import (
 data, _ = ec_removal_biochar()
 print(data.shape)
 
+# %%
+print(data.columns)
 
 # %%
 data, _ = cr_removal()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = po4_removal_biochar()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 # %%
 data, _ = heavy_metal_removal()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = industrial_dye_removal()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 # %%
 data, _ = heavy_metal_removal_Shen()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = P_recovery()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 # %%
 data, _ = N_recovery()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = As_recovery()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 
 # %%
@@ -91,16 +125,32 @@ data, _, _ = mg_degradation()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = dye_removal()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 # %%
 data, _ = dichlorophenoxyacetic_acid_removal()
 print(data.shape)
 
 # %%
+
+print(data.columns)
+
+# %%
 data, _ = pms_removal()
 print(data.shape)
+
+# %%
+
+print(data.columns)
 
 # %%
 # Membrane processes
@@ -116,3 +166,6 @@ print(data.shape)
 # %%
 data, _ = cyanobacteria_disinfection()
 print(data.shape)
+
+# %%
+print(data.columns)

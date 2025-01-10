@@ -6,6 +6,12 @@
 # https://doi.org/10.1016/j.energy.2024.133707
 # https://doi.org/10.1016/j.scitotenv.2024.176780
 
+# parameter naming conventions
+# - no white space
+# provide units wherever possible
+# avoid capital except for element symbols
+# avoid ( ) : ;
+
 from .adsorption import ec_removal_biochar
 from .adsorption import cr_removal
 from .adsorption import po4_removal_biochar
