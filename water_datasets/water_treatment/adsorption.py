@@ -3,7 +3,12 @@ __all__ = [
     "ec_removal_biochar", 
     "po4_removal_biochar", 
     "cr_removal", 
-    "heavy_metal_removal"
+    "heavy_metal_removal",
+    "heavy_metal_removal_Shen",
+    "industrial_dye_removal",
+    "P_recovery",
+    "N_recovery",
+    "As_recovery"
     ]
 
 from typing import Union, Tuple, Any, List, Dict
@@ -116,7 +121,8 @@ def ec_removal_biochar(
 
     data = maybe_download_and_read_data(url, 'ec_removal_biochar.csv')
 
-    capitals = [        'C',
+    capitals = [        
+        'C',
         'H',
         'O',
         'N',
@@ -850,11 +856,99 @@ def As_recovery(
         encoding: str = None
 )->Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    `Huang et al., 2023 <https://doi.org/10.1016/j.watres.2024.122815>`_
+    Data from experiments conducted for As recovery from wastewater using adsorption.
+    For more details on data see `Huang et al., 2023 <https://doi.org/10.1016/j.watres.2024.122815>`_ .
+
+    Parameters
+    ----------
+    parameters :
+        parameters to use as input. By default following parameters are used
+
+            - ``material``
+            - ``biochar_modification``
+            - ``biochar_type``
+            - ``BET_surface_area``
+            - ``pore_volume``
+            - ``solution_pH``
+            - ``reactor_temperature``
+            - ``initial_As_concentration_mg_L``
+            - ``adsorbent_dosage``
+            - ``equilibrium_reaction_time_h``
+            - ``pyrolysis_temperature``
+            - ``As_mg_g``
+            - ``As_type``
+        
+    encoding : str, default=None
+        the type of encoding to use for categorical parameters. If not None, it should
+        be either ``ohe`` or ``le`.
+    
+    Returns
+    --------
+    tuple
+        A tuple of length two. The first element is a DataFrame while the
+        second element is a dictionary consisting of encoders with ``material``,
+        ``biochar_modification``, ``biochar_type`` and ``As_type`` as keys.
+    
+    Examples
+    --------
+    >>> from water_datasets import As_recovery
+    ... # Using default parameters
+    >>> data, _ = As_recovery()
+    >>> data.shape
+    (1605, 13)
+    ... # Using label encoding
+    >>> data, encoders = As_recovery(encoding="le")
+    >>> data.shape
+    (1605, 13)
+    >>> len(set(encoders['material'].inverse_transform(data.loc[:, "material"])))
+    72
+    >>> len(set(encoders['biochar_modification'].inverse_transform(data.loc[:, "biochar_modification"])))
+    2
+    >>> len(set(encoders['biochar_type'].inverse_transform(data.loc[:, "biochar_type"])))
+    159
+    >>> len(set(encoders['As_type'].inverse_transform(data.loc[:, "As_type"])))
+    2
+    ... # Using one hot encoding
+    >>> data, encoders = As_recovery(encoding="ohe")
+    >>> data.shape
+    (1605, 244)
+    >>> len(set(encoders['material'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('material')]].values)))
+    72
+    >>> len(set(encoders['biochar_modification'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('biochar_modification')]].values)))
+    2
+    >>> len(set(encoders['biochar_type'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('biochar_type')]].values)))
+    159
+    >>> len(set(encoders['As_type'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('As_type')]].values)))
+    2
     """
     url = "https://ars.els-cdn.com/content/image/1-s2.0-S0043135424017147-mmc2.xlsx"
     data = maybe_download_and_read_data(
         url,
         "As_recovery.csv",
     )
-    return data, {}
+
+    columns = {
+        'Materialstype': 'material',
+        'Biochartype(Unmodifiedormodified)': 'biochar_modification',
+        'Biochartype': 'biochar_type',
+        'BETsurfacearea(m2/g)': 'BET_surface_area',
+        'Porevolume(cm3/g)': 'pore_volume',
+        'solutionpH(pHsol)': 'solution_pH',
+        'Reactortemperature': 'reactor_temperature',
+        'InitialAsconcentration(Total)mg/L': 'initial_As_concentration_mg_L',
+        'Adsorbentdosage(g/L)': 'adsorbent_dosage',
+        'Equilibrium/Reactiontime(h)': 'equilibrium_reaction_time_h',
+        'Pyrolysistemperature(◦C)': 'pyrolysis_temperature',
+        'As_mg/g': 'As_mg_g',
+        'As_type': 'As_type'
+    }
+
+    data.rename(columns=columns, inplace=True)
+
+    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+
+    data = data[parameters]
+
+    data, encoders = encode_cols(data, ['material', 'biochar_modification', 'biochar_type', 'As_type'], encoding)
+
+    return data, encoders

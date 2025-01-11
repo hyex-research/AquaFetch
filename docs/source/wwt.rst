@@ -23,6 +23,8 @@ Photocatalysis
 .. autofunction:: water_datasets.dye_removal
 .. autofunction:: water_datasets.dichlorophenoxyacetic_acid_removal
 .. autofunction:: water_datasets.pms_removal
+.. autofunction:: water_datasets.tetracycline_degradation
+.. autofunction:: water_datasets.tio2_degradation
 
 
 Membrane

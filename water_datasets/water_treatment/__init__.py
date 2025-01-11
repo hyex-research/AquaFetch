@@ -26,6 +26,8 @@ from .photocatalysis import mg_degradation
 from .photocatalysis import dye_removal
 from .photocatalysis import dichlorophenoxyacetic_acid_removal
 from .photocatalysis import pms_removal
+from .photocatalysis import tio2_degradation
+from .photocatalysis import tetracycline_degradation
 
 from .membrane import micropollutant_removal_osmosis
 from .membrane import ion_transport_via_reverse_osmosis

@@ -180,8 +180,36 @@ class TestAdsorption(unittest.TestCase):
         return
 
     def test_As_recovery(self):
+
         data, encoders = As_recovery()
-        assert data.shape == (684, 14), data.shape
+        assert data.shape == (1605, 13), data.shape
+        assert len(encoders) == 0
+
+        data, encoders = As_recovery(encoding="le")
+        assert data.shape == (1605, 13), data.shape
+        materials = set(encoders['material'].inverse_transform(data.loc[:, 'material']).tolist())
+        assert len(materials) == 72, len(materials)
+        modifications = set(encoders['biochar_modification'].inverse_transform(data.loc[:, 'biochar_modification']).tolist())
+        assert len(modifications) == 2, len(modifications)
+        biochars = set(encoders['biochar_type'].inverse_transform(data.loc[:, 'biochar_type']).tolist())
+        assert len(biochars) == 159, len(biochars)
+        as_types = set(encoders['As_type'].inverse_transform(data.loc[:, 'As_type']).tolist())
+        assert len(as_types) == 2, len(as_types)
+
+        data, encoders = As_recovery(encoding="ohe")
+        assert data.shape == (1605, 244), data.shape
+        materials = set(encoders['material'].inverse_transform(
+            data.loc[:, [col for col in data.columns if col.startswith('material')]].astype(int).values).tolist())
+        assert len(materials) == 72, len(materials)
+        modifications = set(encoders['biochar_modification'].inverse_transform(
+            data.loc[:, [col for col in data.columns if col.startswith('biochar_modification')]].astype(int).values).tolist())
+        assert len(modifications) == 2, len(modifications)
+        biochars = set(encoders['biochar_type'].inverse_transform(
+            data.loc[:, [col for col in data.columns if col.startswith('biochar_type')]].astype(int).values).tolist())
+        assert len(biochars) == 159, len(biochars)
+        as_types = set(encoders['As_type'].inverse_transform(
+            data.loc[:, [col for col in data.columns if col.startswith('As_type')]].astype(int).values).tolist())
+        assert len(as_types) == 2, len(as_types)
 
         return
 

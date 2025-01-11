@@ -11,13 +11,16 @@ from water_datasets import (
     mg_degradation,
     dye_removal,
     dichlorophenoxyacetic_acid_removal,
-    pms_removal
+    pms_removal,
+    tio2_degradation,
+    tetracycline_degradation,
 )
 
 
-class TestWWT(unittest.TestCase):
+class TestPhotacatalysis(unittest.TestCase):
 
     def test_mg_photodegradation(self):
+
         data, _ = mg_degradation()
         assert data.shape == (1200, 14), data.shape
         data, encoders = mg_degradation(encoding="le")
@@ -33,6 +36,7 @@ class TestWWT(unittest.TestCase):
         return
 
     def test_dye_removal(self):
+
         data, encoders = dye_removal()
         assert data.shape == (1527, 36)
 
@@ -57,6 +61,7 @@ class TestWWT(unittest.TestCase):
         return
 
     def test_dichlorophenoxyacetic_acid_removal(self):
+
         data, encoders = dichlorophenoxyacetic_acid_removal()
         assert data.shape == (1044, 16), data.shape
 
@@ -80,6 +85,7 @@ class TestWWT(unittest.TestCase):
         return
 
     def test_pms_removal(self):
+
         data, encoders = pms_removal()
         assert data.shape == (2078, 25), data.shape
 
@@ -105,6 +111,33 @@ class TestWWT(unittest.TestCase):
         assert len(set(poll_mol_formula.tolist())) == 14, len(set(poll_mol_formula.tolist()))
         water_type = encoders['water_type'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('water_type')]].values)
         assert len(set(water_type.tolist())) == 9, len(set(water_type.tolist()))
+
+        return
+
+    def test_tio2_degradation(self):
+
+        data, encoders = tio2_degradation()
+        assert data.shape == (446, 7), data.shape
+
+        assert len(encoders) == 0
+
+        return
+
+    def test_tetracycline_degradation(self):
+
+        data, encoders = tetracycline_degradation()
+        assert data.shape == (374, 8), data.shape
+        assert len(encoders) == 0
+
+        data, encoders = tetracycline_degradation(encoding='le')
+        assert data.shape == (374, 8), data.shape
+        mofs = encoders['metallic_org_framework'].inverse_transform(data.loc[:, 'metallic_org_framework'].values)
+        assert len(set(mofs.tolist())) == 10, len(set(mofs.tolist()))
+
+        data, encoders = tetracycline_degradation(encoding='ohe')
+        assert data.shape == (374, 17), data.shape
+        mofs = encoders['metallic_org_framework'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('metallic_org_framework')]].values)
+        assert len(set(mofs.tolist())) == 10, len(set(mofs.tolist()))
 
         return
 

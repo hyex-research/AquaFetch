@@ -62,6 +62,8 @@ from .water_treatment import mg_degradation
 from .water_treatment import dye_removal
 from .water_treatment import dichlorophenoxyacetic_acid_removal
 from .water_treatment import pms_removal
+from .water_treatment import tetracycline_degradation
+from .water_treatment import tio2_degradation
 
 from .water_treatment import micropollutant_removal_osmosis
 from .water_treatment import ion_transport_via_reverse_osmosis

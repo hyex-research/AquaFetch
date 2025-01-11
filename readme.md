@@ -183,21 +183,23 @@ mg_data_ohe.shape
 
 ## Summary of datasets related to wastewater treatment
 
-| Treatment Process | Parameters | Target Pollutant  | Data Points  | Reference                                                                  |
-|-------------------|------------|-------------------|--------------|----------------------------------------------------------------------------|
-| Adsorption        | 26         |Emerg. Contaminants| 3,757        | [Jaffari et al., 2023](https://doi.org/10.1016/j.cej.2023.143073)          |
-| Adsorption        | 15         | Cr                | 219          | [Ishtiaq et al., 2024](https://doi.org/10.1016/j.jece.2024.112238)         |
-| Adsorption        | 30         | heavy metals      | 1,518        | [Jaffari et al., 2023 ](https://doi.org/10.1016/j.jhazmat.2023.132773)     |
-| Adsorption        | 30         | po4               | 5,014        | [Iftikhar et al., 2024](https://doi.org/10.1016/j.chemosphere.2024.144031) |
-| Adsorption        | 12         | Industrial Dye    | 1,514        | [Iftikhar et al., 2023](https://doi.org/10.1016/j.seppur.2023.124891)      |
-| Adsorption        | 17         | Heavy metals      | 689          | [Shen et al., 2023](https://doi.org/10.1016/j.jhazmat.2024.133442)         |
-| Adsorption        | 8          | P                 | 504          | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
-| Adsorption        | 8          | N                 | 211          | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
-| Adsorption        | 12         | As                | 1,600        | [Huang et al., 2024](https://doi.org/10.1016/j.watres.2024.122815)            |
-| Photocatalysis    | 11         | Melachite Green   | 1,200        | [Jaffari et a., 2023](https://doi.org/10.1016/j.jhazmat.2022.130031)       |
-| Photocatalysis    | 23         | Dyes              | 1,527        | [Kim et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)          |
-| Photocatalysis    | 15         | 2,4,Dichlorophenoxyacetic acid | 1,044 | [Kim et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)     |
-| Photocatalysis    | -          | -                 | 2,078        | [submitted et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)    |
-| membrane          | 18         | micropollutants   | 1,906        | [Jeong et al., 2021](https://doi.org/10.1021/acs.est.1c04041)              |
-| membrane          | 18         |  heavy metals     | 1,586        | [Jeong et al., 2023](https://doi.org/10.1021/acs.est.2c08384)              |
-| sonolysis         | 6          | Cyanobacteria     | 314          | [Jaffari et al., 2024](https://doi.org/10.1016/j.jhazmat.2024.133762)      |
+| Treatment Process | Parameters | Target Pollutant               | Data Points | Reference                                                                  |
+|-------------------|------------|--------------------------------|-------------|----------------------------------------------------------------------------|
+| Adsorption        | 26         | Emerg. Contaminants            | 3,757       | [Jaffari et al., 2023](https://doi.org/10.1016/j.cej.2023.143073)          |
+| Adsorption        | 15         | Cr                             | 219         | [Ishtiaq et al., 2024](https://doi.org/10.1016/j.jece.2024.112238)         |
+| Adsorption        | 30         | heavy metals                   | 1,518       | [Jaffari et al., 2023 ](https://doi.org/10.1016/j.jhazmat.2023.132773)     |
+| Adsorption        | 30         | po4                            | 5,014       | [Iftikhar et al., 2024](https://doi.org/10.1016/j.chemosphere.2024.144031) |
+| Adsorption        | 12         | Industrial Dye                 | 1,514       | [Iftikhar et al., 2023](https://doi.org/10.1016/j.seppur.2023.124891)      |
+| Adsorption        | 17         | Heavy metals                   | 689         | [Shen et al., 2023](https://doi.org/10.1016/j.jhazmat.2024.133442)         |
+| Adsorption        | 8          | P                              | 504         | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
+| Adsorption        | 8          | N                              | 211         | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
+| Adsorption        | 13         | As                             | 1,605       | [Huang et al., 2024](https://doi.org/10.1016/j.watres.2024.122815)         |
+| Photocatalysis    | 11         | Melachite Green                | 1,200       | [Jaffari et a., 2023](https://doi.org/10.1016/j.jhazmat.2022.130031)       |
+| Photocatalysis    | 23         | Dyes                           | 1,527       | [Kim et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)          |
+| Photocatalysis    | 15         | 2,4,Dichlorophenoxyacetic acid | 1,044       | [Kim et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)          |
+| Photocatalysis    | -          | -                              | 2,078       | [submitted et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)    |
+| Photocatalysis    | 8          | Tetracycline                   | 374         | [Abdi et al., 2022](https://doi.org/10.1016/j.chemosphere.2021.132135)     |
+| Photocatalysis    | 7          | TiO2                           | 446         | [Jiang et al., 2020](https://doi.org/10.1016/j.envres.2020.109697)        |
+| membrane          | 18         | micropollutants                | 1,906       | [Jeong et al., 2021](https://doi.org/10.1021/acs.est.1c04041)              |
+| membrane          | 18         | heavy metals                   | 1,586       | [Jeong et al., 2023](https://doi.org/10.1021/acs.est.2c08384)              |
+| sonolysis         | 6          | Cyanobacteria                  | 314         | [Jaffari et al., 2024](https://doi.org/10.1016/j.jhazmat.2024.133762)      |

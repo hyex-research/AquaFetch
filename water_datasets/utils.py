@@ -497,6 +497,7 @@ def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
     ohe_cat = encoder.fit_transform(df[col_name].values.reshape(-1, 1))
     cols_added = [f"{col_name}_{i}" for i in range(ohe_cat.shape[-1])]
 
+    # todo : this can be problematic if index in df does not start from 0,1,...
     df = pd.concat([df, pd.DataFrame(ohe_cat, columns=cols_added)], axis=1)
 
     df.pop(col_name)

@@ -530,3 +530,152 @@ def pms_removal(
         ['catalyst_type', 'pollutant', 'poll_mol_formula', 'water_type'],
         encoding)
     return data, encoders
+
+
+def tetracycline_degradation(
+    parameters: Union[str, List[str]] = "all",
+    encoding: str = None,
+)->Tuple[pd.DataFrame, dict]:
+    """
+    Data for photodegradation of tetracycline. For details on data see
+    `Abdi et al., 2022 <https://doi.org/10.1016/j.chemosphere.2021.132135>`_ .
+
+    Parameters
+    ----------
+    parameters : list, optional
+        Names of the parameters to use. By default, following parameters are used
+
+            - ``surf_area_m2g``
+            - ``pore_vol_cm3g``
+            - ``catalyst_dosage_gL``
+            - ``antibiotic_dosage_mgL``
+            - ``illumination_time_min``
+            - ``pH``
+            - ``metallic_org_framework``
+            - ``efficiency_%``
+
+    encoding : str, default=None
+            type of encoding to use for the categorical features. It can be either
+            'ohe', 'le' or None. If 'ohe' is selected the original categroical column
+            (``metallic_org_framework``) is replaced with one hot encoded columns.
+            If 'le' is selected the original column is replaced with a label encoded column.
+            If None is selected, the original column is not replaced.
+        
+    Returns
+    --------
+    tuple
+        A tuple of length two. The first element is a DataFrame of shape (474, len(parameters))
+        while the second element is a dictionary consisting of encoders with
+        ``metallic_org_framework`` as key.
+    
+    Examples
+    --------
+    >>> from water_datasets import tetracycline_degradation
+    >>> data, encoders = tetracycline_degradation()
+    >>> data.shape
+    (374, 8)
+
+    >>> data, encoders = tetracycline_degradation(encoding='le')
+    >>> data.shape
+    (374, 8)
+    >>> mofs = encoders['metallic_org_framework'].inverse_transform(data.loc[:, 'metallic_org_framework'].values)
+    >>> len(set(mofs))
+    10
+
+    >>> data, encoders = tetracycline_degradation(encoding='ohe')
+    >>> data.shape
+    (374, 17)
+    >>> mofs = encoders['metallic_org_framework'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('metallic_org_framework')]].values)
+    >>> len(set(mofs))
+    10
+
+    """
+
+    url = "https://ars.els-cdn.com/content/image/1-s2.0-S0045653521026072-mmc1.zip"
+
+    data = maybe_download_and_read_data(url, "tetracycline_degradation.csv")
+
+    columns = {
+        'Surface area (m2/g)': 'surf_area_m2g',
+        'Pore Volume (cm3/g)': 'pore_vol_cm3g',
+        'Catalyst dosage (g/L)': 'catalyst_dosage_gL',
+        'Antibiotic dosage (mg/L)': 'antibiotic_dosage_mgL',
+        'Illumination time (min)': 'illumination_time_min',
+        'pH': 'pH',
+        'Metallic organic framework': 'metallic_org_framework',
+        'Degradation efficiency (%)': 'efficiency_%',
+    }
+
+    data.rename(columns=columns, inplace=True)
+
+    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+
+    data = data[parameters]
+
+    data, encoders = encode_cols(data, ['metallic_org_framework'], encoding)
+
+    return data, encoders
+
+
+def tio2_degradation(
+    parameters: Union[str, List[str]] = "all",
+    encoding: str = None,
+)->Tuple[pd.DataFrame, dict]:
+    """
+    Data for photodegradation of tio2
+
+    For details on data see `Jiang et al., 2020 <https://doi.org/10.1016/j.envres.2020.109697>`_ .
+
+    Parameters
+    ----------
+    parameters : list, optional
+        Names of the parameters to use. By default following parameters are used
+
+            - ``OC``
+            - ``i_mWpercm2``
+            - ``temp_C``
+            - ``D_gl``
+            - ``C0_mgl``
+            - ``pH``
+            - ``neglog_k_permin``
+
+    encoding : str, default=None
+        type of encoding to use for the categorical features.
+
+    Returns
+    --------
+    tuple
+        A tuple of length two. The first element is a DataFrame of shape (446, len(parameters))
+        while the second element is an empty dictionary.
+    
+    Examples
+    --------
+    >>> from water_datasets import tio2_degradation
+    >>> data, encoders = tio2_degradation()
+    >>> data.shape
+    (446, 7)
+    """
+
+    url = "https://ars.els-cdn.com/content/image/1-s2.0-S0045653521026072-mmc1.zip"
+
+    data = maybe_download_and_read_data(url, "tio2_degradation.csv")
+
+    columns = {
+        'OC': 'OC',
+        'I_mW/cm2': 'i_mWpercm2',
+        'T_C': 'temp_C',
+        'D_gl': 'D_gl',
+        'C0_mgl': 'C0_mgl',
+        'pH': 'pH',
+        'neglog_k_permin': 'neglog_k_permin',
+    }
+
+    data.rename(columns=columns, inplace=True)
+
+    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+
+    data = data[parameters]
+
+    data, encoders = encode_cols(data, [], encoding)
+
+    return data, encoders
