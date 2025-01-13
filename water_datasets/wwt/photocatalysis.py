@@ -689,7 +689,7 @@ def photodegradation_Jiang(
 )->Tuple[pd.DataFrame, Dict[str, Union[OneHotEncoder, LabelEncoder, Any]]]:
     """
     Data for photodegradation of multiple pollutants using various photocatalysts.
-    For details on data see `Jiang et al., 2020 <https://doi.org/10.3390/catal11091107>`_ .
+    For details on data see `Jiang et al., 2021 <https://doi.org/10.3390/catal11091107>`_ .
 
     Parameters
     ----------

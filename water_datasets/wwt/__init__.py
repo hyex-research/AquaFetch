@@ -28,7 +28,7 @@ from .photocatalysis import dichlorophenoxyacetic_acid_removal
 from .photocatalysis import pms_removal
 from .photocatalysis import tio2_degradation
 from .photocatalysis import tetracycline_degradation
-from .water_treatment import photodegradation_Jiang
+from .photocatalysis import photodegradation_Jiang
 
 from .membrane import micropollutant_removal_osmosis
 from .membrane import ion_transport_via_reverse_osmosis

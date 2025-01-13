@@ -1,9 +1,13 @@
 Water Quality
 *************
+The `wq` submodule contains datasets that represent surface water chemistry at 
+various locations worldwide. Currently, it includes 12 water quality datasets, 
+but we anticipate this number will increase in the future. The spatial and temporal 
+coverage of these datasets are detailed in following table.
 
 List of datasets
 ================
-.. list-table:: Stations per Source
+.. list-table:: Summary of datasets
    :widths: 10 15 10 10 15 30
    :header-rows: 1
 
@@ -69,6 +73,8 @@ List of datasets
      - `Sterle et al., 2024 <https://doi.org/10.5194/hess-28-611-2024>`_
 
 
+Functions and Classes
+=======================
 .. autoclass:: water_datasets.Swatch
    :members:
    :show-inheritance:

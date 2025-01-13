@@ -48,28 +48,28 @@ from .rr import NPCTRCatchments
 
 
 # *** Waste Water Treatment ***
-from .water_treatment import ec_removal_biochar
-from .water_treatment import cr_removal
-from .water_treatment import po4_removal_biochar
-from .water_treatment import heavy_metal_removal
-from .water_treatment import industrial_dye_removal
-from .water_treatment import heavy_metal_removal_Shen
-from .water_treatment import P_recovery
-from .water_treatment import N_recovery
-from .water_treatment import As_recovery
+from .wwt import ec_removal_biochar
+from .wwt import cr_removal
+from .wwt import po4_removal_biochar
+from .wwt import heavy_metal_removal
+from .wwt import industrial_dye_removal
+from .wwt import heavy_metal_removal_Shen
+from .wwt import P_recovery
+from .wwt import N_recovery
+from .wwt import As_recovery
 
-from .water_treatment import mg_degradation
-from .water_treatment import dye_removal
-from .water_treatment import dichlorophenoxyacetic_acid_removal
-from .water_treatment import pms_removal
-from .water_treatment import tetracycline_degradation
-from .water_treatment import tio2_degradation
-from .water_treatment import photodegradation_Jiang
+from .wwt import mg_degradation
+from .wwt import dye_removal
+from .wwt import dichlorophenoxyacetic_acid_removal
+from .wwt import pms_removal
+from .wwt import tetracycline_degradation
+from .wwt import tio2_degradation
+from .wwt import photodegradation_Jiang
 
-from .water_treatment import micropollutant_removal_osmosis
-from .water_treatment import ion_transport_via_reverse_osmosis
+from .wwt import micropollutant_removal_osmosis
+from .wwt import ion_transport_via_reverse_osmosis
 
-from .water_treatment import cyanobacteria_disinfection
+from .wwt import cyanobacteria_disinfection
 
 
 # *** Water Quality ***

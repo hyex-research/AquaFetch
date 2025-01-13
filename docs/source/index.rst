@@ -21,7 +21,7 @@ Static features include constant parameters such as land use, soil, topography,
 and other physiographical characteristics, along with catchment boundaries. 
 This submodule not only provides access to established rainfall-runoff datasets 
 but also introduces new datasets compiled for the first time from open-source web 
-data. The `wq` submodule offers access to 12 surface water quality datasets, each 
+data. The `wq` submodule offers access to `12 surface water quality datasets <https://water-datasets.readthedocs.io/en/latest/wq.html#list-of-datasets>`_, each 
 containing various water quality parameters measured across different spaces and 
 times. Meanwhile, the `wwt` submodule provides access to over 20,000 experimental 
 data points for wastewater treatment techniques such as adsorption, photocatalysis, 
