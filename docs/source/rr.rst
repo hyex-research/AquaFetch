@@ -101,7 +101,32 @@ List of datasets
      - :py:class:`water_datasets.rr.GRDCCaravan`
      - 5357
      -
-     - `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ 
+     - `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_
+   * - ``HYPE``
+     - :py:class:`water_datasets.rr.HYPE`
+     - 561
+     - 
+     - `Arciniega-Esparza and Birkel, 2020 <https://zenodo.org/records/4029572>`_     
+   * - ``HYSETS``
+     - :py:class:`water_datasets.rr.HYSETS`
+     - 14425
+     -
+     - `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
+   * - ``Ireland``
+     - :py:class:`water_datasets.rr.Ireland`
+     - 464
+     -
+     - `EPA Ireland <https://epawebapp.epa.ie>`_  
+   * - ``Italy``
+     - :py:class:`water_datasets.rr.Italy`
+     - 294
+     -
+     - `EPA Ireland <https://epawebapp.epa.ie>`_  
+   * - ``Japan``
+     - :py:class:`water_datasets.rr.Japan`
+     - 751
+     -
+     - `river.go.jp <http://www1.river.go.jp>`_           
    * - ``LamaHCE``
      - :py:class:`water_datasets.rr.LamaHCE`
      - 859
@@ -112,46 +137,6 @@ List of datasets
      - 111
      -
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
-   * - ``HYSETS``
-     - :py:class:`water_datasets.rr.HYSETS`
-     - 14425
-     -
-     - `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
-   * - ``RRLuleaSweden``
-     - :py:class:`water_datasets.RRLuleaSweden`
-     - 1
-     -
-     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
-   * - ``HYPE``
-     - :py:class:`water_datasets.rr.HYPE`
-     - 561
-     - 
-     - `Arciniega-Esparza and Birkel, 2020 <https://zenodo.org/records/4029572>`_
-   * - ``Ireland``
-     - :py:class:`water_datasets.rr.Ireland`
-     - 464
-     -
-     - `EPA Ireland <https://epawebapp.epa.ie>`_  
-   * - ``Italy``
-     - :py:class:`water_datasets.rr.Italy`
-     - 294
-     -
-     - `EPA Ireland <https://epawebapp.epa.ie>`_       
-   * - ``Spain``
-     - :py:class:`water_datasets.rr.Spain`
-     - 889
-     -
-     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_     
-   * - ``Simbi``
-     - :py:class:`water_datasets.rr.Simbi`
-     - 24
-     -
-     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
-   * - ``Japan``
-     - :py:class:`water_datasets.rr.Japan`
-     - 751
-     -
-     - `river.go.jp <http://www1.river.go.jp>`_
    * - ``Poland``
      - :py:class:`water_datasets.rr.Poland`
      - 1287
@@ -161,7 +146,22 @@ List of datasets
      - :py:class:`water_datasets.rr.Portugal`
      - 280
      -
-     - `snirh <https://snirh.apambiente.pt>`_      
+     - `snirh <https://snirh.apambiente.pt>`_       
+   * - ``RRLuleaSweden``
+     - :py:class:`water_datasets.RRLuleaSweden`
+     - 1
+     -
+     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_   
+   * - ``Spain``
+     - :py:class:`water_datasets.rr.Spain`
+     - 889
+     -
+     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_     
+   * - ``Simbi``
+     - :py:class:`water_datasets.rr.Simbi`
+     - 24
+     -
+     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_   
    * - ``Thailand``
      - :py:class:`water_datasets.rr.Thailand`
      - 73

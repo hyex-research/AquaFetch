@@ -1,5 +1,5 @@
 
-__all__ = ["Swatch"]
+__all__ = ["SWatCh"]
 
 import os
 from typing import Union
@@ -10,10 +10,10 @@ import pandas as pd
 from water_datasets._datasets import Datasets
 
 
-class Swatch(Datasets):
+class SWatCh(Datasets):
     """
     The Surface Water Chemistry (SWatCh) database as introduced in 
-    `Franz and Lobke, 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
+    `Lobke et al., 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
     """
 
     url = "https://zenodo.org/record/6484939"

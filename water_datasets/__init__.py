@@ -75,7 +75,7 @@ from .wwt import cyanobacteria_disinfection
 # *** Water Quality ***
 from .wq import Quadica
 from .wq import GRQA
-from .wq import Swatch
+from .wq import SWatCh
 from .wq import RC4USCoast
 from .wq import DoceRiver
 from .wq import SeluneRiver

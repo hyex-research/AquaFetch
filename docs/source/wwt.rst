@@ -18,7 +18,7 @@ List of datasets
    :header-rows: 1
 
    * - Treatment Process
-     - Class
+     - Function Name
      - Parameters
      - Target Pollutant
      - Data Points

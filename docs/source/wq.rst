@@ -11,8 +11,8 @@ List of datasets
    :widths: 10 15 10 10 15 30
    :header-rows: 1
 
-   * - Source Name
-     - Class
+   * - Dataset
+     - Class / Function Name
      - Variables Covered
      - Temporal Coverage
      - Spatial Coverage
@@ -22,7 +22,7 @@ List of datasets
      - 24
      - 1960 - 2022
      - Global
-     - `Franz and Lobke, 2022 <https://essd.copernicus.org/preprints/essd-2024-415/>`_
+     - `Lobke et al., 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
    * - ``GRQA``
      - :py:class:`water_datasets.GRQA`
      - 42
@@ -75,7 +75,7 @@ List of datasets
 
 Functions and Classes
 =======================
-.. autoclass:: water_datasets.Swatch
+.. autoclass:: water_datasets.SWatCh
    :members:
    :show-inheritance:
 
