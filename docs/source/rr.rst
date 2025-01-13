@@ -6,7 +6,8 @@ These are named as ``dynamic features``. The physical catchment properties
 are included as ``static features``. Although each data source has a dedicated
 class, however :py:class:`water_datasets.rr.RainfallRunoff` class can be used to access all the datasets.
 
-
+List of datasets
+================
 .. list-table:: Stations per Source
    :widths: 10 15 10 10 30
    :header-rows: 1

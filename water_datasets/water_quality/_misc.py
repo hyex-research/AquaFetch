@@ -45,3 +45,20 @@ class SanFranciscoBay(Datasets):
         """
         
         raise NotImplementedError
+
+
+def white_clay_creek(
+        parameters:Union[str, List[str]]='all',
+):
+    """
+    Time series of water quality parameters from 2001 - 2012.
+        
+        - chl-a
+        - Dissolved Organic Carbon
+    """
+    url = {
+        "chla": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/",
+        "doc": "https://portal.edirepository.org/nis/dataviewer?packageid=edi.386.1&entityid=3f802081eda955b2b0b405b55b85d11c"
+        }
+
+    raise NotImplementedError

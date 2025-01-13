@@ -5,9 +5,14 @@
   <img src="/docs/source/imgs/logo.png"/>
 </p>
 
-A unified interface to fetch hydrological data into your python environment. This 
-repository provides a unified and smooth interface to download and retrieve over 100 datasets.
-The datasets are downloaded only once upon their first use.
+
+# A Unified Python Interface for Water Resource Data Acquisition
+
+The water-datasets is a Python package designed for the automated downloading, parsing, and cleaning of water resources datasets.
+It allows the users to directly utilize these datasets after saving them locally as Comma Separated Values (CSV) or netCDF files. 
+It provides users with analysis-ready data by acquiring open-source data from the web and minimizing the preprocessing steps required for this purpose. 
+Therefore, it bridges the gap between online water resources data and Python, facilitating access in as few steps as possible.
+The package comprises three submodules, each representing a different type of water resource data: `rr` for rainfall-runoff processes, `wq` for surface water quality, and `wwt` for wastewater treatment. The rr submodule offers data for 47,716 catchments worldwide, encompassing both dynamic and static features for each catchment. The dynamic features consist of observed streamflow and meteorological time series, averaged over the catchment area, and available at daily or hourly timesteps. Static features include constant parameters such as land use, soil, topography, and other physiographical characteristics, along with catchment boundaries. This submodule not only provides access to established rainfall-runoff datasets but also introduces new datasets compiled for the first time from open-source web data. The `wq` submodule offers access to 12 surface water quality datasets, each containing various water quality parameters measured across different spaces and times. Meanwhile, the `wwt` submodule provides access to over 20,000 experimental data points for wastewater treatment techniques such as adsorption, photocatalysis, membrane filtration, and sonolysis.
 
 
 ## Installation
@@ -29,9 +34,8 @@ numpy, pandas and requests. To install the library with full list of dependencie
 This will install addtional optional depencdies which include xarray, pyshp, netCDF and easy_mpl.
 
 ## Usage
-The library contains three types of datasets i.e. rainfall-runoff, surface water quality and wastewater
-treatment. Below we show brief usage for each of these three types of datasets. For detailed usage
-examples see [docs](https://water-datasets.readthedocs.io/en/latest/index.html)
+The following sections describe brief usage of datasets from each of the three submodules i.e. ``rr``, ``wq`` and ``wwt``.
+For detailed usage examples see [docs](https://water-datasets.readthedocs.io/en/latest/index.html)
 
 The core of ``rr`` sub-module is the [``RainfallRunoff``](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.RainfallRunoff) class. This class
 fetches dynamic features (catchment averaged hydrometeorological data at daily or sub-daily timesteps),
@@ -199,7 +203,8 @@ mg_data_ohe.shape
 | Photocatalysis    | 15         | 2,4,Dichlorophenoxyacetic acid | 1,044       | [Kim et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)          |
 | Photocatalysis    | -          | -                              | 2,078       | [submitted et al., 2024](https://doi.org/10.1016/j.jhazmat.2023.132995)    |
 | Photocatalysis    | 8          | Tetracycline                   | 374         | [Abdi et al., 2022](https://doi.org/10.1016/j.chemosphere.2021.132135)     |
-| Photocatalysis    | 7          | TiO2                           | 446         | [Jiang et al., 2020](https://doi.org/10.1016/j.envres.2020.109697)        |
+| Photocatalysis    | 7          | TiO2                           | 446         | [Jiang et al., 2020](https://doi.org/10.1016/j.envres.2020.109697)         |
+| Photocatalysis    | 8          | multiple                       | 457         | [Jiang et al., 2020](https://doi.org/10.3390/catal11091107)                |
 | membrane          | 18         | micropollutants                | 1,906       | [Jeong et al., 2021](https://doi.org/10.1021/acs.est.1c04041)              |
 | membrane          | 18         | heavy metals                   | 1,586       | [Jeong et al., 2023](https://doi.org/10.1021/acs.est.2c08384)              |
 | sonolysis         | 6          | Cyanobacteria                  | 314         | [Jaffari et al., 2024](https://doi.org/10.1016/j.jhazmat.2024.133762)      |

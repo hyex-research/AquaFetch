@@ -63,3 +63,6 @@ Water Quality
 
 
 .. autofunction:: water_datasets.ecoli_mekong_2016
+
+
+.. autofunction:: water_datasets.white_clay_creek   
