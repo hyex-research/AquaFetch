@@ -533,8 +533,9 @@ class RainfallRunoff(object):
 
         Returns
         -------
-            Dynamic and static features of multiple stations. Dynamic features
-            are by default returned as xr.Dataset unless `as_dataframe` is True, in
+        pd.DataFrame or xr.Dataset or dict
+            Dynamic and static features of one or multiple stations. Dynamic features
+            are by default returned as xr.Dataset unless `as_dataframe` is True or xarray is not installed, in
             such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
             it consists of `data_vars` equal to number of stations and for each
             station, the `DataArray` is of dimensions (time, dynamic_features).
@@ -550,7 +551,7 @@ class RainfallRunoff(object):
 
         Raises
         ------
-        ValueError, if both dynamic_features and static_features are None
+        ValueError, if both ``dynamic_features`` and ``static_features`` are None
 
         Examples
         --------

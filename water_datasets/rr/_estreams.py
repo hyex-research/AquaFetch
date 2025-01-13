@@ -700,7 +700,7 @@ class Finland(_EStreams):
     https://wwwi3.ymparisto.fi .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_quality.EStreams` follwoing the works
+    taken from :py:class:`water_datasets.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 2012-01-01 to 2023-06-30.
@@ -977,11 +977,10 @@ class Ireland(_EStreams):
     https://epawebapp.epa.ie/Hydronet/#Flow while the observed streamflow for OPW 
     stations is downloaded from https://waterlevel.ie/hydro-data/#/overview/Waterlevel.
     It should be that out of 280 OPW stations, streamflow data is available for only 129
-    stations. 
-    The meteorological data, static catchment 
+    stations. The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_quality.EStreams` follwoing the works
-    of ` Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
+    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
@@ -1372,7 +1371,7 @@ class Italy(_EStreams):
     http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_quality.EStreams` follwoing the works
+    taken from :py:class:`water_datasets.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -1510,7 +1509,7 @@ class Poland(_EStreams):
     https://danepubliczne.imgw.pl .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_quality.EStreams` follwoing the works
+    taken from :py:class:`water_datasets.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -1724,7 +1723,7 @@ class Portugal(_EStreams):
     https://snirh.apambiente.pt .
     The meteorological data, static catchment 
     features and catchment boundaries for the 280 catchments are
-    taken from :py:class:`water_quality.EStreams` follwoing the works
+    taken from :py:class:`water_datasets.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1972-01-01 to 2022-12-31 .

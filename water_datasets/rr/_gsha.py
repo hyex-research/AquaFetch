@@ -161,7 +161,7 @@ class GSHA(Camels):
         """
         returns the names of agencies as list
 
-            - ``arcticnet``
+            - ``arcticnet`` : Antarctica
             - ``AFD`` : Spain
             - ``GRDC`` : Global
             - ``IWRIS`` : India

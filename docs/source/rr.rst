@@ -187,7 +187,6 @@ The datasets are accessed by their names.
 
 .. autoclass:: water_datasets.rr.RainfallRunoff
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -201,7 +200,6 @@ This provides more control over the datasets.
 
 .. autoclass:: water_datasets.rr.Camels
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -209,14 +207,12 @@ This provides more control over the datasets.
 
 .. autoclass:: water_datasets.rr._gsha._GSHA
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 .. autoclass:: water_datasets.rr._misc._EStreams
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -272,7 +268,6 @@ This provides more control over the datasets.
 
 .. autoclass:: water_datasets.rr.CAMELS_GB
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -459,7 +454,6 @@ to provide static and dynamic features to other datasets.
 
 .. autoclass:: water_datasets.GSHA
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -467,7 +461,6 @@ to provide static and dynamic features to other datasets.
 
 .. autoclass:: water_datasets.EStreams
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
