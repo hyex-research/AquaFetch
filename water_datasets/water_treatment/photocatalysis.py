@@ -4,6 +4,8 @@ __all__ = [
     "dye_removal",
     "dichlorophenoxyacetic_acid_removal",
     "pms_removal",
+    "tetracycline_degradation",
+    "tio2_degradation"
 ]
 
 from typing import Union, Tuple, Any, List, Dict
@@ -677,5 +679,119 @@ def tio2_degradation(
     data = data[parameters]
 
     data, encoders = encode_cols(data, [], encoding)
+
+    return data, encoders
+
+
+def photodegradation_Jiang(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None,
+)->Tuple[pd.DataFrame, Dict[str, Union[OneHotEncoder, LabelEncoder, Any]]]:
+    """
+    Data for photodegradation of multiple pollutants using various photocatalysts.
+    For details on data see `Jiang et al., 2020 <https://doi.org/10.3390/catal11091107>`_ .
+
+    Parameters
+    ----------
+        parameters : list, optional
+            Names of the parameters to use. By default following parameters are used
+
+                - ``photocatalyst``
+                - ``contaminants``
+                - ``photocat_dosage_gl``
+                - ``photocat_size_nm``
+                - ``initial_conc_mgl``
+                - ``pH``
+                - ``light_type``
+                - ``k_min-1``
+        
+        encoding : str, default=None
+            type of encoding to use for the categorical features.
+            It can be either ``ohe``, ``le`` or None. If ``ohe`` is selected the original categroical column
+            is replaced with one hot encoded columns. If ``le`` is selected the original column is replaced
+            with a label encoded column. If None is selected, the original column is not replaced.
+    
+    Returns
+    --------
+    tuple
+        A tuple of length two. The first element is a DataFrame of shape (446, len(parameters))
+        while the second element is a dictionary consisting of encoders with
+        ``photocatalyst`` and ``contaminants`` as keys.
+    
+    Examples
+    --------
+    >>> from water_datasets import photodegradation_Jiang
+    >>> data, encoders = photodegradation_Jiang()
+    >>> data.shape
+    (449, 8)
+    ... # the default encoding is None, but if we want to use one hot encoder
+    >>> data_ohe, encoders = photodegradation_Jiang(encoding="ohe")
+    >>> data_ohe.shape
+    (449, 16)
+    >>> photocatalysts = encoders['photocatalyst'].inverse_transform(data_ohe.loc[:, [col for col in data.columns if col.startswith('photocatalyst')]].values)
+    >>> len(set(photocatalysts))
+    100
+    >>> contaminants = encoders['contaminants'].inverse_transform(data_ohe.loc[:, [col for col in data.columns if col.startswith('contaminants')]].values)
+    >>> len(set(contaminants))
+    47
+    ... # if we want to use label encoder
+    >>> data_le, encoders = photodegradation_Jiang(encoding="le")
+    >>> data_le.shape
+    (449, 8)
+    >>> photocatalysts = encoders['photocatalyst'].inverse_transform(data_le.loc[:, 'photocatalyst'].values)
+    >>> len(set(photocatalysts))
+    100
+    >>> contaminants = encoders['contaminants'].inverse_transform(data_le.loc[:, 'contaminants'].values)
+    >>> len(set(contaminants))
+    47    
+    """
+
+    url = "https://www.mdpi.com/2073-4344/11/9/1107#app1-catalysts-11-01107"
+
+    data = maybe_download_and_read_data(url, "photodegradation_Jiang.csv")
+
+    # replace "N/A" with np.nan in photocat_size_nm column
+    data.loc[data["Photocat. size (nm)"] == "N/A", "Photocat. size (nm)"] = np.nan
+    data.loc[data["Photocat. size (nm)"] == "N/A ", "Photocat. size (nm)"] = np.nan
+    # convert '100-4000 ' to np.nan
+    data.loc[data["Photocat. size (nm)"] == '100-4000 ', "Photocat. size (nm)"] = np.nan
+    # convert '~200 ' to 200
+    data.loc[data["Photocat. size (nm)"] == '~200 ', "Photocat. size (nm)"] = 200
+    # convert '>1000 ' to np.nan
+    data.loc[data["Photocat. size (nm)"] == '>1000 ', "Photocat. size (nm)"] = np.nan
+    # convert '20-50 ' to np.nan
+    data.loc[data["Photocat. size (nm)"] == '20-50 ', "Photocat. size (nm)"] = np.nan
+    # convert '<44000 ' to np.nan
+    data.loc[data["Photocat. size (nm)"] == '<44000 ', "Photocat. size (nm)"] = np.nan
+    data.loc[data["pH"] == "N/A", "pH"] = np.nan
+    data.loc[data["pH"] == "N/A ", "pH"] = np.nan
+    # convert "Photocat. size (nm)" and 'pH' to float
+    #data["Photocat. size (nm)"] = data["Photocat. size (nm)"].astype(np.float32)
+    data['pH'] = data['pH'].astype(np.float32)
+
+    # remove trailing empty space in contaiminant column
+    data["Contaminants"] = data["Contaminants"].str.strip()
+
+    columns = {
+        "Photocatalyst": "photocatalyst",
+        "Contaminants": "contaminants",
+        "Photocat. dosage (g/L)": "photocat_dosage_gl",
+        "Photocat. size (nm)": "photocat_size_nm",
+        "Initial conc. (mg/L)": "initial_conc_mgl",
+        "pH": "pH",
+        "Light type": "light_type",
+        "k (min-1)": "k_min-1"
+    }
+
+    data.rename(columns=columns, inplace=True)
+
+    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+
+    data = data[parameters]
+
+
+    data, encoders = encode_cols(data, ['photocatalyst', 
+                                        'contaminants'
+                                        ], encoding)
 
     return data, encoders

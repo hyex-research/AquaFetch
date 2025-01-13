@@ -746,13 +746,13 @@ def P_recovery(
 
     encoding : str, default=None
         the type of encoding to use for categorical parameters. If not None, it should
-        be either ``ohe`` or ``le`.
+        be either ``ohe`` or ``le``.
     
     Returns
     --------
     tuple
         A tuple of length two. The first element is a DataFrame while the
-        second element is an empty dictionary.``
+        second element is an empty dictionary.
     
     Examples
     --------
@@ -810,13 +810,13 @@ def N_recovery(
         
     encoding : str, default=None
         the type of encoding to use for categorical parameters. If not None, it should
-        be either ``ohe`` or ``le`.
+        be either ``ohe`` or ``le``.
     
     Returns
     --------
     tuple
         A tuple of length two. The first element is a DataFrame while the
-        second element is an empty dictionary.``
+        second element is an empty dictionary.
     
     Examples
     --------
@@ -880,7 +880,7 @@ def As_recovery(
         
     encoding : str, default=None
         the type of encoding to use for categorical parameters. If not None, it should
-        be either ``ohe`` or ``le`.
+        be either ``ohe`` or ``le``.
     
     Returns
     --------

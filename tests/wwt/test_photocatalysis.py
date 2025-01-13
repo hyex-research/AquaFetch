@@ -2,7 +2,7 @@ import os
 import site
 
 # add the parent directory in the path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import unittest
@@ -14,6 +14,7 @@ from water_datasets import (
     pms_removal,
     tio2_degradation,
     tetracycline_degradation,
+    photodegradation_Jiang,
 )
 
 
@@ -138,6 +139,27 @@ class TestPhotacatalysis(unittest.TestCase):
         assert data.shape == (374, 17), data.shape
         mofs = encoders['metallic_org_framework'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('metallic_org_framework')]].values)
         assert len(set(mofs.tolist())) == 10, len(set(mofs.tolist()))
+
+        return
+
+    def test_photodegradation_Jiang(self):
+        data, encoders = photodegradation_Jiang()
+        assert data.shape == (449, 8), data.shape
+        assert len(encoders) == 0
+
+        data, encoders = photodegradation_Jiang(encoding='le')
+        assert data.shape == (449, 8), data.shape
+        contaiminants = encoders['contaminants'].inverse_transform(data.loc[:, 'contaminants'].values)
+        assert len(set(contaiminants.tolist())) == 47, len(set(contaiminants.tolist()))
+        catalysts = encoders['photocatalyst'].inverse_transform(data.loc[:, 'photocatalyst'].values)
+        assert len(set(catalysts.tolist())) == 100, len(set(catalysts.tolist()))
+
+        data, encoders = photodegradation_Jiang(encoding='ohe')
+        assert data.shape == (449, 153), data.shape
+        contaiminants = encoders['contaminants'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('contaminants')]].values)
+        assert len(set(contaiminants.tolist())) == 47, len(set(contaiminants.tolist()))
+        catalysts = encoders['photocatalyst'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('photocatalyst')]].values)
+        assert len(set(catalysts.tolist())) == 100, len(set(catalysts.tolist()))
 
         return
 
