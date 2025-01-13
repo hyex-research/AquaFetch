@@ -154,6 +154,7 @@ Photocatalysis
 .. autofunction:: water_datasets.pms_removal
 .. autofunction:: water_datasets.tetracycline_degradation
 .. autofunction:: water_datasets.tio2_degradation
+.. autofunction:: water_datasets.photodegradation_Jiang  
 
 
 Membrane

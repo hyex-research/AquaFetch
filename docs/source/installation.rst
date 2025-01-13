@@ -1,6 +1,7 @@
 Installation
 *************
-
+Currently the library can be installed either using the github link or the setup.py file.
+We will soon release our package on pypi for easier installation.
 
 using github link
 =================
@@ -23,3 +24,12 @@ and `pyshp <https://github.com/GeospatialPython/pyshp>`_
 You can also install water-datasets from a specific commit using the commit code (SHA) as below
 ::
     pip install git+https://github.com/AtrCheema/water-datasets.git@e2c0a9825bb987e16c3c29d5e124203829ef3802
+
+
+using setup.py file
+===================
+This involves cloning the respotory, changing directory to the cloned folder and then running the setup.py file.
+::
+    git clone https://github.com/AtrCheema/water-datasets.git
+    cd water-datasets
+    python setup.py install
