@@ -72,22 +72,22 @@ from .water_treatment import cyanobacteria_disinfection
 
 
 # *** Water Quality ***
-from .water_quality import Quadica
-from .water_quality import GRQA
-from .water_quality import Swatch
-from .water_quality import RC4USCoast
-from .water_quality import DoceRiver
-from .water_quality import SeluneRiver
-from .water_quality import busan_beach
-from .water_quality import RiverChemSiberia
-from .water_quality import SyltRoads
-from .water_quality import ecoli_mekong_laos
-from .water_quality import ecoli_houay_pano
-from .water_quality import ecoli_mekong_2016
-from .water_quality import ecoli_mekong
-from .water_quality import CamelsChem
-from .water_quality import SanFranciscoBay
-from .water_quality import GRiMeDB
+from .wq import Quadica
+from .wq import GRQA
+from .wq import Swatch
+from .wq import RC4USCoast
+from .wq import DoceRiver
+from .wq import SeluneRiver
+from .wq import busan_beach
+from .wq import RiverChemSiberia
+from .wq import SyltRoads
+from .wq import ecoli_mekong_laos
+from .wq import ecoli_houay_pano
+from .wq import ecoli_mekong_2016
+from .wq import ecoli_mekong
+from .wq import CamelsChem
+from .wq import SanFranciscoBay
+from .wq import GRiMeDB
 
 # *** Miscellaneous ***
 

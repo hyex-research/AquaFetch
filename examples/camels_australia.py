@@ -9,6 +9,10 @@ This example demonstrates how to use the `water_datasets` package to download an
 explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>`_ dataset 
 using the :py:class:`water_datasets.RainfallRunoff` class. Although we show it
 for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
+
+**Note:** This file runs online on readthedocs everytime the documentation is built.
+The server to download the CAMELS_AUS data is sometimes down and gives `HTTPError: HTTP Error 500: Internal Server Error`.
+
 """
 
 import os
