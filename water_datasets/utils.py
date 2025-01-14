@@ -57,7 +57,8 @@ DATA_FILES = {
 def download(
         url: str,
         outdir: Union[str, os.PathLike] = None,
-        fname: str = None
+        fname: str = None,
+        verbosity:int = 1,
         )->os.PathLike:
     """
     High level function, which downloads URL into tmp file in current
@@ -83,7 +84,10 @@ def download(
         # 'closure' to set bar drawing function in callback
         callback_progress(blocks, block_size, total_size, bar_function=bar)
 
-    callback = callback_charged
+    if verbosity:
+        callback = callback_charged
+    else:
+        callback = None
 
     # Python 3 can not quote URL as needed
     binurl = list(urlparse.urlsplit(url))
@@ -318,7 +322,8 @@ def download_and_unzip(
         include:List[str]=None,
         files_to_check:List[str] = None,
         verbosity:int = 1,
-        **kwargs):
+        **kwargs
+        ):
     """
 
     parameters
@@ -349,10 +354,10 @@ def download_and_unzip(
                                  files_to_check=files_to_check,
                                  **kwargs)
         else:
-            download(url, path)
-        _unzip(path)
+            download(url, path, verbosity=verbosity)
+        _unzip(path, verbosity=verbosity)
     elif isinstance(url, list):
-        print(f"downloading {len(url)} files to {path}")
+        if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
         for url in url:
             if verbosity>0: print(f"downloading {url}")
@@ -364,10 +369,10 @@ def download_and_unzip(
                                      files_to_check=files_to_check,
                                      **kwargs)
             else:
-                download(url, path)
-        _unzip(path)
+                download(url, path, verbosity=verbosity)
+        _unzip(path, verbosity=verbosity)
     elif isinstance(url, dict):
-        print(f"downloading {len(url)} files to {path}")
+        if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
         for fname, url in url.items():
             if verbosity>0: print(f"downloading {fname}")
@@ -381,7 +386,7 @@ def download_and_unzip(
             else:
                 if include is not None or files_to_check is not None:
                     raise ValueError("include and files_to_check are available only for zenodo")
-                download(url, path, fname)
+                download(url, path, fname, verbosity=verbosity)
         _unzip(path, verbosity=verbosity)
 
     else:
