@@ -185,9 +185,10 @@ mg_data_ohe.shape
 | Ecoli Houay Pano (Laos)   | 10                | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | CamelsChem                | 18                | 1980 - 2018       | Continental USA           | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
 | GRiMeDB                   | 18                | -                 | Global                    | [Stanley et al., 2023](https://doi.org/10.5194/essd-15-2879-2023)              |
-| SanFrancisco Bay          | 18                | 1969 - 2015       | Sans Francisco Bay (USA)  | [Cloern et al., 2017](https://doi.org/10.1002/lno.10537)              |
+| SanFrancisco Bay          | 18                | 1969 - 2015       | Sans Francisco Bay (USA)  | [Cloern et al., 2017](https://doi.org/10.1002/lno.10537)                     |
 | Sylt Roads                | 18                | 1973 - 2019       | North Sea (Arctic)        | [Rick et al., 2023](https://doi.org/10.5194/essd-15-1037-2023)              |
-| Buzzards Bay              | 52                | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)              |
+| Buzzards Bay              | 64                | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)              |
+| White Clay Creek          | 2                 | 1977 - 2017       | White Clay Creek (USA)    | [Newbold and  Damiano 2013](https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/) |
 
 ## Summary of datasets related to wastewater treatment
 

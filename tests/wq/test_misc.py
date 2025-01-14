@@ -4,7 +4,7 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 #wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
-from water_datasets import SanFranciscoBay, BuzzardsBay
+from water_datasets import SanFranciscoBay, BuzzardsBay, WhiteClayCreek
 
 
 def test_SanFranciscoBay():
@@ -29,7 +29,6 @@ def test_SanFranciscoBay():
     return
 
 
-
 def test_BuzzardsBay():
     ds = BuzzardsBay(
         path='/mnt/datawaha/hyex/atr/data',
@@ -49,8 +48,26 @@ def test_BuzzardsBay():
     return
 
 
+def test_WhiteClayCreek():
+    ds = WhiteClayCreek(
+        path='/mnt/datawaha/hyex/atr/data',
+        verbosity=4
+        )
+
+    df = ds.doc()
+    assert df.shape == (11092, 4)
+    assert df['site'].nunique() == 2
+
+    chla = ds.chla()
+    assert chla.shape == (1028, 10)
+
+    return
+
+
 test_SanFranciscoBay()
      
 test_BuzzardsBay()
+
+test_WhiteClayCreek()
 
 print("All tests passed!")

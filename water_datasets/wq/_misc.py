@@ -1,5 +1,5 @@
 
-__all__ = ['SanFranciscoBay', 'white_clay_creek', 'BuzzardsBay']
+__all__ = ['SanFranciscoBay', 'WhiteClayCreek', 'BuzzardsBay']
 
 import os
 from typing import Union, List
@@ -73,25 +73,6 @@ class SanFranciscoBay(Datasets):
     def parameters(self)->List[str]:
         return self._parameters
 
-    # def _download(self):
-
-    #     fpath = os.path.join(self.path, 'SanFranciscoBay.zip')
-
-    #     if not os.path.exists(fpath):
-    #         # Send a GET request to the URL
-    #         response = requests.get(self.url)
-
-    #         # Check if the request was successful
-    #         if response.status_code == 200:
-                
-    #             with open(fpath, 'wb') as file:
-    #                 file.write(response.content)
-    #             if self.verbosity: print("The file was downloaded successfully.")
-    #         else:
-    #             if self.verbosity: print("Failed to download the file. Status code:", response.status_code)
-    #     _unzip(self.path)
-    #     return
-
     def data(self)->pd.DataFrame:
 
         fpath = os.path.join(self.path, 'SanFranciscoBay', 'SanFranciscoBayWaterQualityData1969-2015v4.csv')
@@ -150,21 +131,96 @@ class SanFranciscoBay(Datasets):
         return data.loc[:, parameters]
 
 
-def white_clay_creek(
-        parameters:Union[str, List[str]]='all',
-):
+class WhiteClayCreek(Datasets):
     """
-    Time series of water quality parameters from 2001 - 2012.
+    Time series of water quality parameters from White Clay Creek.
         
-        - chl-a
-        - Dissolved Organic Carbon
+        - chl-a : 2001 - 2012
+        - Dissolved Organic Carbon : 1977 - 2017
     """
+
     url = {
-        "chla": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/",
-        "doc": "https://portal.edirepository.org/nis/dataviewer?packageid=edi.386.1&entityid=3f802081eda955b2b0b405b55b85d11c"
+"WCC_CHLA_2001_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2001_1.csv",
+"WCC_CHLA_2001.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2001.csv",
+"WCC_CHLA_2002_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2002_1.csv",
+"WCC_CHLA_2002.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2002.csv",
+"WCC_CHLA_2003_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2003_1.csv",
+"WCC_CHLA_2003.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2003.csv",
+"WCC_CHLA_2004_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2004_1.csv",
+"WCC_CHLA_2004.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2004.csv",
+"WCC_CHLA_2005_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2005_1.csv",
+"WCC_CHLA_2005.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2005.csv",
+"WCC_CHLA_2006_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2006_1.csv",
+"WCC_CHLA_2006.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2006.csv",
+"WCC_CHLA_2007_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2007_1.csv",
+"WCC_CHLA_2007.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2007.csv",
+"WCC_CHLA_2008_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2008_1.csv",
+"WCC_CHLA_2008.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2008.csv",
+"WCC_CHLA_2009_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2009_1.csv",
+"WCC_CHLA_2009.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2009.csv",
+"WCC_CHLA_2010_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2010_1.csv",
+"WCC_CHLA_2010.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2010.csv",
+"WCC_CHLA_2011_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2011_1.csv",
+"WCC_CHLA_2011.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2011.csv",
+"WCC_CHLA_2012_1.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2012_1.csv",
+"WCC_CHLA_2012.csv": "https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/data/contents/WCC_CHLA_2012.csv",
+"doc.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=edi.386.1&entityid=3f802081eda955b2b0b405b55b85d11c"
         }
 
-    raise NotImplementedError
+
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self._download()
+
+    def fetch(
+            self,
+            stations:Union[str, List[str]]='all',
+            parameters:Union[str, List[str]]='all',
+        ):
+    
+        raise NotImplementedError
+    
+    def doc(self)->pd.DataFrame:
+        """
+        Dissolved Organic Carbon data
+        """
+        fpath = os.path.join(self.path, 'doc.csv')
+        import pandas as pd
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True,
+                        dtype={'site': str})
+        return df
+    
+    def chla(self)->pd.DataFrame:
+        """
+        Chlorophyll-a data
+        """
+        files = [f for f in os.listdir(self.path) if f.startswith("WCC_CHLA")]
+
+        # start reading file when line starts with "\data"
+
+        dfs = []
+        for f in files:
+            with open(os.path.join(self.path, f), 'r') as f:
+                for line in f:
+                    if line.startswith("\data"):
+                        break
+                
+                # read the header
+                df = pd.read_csv(f, sep=',', header=None)
+
+            df.insert(0, 'date', pd.to_datetime(df.iloc[:, 1]))
+
+            df.columns = ['date', 'site', 'junk',
+                          'chla_chlaspec', 'chlafluor1', 'chlafluor2', 'chlafluor3',
+                          'pheophytin_pheospec', 'Pheophytinfluor1', 'Pheophytinfluor2', 'Pheophytinfluor3',
+                          ]
+            
+            df = df.drop(columns=['junk'])
+
+            dfs.append(df)
+    
+        df = pd.concat(dfs, axis=0)
+        return df
 
 
 class BuzzardsBay(Datasets):
@@ -172,6 +228,17 @@ class BuzzardsBay(Datasets):
     Water quality measurements in Buzzards Bay from 1992 - 2018. For more details on data
     see `Jakuba et al., <https://doi.org/10.1038/s41597-021-00856-4>`_
     data is downloaded from `MBLWHOI Library <https://darchive.mblwhoilibrary.org/entities/publication/f31123f1-2097-5742-8ce9-69010ea36460>`_
+
+    Examples
+    --------
+    >>> from water_datasets import BuzzardsBay
+    >>> ds = BuzzardsBay()
+    >>> doc = ds.doc()
+    >>> doc.shape
+    (11092, 4)
+    >>> chla = ds.chla()
+    >>> chla.shape
+    (1028, 10)
     """
     url = {
 "buzzards_bay.xlsx": "https://darchive.mblwhoilibrary.org/bitstreams/87c25cf4-21b5-551c-bb7d-4604806109b4/download"}

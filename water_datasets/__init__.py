@@ -90,6 +90,7 @@ from .wq import CamelsChem
 from .wq import SanFranciscoBay
 from .wq import GRiMeDB
 from .wq import BuzzardsBay
+from .wq import WhiteClayCreek
 
 # *** Miscellaneous ***
 

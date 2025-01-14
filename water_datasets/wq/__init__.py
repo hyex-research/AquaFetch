@@ -1,6 +1,7 @@
 
 
 # https://www.nature.com/articles/s41597-024-03828-6#Sec3
+# Global patterns in river water storage dependent on residence time  https://doi.org/10.1038/s41561-024-01421-5
 
 from ._doce_river import DoceRiver
 from ._busan_beach import busan_beach
@@ -19,3 +20,4 @@ from ._camels_chem import CamelsChem
 from ._misc import SanFranciscoBay
 from ._grimedb import GRiMeDB
 from ._misc import BuzzardsBay
+from ._misc import WhiteClayCreek

@@ -83,18 +83,24 @@ List of datasets
      - 1973 - 2019
      - Red Sea (Arctic)
      - `Rick et al., 2023 <https://doi.org/10.5194/essd-15-1037-2023>`_
-    * - San Francisco Bay
-      - :py:class:`water_datasets.SanFranciscoBay`
-      - 18
-      - 1973 - 2019
-      - San Francisco (USA)
-      - `Schraga et al., 2017 <https://doi.org/10.1038/sdata.2017.98>`_
-    * - Buzzards Bay
-      - :py:class:`water_datasets.BuzzardsBay`
-      - 18
-      - 1992 - 2018
-      - Buzzards Bay (USA)
-      - `Jakuba et al., <https://doi.org/10.1038/s41597-021-00856-4>`_
+   * - San Francisco Bay
+     - :py:class:`water_datasets.SanFranciscoBay`
+     - 18
+     - 1973 - 2019
+     - San Francisco (USA)
+     - `Schraga et al., 2017 <https://doi.org/10.1038/sdata.2017.98>`_
+   * - Buzzards Bay
+     - :py:class:`water_datasets.BuzzardsBay`
+     - 18
+     - 1992 - 2018
+     - Buzzards Bay (USA)
+     - `Jakuba et al., <https://doi.org/10.1038/s41597-021-00856-4>`_
+   * - White Clay Creek
+     - :py:class:`water_datasets.WhiteClayCreek`
+     - 2
+     - 1973 - 2019
+     - White Clay Creek (USA)
+     - `Newbold and  Damiano 2013 <https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/>`_
 
 
 Functions and Classes
@@ -160,6 +166,13 @@ Functions and Classes
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.WhiteClayCreek
+    :members:
+    :show-inheritance:
+  
+    .. automethod:: __init__
 
 
 
