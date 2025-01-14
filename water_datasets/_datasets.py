@@ -256,7 +256,9 @@ class Datasets(object):
             verbosity:int = 1,
             processes:int = None,
             remove_zip:bool = False,
-            overwrite:bool = False
+            overwrite:bool = False,
+            float_precision:str = np.float32,
+            integer_precision:str = np.int32
     ):
         """
         Arguments:
@@ -287,6 +289,8 @@ class Datasets(object):
         self.path = path
         self.remove_zip = remove_zip
         self.overwrite = overwrite
+        self.fp = float_precision
+        self.ip = integer_precision
 
     @property
     def url(self):

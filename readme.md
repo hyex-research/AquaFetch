@@ -134,7 +134,7 @@ mg_data_ohe.shape
 (1200, 31)
 ```
 
-## Summary of Rainfall Runoff Datasets
+## Summary of rainfall runoff Datasets
 
 | Name           | Num. of daily stations | Num. of hourly stations | Num. of dynamic features | Num. of static features | Temporal Coverage | Spatial Coverage                            | Ref.                                                                                                        |
 |----------------|------------------------|-------------------------|--------------------------|-------------------------|-------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|
@@ -173,17 +173,21 @@ mg_data_ohe.shape
 
 ## Summary of Water Quality Datasets
 
-| Name                      | Variables Covered | Temporal Coverage | Spatial Coverage          | Ref.                                                                                         |
-|---------------------------|-------------------|-------------------|---------------------------|----------------------------------------------------------------------------------------------|
-| SWatCh                    | 24                | 1960 - 2022       | Global                    | [Franz and Lobke, 2022](https://essd.copernicus.org/preprints/essd-2024-415/)                |
-| GRQA                      | 42                | 1898 - 2020       | Global                    | [Virro et al., 2021](https://essd.copernicus.org/articles/13/5483/2021/)                     |
-| Quadica                   |                   | 1950 - 2018       | Germany                   | [Ebeling et al., 2022 ](https://essd.copernicus.org/articles/14/3715/2022/)                  |
-| RC4USCoast                | 21                | 1850 - 2020       | USA                       | [Gomez et al., 2022](https://essd.copernicus.org/articles/15/2223/2023/)                     |
-| Busan Beach               |                   | 2018 - 2019       | Busan, S.Korea            | [Jang et al](https://www.sciencedirect.com/science/article/pii/S0043135421001998?via%3Dihub) |
-| Ecoli Mekong River        | 10                | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)                  |
-| Ecoli Mekong River (Laos) | 10                | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)                  |
-| Ecoli Houay Pano (Laos)   | 10                | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)                  |
-| CamelsChem                | 18                | 1980 - 2018       | Continental USA           | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)                  |
+| Name                      | Variables Covered | Temporal Coverage | Spatial Coverage          | Ref.                                                                         |
+|---------------------------|-------------------|-------------------|---------------------------|------------------------------------------------------------------------------|
+| SWatCh                    | 24                | 1960 - 2022       | Global                    | [Lobke et al., 2022](https://doi.org/10.5194/essd-14-4667-2022)              |
+| GRQA                      | 42                | 1898 - 2020       | Global                    | [Virro et al., 2021](https://essd.copernicus.org/articles/13/5483/2021/)     |
+| Quadica                   |                   | 1950 - 2018       | Germany                   | [Ebeling et al., 2022 ](https://essd.copernicus.org/articles/14/3715/2022/)  |
+| RC4USCoast                | 21                | 1850 - 2020       | USA                       | [Gomez et al., 2022](https://essd.copernicus.org/articles/15/2223/2023/)     |
+| Busan Beach               |                   | 2018 - 2019       | Busan, S.Korea            | [Jang et al](https://doi.org/10.1016/j.watres.2021.117001)                   |
+| Ecoli Mekong River        | 10                | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
+| Ecoli Mekong River (Laos) | 10                | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
+| Ecoli Houay Pano (Laos)   | 10                | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
+| CamelsChem                | 18                | 1980 - 2018       | Continental USA           | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
+| GRiMeDB                   | 18                | -                 | Global                    | [Stanley et al., 2023](https://doi.org/10.5194/essd-15-2879-2023)              |
+| SanFrancisco Bay          | 18                | 1969 - 2015       | Sans Francisco Bay (USA)  | [Cloern et al., 2017](https://doi.org/10.1002/lno.10537)              |
+| Sylt Roads                | 18                | 1973 - 2019       | North Sea (Arctic)        | [Rick et al., 2023](https://doi.org/10.5194/essd-15-1037-2023)              |
+| Buzzards Bay              | 52                | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)              |
 
 ## Summary of datasets related to wastewater treatment
 

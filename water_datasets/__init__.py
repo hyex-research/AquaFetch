@@ -89,6 +89,7 @@ from .wq import ecoli_mekong
 from .wq import CamelsChem
 from .wq import SanFranciscoBay
 from .wq import GRiMeDB
+from .wq import BuzzardsBay
 
 # *** Miscellaneous ***
 

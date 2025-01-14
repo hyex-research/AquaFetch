@@ -15,22 +15,22 @@ class SyltRoads(Datasets):
     following `Rick et al., 2023 <https://doi.org/10.5194/essd-15-1037-2023>`_ .
     Following parameters are available
 
-        - 'location'
-        - 'Depth water [m]'
-        - 'Sal'
-        - 'Temp [°C]'
-        - '[PO4]3- [µmol/l]'
-        - '[NH4]+ [µmol/l]'
-        - '[NO2]- [µmol/l]'
-        - '[NO3]- [µmol/l]'
-        - 'Si(OH)4 [µmol/l]'
-        - 'SPM [mg/l]'
-        - 'pH'
-        - 'O2 [µmol/l]'
-        - 'Chl a [µg/l]'
-        - 'DON [µmol/l]'
-        - 'DOP [µmol/l]'
-        - 'DIN [µmol/l]'
+        - ``location``
+        - ``Depth water [m]``
+        - ``Sal``
+        - ``Temp [°C]``
+        - ``[PO4]3- [µmol/l]``
+        - ``[NH4]+ [µmol/l]``
+        - ``[NO2]- [µmol/l]``
+        - ``[NO3]- [µmol/l]``
+        - ``Si(OH)4 [µmol/l]``
+        - ``SPM [mg/l]``
+        - ``pH``
+        - ``O2 [µmol/l]``
+        - ``Chl a [µg/l]``
+        - ``DON [µmol/l]``
+        - ``DOP [µmol/l]``
+        - ``DIN [µmol/l]``
 
     Examples
     --------
