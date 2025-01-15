@@ -87,6 +87,11 @@ List of datasets
      - 671
      - 
      - `Newman et al., 2014 <https://gdex.ucar.edu/dataset/camels.html>`_
+   * - ``Caravan_DK``
+     - :py:class:`water_datasets.rr.Caravan_DK`
+     - 304
+     - 
+     - `Koch 2022 <https://doi.org/10.5281/zenodo.7962379>`_     
    * - ``CCAM``
      - :py:class:`water_datasets.rr.CCAM`
      - 111
@@ -294,7 +299,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: water_datasets.rr._denmark.CAMELS_DK
+.. autoclass:: water_datasets.rr.Caravan_DK
    :members:
    :show-inheritance:
 

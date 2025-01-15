@@ -21,7 +21,7 @@ from ._map import (
     )
 
 
-class CAMELS_DK(Camels):
+class Caravan_DK(Camels):
     """
     Reads Caravan extension Denmark - Danish dataset for large-sample hydrology
     following the works of `Koch and Schneider 2022 <https://doi.org/10.34194/geusb.v49.829>`_ .
@@ -102,7 +102,7 @@ class CAMELS_DK(Camels):
             This will fasten repeated calls to fetch etc but will
             require netcdf5 package as well as xarry.
         """
-        super(CAMELS_DK, self).__init__(path=path, **kwargs)
+        super(Caravan_DK, self).__init__(path=path, **kwargs)
         self.path = path
         self._download(overwrite=overwrite)
 

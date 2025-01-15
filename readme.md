@@ -6,13 +6,13 @@
 </p>
 
 
-# A Unified Python Interface for Water Resource Data Acquisition
+# A Unified Python Interface for Water Resource Dataset Acquisition and Harmonization
 
-The water-datasets is a Python package designed for the automated downloading, parsing, and cleaning of water resources datasets.
-It allows the users to directly utilize these datasets after saving them locally as Comma Separated Values (CSV) or netCDF files. 
-It provides users with analysis-ready data by acquiring open-source data from the web and minimizing the preprocessing steps required for this purpose. 
-Therefore, it bridges the gap between online water resources data and Python, facilitating access in as few steps as possible.
-The package comprises three submodules, each representing a different type of water resource data: `rr` for rainfall-runoff processes, `wq` for surface water quality, and `wwt` for wastewater treatment. The rr submodule offers data for 47,716 catchments worldwide, encompassing both dynamic and static features for each catchment. The dynamic features consist of observed streamflow and meteorological time series, averaged over the catchment area, and available at daily or hourly timesteps. Static features include constant parameters such as land use, soil, topography, and other physiographical characteristics, along with catchment boundaries. This submodule not only provides access to established rainfall-runoff datasets but also introduces new datasets compiled for the first time from open-source web data. The `wq` submodule offers access to 12 surface water quality datasets, each containing various water quality parameters measured across different spaces and times. Meanwhile, the `wwt` submodule provides access to over 20,000 experimental data points for wastewater treatment techniques such as adsorption, photocatalysis, membrane filtration, and sonolysis.
+water-datasets is a Python package designed for the automated downloading, parsing, cleaning, and harmonization of freely available water resource datasets related to rainfall-runoff processes, surface water quality, and wastewater treatment. The package currently supports approximately 70 datasets, each containing between 1 to hundreds of parameters. It facilitates the downloading and transformation of raw data into consistent, easy-to-use, analysis-ready formats. This allows users to directly access and utilize the data without labor-intensive and time-consuming preprocessing.
+
+The package comprises three submodules, each representing a different type of water resource data: `rr` for rainfall-runoff processes, `wq` for surface water quality, and `wwt` for wastewater treatment. The rr submodule offers data for 47,716 catchments worldwide, encompassing both dynamic and static features for each catchment. The dynamic features consist of observed streamflow and meteorological time series, averaged over the catchment area, available at daily or hourly time steps. Static features include constant parameters such as land use, soil, topography, and other physiographical characteristics, along with catchment boundaries. This submodule not only provides access to established rainfall-runoff datasets such as CAMELS and LamaH but also introduces new datasets compiled for the first time from publicly accessible online data sources. The `wq` submodule offers access to [16 surface water quality datasets](https://water-datasets.readthedocs.io/en/latest/wq.html#list-of-datasets), each containing various water quality parameters measured across different spaces and times. The `wwt` submodule provides access to over 20,000 experimental measurements related to wastewater treatment techniques such as adsorption, photocatalysis, membrane filtration, and sonolysis.
+
+The development of water-datasets was inspired by the growing availability of diverse water resource datasets in recent years. As a community-driven project, the codebase is structured to allow contributors to easily add new datasets, ensuring the package continues to expand and evolve to meet future needs.
 
 
 ## Installation
@@ -148,6 +148,7 @@ mg_data_ohe.shape
 | CAMELS_CH      | 331                    |                         | 9                        | 209                     | 1981 - 2020       | Switzerland, Austria, France, Germany Italy | [Hoege et al., 2023](https://doi.org/10.5194/essd-15-5755-2023)                                             |
 | CAMELS_DE      | 1555                   |                         | 21                       | 111                     | 1951 - 2020       | Germany                                     | [Loritz et al., 2024](https://essd.copernicus.org/preprints/essd-2024-318)                                  |
 | CAMELS_SE      | 50                     |                         | 4                        | 76                      | 1961 - 2020       | Sweden                                      | [Teutschbein et al., 2024](https://doi.org/10.1002/gdj3.239)                                                |
+| Caravan_DK     | 308                    |                         | 38                       | 211                     | 1981 - 2020       | Denmark                                     | [Koch, J. (2022)](https://doi.org/10.5281/zenodo.7962379)                                                   |
 | LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
 | LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
 | HYSETS         | 14425                  |                         | 5                        | 28                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |
@@ -167,7 +168,7 @@ mg_data_ohe.shape
 | USGS           | 12004                  | 1541                    | 5                        | 27                      | 1950 - 2018       | USA                                         | [USGS nwis](https://waterdata.usgs.gov/nwis)                                                                |
 | Finland        | 669                    |                         | 27                       | 35                      | 2012 - 2023       | Finland                                     | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379)                                            |
 | Poland         | 1287                   |                         | 27                       | 35                      | 1992 - 2020       | Poland                                      | [Nascimento et al., 2024](https://danepubliczne.imgw.pl)                                                    |
-| Portugal       | 280                    |                         | 27                       | 35                      | 1992 - 2020       | Portugal                                    | [SNIRH Portugal](https://snirh.apambiente.pt)                                                    |
+| Portugal       | 280                    |                         | 27                       | 35                      | 1992 - 2020       | Portugal                                    | [SNIRH Portugal](https://snirh.apambiente.pt)                                                               |
 | Italy          | 294                    |                         | 27                       | 35                      | 1992 - 2020       | Italy                                       | [Nascimento et al., 2024](http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient) |
 | CAMELS_FR      | 654                    |                         | 22                       | 344                     | 1970 - 2021       | France                                      | [Delaigue et al., 2024](https://essd.copernicus.org/preprints/essd-2024-415/)                               |
 
@@ -179,16 +180,17 @@ mg_data_ohe.shape
 | GRQA                      | 42                | 1898 - 2020       | Global                    | [Virro et al., 2021](https://essd.copernicus.org/articles/13/5483/2021/)     |
 | Quadica                   |                   | 1950 - 2018       | Germany                   | [Ebeling et al., 2022 ](https://essd.copernicus.org/articles/14/3715/2022/)  |
 | RC4USCoast                | 21                | 1850 - 2020       | USA                       | [Gomez et al., 2022](https://essd.copernicus.org/articles/15/2223/2023/)     |
-| Busan Beach               |                   | 2018 - 2019       | Busan, S.Korea            | [Jang et al](https://doi.org/10.1016/j.watres.2021.117001)                   |
+| Busan Beach               |                   | 2018 - 2019       | Busan, South Korea        | [Jang et al](https://doi.org/10.1016/j.watres.2021.117001)                   |
 | Ecoli Mekong River        | 10                | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Mekong River (Laos) | 10                | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Houay Pano (Laos)   | 10                | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
-| CamelsChem                | 18                | 1980 - 2018       | Continental USA           | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
-| GRiMeDB                   | 18                | -                 | Global                    | [Stanley et al., 2023](https://doi.org/10.5194/essd-15-2879-2023)              |
+| CamelsChem                | 18                | 1980 - 2018       | Conterminous USA          | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
+| GRiMeDB                   | 18                | -                 | Global                    | [Stanley et al., 2023](https://doi.org/10.5194/essd-15-2879-2023)            |
 | SanFrancisco Bay          | 18                | 1969 - 2015       | Sans Francisco Bay (USA)  | [Cloern et al., 2017](https://doi.org/10.1002/lno.10537)                     |
-| Sylt Roads                | 18                | 1973 - 2019       | North Sea (Arctic)        | [Rick et al., 2023](https://doi.org/10.5194/essd-15-1037-2023)              |
-| Buzzards Bay              | 64                | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)              |
+| Sylt Roads                | 18                | 1973 - 2019       | North Sea (Arctic)        | [Rick et al., 2023](https://doi.org/10.5194/essd-15-1037-2023)               |
+| Buzzards Bay              | 64                | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)            |
 | White Clay Creek          | 2                 | 1977 - 2017       | White Clay Creek (USA)    | [Newbold and  Damiano 2013](https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/) |
+| Selune River              | 5                 | 2021 - 2022       | Selune River (France)     | [Moustapha Ba et al., 2023](https://doi.org/10.1016/j.dib.2022.10883)        |
 
 ## Summary of datasets related to wastewater treatment
 

@@ -101,6 +101,13 @@ List of datasets
      - 1973 - 2019
      - White Clay Creek (USA)
      - `Newbold and  Damiano 2013 <https://www.hydroshare.org/resource/d841f99381424ebc850842a1dbb5630b/>`_
+   * - Selune River, France
+     - :py:class:`water_datasets.SeluneRiver`
+     - 5
+     - 2021 - 2022
+     - Selune River, (France)
+     - `Moustapha Ba et al., 2023 <https://doi.org/10.1016/j.dib.2022.108837>`_ 
+
 
 
 Functions and Classes
@@ -169,6 +176,13 @@ Functions and Classes
 
 
 .. autoclass:: water_datasets.WhiteClayCreek
+    :members:
+    :show-inheritance:
+  
+    .. automethod:: __init__
+
+
+.. autoclass:: water_datasets.SeluneRiver
     :members:
     :show-inheritance:
   

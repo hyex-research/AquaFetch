@@ -4,7 +4,10 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 #wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
-from water_datasets import SanFranciscoBay, BuzzardsBay, WhiteClayCreek
+from water_datasets import (
+    SanFranciscoBay, BuzzardsBay, WhiteClayCreek,
+    RiverChemSiberia, SeluneRiver
+    )
 
 
 def test_SanFranciscoBay():
@@ -64,10 +67,42 @@ def test_WhiteClayCreek():
     return
 
 
+def test_RiverChemSiberia():
+    ds = RiverChemSiberia(
+        path='/mnt/datawaha/hyex/atr/data',
+        verbosity=4
+        )
+
+    database = ds.database()
+
+    assert database.shape == (1434, 34)
+    assert database['Sample_ID'].nunique() == 1422
+
+    database['Basin'].nunique() == 7
+
+    return
+
+
+def test_SeluneRiver():
+
+    ds = SeluneRiver(
+        path='/mnt/datawaha/hyex/atr/data',
+        verbosity=4
+        )
+
+    data = ds.data()
+    #assert data.shape == 
+    return
+
+
 test_SanFranciscoBay()
      
 test_BuzzardsBay()
 
 test_WhiteClayCreek()
+
+test_RiverChemSiberia()
+
+test_SeluneRiver()
 
 print("All tests passed!")

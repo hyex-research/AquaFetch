@@ -40,6 +40,7 @@ from .rr import Poland
 from .rr import Italy
 from .rr import CAMELS_FR
 from .rr import Portugal
+from .rr import Caravan_DK
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -91,6 +92,7 @@ from .wq import SanFranciscoBay
 from .wq import GRiMeDB
 from .wq import BuzzardsBay
 from .wq import WhiteClayCreek
+from .wq import RiverChemSiberia
 
 # *** Miscellaneous ***
 

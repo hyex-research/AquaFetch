@@ -32,7 +32,7 @@ from ._camels import CAMELS_DE
 from ._grdccaravan import GRDCCaravan
 from ._camels import CAMELS_SE
 from ._simbi import Simbi
-from ._denmark import CAMELS_DK as CAMELS_DK0
+from ._denmark import Caravan_DK
 from ._bull import Bull
 from ._camels import CAMELS_IND
 from ._gsha import Arcticnet
@@ -78,7 +78,7 @@ DATASETS = {
     "GRDCCaravan": GRDCCaravan,
     "CAMELS_SE": CAMELS_SE,
     "Simbi": Simbi,
-    "CAMELS_DK0": CAMELS_DK0,
+    "Caravan_DK": Caravan_DK,
     "Bull": Bull,
     "CAMELS_IND": CAMELS_IND,
     "USGS": USGS,
