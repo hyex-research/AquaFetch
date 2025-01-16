@@ -1,7 +1,7 @@
 Water Quality
 *************
 The `wq` submodule contains datasets that represent surface water chemistry at 
-various locations worldwide. Currently, it includes 12 water quality datasets, 
+various locations worldwide. Currently, it includes 16 water quality datasets, 
 but we anticipate this number will increase in the future. The spatial and temporal 
 coverage of these datasets are detailed in following table.
 
@@ -74,7 +74,7 @@ List of datasets
    * - Global River Methane
      - :py:class:`water_datasets.GRiMeDB`
      - 18
-     - -
+     - 
      - Global
      - `Stanley et al., 2024 <https://doi.org/10.5194/essd-15-2879-2023>`_
    * - Sylt Roads

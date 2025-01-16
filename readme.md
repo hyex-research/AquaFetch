@@ -180,7 +180,7 @@ mg_data_ohe.shape
 | GRQA                      | 42                | 1898 - 2020       | Global                    | [Virro et al., 2021](https://essd.copernicus.org/articles/13/5483/2021/)     |
 | Quadica                   |                   | 1950 - 2018       | Germany                   | [Ebeling et al., 2022 ](https://essd.copernicus.org/articles/14/3715/2022/)  |
 | RC4USCoast                | 21                | 1850 - 2020       | USA                       | [Gomez et al., 2022](https://essd.copernicus.org/articles/15/2223/2023/)     |
-| Busan Beach               |                   | 2018 - 2019       | Busan, South Korea        | [Jang et al](https://doi.org/10.1016/j.watres.2021.117001)                   |
+| Busan Beach               |                   | 2018 - 2019       | Busan, South Korea        | [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)                   |
 | Ecoli Mekong River        | 10                | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Mekong River (Laos) | 10                | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Houay Pano (Laos)   | 10                | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
