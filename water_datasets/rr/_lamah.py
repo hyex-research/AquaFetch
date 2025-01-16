@@ -494,7 +494,7 @@ class LamaHCE(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = None
+            static_features: Union[str, List[str]] = None
     ) -> pd.DataFrame:
         """
         static features of LamaHCE
@@ -503,7 +503,7 @@ class LamaHCE(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -515,12 +515,12 @@ class LamaHCE(Camels):
             ...  # get list of all static features
             >>> dataset.static_features
             >>> dataset.fetch_static_features('99',
-            >>> features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
+            >>> static_features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
         """
 
         df = self.static_data()
 
-        static_features = check_attributes(features, self.static_features, 'static features')
+        static_features = check_attributes(static_features, self.static_features, 'static features')
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = df[static_features]
@@ -992,7 +992,7 @@ class LamaHIce(LamaHCE):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = 'all',
-            features: Union[str, list] = None
+            static_features: Union[str, list] = None
     ) -> pd.DataFrame:
 
         basin = self.basin_attributes()
@@ -1001,7 +1001,7 @@ class LamaHIce(LamaHCE):
         df = pd.concat([basin, gauge], axis=1)
         df.index = df.index.astype(str)
 
-        static_features = check_attributes(features, self.static_features, 'static features')
+        static_features = check_attributes(static_features, self.static_features, 'static_features')
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = df.loc[stations, static_features]

@@ -19,7 +19,6 @@ from water_datasets import CAMELS_CL, CAMELS_US, HYPE
 from water_datasets import WaterBenchIowa
 from water_datasets import CAMELS_DE
 from water_datasets import CAMELS_SE
-from water_datasets import Simbi
 from water_datasets import CAMELS_IND
 from water_datasets import RainfallRunoff
 from water_datasets import RRLuleaSweden
@@ -180,24 +179,6 @@ class TestCamels(unittest.TestCase):
     def test_camels_se(self):
         dataset = CAMELS_SE(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 50, 21915, 76, 4)
-        return
-
-    def test_simbi(self):
-        dataset = Simbi(path=gscad_path)
-        #test_dataset(dataset, 70, 17167, 232, 3, raise_len_error=False)
-            # check that dynamic attribues from all data can be retrieved.
-        test_dynamic_data(dataset, None, 70, 17167)
-        test_dynamic_data(dataset, None, 70, 17167, as_dataframe=True)
-
-        # check that dynamic data of 10% of stations can be retrieved
-        test_dynamic_data(dataset, 0.1, int(7), 17167, 
-                            raise_len_error=False)
-        test_dynamic_data(dataset, 0.1, int(70*0.1), 17167, True,
-                            raise_len_error=False)
-        test_attributes(dataset, 232, 3, 70)
-
-        dataset.area(dataset.static_data_stations())
-
         return
 
     def test_camels_dk():

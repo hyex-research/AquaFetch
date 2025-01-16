@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .camels import Camels
+from .._project import utm_to_lat_lon
 from ..utils import get_cpus
 from ..utils import check_attributes, download, _unzip
 
@@ -314,7 +315,7 @@ class CAMELS_US(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ):
         """
         gets one or more static features of one or more stations
@@ -323,7 +324,7 @@ class CAMELS_US(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -338,7 +339,7 @@ class CAMELS_US(Camels):
             >>> camels.static_features
             get specific features of one station
             >>> static_data = camels.fetch_static_features('11528700',
-            >>> features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+            >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
             >>> static_data.shape
                (1, 4)
             get names of allstations
@@ -349,7 +350,7 @@ class CAMELS_US(Camels):
             >>> all_static_data.shape
                (671, 59)
         """
-        features = check_attributes(features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
 
         static_fpath = os.path.join(self.path, 'static_features.csv')
@@ -588,7 +589,7 @@ class CAMELS_GB(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Fetches static features of one or more stations for one or
@@ -598,7 +599,7 @@ class CAMELS_GB(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -626,7 +627,7 @@ class CAMELS_GB(Camels):
            (671, 2)
         """
 
-        features = check_attributes(features, self.static_features, 'static_features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
         static_fname = 'static_features.csv'
         static_fpath = os.path.join(self.data_path, static_fname)
         if os.path.exists(static_fpath):
@@ -1030,7 +1031,7 @@ class CAMELS_AUS(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all",
     ) -> pd.DataFrame:
         """Fetches static features of one or more stations as dataframe.
 
@@ -1038,7 +1039,7 @@ class CAMELS_AUS(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -1068,7 +1069,7 @@ class CAMELS_AUS(Camels):
 
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
 
-        return self._read_static(stn_id, features)
+        return self._read_static(stn_id, static_features)
 
 
 class CAMELS_CL(Camels):
@@ -1278,7 +1279,7 @@ class CAMELS_CL(Camels):
         df.columns = ['lat', 'long']
         stations = check_attributes(stations, self.stations(), 'stations')
         df.index = [index.strip() for index in df.index]
-        return df.loc[stations, :]
+        return df.loc[stations, :].astype(self.fp)
 
     def stations(self) -> list:
         """
@@ -1356,7 +1357,7 @@ class CAMELS_CL(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ):
         """
         Returns static features of one or more stations.
@@ -1365,7 +1366,7 @@ class CAMELS_CL(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -1391,11 +1392,11 @@ class CAMELS_CL(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'area'])
         >>> static_data.shape
            (516, 2)
-        >>> data = dataset.fetch_static_features('2110002', features=['slope_mean', 'area'])
+        >>> data = dataset.fetch_static_features('2110002', static_features=['slope_mean', 'area'])
         >>> data.shape
            (1, 2)
         """
-        features = check_attributes(features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
 
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
 
@@ -1821,7 +1822,7 @@ class CAMELS_CH(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = "all",
-            features: Union[str, list] = "all"
+            static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -1830,7 +1831,7 @@ class CAMELS_CH(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -1861,7 +1862,7 @@ class CAMELS_CH(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['gauge_lon', 'gauge_lat', 'area'])
         >>> static_data.shape
            (331, 3)
-        >>> data = dataset.fetch_static_features('2004', features=['gauge_lon', 'gauge_lat', 'area'])
+        >>> data = dataset.fetch_static_features('2004', static_features=['gauge_lon', 'gauge_lat', 'area'])
         >>> data.shape
            (1, 3)
         """
@@ -1883,8 +1884,8 @@ class CAMELS_CH(Camels):
             axis=1)
         df.index = df.index.astype(str)
 
-        features = check_attributes(features, df.columns.tolist(),
-                                    "static features")
+        features = check_attributes(static_features, df.columns.tolist(),
+                                    "static_features")
         return df.loc[stations, features]
 
     def _read_dynamic_from_csv(
@@ -2166,7 +2167,7 @@ class CAMELS_DE(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = "all",
-            features: Union[str, list] = "all"
+            static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
 
@@ -2176,7 +2177,7 @@ class CAMELS_DE(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -2203,14 +2204,14 @@ class CAMELS_DE(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['p_mean', 'p_seasonality', 'frac_snow'])
         >>> static_data.shape
            (1555, 3)
-        >>> data = dataset.fetch_static_features('DE110000', features=['p_mean', 'p_seasonality', 'frac_snow'])
+        >>> data = dataset.fetch_static_features('DE110000', static_features=['p_mean', 'p_seasonality', 'frac_snow'])
         >>> data.shape
            (1, 3)
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = self.static_data()
-        features = check_attributes(features, df.columns.tolist(),
+        features = check_attributes(static_features, df.columns.tolist(),
                                     "static_features")
         return df.loc[stations, features]
 
@@ -2556,7 +2557,7 @@ class CAMELS_SE(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = "all",
-            features: Union[str, list] = "all"
+            static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
 
@@ -2566,7 +2567,7 @@ class CAMELS_SE(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -2593,15 +2594,15 @@ class CAMELS_SE(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['Area_km2', 'Water_percentage', 'Elevation_mabsl'])
         >>> static_data.shape
            (50, 3)
-        >>> data = dataset.fetch_static_features('5', features=['Area_km2', 'Water_percentage', 'Elevation_mabsl'])
+        >>> data = dataset.fetch_static_features('5', static_features=['Area_km2', 'Water_percentage', 'Elevation_mabsl'])
         >>> data.shape
            (1, 3)
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = self.static_data().copy()
-        features = check_attributes(features, self.static_features,
-                                    "static features")
+        features = check_attributes(static_features, self.static_features,
+                                    "static_features")
         return df.loc[stations, features]
 
 
@@ -2903,7 +2904,7 @@ class CAMELS_DK(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -2912,7 +2913,7 @@ class CAMELS_DK(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -2943,15 +2944,25 @@ class CAMELS_DK(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'aridity'])
         >>> static_data.shape
            (304, 2)
-        >>> data = dataset.fetch_static_features('42600042', features=['slope_mean', 'aridity'])
+        >>> data = dataset.fetch_static_features('42600042', static_features=['slope_mean', 'aridity'])
         >>> data.shape
            (1, 2)
 
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
-        features = check_attributes(features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
+
+    def transform_stn_coords(self, df:pd.DataFrame)->pd.DataFrame:
+
+        ct_m = pd.DataFrame(columns=['lat', 'long'], index=df.index)
+        # Test the function using lat, long in c DataFrame
+        for i in range(0, len(df)):
+            lat, lon = utm_to_lat_lon(df.iloc[i, 1], df.iloc[i, 0], 32)
+            ct_m.iloc[i] = [lat, lon]
+        
+        return ct_m
 
     def transform_coords(self, coords):
         """
@@ -3257,7 +3268,7 @@ class CAMELS_IND(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -3266,7 +3277,7 @@ class CAMELS_IND(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -3297,13 +3308,13 @@ class CAMELS_IND(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'aridity'])
         >>> static_data.shape
            (472, 2)
-        >>> data = dataset.fetch_static_features('42600042', features=['slope_mean', 'aridity'])
+        >>> data = dataset.fetch_static_features('42600042', static_features=['slope_mean', 'aridity'])
         >>> data.shape
            (1, 2)
 
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
-        features = check_attributes(features, self.static_features, 'static_features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
 
@@ -3345,8 +3356,10 @@ class CAMELS_FR(Camels):
     def static_map(self) -> Dict[str, str]:
         return {
                 'hyd_slope_fdc': slope(''),
-                'sit_latitude': gauge_latitude(),
-                'sit_longitude': gauge_longitude(),
+                'sta_x_w84': gauge_latitude(),
+                'sta_y_w84': gauge_longitude(),
+                # todo: should we use sta_x_w84_snap and sta_y_w84_snap which are 
+                # gauge longitude in WGS84 (INRAE's own estimation, snapped on thorical river network)
         }
 
     @property
@@ -3412,7 +3425,11 @@ class CAMELS_FR(Camels):
 
     @property
     def _coords_name(self) -> List[str]:
-        return ['sit_latitude', 'sit_longitude']
+        return [
+            #'sit_latitude', 'sit_longitude', todo : what is difference between site and guage lat/lon?
+                # gauge latitude/longitude in WGS84 (Hydroportail coordinates)
+                'sta_y_w84', 'sta_x_w84',
+                ]
 
     @property
     def _area_name(self) -> str:
@@ -3518,7 +3535,7 @@ class CAMELS_FR(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -3527,7 +3544,7 @@ class CAMELS_FR(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -3558,13 +3575,13 @@ class CAMELS_FR(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'aridity'])
         >>> static_data.shape
            (472, 2)
-        >>> data = dataset.fetch_static_features('42600042', features=['slope_mean', 'aridity'])
+        >>> data = dataset.fetch_static_features('42600042', static_features=['slope_mean', 'aridity'])
         >>> data.shape
            (1, 2)
 
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
-        features = check_attributes(features, self.static_features, 'static_features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
 

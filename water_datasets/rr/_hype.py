@@ -159,7 +159,7 @@ class HYPE(Camels):
     def _mmd_feature_name(self) ->str:
         return 'Streamflow_mm'
 
-    def fetch_static_features(self, stn_id, features=None):
+    def fetch_static_features(self, stn_id, static_features=None):
         """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 

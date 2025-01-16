@@ -441,7 +441,7 @@ class Bull(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = 'all',
-            features: Union[str, List[str]] = 'all'
+            static_features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -450,7 +450,7 @@ class Bull(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -481,12 +481,12 @@ class Bull(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['seasonality', 'moisture_index'])
         >>> static_data.shape
            (484, 2)
-        >>> data = dataset.fetch_static_features('42600042', features=['seasonality', 'moisture_index'])
+        >>> data = dataset.fetch_static_features('42600042', static_features=['seasonality', 'moisture_index'])
         >>> data.shape
            (1, 2)
 
         """
         stations = check_attributes(stn_id, self.stations())
-        features = check_attributes(features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]

@@ -189,7 +189,7 @@ class Camels(Datasets):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = None,
-            features: Union[str, list] = None
+            static_features: Union[str, list] = None
     ) -> pd.DataFrame:
         """Fetches all or selected static features of one or more stations.
 
@@ -197,7 +197,7 @@ class Camels(Datasets):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -213,7 +213,7 @@ class Camels(Datasets):
             >>> camels.fetch_static_features('224214A')
             >>> camels.static_features
             >>> camels.fetch_static_features('224214A',
-            ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
+            ... static_features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         """
         raise NotImplementedError
 
@@ -280,7 +280,7 @@ class Camels(Datasets):
 
         stations = check_attributes(stations, self.stations(), 'stations')
 
-        df = self.fetch_static_features(features=[self._area_name])
+        df = self.fetch_static_features(static_features=[self._area_name])
         df.columns = ['area']
 
         return df.loc[stations, 'area']
@@ -758,11 +758,22 @@ class Camels(Datasets):
         >>> dataset.stn_coords(['G0050115', '912101A'])  # returns coordinates of two stations
 
         """
-        df = self.fetch_static_features(features=self._coords_name)
+        df = self.fetch_static_features(static_features=self._coords_name)
         df.columns = ['lat', 'long']
         stations = check_attributes(stations, self.stations())
 
-        return df.loc[stations, :]
+        df = df.loc[stations, :].astype(self.fp)
+
+        return self.transform_stn_coords(df)
+
+    def transform_stn_coords(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        transforms coordinates from geographic to projected
+
+        must be implemented in base classes
+        """
+        return df
+
 
     def transform_coords(self, xyz: np.ndarray) -> np.ndarray:
         """

@@ -392,7 +392,7 @@ class HYSETS(Camels):
         }
 
         s = self.fetch_static_features(
-            features=[SRC_MAP[source]],
+            static_features=[SRC_MAP[source]],
         )
 
         s.columns = ['area']
@@ -428,7 +428,7 @@ class HYSETS(Camels):
 
         """
         df = self.fetch_static_features(
-            features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
+            static_features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
         df.columns = ['lat', 'long']
         stations = check_attributes(stations, self.stations())
 
@@ -586,7 +586,7 @@ class HYSETS(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]]="all",
-            features:Union[str, List[str]]="all",
+            static_features:Union[str, List[str]]="all",
             st=None,
             en=None,
             as_ts=False
@@ -598,7 +598,7 @@ class HYSETS(Camels):
         ----------
             stations : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
             st :
@@ -628,7 +628,7 @@ class HYSETS(Camels):
         >>> static_data.shape
            (14425, 2)
         """
-        return self._fetch_static_features(stations, features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en, as_ts)
 
     def read_static_data(self, usecols=None, nrows=None):
         """

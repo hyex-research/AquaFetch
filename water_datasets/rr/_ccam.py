@@ -392,7 +392,7 @@ class CCAM(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all"
+            static_features:Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -401,7 +401,7 @@ class CCAM(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -432,13 +432,13 @@ class CCAM(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['lon', 'lat', 'area'])
         >>> static_data.shape
            (102, 3)
-        >>> data = dataset.fetch_static_features('0140', features=['lon', 'lat', 'area'])
+        >>> data = dataset.fetch_static_features('0140', static_features=['lon', 'lat', 'area'])
         >>> data.shape
            (1, 3)
 
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
-        features = check_attributes(features, self.static_features, 'static features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
         ds = []
         for stn in stations:
             d = self._read_yr_static(stn)

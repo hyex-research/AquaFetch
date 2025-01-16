@@ -215,7 +215,7 @@ class EStreams(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all",
             countries: List[str] = "all",
     ) -> pd.DataFrame:
         """
@@ -225,14 +225,14 @@ class EStreams(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a pandas dataframe of shape (stations, static_features)
 
         Examples
         ---------
@@ -256,7 +256,7 @@ class EStreams(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slp_dg_mean', 'ele_mt_mean'])
         >>> static_data.shape
            (15047, 2)
-        >>> data = dataset.fetch_static_features('IEEP0281', features=['slp_dg_mean', 'ele_mt_mean'])
+        >>> data = dataset.fetch_static_features('IEEP0281', static_features=['slp_dg_mean', 'ele_mt_mean'])
         >>> data.shape
            (1, 2)
         >>> out = ds.fetch_static_features(countries='IE')
@@ -264,7 +264,7 @@ class EStreams(Camels):
         (464, 153
         """
         stations = self._get_stations(countries, stations)
-        features = check_attributes(features, self.static_features, 'features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
 
         return self.static_data().loc[stations, features]
 
@@ -643,7 +643,7 @@ class _EStreams(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all",
             st=None,
             en=None,
             as_ts=False
@@ -655,7 +655,7 @@ class _EStreams(Camels):
         ----------
             stations : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
             st :
@@ -685,7 +685,7 @@ class _EStreams(Camels):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en, as_ts)
 
 
 START_YEAR = 2012

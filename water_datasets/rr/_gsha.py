@@ -708,7 +708,7 @@ class GSHA(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all",
             agency: List[str] = "all",
     ) -> pd.DataFrame:
         """
@@ -718,7 +718,7 @@ class GSHA(Camels):
         ----------
             stations : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -749,7 +749,7 @@ class GSHA(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['ele_mt_uav', 'slp_dg_uav'])
         >>> static_data.shape
            (21568, 2)
-        >>> data = dataset.fetch_static_features('1001_arcticnet', features=['slp_dg_uav', 'slp_dg_uav'])
+        >>> data = dataset.fetch_static_features('1001_arcticnet', static_features=['slp_dg_uav', 'slp_dg_uav'])
         >>> data.shape
            (1, 2)
         >>> out = ds.fetch_static_features(agency='arcticnet')
@@ -759,7 +759,7 @@ class GSHA(Camels):
 
         stations = self._get_stations(stations, agency)
 
-        features = check_attributes(features, self.static_features, 'static_features')
+        features = check_attributes(static_features, self.static_features, 'static_features')
 
         return pd.concat([
             self.atlas(stations),
@@ -1156,7 +1156,7 @@ class _GSHA(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all",
             st=None,
             en=None,
             as_ts=False
@@ -1168,7 +1168,7 @@ class _GSHA(Camels):
         ----------
             stations : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
             st :
@@ -1198,7 +1198,7 @@ class _GSHA(Camels):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en, as_ts)
 
 
 def streamflow_indices_all_stations(

@@ -186,7 +186,7 @@ class USGS(Camels):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            features:Union[str, List[str]] = "all",
+            static_features:Union[str, List[str]] = "all",
             st=None,
             en=None,
             as_ts=False
@@ -198,7 +198,7 @@ class USGS(Camels):
         ----------
             stations : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
             st :
@@ -231,7 +231,7 @@ class USGS(Camels):
         stations = check_attributes(stations, self.stations())
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]        
-        static_feats = self.hysets.fetch_static_features(stations, features, st, en, as_ts)
+        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en, as_ts)
         static_feats.set_index('Official_ID', inplace=True)
         return static_feats
 

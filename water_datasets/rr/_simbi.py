@@ -75,7 +75,6 @@ class Simbi(Camels):
                 'Lat_Cent': gauge_latitude(),
                 'Slope': slope('degrees'),
                 'Lon_Cent': gauge_longitude(),
-
         }
     
     @property
@@ -93,7 +92,6 @@ class Simbi(Camels):
     @property
     def _area_name(self) ->str:
         return 'Area'  
-
 
     @property
     def start(self):
@@ -142,8 +140,15 @@ class Simbi(Camels):
     @property
     def temp_path(self):
         return os.path.join(self.path, '00_SIMBI_OBSERVED_DATA', '05_DAILY_LONG_TERM_AVERAGE_TEMPERATURE')
-    
+
     def stations(self)->List[str]:
+        """Returns names/IDs of 24 stations which have all (boundary, streamflow, 
+        static features) data. Although there are 70 stations which have daily 
+        streamflow data, only 24 of them have static + boundary data.
+        """
+        return self.boundary_stations()
+
+    def all_stations(self)->List[str]:
         """
         Not all stations have all data.
         """
@@ -151,13 +156,13 @@ class Simbi(Camels):
     
     def q_stations(self)->List[str]:
         """
-        Stations with daily streamflow data.
+        Returns names/IDs of 70 stations with daily streamflow data.
         """
         return [f"0{str(i).zfill(2)}" for i in range(1, 71)]
     
     def pcp_stations(self)->List[str]:
         """
-        Stations with daily rainfall data.
+        Returns IDs of 74 stations with daily rainfall data.
         """
         s1 = [stn.split('.')[0].split('_')[1] for stn in os.listdir(self.daily_pcp_20_40_path)]
         s2 = [stn.split('.')[0].split('_')[1] for stn in os.listdir(self.daily_pcp_48_60_path)]
@@ -165,19 +170,19 @@ class Simbi(Camels):
     
     def temp_stations(self)->List[str]:
         """
-        Stations with daily temperature data.
+        Returns names/IDs of 21 stations with daily temperature data.
         """
         return [stn.split('.')[0].split('_')[1] for stn in os.listdir(self.temp_path)]
     
     def boundary_stations(self)->List[str]:
         """
-        Stations with boundary data.
+        Returns names/IDs of 24 stations with boundary data.
         """
         return [stn.split('-')[1] for stn in self.bndry_id_map.keys()]
     
     def static_data_stations(self)->List[str]:
         """
-        Stations with static data.
+        Returns names/IDs of 24 stations with static data.
         """
         return self.static_data().index.tolist()
 
@@ -470,7 +475,7 @@ class Simbi(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -498,7 +503,7 @@ class Simbi(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['stream_density', 'pcp', 'Forest_lc_98'])
         >>> static_data.shape
            (24, 3)
-        >>> data = dataset.fetch_static_features('001', features=['stream_density', 'pcp', 'Forest_lc_98'])
+        >>> data = dataset.fetch_static_features('001', static_features=['stream_density', 'pcp', 'Forest_lc_98'])
         >>> data.shape
            (1, 3)
         """
@@ -588,4 +593,4 @@ class Simbi(Camels):
         df.index = pd.to_datetime(df.index)
         df.columns.name = 'dynamic_features'
         df.index.name = 'time'
-        return df.sort_index()    
+        return df.sort_index()

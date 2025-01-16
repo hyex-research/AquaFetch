@@ -25,21 +25,21 @@ class Caravan_DK(Camels):
     """
     Reads Caravan extension Denmark - Danish dataset for large-sample hydrology
     following the works of `Koch and Schneider 2022 <https://doi.org/10.34194/geusb.v49.829>`_ .
-    The dataset is downloaded from https://zenodo.org/record/7962379 . This dataset
+    The dataset is downloaded from `zenodo <https://zenodo.org/record/7962379>`_ . This dataset
     consists of static and dynamic features from 308 danish catchments. There are 38
     dynamic (time series) features from 1981-01-02 to 2020-12-31 with daily timestep
     and 211 static features for each of 308 catchments.
 
     Please note that there is an updated version of this dataset following the works
     of `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ . This dataset
-    is associated with the CAMELS_DK class which can be imported as follows:
+    is associated with the :py:class:`water_datasets.CAMELS_DK` class which can be imported as follows:
 
     >>> from water_datasets import CAMELS_DK
 
     Examples
     ---------
-    >>> from water_datasets.rr._denmark import CAMELS_DK
-    >>> dataset = CAMELS_DK()
+    >>> from water_datasets import Caravan_DK
+    >>> dataset = Caravan_DK()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (569751, 30)  # 30 represents number of stations
@@ -116,7 +116,7 @@ class Caravan_DK(Camels):
 
         self.boundary_file = os.path.join(
             path,
-            "CAMELS_DK",
+            "Caravan_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
@@ -311,7 +311,7 @@ class Caravan_DK(Camels):
 
         Examples
         --------
-        >>> dataset = CAMELS_DK()
+        >>> dataset = Caravan_DK()
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('100010')  # returns coordinates of station whose id is 912101A
         >>> dataset.stn_coords(['100010', '210062'])  # returns coordinates of two stations
@@ -368,8 +368,8 @@ class Caravan_DK(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
-        >>> dataset = CAMELS_DK()
+        >>> from water_datasets import Caravan_DK
+        >>> dataset = Caravan_DK()
         get the names of stations
         >>> stns = dataset.stations()
         >>> len(stns)

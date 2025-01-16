@@ -315,7 +315,7 @@ class GRDCCaravan(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, list] = "all",
-            features: Union[str, list] = "all"
+            static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
 
@@ -325,7 +325,7 @@ class GRDCCaravan(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -352,15 +352,15 @@ class GRDCCaravan(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['p_mean', 'p_seasonality', 'frac_snow'])
         >>> static_data.shape
            (1555, 3)
-        >>> data = dataset.fetch_static_features('DE110000', features=['p_mean', 'p_seasonality', 'frac_snow'])
+        >>> data = dataset.fetch_static_features('DE110000', static_features=['p_mean', 'p_seasonality', 'frac_snow'])
         >>> data.shape
            (1, 3)
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
         df = self.static_data()
-        features = check_attributes(features, df.columns.tolist(),
-                                    "static features")
+        features = check_attributes(static_features, df.columns.tolist(),
+                                    "static_features")
         return df.loc[stations, features]
 
     def _read_dynamic_from_csv(

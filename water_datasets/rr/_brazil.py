@@ -513,7 +513,7 @@ class CAMELS_BR(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
-            features: Union[str, List[str]] = "all"
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         fetches static feature/features of one or mroe stations
@@ -522,7 +522,7 @@ class CAMELS_BR(Camels):
         ----------
             stn_id : int/list
                 station id whose attribute to fetch.
-            features : str/list
+            static_features : str/list
                 name of attribute to fetch. Default is None, which will return all the
                 attributes for a particular station of the specified category.
         Example
@@ -535,9 +535,9 @@ class CAMELS_BR(Camels):
         (597, 67)
         """
 
-        station = check_attributes(stn_id, self.stations())
+        station = check_attributes(stn_id, self.stations(), 'stations')
 
-        attributes = check_attributes(features, self.static_features)
+        attributes = check_attributes(static_features, self.static_features, 'static_features')
 
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
@@ -1184,7 +1184,7 @@ class CABra(Camels):
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = 'all',
-            features: Union[str, List[str]] = 'all'
+            static_features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
         Returns static features of one or more stations.
@@ -1193,7 +1193,7 @@ class CABra(Camels):
         ----------
             stn_id : str
                 name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -1224,14 +1224,14 @@ class CABra(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['gauge_lat', 'area'])
         >>> static_data.shape
            (735, 2)
-        >>> data = dataset.fetch_static_features('92', features=['gauge_lat', 'area'])
+        >>> data = dataset.fetch_static_features('92', static_features=['gauge_lat', 'area'])
         >>> data.shape
            (1, 2)
 
         """
 
         stations = check_attributes(stn_id, self.stations())
-        features = check_attributes(features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
 
         df = pd.concat([self.climate_attrs(),
                         self.general_attrs(),

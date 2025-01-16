@@ -128,7 +128,7 @@ class WaterBenchIowa(Camels):
         ----------
             stn_id : str
                 name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
 
@@ -154,14 +154,14 @@ class WaterBenchIowa(Camels):
         >>> static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
         >>> static_data.shape
            (125, 2)
-        >>> data = dataset.fetch_static_features('592', features=['slope', 'area'])
+        >>> data = dataset.fetch_static_features('592', static_features=['slope', 'area'])
         >>> data.shape
            (1, 2)
 
         """
         stn_id = check_attributes(stn_id, self.stations())
 
-        features = check_attributes(static_features, self.static_features)
+        features = check_attributes(static_features, self.static_features, 'static_features')
 
         dfs = []
         for stn in stn_id:
