@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_st_en
+from ..utils import check_st_en, check_attributes
 
 
 DTYPES = {
@@ -610,14 +610,21 @@ DTYPES = {
 class GRQA(Datasets):
     """
     Global River Water Quality Archive following the work of 
-    `Virro et al., 2021 <https://essd.copernicus.org/articles/13/5483/2021/>`_.
+    `Virro et al., 2021 <https://essd.copernicus.org/articles/13/5483/2021/>`_ .
+    This dataset comprises of 42 parameters for 94955 sites across 116 countries.
 
     Examples
     --------
     >>> from water_datasets import GRQA
     >>> ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
-    >>> print(ds.parameters)
+    >>> ds.parameters
+    ['TPP', 'PON', 'TEMP', 'TSS', ...]
+    >>> print(len(ds.parameters))
     42
+    >>> len(ds.countries)
+    116
+    >>> len(ds.stations())
+    94955
     >>> len(ds.parameters)
     >>> country = "Pakistan"
     >>> len(ds.fetch_parameter('TEMP', country=country))
@@ -631,7 +638,6 @@ class GRQA(Datasets):
     """
 
     url = 'https://zenodo.org/record/7056647#.YzBzDHZByUk'
-
 
     def __init__(
             self,
@@ -658,6 +664,14 @@ class GRQA(Datasets):
     @property
     def parameters(self):
         return [f.split('_')[0] for f in self.files]
+    
+    def stations(self)->List[str]:
+        """Returns names of stations/site_id"""
+        return self.sites_data().index.tolist()
+    
+    @property
+    def countries(self)->List[str]:
+        return self.sites_data()['site_country'].dropna().unique().tolist()
 
     def fetch_parameter(
             self,
@@ -724,14 +738,14 @@ class GRQA(Datasets):
 
         return check_st_en(df, st, en)
 
-    def _load_df(self, parameter):
+    def _load_df(self, parameter, **read_kws):
         if hasattr(self, f"_load_{parameter}"):
             return getattr(self, f"_load_{parameter}")()
 
         fname = os.path.join(self.path, "GRQA_data_v1.3", "GRQA_data_v1.3", f"{parameter}_GRQA.csv")
         if parameter in DTYPES:
-            return pd.read_csv(fname, sep=";", dtype=DTYPES[parameter])
-        return pd.read_csv(fname, sep=";")
+            return pd.read_csv(fname, sep=";", dtype=DTYPES[parameter], **read_kws)
+        return pd.read_csv(fname, sep=";", **read_kws)
 
     def _load_DO(self):
         # read_csv is causing mysterious errors
@@ -744,3 +758,74 @@ class GRQA(Datasets):
                 lines.append(line.split(';'))
 
         return pd.DataFrame(lines[1:], columns=lines[0])
+    
+    def stn_coords(self):
+        """
+        Returns the coordinates of all the stations in the dataset
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+
+        sites = self.sites_data()
+        return sites[['lat', 'long']].dropna().astype(np.float32)
+
+    def sites_data(self)->pd.DataFrame:
+        """
+        Returns the meta data for the dataset
+        """
+
+        fpath = os.path.join(self.path, 'sites.csv')
+
+        if os.path.exists(fpath):
+            if self.verbosity:
+                print(f"loading from pre-existing{fpath}")
+            return pd.read_csv(fpath, index_col=0)
+
+        dfs = []
+
+        cols = ['lat_wgs84', 'lon_wgs84', 'site_name', 'site_country',
+                'upstream_basin_area', 'upstream_basin_area_unit']
+
+        for idx, para in enumerate(self.parameters):
+
+            df1 = self._load_df(para, 
+                            usecols = ['site_id'] + cols
+                            ).set_index('site_id')[cols]
+
+            duplicates = df1.index.duplicated(keep='first')  # Keep the first occurrence, mark others as duplicate
+            # Drop duplicates based on the index
+            df2 = df1[~duplicates] 
+
+            dfs.append(df2)
+            if self.verbosity> 1: print(idx, para )
+
+        df = pd.concat(dfs)
+        print(df.shape)
+        duplicates = df.index.duplicated(keep='first')  # Keep the first occurrence, mark others as duplicate
+        # Drop duplicates based on the index
+        df = df[~duplicates] 
+
+        df.rename(columns={'lat_wgs84': 'lat', 'lon_wgs84': 'long',
+                           'upstream_basin_area': 'basin_area_km2', 
+                           'upstream_basin_area_unit': 'area_unit'}, inplace=True)
+        
+        df.replace('', np.nan, inplace=True)
+
+        area_unit = df['area_unit']
+
+        area_unit = area_unit.replace('', np.nan).dropna().unique()
+
+        assert len(area_unit) == 1
+        assert area_unit[0] == 'sq mi'
+
+        # convert basin_area from sq mi to km2
+        df['basin_area_km2'] = df['basin_area_km2'].astype(np.float32) * 2.58999
+
+        df = df.drop(columns=['area_unit'])        
+
+        df.to_csv(fpath, index=True)
+
+        return df

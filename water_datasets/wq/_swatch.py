@@ -12,8 +12,55 @@ from water_datasets._datasets import Datasets
 
 class SWatCh(Datasets):
     """
-    The Surface Water Chemistry (SWatCh) database as introduced in 
-    `Lobke et al., 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_
+    The Surface Water Chemistry (SWatCh) database of 27 variables from 26322 locations
+    as introduced in  `Lobke et al., 2022 <https://doi.org/10.5194/essd-14-4667-2022>`_ .
+    It should be noted not all the variables are available for all the locations. 
+    Following are the variables available in the dataset:
+        
+        - Total Phosphorus, mixed forms
+        - Sulfate
+        - pH
+        - Temperature, water
+        - Chloride
+        - Magnesium
+        - Calcium
+        - Sodium
+        - Potassium
+        - Aluminum
+        - Nitrate
+        - Nitrite
+        - Fluoride
+        - Hardness, carbonate
+        - Iron
+        - Ammonium
+        - Organic carbon
+        - Bicarbonate
+        - Orthophosphate
+        - Gran acid neutralizing capacity
+        - Alkalinity, total
+        - Inorganic carbon
+        - Carbonate
+        - Alkalinity, carbonate
+        - Hardness, non-carbonate
+        - Carbon Dioxide, free CO2
+        - Alkalinity, Phenolphthalein (total hydroxide+1/2 carbonate)
+
+    Examples
+    --------
+    Examples
+    --------
+    >>> from water.datasets import Swatch
+    >>> ds = Swatch()
+    >>> df = ds.fetch()
+    >>> df.shape
+    (3901296, 6)
+    >>> len(ds.parameters)
+    22
+    >>> len(ds.sites)
+    26322
+    >>> coords = ds.stn_coords()
+    >>> coords.shape 
+    (26322, 2)
     """
 
     url = "https://zenodo.org/record/6484939"
@@ -64,16 +111,21 @@ class SWatCh(Datasets):
     def npy_files(self)->list:
         return [fname for f in os.walk(self.path) for fname in f[2] if fname.endswith('.npy')]
 
-    def _maybe_to_binary(self):
-        """reads the csv file and saves each columns in binary format using numpy.
-        The csv file is 1.5 GB which takes lot of time for loading most the columns
-        are not required most of the times.
-        """
-        if len(self.npy_files) == 28:
-            return
+    def read_csv(self)->pd.DataFrame:
 
-        df = pd.read_csv(self.csv_name)
-        h = {col: "category" for col in cats}
+        df = pd.read_csv(self.csv_name,
+                         dtype = {col: str for col in CATS}.update(
+                             {
+                            #'ActivityStartDate': np.float32,
+                            "ResultAnalyticalMethodID": str,
+                             "ActivityDepthHeightMeasure": np.float32,
+                             'ResultValue': np.float32,
+                             'ResultDetectionQuantitationLimitMeasure': np.float32,
+                             'MonitoringLocationLatitude': np.float32,
+                             'MonitoringLocationLongitude': np.float32,
+                              }),
+                         )
+        h = {col: "category" for col in CATS}
         dates = pd.to_datetime(df.pop("ActivityStartDate") + " " + df.pop("ActivityStartTime"))
         df.index = dates
 
@@ -85,6 +137,31 @@ class SWatCh(Datasets):
             df[col] = df[col].astype(str)
 
         df.rename(columns=self.names, inplace=True)
+
+        return df
+    
+    def stn_coords(self):
+        """
+        Returns the coordinates of all the stations in the dataset
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+        df = self.fetch(parameters=['lat', 'long', 'location'])
+        return df.drop_duplicates(
+            subset=['location'])[['lat', 'long', 'location']].set_index('location').astype(np.float32)
+
+    def _maybe_to_binary(self):
+        """reads the csv file and saves each columns in binary format using numpy.
+        The csv file is 1.5 GB which takes lot of time for loading most the columns
+        are not required most of the times.
+        """
+        if len(self.npy_files) == 28:
+            return
+
+        df = self.read_csv()
 
         for col in df.columns:
             np.save(os.path.join(self.path, col), df[col].values)
@@ -132,6 +209,12 @@ class SWatCh(Datasets):
         >>> from water.datasets import Swatch
         >>> ds = Swatch()
         >>> df = ds.fetch()
+        >>> df.shape
+        (3901296, 6)
+        >>> st_name = "Jordan Lake"
+        >>> df = df[df['location'] == st_name]
+        >>> df.shape
+        (4, 6)        
         """
         def_paras = ["name", "value", "val_unit", "lat", "long"]
 
@@ -205,7 +288,7 @@ class SWatCh(Datasets):
 
         }
 
-cats = ['ActivityDepthHeightUnit', 'ActivityMediaName', 'ActivityType', 'CharacteristicName',
+CATS = ['ActivityDepthHeightUnit', 'ActivityMediaName', 'ActivityType', 'CharacteristicName',
         'DatasetName', 'LaboratoryName', 'MethodSpeciation', 'MonitoringLocationHorizontalCoordinateReferenceSystem',
         'MonitoringLocationType', 'ResultAnalyticalMethodContext', 'ResultDetectionCondition',
         'ResultDetectionQuantitationLimitType', 'ResultDetectionQuantitationLimitUnit',

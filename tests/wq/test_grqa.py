@@ -19,6 +19,24 @@ class TestGRQA(unittest.TestCase):
     def test_basic(self):
 
         assert len(ds.parameters) == 42
+
+        sites_data = ds.sites_data()
+
+        assert sites_data.shape == (94955, 6), sites_data.shape
+
+        assert len(ds.countries) == 116, len(ds.countries)
+
+        assert len(ds.stations()) == 94955, len(ds.stations())
+        return
+
+    def test_coords(self):
+        coords = ds.stn_coords()
+
+        assert coords.shape == (len(ds.stations()), 2)
+
+        assert coords.columns[0] == 'lat'
+        assert coords.columns[1] == 'long'
+
         return
 
     def test_BOD5(self):

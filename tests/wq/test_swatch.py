@@ -6,11 +6,13 @@ site.addsitedir(wd_dir)
 
 import unittest
 
+import pandas as pd
+
 from water_datasets import Swatch
 
 
 ds = Swatch(path='/mnt/datawaha/hyex/atr/data')
-df = ds.fetch()
+
 
 class TestSwatch(unittest.TestCase):
 
@@ -21,12 +23,21 @@ class TestSwatch(unittest.TestCase):
         return
 
     def test_fetch(self):
+
+        df = ds.fetch()
+        
         assert df.shape == (3901296, 6)
 
         st_name = "Jordan Lake"
         df1 = df[df['location'] == st_name]
         assert df1.shape == (4, 6)
 
+        return
+    
+    def test_coords(self):
+        coords = ds.coords
+        assert isinstance(coords, pd.DataFrame)
+        assert coords.shape == (26322, 2)
         return
 
 
