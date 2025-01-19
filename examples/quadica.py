@@ -2,6 +2,7 @@
 =========================
 Quadica dataset
 =========================
+This file shows how to use the Quadica dataset from the `aqua_fetch` package.
 """
 
 # sphinx_gallery_thumbnail_number = 3
@@ -76,7 +77,7 @@ print(cat_attrs.shape)
 print(cat_attrs.columns)
 
 # %%
-dataset.catchment_attributes(stations=[1,2,3])
+dataset.catchment_attributes(stations=['1', '2', '3'])
 
 # %%
 # monthly data
@@ -100,7 +101,7 @@ print(cat.shape)
 # %%
 # monthly TN
 # -----------
-dyn, cat = dataset.fetch_monthly(features="TN", max_nan_tol=0)
+dyn, cat = dataset.fetch_monthly(parameters="TN", max_nan_tol=0)
 print(dyn.shape)
 
 # %%
@@ -130,7 +131,7 @@ ridge(df, figsize=(10, 10), color="GnBu", title="median_C_TN")
 # %%
 # monthly TP
 # ------------
-dyn, cat = dataset.fetch_monthly(features="TP", max_nan_tol=0)
+dyn, cat = dataset.fetch_monthly(parameters="TP", max_nan_tol=0)
 print(dyn.shape)
 
 # %%
@@ -155,7 +156,7 @@ print(cat.shape)
 # monthly TOC
 # ------------
 
-dyn, cat = dataset.fetch_monthly(features="TOC", max_nan_tol=0)
+dyn, cat = dataset.fetch_monthly(parameters="TOC", max_nan_tol=0)
 print(dyn.shape)
 
 # %%
@@ -195,7 +196,7 @@ print(cat.shape)
 # %%
 # monthly DOC
 # ------------
-dyn, cat = dataset.fetch_monthly(features="DOC", max_nan_tol=0)
+dyn, cat = dataset.fetch_monthly(parameters="DOC", max_nan_tol=0)
 print(dyn.shape)
 
 # %%
