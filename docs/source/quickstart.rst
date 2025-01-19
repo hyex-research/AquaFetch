@@ -2,8 +2,8 @@ Quick Start
 ************
 
 The following sections describe brief usage of datasets from each of the three submodules i.e. ``rr``, ``wq`` and ``wwt``.
-For detailed usage examples see `examples which run online <https://water-datasets.readthedocs.io/en/latest/auto_examples/index.html>`_
-and `pre-run jupyter notebooks <https://water-datasets.readthedocs.io/en/latest/_notebooks/main.html>`_
+For detailed usage examples see `examples which run online <https://aquafetch.readthedocs.io/en/latest/auto_examples/index.html>`_
+and `pre-run jupyter notebooks <https://aquafetch.readthedocs.io/en/latest/_notebooks/main.html>`_
 
 Rainfall-Runoff Datasets
 ========================
@@ -11,7 +11,7 @@ The package provides a unified interface to access multiple rainfall-runoff data
 A rainfall runoff dataset consists of observed streamflow, meterological time series 
 data averaged over the catchments, static features of the catchments and catchment
 boundary as shapefile. The following example shows how to acess `CAMELS_AUS <https://doi.org/10.5194/essd-2024-263>`_ dataset
-however, the same interface can be used to access `all other datasets <https://water-datasets.readthedocs.io/en/latest/rr.html#list-of-datasets>`_ as well.
+however, the same interface can be used to access `all other datasets <https://aquafetch.readthedocs.io/en/latest/rr.html#list-of-datasets>`_ as well.
 
 .. code-block:: python
 
@@ -68,7 +68,7 @@ Water Quality Datasets
 
 .. code-block:: python
 
-    >>> from water_quality import busan_beach
+    >>> from aquafetch import busan_beach
     >>> dataframe = busan_beach()
     >>> dataframe.shape
     (1446, 14)

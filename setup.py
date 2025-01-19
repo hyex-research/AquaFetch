@@ -9,7 +9,7 @@ if os.path.exists(fpath):
     with open(fpath, "r") as fd:
         long_desc = fd.read()
 else:
-    long_desc = "https://github.com/AtrCheema/AquaFetch"
+    long_desc = "https://github.com/hyex-research/AquaFetch"
 
 
 pandas_ver = 'pandas>=0.25.0, <= 2.1.4'
@@ -52,10 +52,13 @@ setup(
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
-    url='https://github.com/AtrCheema/AquaFetch',
+    url='https://github.com/hyex-research/AquaFetch',
 
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
+
+    package_data={'data': ['portugal_stn_codes.csv']},
+    include_package_data=True,
 
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -80,9 +83,10 @@ setup(
         'Programming Language :: Python :: 3.12',
     ],
 
-    packages=['water_quality',
-              'water_quality/water_quality',
-              'water_quality/rr',
+    packages=['aqua_fetch',
+              'aqua_fetch/wq',
+              'aqua_fetch/rr',
+              'aqua_fetch/wwt',
               ],
 
     install_requires=min_requirements,
