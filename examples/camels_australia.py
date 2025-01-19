@@ -2,13 +2,26 @@
 ====================
 CAMELS Australia
 ====================
+
+.. currentmodule:: water_datasets
+
+This example demonstrates how to use the `water_datasets` package to download and
+explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>`_ dataset 
+using the :py:class:`water_datasets.RainfallRunoff` class. Although we show it
+for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
+
+**Note:** This file runs online on readthedocs everytime the documentation is built.
+The server to download the CAMELS_AUS data is sometimes down and gives `HTTPError: HTTP Error 500: Internal Server Error`.
+
 """
+
 import os
 import site
 
 if __name__ == '__main__':
-    wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath('__file__')))))
-    # wd_dir = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
+    wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath('__file__')))))
+    #wd_dir = os.path.dirname(os.path.realpath('__file__'))
+    #wd_dir = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
     print(wd_dir)
     site.addsitedir(wd_dir)
 
@@ -16,8 +29,8 @@ from tabulight import EDA
 import matplotlib.pyplot as plt
 from easy_mpl import scatter, hist
 from easy_mpl.utils import process_cbar
-from water_datasets import CAMELS_AUS
-from water_datasets.utils import print_info
+from aqua_fetch import RainfallRunoff
+from aqua_fetch.utils import print_info
 
 # %%
 
@@ -25,7 +38,10 @@ print_info()
 
 # %%
 
-dataset = CAMELS_AUS()
+dataset = RainfallRunoff('CAMELS_AUS', version=1, 
+                         #overwrite=True,
+                         #path='/mnt/datawaha/hyex/atr/gscad_database/raw/CAMELS_AUS_V1'
+                         )
 
 # %%
 dataset.start
@@ -64,7 +80,7 @@ npp = 'net primary productivity'
 
 # %%
 
-static = dataset.fetch_static_features(stn_id=stations)
+static = dataset.fetch_static_features(stations=stations)
 static.shape
 
 # %%
@@ -120,8 +136,6 @@ while ax_num < 25:
     except ValueError:
         continue
 
-
-
 plt.tight_layout()
 plt.show()
 print(idx)
@@ -151,8 +165,6 @@ while ax_num < 25:
         ax_num += 1
     except ValueError:
         continue
-
-
 
 plt.tight_layout()
 plt.show()
@@ -184,8 +196,6 @@ while ax_num < 25:
     except ValueError:
         continue
 
-
-
 plt.tight_layout()
 plt.show()
 print(idx)
@@ -193,12 +203,12 @@ print(idx)
 
 # %%
 # Dyanmic Features
-# ==================
+# ----------------
 dataset.dynamic_features
 
 # %%
 # Streamflow
-# -----------
+# ==================
 streamflow = dataset.q_mmd()
 
 streamflow.shape
@@ -231,6 +241,7 @@ _ = hist(streamflow.skew().values.reshape(-1,), bins=50)
 # %%
 df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
 
 # %%
@@ -270,7 +281,7 @@ df
 dataset.dynamic_features
 # get only selected dynamic features
 data = dataset.fetch(1, as_dataframe=True,
-dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
 data.shape
 
 # %%
@@ -298,3 +309,8 @@ data['static']
 # %%
 
 data['dynamic']
+
+# %%
+# get data data of all stations as xarray dataset
+data = dataset.fetch()
+data

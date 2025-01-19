@@ -2,6 +2,7 @@
 .ipynb_checkpoints/
 __pycache__/
 .idea/
+.vscode/
 
 # private stuff
 results/
@@ -21,4 +22,4 @@ docs/source/auto_examples/
 docs/source/gen_modules/
 docs/source/sg_execution_times.rst
 
-water_datasets/data/
+aqua_fetch/data/

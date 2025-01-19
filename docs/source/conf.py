@@ -9,8 +9,8 @@
 import os
 import sys
 
-project = 'water-datasets'
-copyright = '2024, Ather Abbas'
+project = 'AquaFetch'
+copyright = '2025, Ather Abbas'
 author = 'Ather Abbas'
 
 sys.path.insert(0, os.path.abspath('../..'))
@@ -45,6 +45,7 @@ intersphinx_mapping = {
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'pandas': ('https://pandas.pydata.org/docs/', None),
     'python': ('https://docs.python.org/3/', None),
+    'xarray': ('https://docs.xarray.dev/en/stable/', None),
 }
 
 # Don't add .txt suffix to source files:
@@ -84,7 +85,8 @@ sphinx_gallery_conf = {
     # each code block
     'capture_repr': ('_repr_html_', '__repr__'),
     'matplotlib_animations': True,
-    'image_srcset': ["2x"]
+    'image_srcset': ["2x"],
+    'only_warn_on_example_error': True,  
 }
 
 # -- Options for HTML output -------------------------------------------------

@@ -1,33 +1,16 @@
 Miscellaneous
 ****************
-
-
-Busan Beach data
-================
-.. automodule:: water_datasets
-   :members: busan_beach
-
-
-Photodegradation of Melachite Green
-===================================
-.. autofunction:: water_datasets.mg_photodegradation
-
-
-Removal of Emerging contaminants using biochar
-==============================================
-.. autofunction:: water_datasets.ec_removal_biochar
-
+This section contains the documentation for the miscellaneous datasets available in the package.
 
 Groundwater of Punjab region
 ===================================
-.. autofunction:: water_datasets.gw_punjab
+.. autofunction:: aqua_fetch.gw_punjab
 
 
 Weisssee
 ========
-.. autoclass:: water_datasets.Weisssee
+.. autoclass:: aqua_fetch.Weisssee
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
@@ -35,18 +18,34 @@ Weisssee
 
 WeatherJena
 ===========
-.. autoclass:: water_datasets.WeatherJena
+.. autoclass:: aqua_fetch.WeatherJena
    :members:
-   :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
 
 SWECanada
 =========
-.. autoclass:: water_datasets.SWECanada
+.. autoclass:: aqua_fetch.SWECanada
    :members:
-   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+MtropicsLaos
+=============
+.. autoclass:: aqua_fetch.mtropics.MtropicsLaos
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+Datasets
+========
+.. autoclass:: aqua_fetch.mtropics.Datasets
+   :members:
    :show-inheritance:
 
    .. automethod:: __init__
