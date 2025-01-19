@@ -626,6 +626,9 @@ class GRQA(Datasets):
     >>> len(ds.stations())
     94955
     >>> len(ds.parameters)
+    >>> coords = ds.stn_coords()
+    >>> coords.shape
+    (94955, 2)
     >>> country = "Pakistan"
     >>> len(ds.fetch_parameter('TEMP', country=country))
     1324

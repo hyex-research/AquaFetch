@@ -56,6 +56,12 @@ class TestRC4USCoast(unittest.TestCase):
                              as_dataframe=True)
         assert data.shape == (65520, 4)
         return
+    
+    def test_coords(self):
+        coords = ds.coords()
+        assert coords.shape == (140, 2)
+        assert np.all(coords.columns == ['lat', 'long'])
+        return
 
 
 if __name__ == "__main__":

@@ -24,6 +24,13 @@ class RC4USCoast(Datasets):
     --------
     >>> from water_quality import RC4USCoast
     >>> dataset = RC4USCoast()
+    >>> len(dataset.stations)
+    140
+    >>> len(dataset.parameters)
+    27
+    >>> stn_coords = dataset.stn_coords()
+    >>> stn_coords.shape
+    (140, 2)
 
     """
     url = {
@@ -85,6 +92,10 @@ class RC4USCoast(Datasets):
     @property
     def parameters(self)->List[str]:
         """
+        returns names of parameters
+
+        Examples
+        --------
         >>> from water_quality import RC4USCoast
         >>> ds = RC4USCoast()
         >>> len(ds.parameters)
@@ -92,6 +103,26 @@ class RC4USCoast(Datasets):
         """
         df = xr.open_dataset(self.chem_fname)
         return list(df.data_vars.keys())
+
+    def stn_coords(self)->pd.DataFrame:
+        """
+        Returns the coordinates of all the stations in the dataset in wgs84
+        projection.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+
+        fpath = os.path.join(self.path, 'series_chem.nc')
+        data = xr.open_dataset(fpath)
+
+        # get the coordinates named 'lat' and 'lon' from data
+        coord = data['lat'].to_dataframe()#.reset_index()
+        coord =  coord.iloc[:, 0:2].astype(np.float32)
+        coord.columns = ['lat', 'long']
+        return coord
 
     @property
     def start(self)->pd.Timestamp:

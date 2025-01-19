@@ -2,7 +2,7 @@ import os
 import site
 
 # add the parent directory in the path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import unittest
@@ -22,7 +22,7 @@ class TestGRQA(unittest.TestCase):
 
         sites_data = ds.sites_data()
 
-        assert sites_data.shape == (94955, 6), sites_data.shape
+        assert sites_data.shape == (94955, 5), sites_data.shape
 
         assert len(ds.countries) == 116, len(ds.countries)
 

@@ -31,7 +31,7 @@ List of datasets
      - `Virro et al., 2021 <https://essd.copernicus.org/articles/13/5483/2021/>`_
    * - water QUAlity, DIscharge and Catchment Attributes
      - :py:class:`water_datasets.Quadica`
-     -
+     - 10
      - 1950 - 2018
      - Germany
      - `Ebeling et al., 2022 <https://essd.copernicus.org/articles/14/3715/2022/>`_
@@ -43,7 +43,7 @@ List of datasets
      - `Gomez et al., 2022 <https://essd.copernicus.org/articles/15/2223/2023/>`_
    * - Busan Beach
      - :py:class:`water_datasets.busan_beach`
-     -
+     - 14
      - 2018 - 2019
      - Busan, S.Korea
      - `Jang et al <https://www.sciencedirect.com/science/article/pii/S0043135421001998?via%3Dihub/>`_

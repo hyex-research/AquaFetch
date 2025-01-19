@@ -1,8 +1,9 @@
 
-__all__ = ['utm_to_lat_lon']
+__all__ = ['utm_to_lat_lon', 'laea_to_wgs84']
 
 import math
 
+import numpy as np
 
 
 def utm_to_lat_lon(easting, northing, zone:int):
@@ -43,3 +44,22 @@ def utm_to_lat_lon(easting, northing, zone:int):
     return lat, lon
 
 
+def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing):
+    # converts from Lambert Azimuthal Equal Area (LAEA) to WGS84
+
+    R = 6378137.0  # Radius of the Earth in meters (WGS84)
+    lat_0 = np.deg2rad(lat_0)  # Convert origin latitude to radians
+    lon_0 = np.deg2rad(lon_0)  # Convert origin longitude to radians
+
+    # Adjust for false easting and northing
+    x_adj = x - false_easting
+    y_adj = y - false_northing
+
+    # Cartesian to spherical conversion
+    p = np.sqrt(x_adj**2 + y_adj**2)
+    c = 2 * np.arcsin(p / (2 * R))
+
+    lat = np.arcsin(np.cos(c) * np.sin(lat_0) + y_adj * np.sin(c) * np.cos(lat_0) / p)
+    lon = lon_0 + np.arctan2(x_adj * np.sin(c), p * np.cos(lat_0) * np.cos(c) - y_adj * np.sin(lat_0) * np.sin(c))
+
+    return (np.rad2deg(lat), np.rad2deg(lon))

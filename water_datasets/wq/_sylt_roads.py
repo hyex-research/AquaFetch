@@ -8,6 +8,7 @@ import pandas as pd
 from .._datasets import Datasets
 from ..utils import check_attributes, download_and_unzip
 
+# todo: entrance and entrace are same
 
 class SyltRoads(Datasets):
     """
@@ -97,6 +98,24 @@ class SyltRoads(Datasets):
         if not os.path.exists(path):
             os.makedirs(path)
         return path
+
+    def stn_coords(self)->pd.DataFrame:
+        """
+        Returns the coordinates of all the stations in the dataset in wgs84
+        projection.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+        entrace = 55.038300 , 8.438300
+        ferry = 55.015530 , 8.439900
+        reede = 55.030000 , 8.460000
+
+        return pd.DataFrame([entrace, ferry, reede], 
+                            columns=['lat', 'long'],
+                    index=['entrace', 'ferry', 'reede'])
 
     def fetch(
             self,

@@ -15,6 +15,15 @@ class CamelsChem(Datasets):
     The data is is downloaded from `hydroshare <https://www.hydroshare.org/resource/841f5e85085c423f889ac809c1bed4ac/>`_
     Out of 671 stations, 155 stations have not water quality data.
     The wet depisition data consist of 12 parameters from 1985 - 2018.
+
+    Examples
+    --------
+    >>> from water_datasets import CamelsChem
+    >>> ds = CamelsChem(path='/path/to/dataset')
+    >>> len(ds.stations())
+    516
+    >>> len(ds.parameters)
+    28
     """
     url1 = {
         "Camels_chem_1980_2018.csv":
@@ -26,7 +35,9 @@ class CamelsChem(Datasets):
         "DepCon_671_1985_2018.xlsx":
 "https://www.hydroshare.org/resource/841f5e85085c423f889ac809c1bed4ac/data/contents/Camels_Chem_%20Dataset",
         "DepCon_metadata.xlsx": 
-"https://www.hydroshare.org/resource/841f5e85085c423f889ac809c1bed4ac/data/contents/Camels_Chem_%20Dataset"
+"https://www.hydroshare.org/resource/841f5e85085c423f889ac809c1bed4ac/data/contents/Camels_Chem_%20Dataset",
+        "Camels_topography.csv":
+"https://www.hydroshare.org/resource/841f5e85085c423f889ac809c1bed4ac/data/contents/Catchment_attributes/",
     }
 
     def __init__(self, path=None, **kwargs):
@@ -65,20 +76,43 @@ class CamelsChem(Datasets):
                     if self.verbosity:
                         print(f"{k} already exists in {self.path}")
         return
-    
+
     @property
     def parameters(self)->List[str]:
         """
         returns the names of parameters in the dataset
         """
         return self._parameters
-    
+
     @property
     def atm_dep_parameters(self)->List[str]:
         """
         returns the names of parameters in the atm_dep dataset
         """
         return self._atm_dep_parameters
+
+    def topography(self)->pd.DataFrame:
+        """
+        reads the topography data
+        """
+        fname = os.path.join(self.path, 'Camels_topography.csv')
+        df = pd.read_csv(fname, index_col='gauge_id', dtype={'gauge_id': str})
+        df.pop('Unnamed: 0')
+        return df
+    
+    def stn_coords(self)->pd.DataFrame:
+        """
+        Returns the coordinates of all the stations in the dataset in wgs84
+        projection.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+        coords =  self.topography()[['gauge_lat', 'gauge_lon']]
+        coords.columns = ['lat', 'long']
+        return coords
 
     def stations(self)->List[str]:
         """
@@ -94,7 +128,7 @@ class CamelsChem(Datasets):
     
     def data(self)->pd.DataFrame:
         """
-        reads the main dataset
+        reads the main dataset which has shape of (76284, 45)
         """
         data =  pd.read_csv(
             os.path.join(self.path, "Camels_chem_1980_2018.csv"), 

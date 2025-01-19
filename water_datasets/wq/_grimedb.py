@@ -12,8 +12,19 @@ from ..utils import check_attributes
 
 class GRiMeDB(Datasets):
     """
-    Global river database of methan concentrations and fluxes following
+    Global river database of methan concentrations and fluxes 
+    from 5029 stations of 305 rivers following
     `Stanley et al., 2023 <https://doi.org/10.5194/essd-15-2879-2023>`_
+
+    Examples
+    --------
+    >>> from water_datasets import GRiMeDB
+    >>> ds = GRiMeDB(path='/path/to/dataset')
+    >>> ds.stations()
+    >>> ds.streams
+    >>> ds.stn_coords()
+    >>> ds.shape
+    5029, 2
     """
     url = {
         "concentrations.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-ntl.420.1&entityid=ba3e270bcab8ace5d157c995e4b791e4",
@@ -30,12 +41,27 @@ class GRiMeDB(Datasets):
         self._stations = self.sites()['Site_ID'].unique().tolist()
     
     def stations(self)->List[str]:
-        self._stations
+        return self._stations
     
     @property
     def streams(self)->List[str]:
+        """returns names of streams"""
         return self.sites()['Stream_Name'].unique().tolist()
-    
+
+    def stn_coords(self)->pd.DataFrame:
+        """
+        Returns the coordinates of all the stations in the dataset in wgs84
+        projection.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+        coords = self.sites()[['Latitude', 'Longitude']]
+        coords.columns = ['lat', 'long']
+        return coords.astype(np.float32)
+
     def concentrations(
             self,
             stations: Union[str, List[str]] = "all",
@@ -97,14 +123,15 @@ class GRiMeDB(Datasets):
         fpath = os.path.join(self.path, 'sites.csv')
         df = pd.read_csv(
             fpath,
-            dtype={'Site_Name': str, 'Stream_Name': str, 'Basin_Region': str}
+            dtype={'Site_Name': str, 'Stream_Name': str, 'Basin_Region': str, 'Site_ID': str}
             )
         return df
 
     def fluxes(
             self,
             stations: Union[str, List[str]] = "all",
-            ):
+            )->pd.DataFrame:
+        """returns fluxes data as a pandas dataframe"""
         fpath = os.path.join(self.path, 'fluxes.csv')
         df = pd.read_csv(fpath)
 
