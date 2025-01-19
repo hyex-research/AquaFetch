@@ -15,7 +15,7 @@ however, the same interface can be used to access `all other datasets <https://w
 
 .. code-block:: python
 
-    >>> from water_datasets import RainfallRunoff
+    >>> from aqua_fetch import RainfallRunoff
     >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -76,7 +76,7 @@ Water Quality Datasets
     >>> dataframe.shape
     (1446, 15)
 
-    >>> from water_datasets import GRQA
+    >>> from aqua_fetch import GRQA
     >>> ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
     >>> print(ds.parameters)
     >>> len(ds.parameters)
@@ -92,7 +92,7 @@ adsorption, sonolysis and membrane filteration.
 
 .. code-block:: python
 
-    >>> from water_datasets import ec_removal_biochar
+    >>> from aqua_fetch import ec_removal_biochar
     >>> data, *_ = ec_removal_biochar()
     >>> data.shape
     (3757, 27)
@@ -100,7 +100,7 @@ adsorption, sonolysis and membrane filteration.
     >>> data.shape
     (3757, 27)
 
-    >>> from water_datasets import mg_degradation
+    >>> from aqua_fetch import mg_degradation
     >>> mg_data, catalyst_encoder, anion_encoder = mg_degradation()
     >>> mg_data.shape
     (1200, 12)

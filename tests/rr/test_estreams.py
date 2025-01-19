@@ -11,12 +11,12 @@ if __name__ == "__main__":
 
 import pandas as pd
 
-from water_datasets import EStreams
-from water_datasets import Ireland
-from water_datasets import Finland
-from water_datasets import Italy
-from water_datasets import Poland
-from water_datasets import Portugal
+from aqua_fetch import EStreams
+from aqua_fetch import Ireland
+from aqua_fetch import Finland
+from aqua_fetch import Italy
+from aqua_fetch import Poland
+from aqua_fetch import Portugal
 
 from utils import (
     test_dataset,

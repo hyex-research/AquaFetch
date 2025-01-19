@@ -4,12 +4,12 @@ This section contains the documentation for the miscellaneous datasets available
 
 Groundwater of Punjab region
 ===================================
-.. autofunction:: water_datasets.gw_punjab
+.. autofunction:: aqua_fetch.gw_punjab
 
 
 Weisssee
 ========
-.. autoclass:: water_datasets.Weisssee
+.. autoclass:: aqua_fetch.Weisssee
    :members:
    :show-inheritance:
 
@@ -18,7 +18,7 @@ Weisssee
 
 WeatherJena
 ===========
-.. autoclass:: water_datasets.WeatherJena
+.. autoclass:: aqua_fetch.WeatherJena
    :members:
    :show-inheritance:
 
@@ -26,7 +26,7 @@ WeatherJena
 
 SWECanada
 =========
-.. autoclass:: water_datasets.SWECanada
+.. autoclass:: aqua_fetch.SWECanada
    :members:
    :show-inheritance:
 
@@ -35,7 +35,7 @@ SWECanada
 
 MtropicsLaos
 =============
-.. autoclass:: water_datasets.mtropics.MtropicsLaos
+.. autoclass:: aqua_fetch.mtropics.MtropicsLaos
    :members:
    :show-inheritance:
 
@@ -44,7 +44,7 @@ MtropicsLaos
 
 Datasets
 ========
-.. autoclass:: water_datasets.mtropics.Datasets
+.. autoclass:: aqua_fetch.mtropics.Datasets
    :members:
    :show-inheritance:
 

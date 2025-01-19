@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 from easy_mpl import hist, ridge
 from easy_mpl.utils import create_subplots
 
-from water_datasets import Quadica
-from water_datasets.utils import print_info
+from aqua_fetch import Quadica
+from aqua_fetch.utils import print_info
 # %%
 
 print_info()

@@ -29,8 +29,8 @@ from tabulight import EDA
 import matplotlib.pyplot as plt
 from easy_mpl import scatter, hist
 from easy_mpl.utils import process_cbar
-from water_datasets import RainfallRunoff
-from water_datasets.utils import print_info
+from aqua_fetch import RainfallRunoff
+from aqua_fetch.utils import print_info
 
 # %%
 

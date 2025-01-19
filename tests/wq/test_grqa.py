@@ -9,7 +9,7 @@ import unittest
 
 import pandas as pd
 
-from water_datasets import GRQA
+from aqua_fetch import GRQA
 
 ds = GRQA(path='/mnt/datawaha/hyex/atr/data')
 

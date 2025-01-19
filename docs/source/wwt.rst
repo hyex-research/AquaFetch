@@ -24,109 +24,109 @@ List of datasets
      - Data Points
      - Reference
    * - ``Adsorption``
-     - :py:func:`water_datasets.ec_removal_biochar`
+     - :py:func:`aqua_fetch.ec_removal_biochar`
      - 26
      - Emerg. Contaminants
      - 3,757
      - `Jaffari et al., 2023 <https://doi.org/10.1016/j.cej.2023.143073>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.cr_removal`
+     - :py:func:`aqua_fetch.cr_removal`
      - 15
      - Cr
      - 219
      - `Ishtiaq et al., 2024 <https://doi.org/10.1016/j.jece.2024.112238>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.heavy_metal_removal`
+     - :py:func:`aqua_fetch.heavy_metal_removal`
      - 30
      - heavy metals
      - 1518
      - `Jaffari et al., 2023 <https://doi.org/10.1016/j.jhazmat.2023.132773>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.po4_removal_biochar`
+     - :py:func:`aqua_fetch.po4_removal_biochar`
      - 30
      - po4
      - 5014
      - `Iftikhar et al., 2024 <https://doi.org/10.1016/j.chemosphere.2024.144031>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.industrial_dye_removal`
+     - :py:func:`aqua_fetch.industrial_dye_removal`
      - 12
      - Industrial Dye
      - 1514
      - `Iftikhar et al., 2023 <https://doi.org/10.1016/j.seppur.2023.124891>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.heavy_metal_removal_Shen`
+     - :py:func:`aqua_fetch.heavy_metal_removal_Shen`
      - 17
      - Heavy Metals
      - 689
      - `Shen et al., 2023 <https://doi.org/10.1016/j.jhazmat.2024.133442>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.P_recovery`
+     - :py:func:`aqua_fetch.P_recovery`
      - 8
      - P
      - 504
      - `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.N_recovery`
+     - :py:func:`aqua_fetch.N_recovery`
      - 8
      - N
      - 211
      - `Leng et al., 2024 <https://doi.org/10.1016/j.jwpe.2024.104896>`_
    * - ``Adsorption``
-     - :py:func:`water_datasets.As_recovery`
+     - :py:func:`aqua_fetch.As_recovery`
      - 13
      - As
      - 1605
      - `Huang et al., 2024 <https://doi.org/10.1016/j.watres.2024.122815>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.mg_degradation`
+     - :py:func:`aqua_fetch.mg_degradation`
      - 11
      - Melachite Green
      - 1200
      - `Jaffari et a., 2023 <https://doi.org/10.1016/j.jhazmat.2022.130031>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.dye_removal`
+     - :py:func:`aqua_fetch.dye_removal`
      - 23
      - Dyes
      - 1527
      - `Kim et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132995>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.dichlorophenoxyacetic_acid_removal`
+     - :py:func:`aqua_fetch.dichlorophenoxyacetic_acid_removal`
      - 15
      - 2,4,Dichlorophenoxyacetic acid
      - 1044
      - `Kim et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132995>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.pms_removal`
+     - :py:func:`aqua_fetch.pms_removal`
      -
      -
      - 2078
      - `submitted et al., 2024 <https://doi.org/10.1016/j.jhazmat.2023.132995>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.tetracycline_degradation`
+     - :py:func:`aqua_fetch.tetracycline_degradation`
      - 8
      - Tetracycline
      - 374
      - `Abdi et al., 2022 <https://doi.org/10.1016/j.chemosphere.2021.132135>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.tio2_degradation`
+     - :py:func:`aqua_fetch.tio2_degradation`
      - 7
      - TiO2
      - 446
      - `Jiang et al., 2020 <https://doi.org/10.1016/j.envres.2020.109697>`_
    * - ``Photocatalysis``
-     - :py:func:`water_datasets.photodegradation_Jiang`
+     - :py:func:`aqua_fetch.photodegradation_Jiang`
      - 8
      - multiple
      - 457
      - `Jiang et al., 2021 <https://doi.org/10.3390/catal11091107>`_     
    * - ``Membrane``
-     - :py:func:`water_datasets.micropollutant_removal_osmosis`
+     - :py:func:`aqua_fetch.micropollutant_removal_osmosis`
      - 18
      - micropollutants
      - 1906
      - `Jeong et al., 2021 <https://doi.org/10.1021/acs.est.1c04041>`_
    * - ``sonolysis``
-     - :py:func:`water_datasets.cyanobacteria_disinfection`
+     - :py:func:`aqua_fetch.cyanobacteria_disinfection`
      - 6
      - Cyanobacteria
      - 314
@@ -135,34 +135,34 @@ List of datasets
 
 Adsorption
 ==============
-.. autofunction:: water_datasets.ec_removal_biochar
-.. autofunction:: water_datasets.cr_removal
-.. autofunction:: water_datasets.po4_removal_biochar
-.. autofunction:: water_datasets.heavy_metal_removal
-.. autofunction:: water_datasets.industrial_dye_removal
-.. autofunction:: water_datasets.heavy_metal_removal_Shen
-.. autofunction:: water_datasets.P_recovery
-.. autofunction:: water_datasets.N_recovery
-.. autofunction:: water_datasets.As_recovery
+.. autofunction:: aqua_fetch.ec_removal_biochar
+.. autofunction:: aqua_fetch.cr_removal
+.. autofunction:: aqua_fetch.po4_removal_biochar
+.. autofunction:: aqua_fetch.heavy_metal_removal
+.. autofunction:: aqua_fetch.industrial_dye_removal
+.. autofunction:: aqua_fetch.heavy_metal_removal_Shen
+.. autofunction:: aqua_fetch.P_recovery
+.. autofunction:: aqua_fetch.N_recovery
+.. autofunction:: aqua_fetch.As_recovery
 
 
 Photocatalysis
 =================
-.. autofunction:: water_datasets.mg_degradation
-.. autofunction:: water_datasets.dye_removal
-.. autofunction:: water_datasets.dichlorophenoxyacetic_acid_removal
-.. autofunction:: water_datasets.pms_removal
-.. autofunction:: water_datasets.tetracycline_degradation
-.. autofunction:: water_datasets.tio2_degradation
-.. autofunction:: water_datasets.photodegradation_Jiang  
+.. autofunction:: aqua_fetch.mg_degradation
+.. autofunction:: aqua_fetch.dye_removal
+.. autofunction:: aqua_fetch.dichlorophenoxyacetic_acid_removal
+.. autofunction:: aqua_fetch.pms_removal
+.. autofunction:: aqua_fetch.tetracycline_degradation
+.. autofunction:: aqua_fetch.tio2_degradation
+.. autofunction:: aqua_fetch.photodegradation_Jiang  
 
 
 Membrane
 =========
-.. autofunction:: water_datasets.micropollutant_removal_osmosis
-.. autofunction:: water_datasets.ion_transport_via_reverse_osmosis
+.. autofunction:: aqua_fetch.micropollutant_removal_osmosis
+.. autofunction:: aqua_fetch.ion_transport_via_reverse_osmosis
 
 
 Sonolysis
 =========
-.. autofunction:: water_datasets.cyanobacteria_disinfection
+.. autofunction:: aqua_fetch.cyanobacteria_disinfection

@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
 logger = logging.getLogger(__name__)
 
-from water_datasets import GRDCCaravan
+from aqua_fetch import GRDCCaravan
 
 from utils import test_dataset
 

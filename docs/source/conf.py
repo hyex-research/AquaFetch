@@ -9,8 +9,8 @@
 import os
 import sys
 
-project = 'water-datasets'
-copyright = '2024, Ather Abbas'
+project = 'AquaFetch'
+copyright = '2025, Ather Abbas'
 author = 'Ather Abbas'
 
 sys.path.insert(0, os.path.abspath('../..'))

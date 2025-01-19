@@ -9,7 +9,7 @@ import logging
 if __name__ == "__main__":
     logging.basicConfig(filename='test_simbi.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-from water_datasets import Simbi
+from aqua_fetch import Simbi
 
 from utils import (
     test_dataset, 

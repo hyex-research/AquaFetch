@@ -11,15 +11,15 @@ from typing import Union
 
 import pandas as pd
 
-from water_datasets import busan_beach, gw_punjab
-from water_datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin
-from water_datasets import HydrometricParana, EtpPcpSamoylov, HydrocarbonsGabes
-from water_datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope
-from water_datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain
-from water_datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee
-from water_datasets import PrecipBerlin, RiverTempEroo
-from water_datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
-from water_datasets import GeoChemMatane, WeatherJena, SWECanada
+from aqua_fetch import busan_beach, gw_punjab
+from aqua_fetch import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin
+from aqua_fetch import HydrometricParana, EtpPcpSamoylov, HydrocarbonsGabes
+from aqua_fetch import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope
+from aqua_fetch import FlowSamoylov, FlowSedDenmark, StreamTempSpain
+from aqua_fetch import HoloceneTemp, FlowTetRiver, SedimentAmersee
+from aqua_fetch import PrecipBerlin, RiverTempEroo
+from aqua_fetch import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava
+from aqua_fetch import GeoChemMatane, WeatherJena, SWECanada
 
 
 

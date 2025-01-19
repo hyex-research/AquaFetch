@@ -4,7 +4,7 @@ import site   # so that water-datasets directory is in path
 wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
-from water_datasets import CamelsChem
+from aqua_fetch import CamelsChem
 
 
 ds = CamelsChem(

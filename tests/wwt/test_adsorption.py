@@ -8,7 +8,7 @@ site.addsitedir(wd_dir)
 
 import unittest
 
-from water_datasets import (
+from aqua_fetch import (
     ec_removal_biochar,
     cr_removal,
     po4_removal_biochar,

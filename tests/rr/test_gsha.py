@@ -10,13 +10,13 @@ if __name__ == "__main__":
     logging.basicConfig(filename='test_gsha.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 import pandas as pd
-from water_datasets._backend import xarray as xr
+from aqua_fetch._backend import xarray as xr
 
-from water_datasets import Thailand
-from water_datasets import GSHA
-from water_datasets import Japan
-from water_datasets import Arcticnet
-from water_datasets import Spain
+from aqua_fetch import Thailand
+from aqua_fetch import GSHA
+from aqua_fetch import Japan
+from aqua_fetch import Arcticnet
+from aqua_fetch import Spain
 
 from utils import (
     test_dataset,

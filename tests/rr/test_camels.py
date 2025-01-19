@@ -10,18 +10,18 @@ site.addsitedir(wd_dir)
 
 import pandas as pd
 
-from water_datasets import CCAM
-from water_datasets import CAMELS_DK
-from water_datasets.rr import CAMELS_DK0
-from water_datasets import CAMELS_CH
-from water_datasets import CAMELS_GB, CAMELS_AUS
-from water_datasets import CAMELS_CL, CAMELS_US, HYPE
-from water_datasets import WaterBenchIowa
-from water_datasets import CAMELS_DE
-from water_datasets import CAMELS_SE
-from water_datasets import CAMELS_IND
-from water_datasets import RainfallRunoff
-from water_datasets import RRLuleaSweden
+from aqua_fetch import CCAM
+from aqua_fetch import CAMELS_DK
+from aqua_fetch.rr import CAMELS_DK0
+from aqua_fetch import CAMELS_CH
+from aqua_fetch import CAMELS_GB, CAMELS_AUS
+from aqua_fetch import CAMELS_CL, CAMELS_US, HYPE
+from aqua_fetch import WaterBenchIowa
+from aqua_fetch import CAMELS_DE
+from aqua_fetch import CAMELS_SE
+from aqua_fetch import CAMELS_IND
+from aqua_fetch import RainfallRunoff
+from aqua_fetch import RRLuleaSweden
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'

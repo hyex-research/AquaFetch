@@ -8,7 +8,7 @@ site.addsitedir(wd_dir)
 
 import unittest
 
-from water_datasets import (
+from aqua_fetch import (
     micropollutant_removal_osmosis,
     ion_transport_via_reverse_osmosis,
 )

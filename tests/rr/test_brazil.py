@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
 logger = logging.getLogger(__name__)
 
-from water_datasets import CAMELS_BR, CABra
+from aqua_fetch import CAMELS_BR, CABra
 
 from utils import (
     test_dataset

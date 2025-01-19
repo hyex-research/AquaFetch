@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
 import pandas as pd
 
-from water_datasets.rr import EStreams
+from aqua_fetch.rr import EStreams
 
 from utils import (
     test_coords,

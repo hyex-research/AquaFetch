@@ -5,7 +5,7 @@ import random
 
 import numpy as np
 import pandas as pd
-from water_datasets._backend import xarray as xr
+from aqua_fetch._backend import xarray as xr
 
 import matplotlib.pyplot as plt
 

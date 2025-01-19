@@ -7,7 +7,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from water_datasets._datasets import Datasets
+from aqua_fetch._datasets import Datasets
 
 
 class SWatCh(Datasets):

@@ -1,7 +1,7 @@
 
 __all__ = ["ARCADE"]
 
-from water_datasets._datasets import Datasets
+from aqua_fetch._datasets import Datasets
 
 
 class ARCADE(Datasets):

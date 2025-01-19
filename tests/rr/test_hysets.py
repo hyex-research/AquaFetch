@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
 import random
 
-from water_datasets import HYSETS
+from aqua_fetch import HYSETS
 
 from utils import (
     test_dynamic_data,

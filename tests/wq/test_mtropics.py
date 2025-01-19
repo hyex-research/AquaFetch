@@ -8,7 +8,7 @@ import unittest
 
 import pandas as pd
 
-from water_datasets import MtropicsLaos, ecoli_mekong
+from aqua_fetch import MtropicsLaos, ecoli_mekong
 
 
 laos = MtropicsLaos(path='/mnt/datawaha/hyex/atr/data/')

@@ -8,7 +8,7 @@ import unittest
 
 import pandas as pd
 
-from water_datasets import Swatch
+from aqua_fetch import Swatch
 
 
 ds = Swatch(path='/mnt/datawaha/hyex/atr/data')

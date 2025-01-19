@@ -8,22 +8,22 @@
 
 # A Unified Python Interface for Water Resource Dataset Acquisition and Harmonization
 
-water-datasets is a Python package designed for the automated downloading, parsing, cleaning, and harmonization of freely available water resource datasets related to rainfall-runoff processes, surface water quality, and wastewater treatment. The package currently supports approximately 70 datasets, each containing between 1 to hundreds of parameters. It facilitates the downloading and transformation of raw data into consistent, easy-to-use, analysis-ready formats. This allows users to directly access and utilize the data without labor-intensive and time-consuming preprocessing.
+AquaFetch is a Python package designed for the automated downloading, parsing, cleaning, and harmonization of freely available water resource datasets related to rainfall-runoff processes, surface water quality, and wastewater treatment. The package currently supports approximately 70 datasets, each containing between 1 to hundreds of parameters. It facilitates the downloading and transformation of raw data into consistent, easy-to-use, analysis-ready formats. This allows users to directly access and utilize the data without labor-intensive and time-consuming preprocessing.
 
 The package comprises three submodules, each representing a different type of water resource data: `rr` for rainfall-runoff processes, `wq` for surface water quality, and `wwt` for wastewater treatment. The rr submodule offers data for 47,716 catchments worldwide, encompassing both dynamic and static features for each catchment. The dynamic features consist of observed streamflow and meteorological time series, averaged over the catchment area, available at daily or hourly time steps. Static features include constant parameters such as land use, soil, topography, and other physiographical characteristics, along with catchment boundaries. This submodule not only provides access to established rainfall-runoff datasets such as CAMELS and LamaH but also introduces new datasets compiled for the first time from publicly accessible online data sources. The `wq` submodule offers access to [16 surface water quality datasets](https://water-datasets.readthedocs.io/en/latest/wq.html#list-of-datasets), each containing various water quality parameters measured across different spaces and times. The `wwt` submodule provides access to over 20,000 experimental measurements related to wastewater treatment techniques such as adsorption, photocatalysis, membrane filtration, and sonolysis.
 
-The development of water-datasets was inspired by the growing availability of diverse water resource datasets in recent years. As a community-driven project, the codebase is structured to allow contributors to easily add new datasets, ensuring the package continues to expand and evolve to meet future needs.
+The development of AquaFetch was inspired by the growing availability of diverse water resource datasets in recent years. As a community-driven project, the codebase is structured to allow contributors to easily add new datasets, ensuring the package continues to expand and evolve to meet future needs.
 
 
 ## Installation
 
 The package can be installed using GitHub link from the master branch
 
-	python -m pip install git+https://github.com/AtrCheema/water-datasets.git
+	python -m pip install git+https://github.com/AtrCheema/AquaFetch.git
 
 To install from a specific branch such as ``dev`` branch which contains more recent code
 
-	python -m pip install git+https://github.com/AtrCheema/water-datasets.git@dev
+	python -m pip install git+https://github.com/AtrCheema/AquaFetch.git@dev
 
 The above code will install minimal depencies required to use the library which include
 numpy, pandas and requests. To install the library with full list of dependencies use the
@@ -43,7 +43,7 @@ static features (catchment characteristics related to topography, soil, land use
 and the catchment boundary. The following example demonstrates how to fetch data for [CAMELS_AUS](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#water_datasets.rr.CAMELS_AUS). However, the method is the same for all [available rainfall-runoff datasets](https://water-datasets.readthedocs.io/en/latest/rainfall_runoff.html#id36).
 
 ```python
-from water_datasets import RainfallRunoff
+from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
 df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -96,7 +96,7 @@ depending upon the complexity of the dataset. The following example shows usage 
 quality related datasets. For complete name of Python functions and classes see [documentation](https://water-datasets.readthedocs.io/en/latest/water_quality.html)
 
 ```python
-from water_datasets import busan_beach
+from aqua_fetch import busan_beach
 dataframe = busan_beach()
 dataframe.shape
 (1446, 14)
@@ -104,7 +104,7 @@ dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
 dataframe.shape
 (1446, 15)
 
-from water_datasets import GRQA
+from aqua_fetch import GRQA
 ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
 print(ds.parameters)
 len(ds.parameters)
@@ -116,7 +116,7 @@ The datasets for wastewater treatment are all available in function API design. 
 to remove certain pollutants from wastewater. For complete list of functions, see [documentation](https://water-datasets.readthedocs.io/en/latest/wwt.html)
 
 ```python
-from water_datasets import ec_removal_biochar
+from aqua_fetch import ec_removal_biochar
 data, *_ = ec_removal_biochar()
 data.shape
 (3757, 27)
@@ -124,7 +124,7 @@ data, encoders = ec_removal_biochar(encoding="le")
 data.shape
 (3757, 27)
 
-from water_datasets import mg_degradation
+from aqua_fetch import mg_degradation
 mg_data, catalyst_encoder, anion_encoder = mg_degradation()
 mg_data.shape
 (1200, 12)

@@ -9,8 +9,8 @@ import numpy as np
  
 from dataretrieval import nwis
 
-from water_datasets import USGS
-from water_datasets.rr._usgs import download_daily_q_nwis, _download_metadata
+from aqua_fetch import USGS
+from aqua_fetch.rr._usgs import download_daily_q_nwis, _download_metadata
 
 from utils import test_dataset
 

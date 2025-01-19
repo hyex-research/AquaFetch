@@ -4,7 +4,7 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 #wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
-from water_datasets import (
+from aqua_fetch import (
     SanFranciscoBay, BuzzardsBay, WhiteClayCreek,
     RiverChemSiberia, SeluneRiver
     )

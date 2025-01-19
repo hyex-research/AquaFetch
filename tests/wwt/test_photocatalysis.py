@@ -7,7 +7,7 @@ site.addsitedir(wd_dir)
 
 import unittest
 
-from water_datasets import (
+from aqua_fetch import (
     mg_degradation,
     dye_removal,
     dichlorophenoxyacetic_acid_removal,

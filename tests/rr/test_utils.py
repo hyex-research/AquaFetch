@@ -5,8 +5,8 @@ site.addsitedir(wd_dir)
 
 import unittest
 
-from water_datasets import mg_degradation
-from water_datasets.utils import LabelEncoder, OneHotEncoder
+from aqua_fetch import mg_degradation
+from aqua_fetch.utils import LabelEncoder, OneHotEncoder
 
 data_path = '/mnt/datawaha/hyex/atr/data'
 

@@ -9,7 +9,7 @@ import unittest
 import numpy as np
 import xarray as xr
 
-from water_datasets import RC4USCoast
+from aqua_fetch import RC4USCoast
 
 
 ds = RC4USCoast(path='/mnt/datawaha/hyex/atr/data')

@@ -15,8 +15,8 @@ from mpl_toolkits.basemap import Basemap
 
 from easy_mpl.utils import despine_axes
 
-from water_datasets._project import utm_to_lat_lon, laea_to_wgs84
-from water_datasets import RainfallRunoff, Quadica
+from aqua_fetch._project import utm_to_lat_lon, laea_to_wgs84
+from aqua_fetch import RainfallRunoff, Quadica
 
 DATA_PATH = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 

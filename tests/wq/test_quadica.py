@@ -6,7 +6,7 @@ site.addsitedir(wd_dir)
 
 import unittest
 
-from water_datasets import Quadica
+from aqua_fetch import Quadica
 
 
 DS = Quadica(path='/mnt/datawaha/hyex/atr/data')

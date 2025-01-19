@@ -22,7 +22,7 @@ if __name__ == '__main__':
     print(wd_dir)
     site.addsitedir(wd_dir)
 
-from water_datasets import (
+from aqua_fetch import (
     ec_removal_biochar,
     cr_removal,
     po4_removal_biochar,

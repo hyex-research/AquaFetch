@@ -9,7 +9,7 @@ if os.path.exists(fpath):
     with open(fpath, "r") as fd:
         long_desc = fd.read()
 else:
-    long_desc = "https://github.com/AtrCheema/water-datasets"
+    long_desc = "https://github.com/AtrCheema/AquaFetch"
 
 
 pandas_ver = 'pandas>=0.25.0, <= 2.1.4'
@@ -52,7 +52,7 @@ setup(
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
-    url='https://github.com/AtrCheema/water-datasets',
+    url='https://github.com/AtrCheema/AquaFetch',
 
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
