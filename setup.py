@@ -44,11 +44,11 @@ all_requirements = min_requirements + extra_requires
 
 setup(
 
-    name='water_quality',
+    name='aqua_fetch',
 
-    version="0.0.1",
+    version="0.0.1rc1",
 
-    description='Platform for developing data driven based models for sequential/tabular data',
+    description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
