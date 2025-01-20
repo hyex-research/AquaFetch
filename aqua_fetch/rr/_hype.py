@@ -18,7 +18,7 @@ class HYPE(_RainfallRunoff):
 
     Examples
     --------
-        >>> from water_datasets import HYPE
+        >>> from aqua_fetch import HYPE
         >>> dataset = HYPE()
         ... # get data of 5% of stations
         >>> df = dataset.fetch(stations=0.05, as_dataframe=True)  # returns a multiindex dataframe
@@ -185,7 +185,7 @@ class HYPE(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import HYPE
+        >>> from aqua_fetch import HYPE
         >>> dataset = HYPE()
         >>> dataset.area()  # returns area of all stations
         >>> dataset.stn_coords('2')  # returns area of station whose id is 912101A

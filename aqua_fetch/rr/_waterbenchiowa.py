@@ -25,7 +25,7 @@ class WaterBenchIowa(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import WaterBenchIowa
+    >>> from aqua_fetch import WaterBenchIowa
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
     >>> data = ds.fetch(5, as_dataframe=True)
@@ -106,9 +106,9 @@ class WaterBenchIowa(_RainfallRunoff):
 
         Examples
         --------
-            >>> from water_datasets import WaterBenchIowa
-            >>> dataset = WaterBenchIowa()
-            >>> data = dataset.fetch_station_attributes('666')
+        >>> from aqua_fetch import WaterBenchIowa
+        >>> dataset = WaterBenchIowa()
+        >>> data = dataset.fetch_station_attributes('666')
         """
         check_attributes(dynamic_features, self.dynamic_features)
         fname = os.path.join(self.ts_path, f"{station}_data.csv")
@@ -134,7 +134,7 @@ class WaterBenchIowa(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import WaterBenchIowa
+        >>> from aqua_fetch import WaterBenchIowa
         >>> dataset = WaterBenchIowa()
         get the names of stations
         >>> stns = dataset.stations()

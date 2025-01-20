@@ -39,7 +39,7 @@ class USGS(_RainfallRunoff):
     file if xarray is available. Currently the data is downloaded for only those 
     sites/catchments that are in the `HYSETS database <https://doi.org/10.1038/s41597-020-00583-2>`_. 
     This is because the catchment boundaries 
-    are taken from HYSETS database using :py:class:`water_datasets.HYSETS`.
+    are taken from HYSETS database using :py:class:`aqua_fetch.HYSETS`.
 
     For hourly timestep, "iv" service is used to download the instantaneous data 
     which is then resampled to hourly data. Data with only ``A, [92]``, ``A, [91]``, 
@@ -128,7 +128,7 @@ class USGS(_RainfallRunoff):
         
         Examples
         --------
-        >>> from water_datasets import USGS
+        >>> from aqua_fetch import USGS
         >>> dataset = USGS()
         >>> dataset.get_boundary(dataset.stations()[0])
         """
@@ -170,7 +170,7 @@ class USGS(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import USGS
+        >>> from aqua_fetch import USGS
         >>> dataset = USGS()
         >>> dataset.area()  # returns area of all stations
         >>> dataset.area('912101A')  # returns area of station whose id is 912101A
@@ -207,7 +207,7 @@ class USGS(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import USGS
+        >>> from aqua_fetch import USGS
         >>> dataset = USGS()
         get the names of stations
         >>> stns = dataset.stations()
@@ -283,7 +283,7 @@ class USGS(_RainfallRunoff):
 
         Examples
         --------
-        >>> from water_datasets import USGS
+        >>> from aqua_fetch import USGS
         >>> dataset = USGS()
         >>> stations = dataset.stations()[0:3]
         >>> features = dataset.fetch_stations_features(stations)

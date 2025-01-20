@@ -85,7 +85,7 @@ def ec_removal_biochar(
 
     Examples
     --------
-    >>> from water_datasets import ec_removal_biochar
+    >>> from aqua_fetch import ec_removal_biochar
     >>> data, _ = ec_removal_biochar()
     >>> data.shape
     (3757, 29)
@@ -330,7 +330,7 @@ def cr_removal(
 
     Examples
     --------
-    >>> from water_datasets import cr_removal
+    >>> from aqua_fetch import cr_removal
     >>> data, _ = cr_removal()
     >>> data.shape
     (219, 20)
@@ -443,7 +443,7 @@ def heavy_metal_removal(
     
     Examples
     --------
-    >>> from water_datasets import heavy_metal_removal
+    >>> from aqua_fetch import heavy_metal_removal
     >>> data, _ = heavy_metal_removal()
     >>> data.shape
     (219, 18)
@@ -544,7 +544,7 @@ def heavy_metal_removal_Shen(
     
     Examples
     --------
-    >>> from water_datasets import heavy_metal_removal_Shen
+    >>> from aqua_fetch import heavy_metal_removal_Shen
     >>> data, _ = heavy_metal_removal_Shen()
     >>> data.shape
     (353, 18)
@@ -656,7 +656,7 @@ def industrial_dye_removal(
     
     Examples
     --------
-    >>> from water_datasets import industrial_dye_removal
+    >>> from aqua_fetch import industrial_dye_removal
     >>> data, _ = industrial_dye_removal()
     >>> data.shape
     (680, 29)
@@ -756,7 +756,7 @@ def P_recovery(
     
     Examples
     --------
-    >>> from water_datasets import P_recovery
+    >>> from aqua_fetch import P_recovery
     >>> data, _ = P_recovery()
     >>> data.shape
     (504, 8)
@@ -820,7 +820,7 @@ def N_recovery(
     
     Examples
     --------
-    >>> from water_datasets import N_recovery
+    >>> from aqua_fetch import N_recovery
     >>> data, _ = N_recovery()
     >>> data.shape
     (210, 8)
@@ -891,7 +891,7 @@ def As_recovery(
     
     Examples
     --------
-    >>> from water_datasets import As_recovery
+    >>> from aqua_fetch import As_recovery
     ... # Using default parameters
     >>> data, _ = As_recovery()
     >>> data.shape

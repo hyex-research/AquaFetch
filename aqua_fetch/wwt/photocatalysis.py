@@ -68,7 +68,7 @@ def mg_degradation(
 
     Examples
     --------
-    >>> from water_datasets import mg_degradation
+    >>> from aqua_fetch import mg_degradation
     >>> mg_data, encoders = mg_degradation()
     >>> mg_data.shape
     (1200, 14)
@@ -193,7 +193,7 @@ def dye_removal(
 
     Examples
     --------
-    >>> from water_datasets import dye_removal
+    >>> from aqua_fetch import dye_removal
 
     >>> data, encoders = dye_removal()
     >>> assert data.shape == (1527, 36)
@@ -341,7 +341,7 @@ def dichlorophenoxyacetic_acid_removal(
 
     Examples
     --------
-    >>> from water_datasets import dichlorophenoxyacetic_acid_removal
+    >>> from aqua_fetch import dichlorophenoxyacetic_acid_removal
     ... # by default all parameters are returned
     >>> data, encoders = dichlorophenoxyacetic_acid_removal()
     >>> assert data.shape == (1044, 16), data.shape
@@ -451,7 +451,7 @@ def pms_removal(
     
     Examples
     --------
-    >>> from water_datasets import pms_removal
+    >>> from aqua_fetch import pms_removal
     >>> data, encoders = pms_removal()
     >>> data.shape
     (2078, 25)
@@ -572,7 +572,7 @@ def tetracycline_degradation(
     
     Examples
     --------
-    >>> from water_datasets import tetracycline_degradation
+    >>> from aqua_fetch import tetracycline_degradation
     >>> data, encoders = tetracycline_degradation()
     >>> data.shape
     (374, 8)
@@ -652,7 +652,7 @@ def tio2_degradation(
     
     Examples
     --------
-    >>> from water_datasets import tio2_degradation
+    >>> from aqua_fetch import tio2_degradation
     >>> data, encoders = tio2_degradation()
     >>> data.shape
     (446, 7)
@@ -720,7 +720,7 @@ def photodegradation_Jiang(
     
     Examples
     --------
-    >>> from water_datasets import photodegradation_Jiang
+    >>> from aqua_fetch import photodegradation_Jiang
     >>> data, encoders = photodegradation_Jiang()
     >>> data.shape
     (449, 8)

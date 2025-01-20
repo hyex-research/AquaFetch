@@ -18,7 +18,7 @@ class GRiMeDB(Datasets):
 
     Examples
     --------
-    >>> from water_datasets import GRiMeDB
+    >>> from aqua_fetch import GRiMeDB
     >>> ds = GRiMeDB(path='/path/to/dataset')
     >>> ds.stations()
     >>> ds.streams

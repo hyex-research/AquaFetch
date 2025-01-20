@@ -65,13 +65,13 @@ def busan_beach(
 
     Examples
     --------
-        >>> from water_quality import busan_beach
-        >>> dataframe = busan_beach()
-        >>> dataframe.shape
-        (1446, 14)
-        >>> dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
-        >>> dataframe.shape
-        (1446, 15)
+    >>> from aqua_fetch import busan_beach
+    >>> dataframe = busan_beach()
+    >>> dataframe.shape
+    (1446, 14)
+    >>> dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
+    >>> dataframe.shape
+    (1446, 15)
     
     See usage `here <https://tabulight.readthedocs.io/en/latest/auto_examples/busan_beach.html>`_ for more details.
 

@@ -44,7 +44,7 @@ class SanFranciscoBay(Datasets):
     
     Examples
     --------
-    >>> from water_datasets import SanFranciscoBay
+    >>> from aqua_fetch import SanFranciscoBay
     >>> ds = SanFranciscoBay()
     >>> data = ds.data()
     >>> data.shape
@@ -236,7 +236,7 @@ class BuzzardsBay(Datasets):
 
     Examples
     --------
-    >>> from water_datasets import BuzzardsBay
+    >>> from aqua_fetch import BuzzardsBay
     >>> ds = BuzzardsBay()
     >>> doc = ds.doc()
     >>> doc.shape

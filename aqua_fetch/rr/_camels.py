@@ -71,7 +71,7 @@ class CAMELS_US(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_US
+    >>> from aqua_fetch import CAMELS_US
     >>> dataset = CAMELS_US()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -330,25 +330,25 @@ class CAMELS_US(_RainfallRunoff):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_US
-            >>> camels = CAMELS_US()
-            >>> st_data = camels.fetch_static_features('11532500')
-            >>> st_data.shape
-               (1, 59)
-            get names of available static features
-            >>> camels.static_features
-            get specific features of one station
-            >>> static_data = camels.fetch_static_features('11528700',
-            >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
-            >>> static_data.shape
-               (1, 4)
-            get names of allstations
-            >>> all_stns = camels.stations()
-            >>> len(all_stns)
-               671
-            >>> all_static_data = camels.fetch_static_features(all_stns)
-            >>> all_static_data.shape
-               (671, 59)
+        >>> from aqua_fetch import CAMELS_US
+        >>> camels = CAMELS_US()
+        >>> st_data = camels.fetch_static_features('11532500')
+        >>> st_data.shape
+            (1, 59)
+        get names of available static features
+        >>> camels.static_features
+        get specific features of one station
+        >>> static_data = camels.fetch_static_features('11528700',
+        >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+        >>> static_data.shape
+            (1, 4)
+        get names of allstations
+        >>> all_stns = camels.stations()
+        >>> len(all_stns)
+            671
+        >>> all_static_data = camels.fetch_static_features(all_stns)
+        >>> all_static_data.shape
+            (671, 59)
         """
         features = check_attributes(static_features, self.static_features, 'static_features')
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
@@ -388,7 +388,7 @@ class CAMELS_GB(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_GB
+    >>> from aqua_fetch import CAMELS_GB
     >>> dataset = CAMELS_GB()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -605,7 +605,7 @@ class CAMELS_GB(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_GB
+        >>> from aqua_fetch import CAMELS_GB
         >>> dataset = CAMELS_GB(path="path/to/CAMELS_GB")
         get the names of stations
         >>> stns = dataset.stations()
@@ -662,7 +662,7 @@ class CAMELS_AUS(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_AUS
+    >>> from aqua_fetch import CAMELS_AUS
     >>> dataset = CAMELS_AUS()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -1045,7 +1045,7 @@ class CAMELS_AUS(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1082,7 +1082,7 @@ class CAMELS_CL(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_CL
+    >>> from aqua_fetch import CAMELS_CL
     >>> dataset = CAMELS_CL()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -1372,7 +1372,7 @@ class CAMELS_CL(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CL
+        >>> from aqua_fetch import CAMELS_CL
         >>> dataset = CAMELS_CL()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1414,7 +1414,7 @@ class CAMELS_CH(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_CH
+    >>> from aqua_fetch import CAMELS_CH
     >>> dataset = CAMELS_CH()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -1842,7 +1842,7 @@ class CAMELS_CH(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_CH()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1951,7 +1951,7 @@ class CAMELS_DE(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_DE
+    >>> from aqua_fetch import CAMELS_DE
     >>> dataset = CAMELS_DE()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -2188,7 +2188,7 @@ class CAMELS_DE(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_DE()
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
@@ -2303,7 +2303,7 @@ class CAMELS_SE(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_SE
+    >>> from aqua_fetch import CAMELS_SE
     >>> dataset = CAMELS_SE()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -2578,7 +2578,7 @@ class CAMELS_SE(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_SE
+        >>> from aqua_fetch import CAMELS_SE
         >>> dataset = CAMELS_SE()
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
@@ -2608,7 +2608,7 @@ class CAMELS_SE(_RainfallRunoff):
 
 class CAMELS_DK(_RainfallRunoff):
     """
-    This is an updated version of :py class: `water_datasets.rr.CAMELS_DK0`
+    This is an updated version of :py class:`aqua_fetch.rr.Caravan_DK`
     dataset . This dataset was presented
     by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is
     available at `dataverse <https://dataverse.geus.dk/dataset.xhtml?persistentId=doi:10.22008/FK2/AZXSYP>`_ .
@@ -2618,7 +2618,7 @@ class CAMELS_DK(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_DK
+    >>> from aqua_fetch import CAMELS_DK
     >>> dataset = CAMELS_DK()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -2924,7 +2924,7 @@ class CAMELS_DK(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
+        >>> from aqua_fetch import CAMELS_DK
         >>> dataset = CAMELS_DK()
         get the names of stations
         >>> stns = dataset.stations()
@@ -2981,7 +2981,7 @@ class CAMELS_IND(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_IND
+    >>> from aqua_fetch import CAMELS_IND
     >>> dataset = CAMELS_IND()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -3288,7 +3288,7 @@ class CAMELS_IND(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_IND
+        >>> from aqua_fetch import CAMELS_IND
         >>> dataset = CAMELS_IND()
         get the names of stations
         >>> stns = dataset.stations()
@@ -3555,7 +3555,7 @@ class CAMELS_FR(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_FR
+        >>> from aqua_fetch import CAMELS_FR
         >>> dataset = CAMELS_FR()
         get the names of stations
         >>> stns = dataset.stations()

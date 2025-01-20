@@ -440,7 +440,7 @@ def _unzip(
 
 class OneHotEncoder(object):
     """
-    >>> from water_datasets import mg_degradation
+    >>> from aqua_fetch import mg_degradation
     >>> data, _ = mg_degradation()
     >>> cat_enc1 = OneHotEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['catalyst_type'].values)
@@ -466,7 +466,7 @@ class OneHotEncoder(object):
 
 class LabelEncoder(object):
     """
-    >>> from water_datasets import mg_degradation
+    >>> from aqua_fetch import mg_degradation
     >>> data, _ = mg_degradation()
     >>> cat_enc1 = LabelEncoder()
     >>> cat_ = cat_enc1.fit_transform(data['catalyst_type'].values)

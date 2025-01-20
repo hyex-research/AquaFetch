@@ -35,7 +35,7 @@ class SyltRoads(Datasets):
 
     Examples
     --------
-    >>> from water_datasets import SyltRoads
+    >>> from aqua_fetch import SyltRoads
     >>> ds = SyltRoads()
 
     """
@@ -136,7 +136,7 @@ class SyltRoads(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import SyltRoads
+        >>> from aqua_fetch import SyltRoads
         >>> ds = SyltRoads()
         >>> df = ds.fetch()
         >>> df.shape

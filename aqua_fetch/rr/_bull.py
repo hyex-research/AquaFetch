@@ -75,7 +75,7 @@ class Bull(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import Bull
+    >>> from aqua_fetch import Bull
     >>> dataset = Bull()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -461,7 +461,7 @@ class Bull(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import Bull
+        >>> from aqua_fetch import Bull
         >>> dataset = Bull()
         get the names of stations
         >>> stns = dataset.stations()

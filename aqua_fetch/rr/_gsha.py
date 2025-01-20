@@ -79,7 +79,7 @@ class GSHA(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import GSHA
+    >>> from aqua_fetch import GSHA
     >>> dataset = GSHA()
     >>> len(dataset.stations())
     21568
@@ -108,7 +108,7 @@ class GSHA(_RainfallRunoff):
 
     def __init__(self,
                  path=None,
-                 overwrite=False,
+                 overwrite:bool = False,
                  to_netcdf: bool = True,
                  **kwargs):
         """
@@ -119,7 +119,8 @@ class GSHA(_RainfallRunoff):
             This will fasten repeated calls to fetch etc but will
             require netcdf5 package as well as xarry.
         """
-        super(GSHA, self).__init__(path=path, to_netcdf=to_netcdf, **kwargs)
+        super(GSHA, self).__init__(path=path, to_netcdf=to_netcdf, 
+                                   overwrite=overwrite, **kwargs)
         self.path = path
 
         files = ['Global_files.zip',
@@ -135,7 +136,7 @@ class GSHA(_RainfallRunoff):
                  'WatershedPolygons.zip',
                  'WatershedsAll.csv'
                  ]
-        # self._download(overwrite=overwrite, files_to_check=files)
+        self._download()
 
         self._maybe_merge_shapefiles()
 
@@ -323,7 +324,7 @@ class GSHA(_RainfallRunoff):
 
         Examples
         --------
-        >>> from water_datasets import GSHA
+        >>> from aqua_fetch import GSHA
         >>> dataset = GSHA()
         >>> dataset.stn_coords('1001_arcticnet')
         >>> dataset.stn_coords(['1001_arcticnet', '1002_arcticnet'])
@@ -729,7 +730,7 @@ class GSHA(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import GSHA
+        >>> from aqua_fetch import GSHA
         >>> dataset = GSHA()
         get the names of stations
         >>> stns = dataset.stations()
@@ -792,7 +793,7 @@ class GSHA(_RainfallRunoff):
 
         Examples
         --------
-        >>> from water_datasets import GSHA
+        >>> from aqua_fetch import GSHA
         >>> camels = GSHA()
         >>> camels.fetch_stn_dynamic_features('1001_arcticnet').unstack()
         >>> camels.dynamic_features
@@ -839,7 +840,7 @@ class GSHA(_RainfallRunoff):
 
         Examples
         --------
-            >>> from water_datasets import GSHA
+            >>> from aqua_fetch import GSHA
             >>> camels = GSHA()
             >>> camels.fetch_dynamic_features('1001_arcticnet', as_dataframe=True).unstack()
             >>> camels.dynamic_features
@@ -926,9 +927,9 @@ class _GSHA(_RainfallRunoff):
     Parent class for those datasets which uses static and dynamic features from
     GSHA dataset . The following dataset classes are based on this class:
 
-        - py:class:`water_datasets.Japan`
-        - py:class:`water_datasets.Thailand`
-        - py:class:`water_datasets.Spain`
+        - py:class:`aqua_fetch.Japan`
+        - py:class:`aqua_fetch.Thailand`
+        - py:class:`aqua_fetch.Spain`
 
     """
 
@@ -1004,7 +1005,7 @@ class _GSHA(_RainfallRunoff):
 
         Examples
         --------
-        >>> from water_datasets import Japan
+        >>> from aqua_fetch import Japan
         >>> dataset = Japan()
         >>> dataset.get_boundary(dataset.stations()[0])
         """
@@ -1110,7 +1111,7 @@ class _GSHA(_RainfallRunoff):
 
         Examples
         --------
-        >>> from water_datasets import Arcticnet
+        >>> from aqua_fetch import Arcticnet
         >>> dataset = Arcticnet()
         >>> stations = dataset.stations()
         >>> features = dataset.fetch_stations_features(stations)
@@ -1177,7 +1178,7 @@ class _GSHA(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import Japan
+        >>> from aqua_fetch import Japan
         >>> dataset = Japan()
         get the names of stations
         >>> stns = dataset.stations()

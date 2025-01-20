@@ -208,7 +208,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_AUS
+            >>> from aqua_fetch import CAMELS_AUS
             >>> camels = CAMELS_AUS()
             >>> camels.fetch_static_features('224214A')
             >>> camels.static_features
@@ -271,7 +271,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_CH()
         >>> dataset.area()  # returns area of all stations
         >>> dataset.area('2004')  # returns area of station whose id is 2004
@@ -354,7 +354,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> # get data of 10% of stations
         >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
@@ -468,18 +468,18 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_AUS
-            >>> dataset = CAMELS_AUS()
-            ... # find out station ids
-            >>> dataset.stations()
-            ... # get data of selected stations as xarray Dataset
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'])
-            ... # get data of selected stations as pandas DataFrame
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-            ...  as_dataframe=True)
-            ... # get both dynamic and static features of selected stations
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-            ... dynamic_features=['streamflow_mmd', 'tmax_AWAP'], static_features=['elev_mean'])
+        >>> from aqua_fetch import CAMELS_AUS
+        >>> dataset = CAMELS_AUS()
+        ... # find out station ids
+        >>> dataset.stations()
+        ... # get data of selected stations as xarray Dataset
+        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'])
+        ... # get data of selected stations as pandas DataFrame
+        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        ...  as_dataframe=True)
+        ... # get both dynamic and static features of selected stations
+        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        ... dynamic_features=['streamflow_mmd', 'tmax_AWAP'], static_features=['elev_mean'])
         """
         st, en = self._check_length(st, en)
 
@@ -544,13 +544,13 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_AUS
-            >>> camels = CAMELS_AUS()
-            >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('224214A',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import CAMELS_AUS
+        >>> camels = CAMELS_AUS()
+        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.dynamic_features
+        >>> camels.fetch_dynamic_features('224214A',
+        ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
+        ... as_dataframe=True).unstack()
         """
 
         assert isinstance(stn_id, str), f"station id must be string is is of type {type(stn_id)}"
@@ -603,9 +603,9 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_AUS
-            >>> dataset = CAMELS_AUS()
-            >>> dataset.fetch_station_features('912101A')
+        >>> from aqua_fetch import CAMELS_AUS
+        >>> dataset = CAMELS_AUS()
+        >>> dataset.fetch_station_features('912101A')
 
         """
         st, en = self._check_length(st, en)
@@ -658,7 +658,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> dataset.plot_stations()
         >>> dataset.plot_stations(['1', '2', '3'])
@@ -745,13 +745,13 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_CH()
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
         >>> dataset.stn_coords(['2004', '6004'])  # returns coordinates of two stations
 
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
@@ -800,7 +800,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import CAMELS_SE
+        >>> from aqua_fetch import CAMELS_SE
         >>> dataset = CAMELS_SE()
         >>> dataset.get_boundary(dataset.stations()[0])
         """
@@ -845,7 +845,7 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> dataset.plot_catchment()
         >>> dataset.plot_catchment(marker='o', ms=0.3)

@@ -26,7 +26,7 @@ class Simbi(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import Simbi
+    >>> from aqua_fetch import Simbi
     >>> simbi = Simbi()
     """
 

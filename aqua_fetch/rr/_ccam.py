@@ -56,7 +56,7 @@ class CCAM(_RainfallRunoff):
 
     Examples
     ---------
-    >>> from water_datasets import CCAM
+    >>> from aqua_fetch import CCAM
     >>> dataset = CCAM()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -331,7 +331,9 @@ class CCAM(_RainfallRunoff):
         """
         fetches meteorological data of 4902 chinese catchments
 
-        >>> from water_datasets import CCAM
+        Examples
+        ---------
+        >>> from aqua_fetch import CCAM
         >>> dataset = CCAM()
         >>> dynamic_features = ['PRE', 'TEM', 'PRS', 'RHU', 'EVP', 'WIN', 'PET']
         >>> st = '1999-01-01'
@@ -412,7 +414,7 @@ class CCAM(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
+        >>> from stations import CAMELS_DK
         >>> dataset = CAMELS_DK()
         get the names of stations
         >>> stns = dataset.stations()
