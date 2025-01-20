@@ -476,16 +476,17 @@ class _EStreams(_RainfallRunoff):
             self,
             path: Union[str, os.PathLike] = None,
             estreams_path: Union[str, os.PathLike] = None,
+            overwrite: bool = False,
             verbosity: int = 1,
             **kwargs):
-        super().__init__(path, verbosity=verbosity, **kwargs)
+        super().__init__(path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
         if estreams_path is None:
             self.estreams_path = os.path.dirname(self.path)
         else:
             self.estreams_path = estreams_path
 
-        self.estreams = EStreams(path=self.estreams_path, verbosity=verbosity)
+        self.estreams = EStreams(path=self.estreams_path, overwrite=overwrite, verbosity=verbosity)
 
         self.md = self.estreams.md.loc[self.estreams.md['gauge_country'] == self.country_name]
         self._stations = self.estreams.country_stations(self.country_name)
