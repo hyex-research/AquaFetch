@@ -5,6 +5,11 @@ We will soon release our package on pypi for easier installation.
 
 using github link
 =================
+
+You can install AquaFetch using `pip`
+::
+    pip install aqua-fetch
+
 You can also use github link to install AquaFetch.
 ::
     python -m pip install git+https://github.com/hyex-research/AquaFetch.git

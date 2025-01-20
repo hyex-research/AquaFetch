@@ -1,5 +1,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/aquafetch/badge/?version=latest)](https://aquafetch.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/aqua-fetch.svg)](https://badge.fury.io/py/aqua-fetch)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aqua-fetch)](https://pypi.org/project/aqua-fetch/)
 
 <p float="left">
   <img src="/docs/source/imgs/logo.png"/>
@@ -16,6 +18,10 @@ The development of AquaFetch was inspired by the growing availability of diverse
 
 
 ## Installation
+
+You can install AquaFetch using `pip`
+
+    pip install aqua-fetch
 
 The package can be installed using GitHub link from the master branch
 
