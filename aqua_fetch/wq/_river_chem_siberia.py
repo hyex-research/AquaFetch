@@ -7,13 +7,12 @@ from typing import List
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_attributes, sanity_check, check_st_en
 
 
 class RiverChemSiberia(Datasets):
     """
     A database of water chemistry in eastern Siberian rivers following
-    `Liu et al., 2022 <https://doi.org/10.1038/s41597-022-01844-y>` .
+    `Liu et al., 2022 <https://doi.org/10.1038/s41597-022-01844-y>`_ .
     The dataset consists of meteorological data, water chemistry data, and
     shapefiles of 7 basins in eastern Siberia. The data is collected from 1991
     to 2012. The dataset is available at `figshare <https://doi.org/10.6084/m9.figshare.c.5831975.v1>`_ .
