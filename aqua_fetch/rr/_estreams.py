@@ -442,13 +442,13 @@ class EStreams(_RainfallRunoff):
 
         Examples
         --------
-            >>> from aqua_fetch import EStreams
-            >>> camels = EStreams()
-            >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('IEEP0281',
-            ... features=['p_mean', 't_mean', 'pet_mean'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import EStreams
+        >>> camels = EStreams()
+        >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True).unstack()
+        >>> camels.dynamic_features
+        >>> camels.fetch_dynamic_features('IEEP0281',
+        ... features=['p_mean', 't_mean', 'pet_mean'],
+        ... as_dataframe=True).unstack()
         """
 
         stations = self._get_stations(countries, stations)
