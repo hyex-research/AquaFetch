@@ -107,7 +107,12 @@ List of datasets
      - 2021 - 2022
      - Selune River, (France)
      - `Moustapha Ba et al., 2023 <https://doi.org/10.1016/j.dib.2022.108837>`_ 
-
+   * - Siberian Rivers Chemistry
+     - :py:class:`aqua_fetch.RiverChemSiberia`
+     - 30
+     - 1991--2012
+     - Siberian Rivers, (Russia)
+     - `Moustapha Ba et al., 2023 <https://doi.org/10.1016/j.dib.2022.108837>`_ 
 
 
 Functions and Classes
@@ -188,6 +193,12 @@ Functions and Classes
   
     .. automethod:: __init__
 
+
+.. autoclass:: aqua_fetch.RiverChemSiberia
+    :members:
+    :show-inheritance:
+  
+    .. automethod:: __init__
 
 
 .. autofunction:: aqua_fetch.busan_beach
