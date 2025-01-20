@@ -9,7 +9,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._project import utm_to_lat_lon
 from ..utils import get_cpus
 from ..utils import check_attributes, download, _unzip
@@ -58,7 +58,7 @@ from ._map import (
 SEP = os.sep
 
 
-class CAMELS_US(Camels):
+class CAMELS_US(_RainfallRunoff):
     """
     This is a dataset of 671 US catchments with 59 static features
     and 8 dyanmic features for each catchment. The dyanmic features are
@@ -71,7 +71,7 @@ class CAMELS_US(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_US
+    >>> from aqua_fetch import CAMELS_US
     >>> dataset = CAMELS_US()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -330,25 +330,25 @@ class CAMELS_US(Camels):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_US
-            >>> camels = CAMELS_US()
-            >>> st_data = camels.fetch_static_features('11532500')
-            >>> st_data.shape
-               (1, 59)
-            get names of available static features
-            >>> camels.static_features
-            get specific features of one station
-            >>> static_data = camels.fetch_static_features('11528700',
-            >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
-            >>> static_data.shape
-               (1, 4)
-            get names of allstations
-            >>> all_stns = camels.stations()
-            >>> len(all_stns)
-               671
-            >>> all_static_data = camels.fetch_static_features(all_stns)
-            >>> all_static_data.shape
-               (671, 59)
+        >>> from aqua_fetch import CAMELS_US
+        >>> camels = CAMELS_US()
+        >>> st_data = camels.fetch_static_features('11532500')
+        >>> st_data.shape
+            (1, 59)
+        get names of available static features
+        >>> camels.static_features
+        get specific features of one station
+        >>> static_data = camels.fetch_static_features('11528700',
+        >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+        >>> static_data.shape
+            (1, 4)
+        get names of allstations
+        >>> all_stns = camels.stations()
+        >>> len(all_stns)
+            671
+        >>> all_static_data = camels.fetch_static_features(all_stns)
+        >>> all_static_data.shape
+            (671, 59)
         """
         features = check_attributes(static_features, self.static_features, 'static_features')
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
@@ -378,7 +378,7 @@ class CAMELS_US(Camels):
         return df
 
 
-class CAMELS_GB(Camels):
+class CAMELS_GB(_RainfallRunoff):
     """
     This is a dataset of 671 catchments with 145 static features
     and 10 dyanmic features for each catchment following the work of
@@ -388,7 +388,7 @@ class CAMELS_GB(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_GB
+    >>> from aqua_fetch import CAMELS_GB
     >>> dataset = CAMELS_GB()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -605,7 +605,7 @@ class CAMELS_GB(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_GB
+        >>> from aqua_fetch import CAMELS_GB
         >>> dataset = CAMELS_GB(path="path/to/CAMELS_GB")
         get the names of stations
         >>> stns = dataset.stations()
@@ -648,7 +648,7 @@ class CAMELS_GB(Camels):
         return static_df.loc[station][features]
 
 
-class CAMELS_AUS(Camels):
+class CAMELS_AUS(_RainfallRunoff):
     """
     This is a dataset of 561 Australian catchments with 187 static features and
     26 dyanmic features for each catchment. The dyanmic features are timeseries
@@ -662,7 +662,7 @@ class CAMELS_AUS(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_AUS
+    >>> from aqua_fetch import CAMELS_AUS
     >>> dataset = CAMELS_AUS()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -1045,7 +1045,7 @@ class CAMELS_AUS(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_AUS
+        >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1072,7 +1072,7 @@ class CAMELS_AUS(Camels):
         return self._read_static(stn_id, static_features)
 
 
-class CAMELS_CL(Camels):
+class CAMELS_CL(_RainfallRunoff):
     """
     This is a dataset of 516 Chilean catchments with
     104 static features and 12 dyanmic features for each catchment.
@@ -1082,7 +1082,7 @@ class CAMELS_CL(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_CL
+    >>> from aqua_fetch import CAMELS_CL
     >>> dataset = CAMELS_CL()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -1372,7 +1372,7 @@ class CAMELS_CL(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CL
+        >>> from aqua_fetch import CAMELS_CL
         >>> dataset = CAMELS_CL()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1403,7 +1403,7 @@ class CAMELS_CL(Camels):
         return self._read_static(stn_id, features)
 
 
-class CAMELS_CH(Camels):
+class CAMELS_CH(_RainfallRunoff):
     """
     Data of 331 Swiss catchments from
     `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_ .
@@ -1414,7 +1414,7 @@ class CAMELS_CH(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_CH
+    >>> from aqua_fetch import CAMELS_CH
     >>> dataset = CAMELS_CH()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -1842,7 +1842,7 @@ class CAMELS_CH(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_CH()
         get the names of stations
         >>> stns = dataset.stations()
@@ -1941,7 +1941,7 @@ class CAMELS_CH(Camels):
         return observed_streamflow_mmd()
 
 
-class CAMELS_DE(Camels):
+class CAMELS_DE(_RainfallRunoff):
     """
     This is the data from 1555 German catchments following the work of
     `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_ .
@@ -1951,7 +1951,7 @@ class CAMELS_DE(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_DE
+    >>> from aqua_fetch import CAMELS_DE
     >>> dataset = CAMELS_DE()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -2188,7 +2188,7 @@ class CAMELS_DE(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_CH
+        >>> from aqua_fetch import CAMELS_CH
         >>> dataset = CAMELS_DE()
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
@@ -2294,7 +2294,7 @@ class CAMELS_DE(Camels):
         return observed_streamflow_mmd()
 
 
-class CAMELS_SE(Camels):
+class CAMELS_SE(_RainfallRunoff):
     """
     Dataset of 50 Swedish catchments following the works of
     `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ .
@@ -2303,7 +2303,7 @@ class CAMELS_SE(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_SE
+    >>> from aqua_fetch import CAMELS_SE
     >>> dataset = CAMELS_SE()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -2578,7 +2578,7 @@ class CAMELS_SE(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_SE
+        >>> from aqua_fetch import CAMELS_SE
         >>> dataset = CAMELS_SE()
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
@@ -2606,9 +2606,9 @@ class CAMELS_SE(Camels):
         return df.loc[stations, features]
 
 
-class CAMELS_DK(Camels):
+class CAMELS_DK(_RainfallRunoff):
     """
-    This is an updated version of :py class: `water_datasets.rr.CAMELS_DK0`
+    This is an updated version of :py class:`aqua_fetch.rr.Caravan_DK`
     dataset . This dataset was presented
     by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is
     available at `dataverse <https://dataverse.geus.dk/dataset.xhtml?persistentId=doi:10.22008/FK2/AZXSYP>`_ .
@@ -2618,7 +2618,7 @@ class CAMELS_DK(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_DK
+    >>> from aqua_fetch import CAMELS_DK
     >>> dataset = CAMELS_DK()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -2924,7 +2924,7 @@ class CAMELS_DK(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
+        >>> from aqua_fetch import CAMELS_DK
         >>> dataset = CAMELS_DK()
         get the names of stations
         >>> stns = dataset.stations()
@@ -2972,7 +2972,7 @@ class CAMELS_DK(Camels):
         return coords
 
 
-class CAMELS_IND(Camels):
+class CAMELS_IND(_RainfallRunoff):
     """
     Dataset of 472 catchments from Republic of India following the works of
     `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_.
@@ -2981,7 +2981,7 @@ class CAMELS_IND(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CAMELS_IND
+    >>> from aqua_fetch import CAMELS_IND
     >>> dataset = CAMELS_IND()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -3288,7 +3288,7 @@ class CAMELS_IND(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_IND
+        >>> from aqua_fetch import CAMELS_IND
         >>> dataset = CAMELS_IND()
         get the names of stations
         >>> stns = dataset.stations()
@@ -3319,7 +3319,7 @@ class CAMELS_IND(Camels):
         return df.loc[stations, features]
 
 
-class CAMELS_FR(Camels):
+class CAMELS_FR(_RainfallRunoff):
     """
     Dataset of 654 catchments from France following the works of
     `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_.
@@ -3555,7 +3555,7 @@ class CAMELS_FR(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_FR
+        >>> from aqua_fetch import CAMELS_FR
         >>> dataset = CAMELS_FR()
         get the names of stations
         >>> stns = dataset.stations()

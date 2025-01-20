@@ -325,7 +325,8 @@ class Datasets(object):
         self._path = x
 
     def _download(self, overwrite=False, **kwargs):
-        """Downloads the dataset. If already downloaded, then
+        """
+        Downloads the dataset. If already downloaded, then
 
         Parameters
         -----------

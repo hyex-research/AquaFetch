@@ -31,7 +31,7 @@ except (ModuleNotFoundError, ImportError):
 from .._backend import xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
-from .camels import Camels
+from .utils import _RainfallRunoff
  
  
 from ._map import (
@@ -51,10 +51,10 @@ from ._map import (
     max_air_temp,
     min_air_temp,
     solar_radiation,
-                   )
+    )
 
 
-class EStreams(Camels):
+class EStreams(_RainfallRunoff):
     """
     Handles EStreams data following the work of
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
@@ -63,20 +63,32 @@ class EStreams(Camels):
     It has 15047 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
     features with yearly timestep and 208 static features. The dynamic features
     are from 1950-01-01 to 2023-06-30.
+
+    Examples
+    --------
+    >>> from aqua_fetch import EStreams
+    >>> dataset = EStreams()
     """
+
+    url = "https://zenodo.org/records/13961394"
 
     def __init__(self, path=None, **kwargs):
         super().__init__(path, **kwargs)
+
+        self._download()
 
         self.md = self.gauge_stations()
         self._stations = self.__stations()
         self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
         self._static_features = self.static_data().columns.tolist()
 
-        self.boundary_file = os.path.join(self.path,
-                                          "EStreams",
+        self.boundary_file = os.path.join(self.path2,
                                           "shapefiles", "estreams_catchments.shp")
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def path2(self):
+        return os.path.join(self.path, 'EStreams', 'EStreams')
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -112,7 +124,7 @@ class EStreams(Camels):
         """
         Returns a dataframe with static attributes of catchments
         """
-        static_path = os.path.join(self.path, 'EStreams', 'attributes', 'static_attributes')
+        static_path = os.path.join(self.path2, 'attributes', 'static_attributes')
 
         dfs = [self.hydro_clim_sigs(), self.md.copy()]
         for f in os.listdir(static_path):
@@ -130,7 +142,7 @@ class EStreams(Camels):
         reads the file estreams_gauging_stations.csv as dataframe
         """
         df = pd.read_csv(
-            os.path.join(self.path, 'EStreams', 'streamflow_gauges', 'estreams_gauging_stations.csv'),
+            os.path.join(self.path2, 'streamflow_gauges', 'estreams_gauging_stations.csv'),
             index_col='basin_id',
             dtype={'basin_id': str}
         )
@@ -144,7 +156,7 @@ class EStreams(Camels):
 
     def __stations(self) -> List[str]:
         df = pd.read_csv(
-            os.path.join(self.path, 'EStreams', 'streamflow_gauges', 'estreams_gauging_stations.csv'),
+            os.path.join(self.path2, 'streamflow_gauges', 'estreams_gauging_stations.csv'),
             usecols=['basin_id', 'lat'],
             dtype={'basin_id': str}
         )
@@ -177,7 +189,7 @@ class EStreams(Camels):
 
         Examples
         --------
-        >>> from water_datasets import EStreams
+        >>> from aqua_fetch import EStreams
         >>> dataset = EStreams()
         >>> dataset.stn_coords('IEEP0281')
         >>> dataset.stn_coords(['IEEP0281', 'IEEP0282'])
@@ -186,7 +198,7 @@ class EStreams(Camels):
         stations = self._get_stations(countries, stations)
 
         df = pd.read_csv(
-            os.path.join(self.path, 'EStreams', 'streamflow_gauges', 'estreams_gauging_stations.csv'),
+            os.path.join(self.path2, 'streamflow_gauges', 'estreams_gauging_stations.csv'),
             usecols=['basin_id', 'lat', 'lon'],
             dtype={'basin_id': str}
         )
@@ -236,7 +248,7 @@ class EStreams(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import EStreams
+        >>> from aqua_fetch import EStreams
         >>> dataset = EStreams()
         get the names of stations
         >>> stns = dataset.stations()
@@ -278,7 +290,7 @@ class EStreams(Camels):
             a pandas dataframe of meteorological data of shape (time, 9)
         """
         df = pd.read_csv(
-            os.path.join(self.path, 'EStreams', 'meteorology', f'estreams_meteorology_{stn_id}.csv'),
+            os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{stn_id}.csv'),
             index_col='date',
             parse_dates=True
         )
@@ -360,8 +372,7 @@ class EStreams(Camels):
 
         df = pd.read_csv(
             os.path.join(
-                self.path,
-                'EStreams',
+                self.path2, 
                 'hydroclimatic_signatures',
                 'estreams_hydrometeo_signatures.csv'),
             index_col='basin_id',
@@ -392,7 +403,7 @@ class EStreams(Camels):
 
         Examples
         --------
-        >>> from water_datasets import EStreams
+        >>> from aqua_fetch import EStreams
         >>> camels = EStreams()
         >>> camels.fetch_stn_dynamic_features('IEEP0281').unstack()
         >>> camels.dynamic_features
@@ -431,13 +442,13 @@ class EStreams(Camels):
 
         Examples
         --------
-            >>> from water_datasets import EStreams
-            >>> camels = EStreams()
-            >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('IEEP0281',
-            ... features=['p_mean', 't_mean', 'pet_mean'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import EStreams
+        >>> camels = EStreams()
+        >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True).unstack()
+        >>> camels.dynamic_features
+        >>> camels.fetch_dynamic_features('IEEP0281',
+        ... features=['p_mean', 't_mean', 'pet_mean'],
+        ... as_dataframe=True).unstack()
         """
 
         stations = self._get_stations(countries, stations)
@@ -456,7 +467,7 @@ class EStreams(Camels):
         return self.meteo_data(stations)
 
 
-class _EStreams(Camels):
+class _EStreams(_RainfallRunoff):
     """
     Parent class for those datasets which use static and dynamic data from EStreams.
     """
@@ -465,16 +476,17 @@ class _EStreams(Camels):
             self,
             path: Union[str, os.PathLike] = None,
             estreams_path: Union[str, os.PathLike] = None,
+            overwrite: bool = False,
             verbosity: int = 1,
             **kwargs):
-        super().__init__(path, verbosity=verbosity, **kwargs)
+        super().__init__(path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
         if estreams_path is None:
             self.estreams_path = os.path.dirname(self.path)
         else:
             self.estreams_path = estreams_path
 
-        self.estreams = EStreams(path=self.estreams_path, verbosity=verbosity)
+        self.estreams = EStreams(path=self.estreams_path, overwrite=overwrite, verbosity=verbosity)
 
         self.md = self.estreams.md.loc[self.estreams.md['gauge_country'] == self.country_name]
         self._stations = self.estreams.country_stations(self.country_name)
@@ -597,7 +609,7 @@ class _EStreams(Camels):
 
         Examples
         --------
-        >>> from water_datasets import Arcticnet
+        >>> from aqua_fetch import Arcticnet
         >>> dataset = Arcticnet()
         >>> stations = dataset.stations()
         >>> features = dataset.fetch_stations_features(stations)
@@ -664,7 +676,7 @@ class _EStreams(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import Japan
+        >>> from aqua_fetch import Japan
         >>> dataset = Japan()
         get the names of stations
         >>> stns = dataset.stations()
@@ -700,7 +712,7 @@ class Finland(_EStreams):
     https://wwwi3.ymparisto.fi .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 2012-01-01 to 2023-06-30.
@@ -979,7 +991,7 @@ class Ireland(_EStreams):
     It should be that out of 280 OPW stations, streamflow data is available for only 129
     stations. The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -1371,7 +1383,7 @@ class Italy(_EStreams):
     http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -1509,7 +1521,7 @@ class Poland(_EStreams):
     https://danepubliczne.imgw.pl .
     The meteorological data, static catchment 
     features and catchment boundaries are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1992-01-01 to 2020-06-31.
@@ -1723,7 +1735,7 @@ class Portugal(_EStreams):
     https://snirh.apambiente.pt .
     The meteorological data, static catchment 
     features and catchment boundaries for the 280 catchments are
-    taken from :py:class:`water_datasets.EStreams` follwoing the works
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
     data is available from 1972-01-01 to 2022-12-31 .
@@ -1737,7 +1749,7 @@ class Portugal(_EStreams):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
-        fpath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'portugal_stn_codes.csv')
+        fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
 
     @property

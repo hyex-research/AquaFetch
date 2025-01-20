@@ -50,10 +50,10 @@ def ecoli_mekong(
 
     Examples
     --------
-        >>> from water_quality import ecoli_mekong
-        >>> ecoli_data = ecoli_mekong()
-        >>> ecoli_data.shape
-        (1602, 10)
+    >>> from aqua_fetch import ecoli_mekong
+    >>> ecoli_data = ecoli_mekong()
+    >>> ecoli_data.shape
+    (1602, 10)
 
     """
     ecoli = ecoli_houay_pano(st, en, parameters, overwrite=overwrite)
@@ -89,10 +89,10 @@ def ecoli_mekong_2016(
 
     Examples
     --------
-        >>> from water_quality import ecoli_mekong_2016
-        >>> ecoli = ecoli_mekong_2016()
-        >>> ecoli.shape
-        (58, 10)
+    >>> from aqua_fetch import ecoli_mekong_2016
+    >>> ecoli = ecoli_mekong_2016()
+    >>> ecoli.shape
+    (58, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/ZRSBM4
@@ -145,10 +145,10 @@ def ecoli_houay_pano(
 
     Examples
     --------
-        >>> from water_quality import ecoli_houay_pano
-        >>> ecoli = ecoli_houay_pano()
-        >>> ecoli.shape
-        (413, 10)
+    >>> from aqua_fetch import ecoli_houay_pano
+    >>> ecoli = ecoli_houay_pano()
+    >>> ecoli.shape
+    (413, 10)
 
     .. url_
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
@@ -189,10 +189,10 @@ def ecoli_mekong_laos(
 
     Examples
     --------
-        >>> from water_quality import ecoli_mekong_laos
-        >>> ecoli = ecoli_mekong_laos()
-        >>> ecoli.shape
-        (1131, 10)
+    >>> from aqua_fetch import ecoli_mekong_laos
+    >>> ecoli = ecoli_mekong_laos()
+    >>> ecoli.shape
+    (1131, 10)
 
     .. url_
         https://dataverse.ird.fr/file.xhtml?fileId=9229&version=3.0

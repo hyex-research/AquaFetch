@@ -4,7 +4,7 @@ from typing import Union, List, Dict
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import get_cpus
 from ..utils import check_st_en
 from ..utils import check_attributes, download, _unzip
@@ -50,7 +50,7 @@ from ._map import (
     slope
     )
 
-class GRDCCaravan(Camels):
+class GRDCCaravan(_RainfallRunoff):
     """
     This is a dataset of 5357 catchments from around the globe following the works of
     `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ . The dataset consists of 39

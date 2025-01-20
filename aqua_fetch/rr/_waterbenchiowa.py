@@ -4,7 +4,7 @@ from typing import List, Union, Dict
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 from ._map import (
@@ -15,7 +15,7 @@ from ._map import (
     )
 
 
-class WaterBenchIowa(Camels):
+class WaterBenchIowa(_RainfallRunoff):
     """
     Rainfall run-off dataset for Iowa (US) following the work of
     `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
@@ -25,7 +25,7 @@ class WaterBenchIowa(Camels):
 
     Examples
     --------
-    >>> from water_datasets import WaterBenchIowa
+    >>> from aqua_fetch import WaterBenchIowa
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
     >>> data = ds.fetch(5, as_dataframe=True)
@@ -106,9 +106,9 @@ class WaterBenchIowa(Camels):
 
         Examples
         --------
-            >>> from water_datasets import WaterBenchIowa
-            >>> dataset = WaterBenchIowa()
-            >>> data = dataset.fetch_station_attributes('666')
+        >>> from aqua_fetch import WaterBenchIowa
+        >>> dataset = WaterBenchIowa()
+        >>> data = dataset.fetch_station_attributes('666')
         """
         check_attributes(dynamic_features, self.dynamic_features)
         fname = os.path.join(self.ts_path, f"{station}_data.csv")
@@ -134,7 +134,7 @@ class WaterBenchIowa(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import WaterBenchIowa
+        >>> from aqua_fetch import WaterBenchIowa
         >>> dataset = WaterBenchIowa()
         get the names of stations
         >>> stns = dataset.stations()

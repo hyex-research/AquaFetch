@@ -14,7 +14,8 @@ import pandas as pd
 
 
 class PanParam:
-    """ PANGAEA Parameter
+    """
+    PANGAEA Parameter
     Shoud be used to create PANGAEA parameter objects. Parameter is used here to represent 'measured variables'
 
     Attributes

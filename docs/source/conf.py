@@ -8,12 +8,13 @@
 
 import os
 import sys
+sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'AquaFetch'
 copyright = '2025, Ather Abbas'
 author = 'Ather Abbas'
 
-sys.path.insert(0, os.path.abspath('../..'))
+release = "1.0.0rc1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

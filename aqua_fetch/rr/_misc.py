@@ -1,10 +1,10 @@
 
 __all__ = ["DraixBleone"]
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 
 
-class DraixBleone(Camels):
+class DraixBleone(_RainfallRunoff):
     """
     A high-frequency, long-term data set of hydrology and sediment yield: the alpine
     badland catchments of Draix-Bléone Observatory

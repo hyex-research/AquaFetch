@@ -44,11 +44,11 @@ all_requirements = min_requirements + extra_requires
 
 setup(
 
-    name='water_quality',
+    name='aqua_fetch',
 
-    version="0.0.1",
+    version = "1.0.0rc1",
 
-    description='Platform for developing data driven based models for sequential/tabular data',
+    description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
@@ -57,8 +57,9 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'data': ['portugal_stn_codes.csv']},
+    package_data={'aqua_fetch': ['data/portugal_stn_codes.csv']},
     include_package_data=True,
+    #data_files=[('data', ['data/portugal_stn_codes.csv'])],
 
     classifiers=[
         'Development Status :: 4 - Beta',

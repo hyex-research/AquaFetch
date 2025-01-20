@@ -6,7 +6,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import shapefile
 from .._backend import xarray as xr
 from ..utils import merge_shapefiles
@@ -38,7 +38,7 @@ from ._map import (
     )
 
 
-class CCAM(Camels):
+class CCAM(_RainfallRunoff):
     """
     Dataset for chinese catchments. The CCAM dataset was published by
     `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_ has two sets.
@@ -56,7 +56,7 @@ class CCAM(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CCAM
+    >>> from aqua_fetch import CCAM
     >>> dataset = CCAM()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -331,7 +331,9 @@ class CCAM(Camels):
         """
         fetches meteorological data of 4902 chinese catchments
 
-        >>> from water_datasets import CCAM
+        Examples
+        ---------
+        >>> from aqua_fetch import CCAM
         >>> dataset = CCAM()
         >>> dynamic_features = ['PRE', 'TEM', 'PRS', 'RHU', 'EVP', 'WIN', 'PET']
         >>> st = '1999-01-01'
@@ -412,7 +414,7 @@ class CCAM(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_DK
+        >>> from stations import CAMELS_DK
         >>> dataset = CAMELS_DK()
         get the names of stations
         >>> stns = dataset.stations()

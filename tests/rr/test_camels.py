@@ -11,8 +11,6 @@ site.addsitedir(wd_dir)
 import pandas as pd
 
 from aqua_fetch import CCAM
-from aqua_fetch import CAMELS_DK
-from aqua_fetch.rr import CAMELS_DK0
 from aqua_fetch import CAMELS_CH
 from aqua_fetch import CAMELS_GB, CAMELS_AUS
 from aqua_fetch import CAMELS_CL, CAMELS_US, HYPE
@@ -67,11 +65,6 @@ class TestCamels(unittest.TestCase):
     def test_us(self):
         ds_us = CAMELS_US(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(ds_us, 671, 12784, 59, 8)
-        return
-
-    def test_dk(self):
-        ds_dk = CAMELS_DK0(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(ds_dk, 308, 14609, 211, 39)
         return
 
     def test_ccam(self):
@@ -142,35 +135,6 @@ class TestCamels(unittest.TestCase):
 
         return
 
-    def test_camels_dk_docs(self):
-
-        dataset = CAMELS_DK0(path= os.path.join(gscad_path, 'CAMELS'))
-
-        assert len(dataset.stations()) == 308
-        assert dataset.fetch_static_features(dataset.stations()).shape == (308, 211)
-        assert dataset.fetch_static_features('80001').shape == (1, 211)
-        assert dataset.fetch_static_features(features=['gauge_lat', 'area']).shape == (308, 2)
-        assert dataset.fetch_static_features('80001', features=['gauge_lat', 'area']).shape == (1, 2)
-
-        df = dataset.fetch(stations=0.1, as_dataframe=True)
-        assert df.index.names == ['time', 'dynamic_features']
-        df = dataset.fetch(stations=1, as_dataframe=True)
-        assert df.unstack().shape == (14609, 39)
-        assert dataset.fetch(stations='80001', as_dataframe=True).unstack().shape == (14609, 39)
-
-        df = dataset.fetch(1, as_dataframe=True,
-                           dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
-                                             'potential_evaporation_sum', 'total_precipitation_sum',
-                                             'streamflow']).unstack()
-        assert df.shape == (14609, 5)
-        df = dataset.fetch(10, as_dataframe=True)
-        assert df.shape == (569751, 10)
-
-        data = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
-        assert data['static'].shape == (1, 211)
-        assert data['dynamic'].shape == (569751, 1)
-        return
-
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 1555, 25568, 111, 21)
@@ -179,11 +143,6 @@ class TestCamels(unittest.TestCase):
     def test_camels_se(self):
         dataset = CAMELS_SE(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 50, 21915, 76, 4)
-        return
-
-    def test_camels_dk():
-        dataset = CAMELS_DK(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 304, 12782, 119, 13)
         return
 
     def test_india(self):

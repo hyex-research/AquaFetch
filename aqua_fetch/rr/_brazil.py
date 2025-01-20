@@ -6,7 +6,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes, get_cpus
 from ._map import (
     min_air_temp,
@@ -36,7 +36,7 @@ from ._map import (
 SEP = os.sep
 
 
-class CAMELS_BR(Camels):
+class CAMELS_BR(_RainfallRunoff):
     """
     This is a dataset of 897 Brazilian catchments with 67 static features
     and 10 dyanmic features for each catchment. The dyanmic features are
@@ -50,7 +50,7 @@ class CAMELS_BR(Camels):
 
     Examples
     --------
-    >>> from water_datasets import CAMELS_BR
+    >>> from aqua_fetch import CAMELS_BR
     >>> dataset = CAMELS_BR()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -284,7 +284,7 @@ class CAMELS_BR(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CAMELS_BR
+        >>> from aqua_fetch import CAMELS_BR
         >>> dataset = CAMELS_BR()
         >>> dataset.area()  # returns area of all stations
         >>> dataset.stn_coords('65100000')  # returns area of station whose id is 912101A
@@ -556,7 +556,7 @@ class CAMELS_BR(Camels):
         return pd.DataFrame(static_df.loc[station][attributes])
 
 
-class CABra(Camels):
+class CABra(_RainfallRunoff):
     """
     Reads and fetches CABra dataset which is catchment attribute dataset
     following the work of `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_
@@ -566,7 +566,7 @@ class CABra(Camels):
 
     Examples
     ---------
-    >>> from water_datasets import CABra
+    >>> from aqua_fetch import CABra
     >>> dataset = CABra()
     >>> data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -1204,7 +1204,7 @@ class CABra(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import CABra
+        >>> from aqua_fetch import CABra
         >>> dataset = CABra()
         get the names of stations
         >>> stns = dataset.stations()

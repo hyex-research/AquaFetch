@@ -15,6 +15,7 @@ results/
 *.csv
 *.log
 
+*dist/
 
 # docs
 *build/

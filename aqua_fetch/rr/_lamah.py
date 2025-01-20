@@ -12,7 +12,7 @@ from .._backend import netCDF4
 
 from ..utils import get_cpus
 from ..utils import check_attributes
-from .camels import Camels, _handle_dynamic
+from .utils import _RainfallRunoff, _handle_dynamic
 
 from ._map import (
     observed_streamflow_cms,
@@ -44,7 +44,7 @@ from ._map import (
 SEP = os.sep
 
 
-class LamaHCE(Camels):
+class LamaHCE(_RainfallRunoff):
     """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
     (mainly Austria). The dataset is downloaded from
@@ -93,7 +93,7 @@ class LamaHCE(Camels):
 
         Examples
         --------
-        >>> from water_datasets import LamaHCE
+        >>> from aqua_fetch import LamaHCE
         >>> dataset = LamaHCE(timestep='D', data_type='total_upstrm')
         # The daily dataset is from 859 with 80 static and 22 dynamic features
         >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
@@ -337,7 +337,7 @@ class LamaHCE(Camels):
 
         Examples
         --------
-            >>> from water_datasets import CAMELS_AUS
+            >>> from aqua_fetch import CAMELS_AUS
             >>> dataset = CAMELS_AUS()
             ... # find out station ids
             >>> dataset.stations()
@@ -509,7 +509,7 @@ class LamaHCE(Camels):
 
         Examples
         --------
-            >>> from water_datasets import LamaHCE
+            >>> from aqua_fetch import LamaHCE
             >>> dataset = LamaHCE(timestep='D', data_type='total_upstrm')
             >>> df = dataset.fetch_static_features('99')  # (1, 61)
             ...  # get list of all static features

@@ -70,11 +70,11 @@ class RRLuleaSweden(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import RRLuleaSweden
-            >>> dataset = RRLuleaSweden()
-            >>> flow = dataset.fetch_flow()
-            >>> flow.shape
-            (37618, 3)
+        >>> from aqua_fetch import RRLuleaSweden
+        >>> dataset = RRLuleaSweden()
+        >>> flow = dataset.fetch_flow()
+        >>> flow.shape
+        (37618, 3)
         """
         fname = os.path.join(self.path, "flow_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
@@ -103,11 +103,11 @@ class RRLuleaSweden(Datasets):
 
         Examples
         --------
-            >>> from water_datasets import RRLuleaSweden
-            >>> dataset = RRLuleaSweden()
-            >>> pcp = dataset.fetch_pcp()
-            >>> pcp.shape
-            (967080, 1)
+        >>> from aqua_fetch import RRLuleaSweden
+        >>> dataset = RRLuleaSweden()
+        >>> pcp = dataset.fetch_pcp()
+        >>> pcp.shape
+        (967080, 1)
 
         """
 

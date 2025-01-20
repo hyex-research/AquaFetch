@@ -615,7 +615,7 @@ class GRQA(Datasets):
 
     Examples
     --------
-    >>> from water_datasets import GRQA
+    >>> from aqua_fetch import GRQA
     >>> ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
     >>> ds.parameters
     ['TPP', 'PON', 'TEMP', 'TSS', ...]
@@ -704,7 +704,7 @@ class GRQA(Datasets):
 
         Example
         --------
-        >>> from water_quality import GRQA
+        >>> from aqua_fetch import GRQA
         >>> dataset = GRQA()
         >>> df = dataset.fetch_parameter()
         fetch data for only one country

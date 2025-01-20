@@ -18,7 +18,7 @@ class CamelsChem(Datasets):
 
     Examples
     --------
-    >>> from water_datasets import CamelsChem
+    >>> from aqua_fetch import CamelsChem
     >>> ds = CamelsChem(path='/path/to/dataset')
     >>> len(ds.stations())
     516

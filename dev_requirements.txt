@@ -4,6 +4,4 @@ pandas<=2.1.4
 xarray<=2024.7.0
 easy_mpl
 
-openpyxl  # gw_punjab
-
-matplotlib
+openpyxl

@@ -22,7 +22,7 @@ class RC4USCoast(Datasets):
 
     Examples
     --------
-    >>> from water_quality import RC4USCoast
+    >>> from aqua_fetch import RC4USCoast
     >>> dataset = RC4USCoast()
     >>> len(dataset.stations)
     140
@@ -82,7 +82,9 @@ class RC4USCoast(Datasets):
     @property
     def stations(self)->List[str]:
         """
-        >>> from water_quality import RC4USCoast
+        Examples
+        --------
+        >>> from aqua_fetch import RC4USCoast
         >>> ds = RC4USCoast(path=r'F:\data\RC4USCoast')
         >>> len(ds.stations)
         140
@@ -96,7 +98,7 @@ class RC4USCoast(Datasets):
 
         Examples
         --------
-        >>> from water_quality import RC4USCoast
+        >>> from aqua_fetch import RC4USCoast
         >>> ds = RC4USCoast()
         >>> len(ds.parameters)
         27
@@ -164,7 +166,7 @@ class RC4USCoast(Datasets):
 
         Examples
         --------
-        >>> from water_quality import RC4USCoast
+        >>> from aqua_fetch import RC4USCoast
         >>> ds = RC4USCoast()
         >>> data = ds.fetch_chem(['temp', 'do'])
         >>> data
@@ -219,7 +221,7 @@ class RC4USCoast(Datasets):
 
         Examples
         --------
-        >>> from water_quality import RC4USCoast
+        >>> from aqua_fetch import RC4USCoast
         >>> ds = RC4USCoast()
         # get data of all stations as DataFrame
         >>> q = ds.fetch_q("all")

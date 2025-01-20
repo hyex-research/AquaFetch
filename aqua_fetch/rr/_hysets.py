@@ -5,7 +5,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import shapefile, xarray as xr
 from ..utils import check_attributes, sanity_check
 
@@ -25,7 +25,7 @@ from ._map import (
     )
 
 
-class HYSETS(Camels):
+class HYSETS(_RainfallRunoff):
     """
     database for hydrometeorological modeling of 14,425 North American watersheds
     from 1950-2018 following the work of `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
@@ -90,7 +90,7 @@ class HYSETS(Camels):
 
     Examples
     --------
-    >>> from water_datasets import HYSETS
+    >>> from aqua_fetch import HYSETS
     >>> dataset = HYSETS(path="path/to/HYSETS")
     ... # fetch data of a random station
     >>> df = dataset.fetch(1, as_dataframe=True)
@@ -248,7 +248,7 @@ class HYSETS(Camels):
 
         Examples
         --------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         ... # get name of all stations as list
         >>> dataset.stations()
@@ -299,7 +299,7 @@ class HYSETS(Camels):
         
         Examples
         --------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         >>> dataset.get_boundary(dataset.stations()[0])
         """
@@ -378,7 +378,7 @@ class HYSETS(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         >>> dataset.area()  # returns area of all stations
         >>> dataset.area('92')  # returns area of station whose id is 912101A
@@ -447,7 +447,7 @@ class HYSETS(Camels):
         """returns features of multiple stations
         Examples
         --------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         >>> stations = dataset.stations()[0:3]
         >>> features = dataset.fetch_stations_features(stations)
@@ -502,7 +502,7 @@ class HYSETS(Camels):
 
         Examples
         --------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         >>> dyn_features = dataset.fetch_dynamic_features('station_name')
         """
@@ -607,7 +607,7 @@ class HYSETS(Camels):
 
         Examples
         ---------
-        >>> from water_datasets import HYSETS
+        >>> from aqua_fetch import HYSETS
         >>> dataset = HYSETS()
         get the names of stations
         >>> stns = dataset.stations()

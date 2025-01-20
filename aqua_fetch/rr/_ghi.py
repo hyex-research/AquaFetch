@@ -1,8 +1,8 @@
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 
 
-class GHI(Camels):
+class GHI(_RainfallRunoff):
     """
     Geospatial dataset for hydrologic analyses in India
     """
