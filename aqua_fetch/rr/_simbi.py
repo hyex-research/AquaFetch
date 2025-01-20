@@ -4,7 +4,7 @@ from typing import List, Union, Dict
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 from ._map import (
@@ -15,7 +15,7 @@ from ._map import (
     )
 
 
-class Simbi(Camels):
+class Simbi(_RainfallRunoff):
     """
     monthly rainfall from 1905 - 2005, daily rainfall from 1920-1940, 70 daily
     streamflow series, and 23 monthly temperature series for 24 catchments of Haiti

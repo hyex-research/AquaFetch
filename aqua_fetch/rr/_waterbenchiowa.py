@@ -4,7 +4,7 @@ from typing import List, Union, Dict
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 from ._map import (
@@ -15,7 +15,7 @@ from ._map import (
     )
 
 
-class WaterBenchIowa(Camels):
+class WaterBenchIowa(_RainfallRunoff):
     """
     Rainfall run-off dataset for Iowa (US) following the work of
     `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_

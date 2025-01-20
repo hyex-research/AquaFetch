@@ -22,7 +22,7 @@ def gb_message():
                      f"path as dataset=Camels(data=data)")
 
 
-class Camels(Datasets):
+class _RainfallRunoff(Datasets):
     """
     This is the parent class for invidual rainfall-runoff datasets like CAMELS-GB etc.
     This class is not meant to be for direct use. It is inherited by the child classes
@@ -93,7 +93,7 @@ class Camels(Datasets):
             kwargs : dict
                 Any other keyword arguments for the Datasets class
         """
-        super(Camels, self).__init__(path=path, verbosity=verbosity, overwrite=overwrite, **kwargs)
+        super(_RainfallRunoff, self).__init__(path=path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
         self.bndry_id_map = {}
         self.timestep = timestep

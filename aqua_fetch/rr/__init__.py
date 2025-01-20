@@ -11,7 +11,7 @@ from typing import Union, List
 import pandas as pd
 from .._backend import plt, plt_Axes
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ._camels import CAMELS_AUS
 from ._camels import CAMELS_CL
 from ._camels import CAMELS_GB
@@ -56,7 +56,7 @@ from .mtropics import MtropicsVietnam
 
 
 DATASETS = {
-    "camels": Camels,
+    "camels": _RainfallRunoff,
     "CAMELS_AUS": CAMELS_AUS,
     "CAMELS_CL": CAMELS_CL,
     "CAMELS_GB": CAMELS_GB,

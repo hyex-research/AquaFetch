@@ -6,7 +6,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import shapefile
 from .._backend import xarray as xr
 from ..utils import merge_shapefiles
@@ -38,7 +38,7 @@ from ._map import (
     )
 
 
-class CCAM(Camels):
+class CCAM(_RainfallRunoff):
     """
     Dataset for chinese catchments. The CCAM dataset was published by
     `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_ has two sets.

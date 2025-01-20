@@ -9,7 +9,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._project import utm_to_lat_lon
 from ..utils import get_cpus
 from ..utils import check_attributes, download, _unzip
@@ -58,7 +58,7 @@ from ._map import (
 SEP = os.sep
 
 
-class CAMELS_US(Camels):
+class CAMELS_US(_RainfallRunoff):
     """
     This is a dataset of 671 US catchments with 59 static features
     and 8 dyanmic features for each catchment. The dyanmic features are
@@ -378,7 +378,7 @@ class CAMELS_US(Camels):
         return df
 
 
-class CAMELS_GB(Camels):
+class CAMELS_GB(_RainfallRunoff):
     """
     This is a dataset of 671 catchments with 145 static features
     and 10 dyanmic features for each catchment following the work of
@@ -648,7 +648,7 @@ class CAMELS_GB(Camels):
         return static_df.loc[station][features]
 
 
-class CAMELS_AUS(Camels):
+class CAMELS_AUS(_RainfallRunoff):
     """
     This is a dataset of 561 Australian catchments with 187 static features and
     26 dyanmic features for each catchment. The dyanmic features are timeseries
@@ -1072,7 +1072,7 @@ class CAMELS_AUS(Camels):
         return self._read_static(stn_id, static_features)
 
 
-class CAMELS_CL(Camels):
+class CAMELS_CL(_RainfallRunoff):
     """
     This is a dataset of 516 Chilean catchments with
     104 static features and 12 dyanmic features for each catchment.
@@ -1403,7 +1403,7 @@ class CAMELS_CL(Camels):
         return self._read_static(stn_id, features)
 
 
-class CAMELS_CH(Camels):
+class CAMELS_CH(_RainfallRunoff):
     """
     Data of 331 Swiss catchments from
     `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_ .
@@ -1941,7 +1941,7 @@ class CAMELS_CH(Camels):
         return observed_streamflow_mmd()
 
 
-class CAMELS_DE(Camels):
+class CAMELS_DE(_RainfallRunoff):
     """
     This is the data from 1555 German catchments following the work of
     `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_ .
@@ -2294,7 +2294,7 @@ class CAMELS_DE(Camels):
         return observed_streamflow_mmd()
 
 
-class CAMELS_SE(Camels):
+class CAMELS_SE(_RainfallRunoff):
     """
     Dataset of 50 Swedish catchments following the works of
     `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ .
@@ -2606,7 +2606,7 @@ class CAMELS_SE(Camels):
         return df.loc[stations, features]
 
 
-class CAMELS_DK(Camels):
+class CAMELS_DK(_RainfallRunoff):
     """
     This is an updated version of :py class: `water_datasets.rr.CAMELS_DK0`
     dataset . This dataset was presented
@@ -2972,7 +2972,7 @@ class CAMELS_DK(Camels):
         return coords
 
 
-class CAMELS_IND(Camels):
+class CAMELS_IND(_RainfallRunoff):
     """
     Dataset of 472 catchments from Republic of India following the works of
     `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_.
@@ -3319,7 +3319,7 @@ class CAMELS_IND(Camels):
         return df.loc[stations, features]
 
 
-class CAMELS_FR(Camels):
+class CAMELS_FR(_RainfallRunoff):
     """
     Dataset of 654 catchments from France following the works of
     `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_.

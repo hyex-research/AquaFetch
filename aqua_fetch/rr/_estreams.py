@@ -31,7 +31,7 @@ except (ModuleNotFoundError, ImportError):
 from .._backend import xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
-from .camels import Camels
+from .utils import _RainfallRunoff
  
  
 from ._map import (
@@ -54,7 +54,7 @@ from ._map import (
                    )
 
 
-class EStreams(Camels):
+class EStreams(_RainfallRunoff):
     """
     Handles EStreams data following the work of
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
@@ -456,7 +456,7 @@ class EStreams(Camels):
         return self.meteo_data(stations)
 
 
-class _EStreams(Camels):
+class _EStreams(_RainfallRunoff):
     """
     Parent class for those datasets which use static and dynamic data from EStreams.
     """

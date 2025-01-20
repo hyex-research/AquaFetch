@@ -4,7 +4,7 @@ import concurrent.futures as cf
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import netCDF4
 from .._backend import xarray as xr
 from ..utils import check_attributes, get_cpus
@@ -66,7 +66,7 @@ BUL_COLUMNS = [
 ]
 
 
-class Bull(Camels):
+class Bull(_RainfallRunoff):
     """
     Following the works of `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_.
     The data is taken from the `Zenodo repository <https://zenodo.org/records/10629809>`_.

@@ -6,11 +6,11 @@ from typing import Union, List
 import numpy as np
 import pandas as pd 
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 
-class HYPE(Camels):
+class HYPE(_RainfallRunoff):
     """
     Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_ .
     This is a rainfall-runoff dataset of Costa Rica of 564 stations from 1985 to

@@ -203,7 +203,7 @@ The low level API provides access to each individual dataset classes.
 This provides more control over the datasets.
 
 
-.. autoclass:: aqua_fetch.rr.Camels
+.. autoclass:: aqua_fetch.rr._RainfallRunoff
    :members:
    :show-inheritance:
 

@@ -12,7 +12,7 @@ from .._backend import netCDF4
 
 from ..utils import get_cpus
 from ..utils import check_attributes
-from .camels import Camels, _handle_dynamic
+from .utils import _RainfallRunoff, _handle_dynamic
 
 from ._map import (
     observed_streamflow_cms,
@@ -44,7 +44,7 @@ from ._map import (
 SEP = os.sep
 
 
-class LamaHCE(Camels):
+class LamaHCE(_RainfallRunoff):
     """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
     (mainly Austria). The dataset is downloaded from

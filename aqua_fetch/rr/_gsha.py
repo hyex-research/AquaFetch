@@ -21,7 +21,7 @@ from .._backend import xarray as xr, shapefile
 from ..utils import get_cpus
 from ..utils import check_attributes
 from ..utils import merge_shapefiles
-from .camels import Camels
+from .utils import Camels
 
 from ._map import (
     total_precipitation_with_specifier,

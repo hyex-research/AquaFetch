@@ -3,7 +3,7 @@ from typing import Union, List, Dict
 
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 from ._map import (
@@ -21,7 +21,7 @@ from ._map import (
     )
 
 
-class Caravan_DK(Camels):
+class Caravan_DK(_RainfallRunoff):
     """
     Reads Caravan extension Denmark - Danish dataset for large-sample hydrology
     following the works of `Koch and Schneider 2022 <https://doi.org/10.34194/geusb.v49.829>`_ .

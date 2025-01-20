@@ -6,7 +6,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from ..utils import check_attributes, get_cpus
 from ._map import (
     min_air_temp,
@@ -36,7 +36,7 @@ from ._map import (
 SEP = os.sep
 
 
-class CAMELS_BR(Camels):
+class CAMELS_BR(_RainfallRunoff):
     """
     This is a dataset of 897 Brazilian catchments with 67 static features
     and 10 dyanmic features for each catchment. The dyanmic features are
@@ -556,7 +556,7 @@ class CAMELS_BR(Camels):
         return pd.DataFrame(static_df.loc[station][attributes])
 
 
-class CABra(Camels):
+class CABra(_RainfallRunoff):
     """
     Reads and fetches CABra dataset which is catchment attribute dataset
     following the work of `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_

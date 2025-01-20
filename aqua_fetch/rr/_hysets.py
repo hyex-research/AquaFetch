@@ -5,7 +5,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import shapefile, xarray as xr
 from ..utils import check_attributes, sanity_check
 
@@ -25,7 +25,7 @@ from ._map import (
     )
 
 
-class HYSETS(Camels):
+class HYSETS(_RainfallRunoff):
     """
     database for hydrometeorological modeling of 14,425 North American watersheds
     from 1950-2018 following the work of `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_

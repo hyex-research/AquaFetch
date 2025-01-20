@@ -11,7 +11,7 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 
-from .camels import Camels
+from .utils import _RainfallRunoff
 from .._backend import netCDF4, shapefile, xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
@@ -30,7 +30,7 @@ HOURLY_START = "1910-01-01"
 HOURLY_END = "2024-05-30"
 
 
-class USGS(Camels):
+class USGS(_RainfallRunoff):
     """
     This class handles the hydrometeorological data for the USA. The daily and 
     hourly discharge data is downloaded
