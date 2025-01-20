@@ -1,14 +1,32 @@
 Installation
 *************
-Currently the library can be installed either using the github link or the setup.py file.
-We will soon release our package on pypi for easier installation.
+Thehe library can be installed using `pip`, or the github link or the setup.py file.
+
+using pip
+=========
+The most easy way to install aqua-fetch is using ``pip``
+::
+    pip install aqua-fetch
+
+However, if you are interested in installing all dependencies of AquaFetch, you can
+choose to install all of them as well.
+::
+    pip install aqua-fetch[all]
+
+This will install xarray, shapely, shapefile and easy_mpl libraries. The xarray 
+library is used to save the data in netCDF4 format for faster I/O operations. 
+shapely and shapefile libraries are used to process shapefiles while easy_mpl is used for plotting purpose.
+
+We can also specify the AquaFetch version that we want to install as below
+::
+    pip install aqua-fetch==1.0.0
+
+To updated the installation run
+::
+    pip install --upgrade aqua-fetch
 
 using github link
 =================
-
-You can install AquaFetch using `pip`
-::
-    pip install aqua-fetch
 
 You can also use github link to install AquaFetch.
 ::
