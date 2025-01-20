@@ -1749,7 +1749,7 @@ class Portugal(_EStreams):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
-        fpath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'portugal_stn_codes.csv')
+        fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
 
     @property

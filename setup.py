@@ -57,8 +57,9 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'data': ['portugal_stn_codes.csv']},
+    package_data={'aqua_fetch': ['data/portugal_stn_codes.csv']},
     include_package_data=True,
+    #data_files=[('data', ['data/portugal_stn_codes.csv'])],
 
     classifiers=[
         'Development Status :: 4 - Beta',
