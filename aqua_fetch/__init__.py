@@ -4,7 +4,7 @@ from typing import Union
 
 import pandas as pd
 
-from .rr import Camels
+from .rr import _RainfallRunoff
 from .rr import CAMELS_AUS
 from .rr import CAMELS_CL
 from .rr import CAMELS_BR

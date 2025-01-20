@@ -21,7 +21,7 @@ from .._backend import xarray as xr, shapefile
 from ..utils import get_cpus
 from ..utils import check_attributes
 from ..utils import merge_shapefiles
-from .utils import Camels
+from .utils import _RainfallRunoff
 
 from ._map import (
     total_precipitation_with_specifier,
@@ -68,7 +68,7 @@ METEO_MAP = {
 }
 
 
-class GSHA(Camels):
+class GSHA(_RainfallRunoff):
     """
     Global streamflow characteristics, hydrometeorology and catchment
     attributes following `Peirong et al., 2023 <https://doi.org/10.5194/essd-16-1559-2024>`_.
@@ -921,7 +921,7 @@ class GSHA(Camels):
         return df
 
 
-class _GSHA(Camels):
+class _GSHA(_RainfallRunoff):
     """
     Parent class for those datasets which uses static and dynamic features from
     GSHA dataset . The following dataset classes are based on this class:
