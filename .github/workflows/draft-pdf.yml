@@ -1,5 +1,7 @@
 name: Draft PDF
-on: [push]
+on:
+    push:
+      branches: [ "master", "dev"]
 
 jobs:
   paper:
