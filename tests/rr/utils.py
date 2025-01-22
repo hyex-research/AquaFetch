@@ -67,15 +67,15 @@ def test_area(dataset):
     s = dataset.area()  # returns area of all stations
     assert isinstance(s, pd.Series)
     assert len(s) == len(stations)
-    assert s.name == "area", s.name
+    assert s.name == "area_km2", s.name
     s = dataset.area(stations[0])  # returns area of station
     assert isinstance(s, pd.Series)
     assert len(s) == 1, len(s)
-    assert s.name == "area"
+    assert s.name == "area_km2"
     s = dataset.area(stations[0:2])  # returns area of two stations
     assert isinstance(s, pd.Series)
     assert len(s) == 2
-    assert s.name == "area"
+    assert s.name == "area_km2"
     return
 
 
@@ -111,13 +111,13 @@ def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features
         assert isinstance(df, pd.DataFrame)
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
-        df = dataset.fetch_static_features(stn_id, features='all')
+        df = dataset.fetch_static_features(stn_id, static_features='all')
 
         assert isinstance(df,
                           pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
-        df = dataset.fetch_static_features("all", features='all')
+        df = dataset.fetch_static_features("all", static_features='all')
 
         assert_dataframe(df, dataset)
 

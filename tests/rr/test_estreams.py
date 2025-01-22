@@ -1,7 +1,7 @@
 
 import os
 import site
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import logging
@@ -33,7 +33,7 @@ gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 ds = EStreams(path=gscad_path, verbosity=3)
 
-assert ds.md.shape == (15047, 24), ds.md.shape
+assert ds.md.shape == (17130, 29), ds.md.shape
 
 assert len(ds.countries) == 39, len(ds.agencies)
 
@@ -70,9 +70,9 @@ def test_area_():
 
 def test_fetch_static_features():
     out = ds.fetch_static_features(countries='IE')
-    assert out.shape == (464, 208), out.shape
+    assert out.shape == (464, 214), out.shape
 
-    test_fetch_static_feature(ds, 'IEEP0281', 15047, 208)
+    test_fetch_static_feature(ds, 'IEEP0281', 17130, 214)
     return
 
 
@@ -192,4 +192,3 @@ test_dataset(ds,
               num_dyn_attrs=10,
               test_df=False,
               )
-

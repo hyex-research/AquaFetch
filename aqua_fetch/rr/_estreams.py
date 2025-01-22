@@ -51,6 +51,7 @@ from ._map import (
     max_air_temp,
     min_air_temp,
     solar_radiation,
+    observed_streamflow_cms,
     )
 
 
@@ -60,8 +61,8 @@ class EStreams(_RainfallRunoff):
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
     The data is available at its `zenodo repository <https://zenodo.org/records/13961394>`_ .
     It should be noted that this dataset does not contain observed streamflow data.
-    It has 15047 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
-    features with yearly timestep and 208 static features. The dynamic features
+    It has 17130 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
+    features with yearly timestep and 214 static features. The dynamic features
     are from 1950-01-01 to 2023-06-30.
 
     Examples
@@ -78,6 +79,7 @@ class EStreams(_RainfallRunoff):
         self._download()
 
         self.md = self.gauge_stations()
+        self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
         self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
         self._static_features = self.static_data().columns.tolist()
@@ -133,6 +135,9 @@ class EStreams(_RainfallRunoff):
                 dfs.append(df)
 
         df = pd.concat(dfs, axis=1)
+
+        df.rename(columns={'area_estreams': catchment_area()}, inplace=True)
+
         df.columns.name = 'static_features'
         df.index.name = 'station_id'
         return df
@@ -150,7 +155,8 @@ class EStreams(_RainfallRunoff):
 
     def stations(self) -> List[str]:
         """
-        Returns a list of all station names
+        Returns a list of all station names. Note that the `basin_id` column is 
+        used as the station name.
         """
         return self._stations
 
@@ -222,7 +228,7 @@ class EStreams(_RainfallRunoff):
         """area of catchments im km2"""
 
         stations = self._get_stations(countries, stations)
-        return self.md.loc[stations, 'area']
+        return self.md.loc[stations, catchment_area()]
 
     def fetch_static_features(
             self,
@@ -482,6 +488,8 @@ class _EStreams(_RainfallRunoff):
         super().__init__(path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
         if estreams_path is None:
+            if self.verbosity:
+                print(f"estreams_path is not provided, using {os.path.dirname(self.path)} as default")
             self.estreams_path = os.path.dirname(self.path)
         else:
             self.estreams_path = estreams_path
@@ -496,7 +504,7 @@ class _EStreams(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        return ['obs_q_cms'] + self.estreams.dynamic_features
+        return [observed_streamflow_cms()] + self.estreams.dynamic_features
 
     @property
     def static_features(self) -> List[str]:
@@ -512,11 +520,13 @@ class _EStreams(_RainfallRunoff):
 
     @property
     def _area_name(self) -> str:
-        return 'area'
+        # area_official is the area given by data provides but it contains nans
+        # supposing that estreams people's method is better/updated one
+        return catchment_area()
 
     @property
     def _q_name(self) -> str:
-        return "obs_q_cms"
+        return observed_streamflow_cms()
 
     @property
     def start(self) -> pd.Timestamp:
@@ -541,14 +551,14 @@ class _EStreams(_RainfallRunoff):
 
         daily_q = None
 
-        if 'obs_q_cms' in features:
+        if observed_streamflow_cms() in features:
             daily_q = self.get_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
                 daily_q = daily_q.loc[st:en, stations]
 
-            features.remove('obs_q_cms')
+            features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
             return daily_q
@@ -562,7 +572,7 @@ class _EStreams(_RainfallRunoff):
                 data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
 
                 # first create a new dimension in daily_q named dynamic_features
-                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
                 # -1 because the data in .nc files hysets starts with 0
@@ -745,7 +755,7 @@ class Finland(_EStreams):
         return pd.Timestamp('2012-01-01')
 
     def stations(self)->List[str]:
-        """returns the basin_id of the stations"""
+        """returns the `basin_id` of the stations"""
         return self._stations
 
     def gauge_id_basin_id_map(self)->dict:
@@ -1040,12 +1050,15 @@ class Ireland(_EStreams):
         return stn in self.epa_stations
 
     def stations(self)->List[str]:
+        """The `basin_id` EStreams dataset is used as station names"""
         return self._stations
     
     def gauge_id_basin_id_map(self)->dict:
-        # guage_id '18118'
-        # basin_id 'IEEP0281'
-        # '18118' -> 'IEEP0281'
+        """
+        A dictionary whose keys are gauge_id and values are basin_id. 
+        Supposing guage_id is '18118' and basin_id is 'IEEP0281'
+        then '18118' -> 'IEEP0281'
+        """
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
 
     def basin_id_gauge_id_map(self)->dict:

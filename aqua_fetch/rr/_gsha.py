@@ -1008,6 +1008,10 @@ class _GSHA(_RainfallRunoff):
         >>> from aqua_fetch import Japan
         >>> dataset = Japan()
         >>> dataset.get_boundary(dataset.stations()[0])
+        ... # for Arcticnet
+        >>> from aqua_fetch import Arcticnet
+        >>> dataset = Arcticnet()
+        >>> dataset.get_boundary('1001')
         """
 
         if shapefile is None:
