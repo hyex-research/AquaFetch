@@ -2,6 +2,7 @@
 [![Documentation Status](https://readthedocs.org/projects/aquafetch/badge/?version=latest)](https://aquafetch.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/aqua-fetch.svg)](https://badge.fury.io/py/aqua-fetch)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aqua-fetch)](https://pypi.org/project/aqua-fetch/)
+[![status](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387/status.svg)](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387)
 
 <p float="left">
   <img src="/docs/source/imgs/logo.png"/>
