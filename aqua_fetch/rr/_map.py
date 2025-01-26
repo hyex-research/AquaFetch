@@ -407,3 +407,68 @@ def gauge_longitude()->str:
 
 def slope(unit)->str:
     return f"slope_{unit}"
+
+
+def gauge_elevation_meters()->str:
+    """elevation of the gauge station in meters"""
+    return "elev_gauge_m"
+
+
+def catchment_elevation_meters()->str:
+    """mean elevation of the catchment in meters"""
+    return "elev_catch_m"
+
+
+def min_catchment_elevation_meters()->str:
+    """minimum elevation of the catchment in meters"""
+    return "elev_catch_min_m"
+
+
+def max_catchment_elevation_meters()->str:
+    """maximum elevation of the catchment in meters"""
+    return "elev_catch_max_m"
+
+
+def urban_fraction()->str:
+    """Fraction of urban area in the catchment"""
+    return "urban_frac"
+
+
+def forest_fraction()->str:
+    """Fraction of forest area in the catchment"""
+    return "forest_frac"
+
+
+def grass_fraction()->str:
+    """Fraction of grass area in the
+    catchment"""
+    return "grass_frac"
+
+
+def impervious_fraction()->str:
+    """Fraction of impervious area in the catchment"""
+    return "imperv_frac"
+
+
+def aridity_index()->str:
+    return "aridity"
+
+
+def gauge_density()->str:
+    return "gauge_density"
+
+
+def baseflow_index()->str:
+    return "bfi"
+
+
+def catchment_centroid_latitude()->str:
+    return "lat_catch"
+
+
+def catchment_centroid_longitude()->str:
+    return "long_catch"
+
+
+def elong_ratio()->str:
+    return "elong_ratio"

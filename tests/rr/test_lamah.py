@@ -76,9 +76,9 @@ for idx, data_type in enumerate(['total_upstrm',
     dataset = LamaHIce(path=gscad_path, timestep="H", data_type=data_type, verbosity=4)
 
     test_dataset(dataset, 
-                    76, 
-                    412825, 
-                    138, 
+                    num_stations=76, 
+                    dyn_data_len=412825, 
+                    num_static_attrs=138, 
                     num_dyn_attrs=28,
                     yearly_steps=8761
                     )

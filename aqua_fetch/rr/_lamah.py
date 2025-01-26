@@ -17,6 +17,9 @@ from .utils import _RainfallRunoff, _handle_dynamic
 from ._map import (
     observed_streamflow_cms,
     min_air_temp,
+    min_air_temp_with_specifier,
+    max_air_temp_with_specifier,
+    mean_air_temp_with_specifier,
     max_air_temp,
     mean_air_temp,
     total_precipitation,
@@ -32,6 +35,7 @@ from ._map import (
     min_dewpoint_temperature_at_2m,
     mean_dewpoint_temperature_at_2m,
     mean_air_pressure,
+    total_potential_evapotranspiration,
 )
 
 from ._map import (
@@ -104,11 +108,11 @@ class LamaHCE(_RainfallRunoff):
         >>> dataset = LamaHCE(timestep='H', data_type='total_upstrm')
         >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
         (859, 80, 17)
-        >>> dataset.fetch_dynamic_features('1', features = ['obs_q_cms'])
+        >>> dataset.fetch_dynamic_features('1', features = ['q_cms_obs'])
         """
 
-        assert timestep in self.time_steps, f"invalid timestep {timestep} given"
-        assert data_type in self._data_types, f"invalid data_type {data_type} given."
+        assert timestep in self.time_steps, f"invalid timestep '{timestep}' given, choose from {self.time_steps}"
+        assert data_type in self._data_types, f"invalid data_type '{data_type}' given, choose from {self._data_types}"
 
         self.timestep = timestep
         self.data_type = data_type
@@ -142,11 +146,10 @@ class LamaHCE(_RainfallRunoff):
     @property
     def static_map(self) -> Dict[str, str]:
         return {
-                'area_calc': catchment_area(),
+                'area_calc': catchment_area(), # todo : difference between area_calc and area_gov?
                 'lat': gauge_latitude(),
                 'slope_mean': slope('mkm-1'),
                 'lon': gauge_longitude(),
-
         }
 
     @property
@@ -207,6 +210,9 @@ class LamaHCE(_RainfallRunoff):
         # since data is very large, saving all the data in one file
         # consumes a lot of memory, which is impractical for most of the personal
         # computers! Therefore, saving each feature separately
+
+        # todo: if we are only interested in one dynamic feature say 'o_cms_obs', 
+        # then why do we need to save all the dynamic features in the netcdf file?
 
         fdir = os.path.join(self.path, fdir)
         if not os.path.exists(fdir):
@@ -337,13 +343,13 @@ class LamaHCE(_RainfallRunoff):
 
         Examples
         --------
-            >>> from aqua_fetch import CAMELS_AUS
-            >>> dataset = CAMELS_AUS()
-            ... # find out station ids
-            >>> dataset.stations()
-            ... # get data of selected stations
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-            ...  as_dataframe=True)
+        >>> from aqua_fetch import CAMELS_AUS
+        >>> dataset = CAMELS_AUS()
+        ... # find out station ids
+        >>> dataset.stations()
+        ... # get data of selected stations
+        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        ...  as_dataframe=True)
         """
         st, en = self._check_length(st, en)
 
@@ -385,16 +391,16 @@ class LamaHCE(_RainfallRunoff):
 
     @property
     def _q_name(self) -> str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
-    @property
-    def _area_name(self) -> str:
-        # todo : difference between area_calc and area_gov?
-        return 'area_calc'
+    # @property
+    # def _area_name(self) -> str:
+    #     
+    #     return catchment_area()
 
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['lat', 'lon']
+    # @property
+    # def _coords_name(self) -> List[str]:
+    #     return ['lat', 'lon']
 
     def gauge_attributes(self) -> pd.DataFrame:
         fname = os.path.join(self.ts_path,
@@ -416,7 +422,10 @@ class LamaHCE(_RainfallRunoff):
         return df
 
     def static_data(self) -> pd.DataFrame:
-        return pd.concat([self.catchment_attributes(), self.gauge_attributes()], axis=1)
+        """returns all static attributes of LamaHCE dataset"""
+        df = pd.concat([self.catchment_attributes(), self.gauge_attributes()], axis=1)
+        df.rename(columns=self.static_map, inplace=True)
+        return df
 
     def _read_dynamic_from_csv1(
             self,
@@ -548,12 +557,12 @@ class LamaHCE(_RainfallRunoff):
         q_df = pd.DataFrame()
         if features is None:
             q_df = self._read_q_for_station(station)
-        elif features in ["obs_q_cms", self.chk_col]:
+        elif features in [observed_streamflow_cms(), self.chk_col]:
             return self._read_q_for_station(station)
         if isinstance(features, list):
-            if len(features) == 1 and features[0] in ['obs_q_cms', self.chk_col]:
+            if len(features) == 1 and features[0] in [observed_streamflow_cms(), self.chk_col]:
                 return self._read_q_for_station(station)
-            elif 'obs_q_cms' in features or self.chk_col in features:
+            elif observed_streamflow_cms() in features or self.chk_col in features:
                 q_df = self._read_q_for_station(station)
 
         met_df = self._read_met_for_station(station, features)
@@ -626,9 +635,14 @@ class LamaHCE(_RainfallRunoff):
                                  # usecols=usecols
                                  )
 
-            periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
-                                                 month=met_df["MM"], day=met_df["DD"],
-                                                 freq="D")
+            if pd.__version__ > "2.1.4":
+                periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
+                                                    month=met_df["MM"], day=met_df["DD"],
+                                                    freq="D")
+            else:
+                periods = pd.PeriodIndex(year=met_df["YYYY"],
+                            month=met_df["MM"], day=met_df["DD"],
+                            freq="D")
             met_df.index = periods.to_timestamp()
 
         else:
@@ -651,9 +665,14 @@ class LamaHCE(_RainfallRunoff):
             met_df = pd.read_csv(self.met_fname(station), sep=';', dtype=met_dtype,  # usecols=usecols
                                  )
 
-            periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
-                                                 month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
-                                                 minute=met_df["mm"], freq="h")
+            if pd.__version__ > "2.1.4":
+                periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
+                                                    month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
+                                                    minute=met_df["mm"], freq="h")
+            else:
+                periods = pd.PeriodIndex(year=met_df["YYYY"],
+                            month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
+                            minute=met_df["mm"], freq="h")
             met_df.index = periods.to_timestamp()
 
         # remove the cols specifying index
@@ -677,9 +696,16 @@ class LamaHCE(_RainfallRunoff):
 
         if self.timestep == 'D':
             q_df = pd.read_csv(q_fname, sep=';', dtype=q_dtype)
-            periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
+
+            if pd.__version__ > "2.1.4":
+                periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
                                                  month=q_df["MM"], day=q_df["DD"],
                                                  freq="D")
+            else:
+                periods = pd.PeriodIndex(year=q_df["YYYY"],
+                            month=q_df["MM"], day=q_df["DD"],
+                            freq="D")
+
             q_df.index = periods.to_timestamp()
             index = pd.date_range("1981-01-01", "2017-12-31", freq="D")
             q_df = q_df.reindex(index=index)
@@ -691,9 +717,15 @@ class LamaHCE(_RainfallRunoff):
 
             q_df = pd.read_csv(q_fname, sep=';', dtype=q_dtype)
 
-            periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
+            if pd.__version__ > "2.1.4":
+                periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
                                                  month=q_df["MM"], day=q_df["DD"], hour=q_df["hh"],
                                                  minute=q_df["mm"], freq="h")
+            else:
+                periods = pd.PeriodIndex(year=q_df["YYYY"],
+                            month=q_df["MM"], day=q_df["DD"], hour=q_df["hh"],
+                            minute=q_df["mm"], freq="h")
+
             q_df.index = periods.to_timestamp()
             index = pd.date_range("1981-01-01", "2017-12-31", freq="h")
             q_df = q_df.reindex(index=index)
@@ -787,26 +819,25 @@ class LamaHIce(LamaHCE):
                 'lat_gauge': gauge_latitude(),
                 'slope_mean_basin': slope('mkm-1'),
                 'lon_gauge': gauge_longitude(),
-
         }
 
     @property
     def dyn_map(self):
         return {
             'D': {
-                'qobs': 'obs_q_cms',
-                '2m_temp_min': 'min_temp_C',
-                '2m_temp_max': 'max_temp_C',
-                '2m_temp_mean': 'mean_temp_C',
-                'prec': 'pcp_mm',
-                'pet': 'pet_mm',
+                'qobs': observed_streamflow_cms(),
+                '2m_temp_min': min_air_temp_with_specifier('2m'),
+                '2m_temp_max': max_air_temp_with_specifier('2m'),
+                '2m_temp_mean': mean_air_temp_with_specifier('2m'),
+                'prec': total_precipitation(),
+                'pet': total_potential_evapotranspiration(),
                 'ref_et_rav': 'ref_et_mm',
             },
             'H': {
-                'qobs': 'obs_q_cms',
-                '2m_temp': 'mean_temp_C',
-                'prec': 'pcp_mm',
-                'pet': 'pet_mm',
+                'qobs': observed_streamflow_cms(),
+                '2m_temp': mean_air_temp_with_specifier('2m'),
+                'prec': total_precipitation(),
+                'pet': total_potential_evapotranspiration(),
                 'ref_et_rav': 'ref_et_mm',
             }
         }
@@ -849,13 +880,13 @@ class LamaHIce(LamaHCE):
             return "20230930 23:00"
         return "20211231"
 
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['lat_gauge', 'lon_gauge']
+    # @property
+    # def _coords_name(self) -> List[str]:
+    #     return ['lat_gauge', 'lon_gauge']
 
-    @property
-    def _area_name(self) -> str:
-        return 'area_calc_basin'
+    # @property
+    # def _area_name(self) -> str:
+    #     return 'area_calc_basin'
 
     @property
     def gauges_path(self):
@@ -890,7 +921,11 @@ class LamaHIce(LamaHCE):
 
         if self.verbosity>2:
             print('reading static data')
-        return pd.concat([self.basin_attributes(), self.gauge_attributes()], axis=1)
+        df = pd.concat([self.basin_attributes(), self.gauge_attributes()], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def gauge_attributes(self) -> pd.DataFrame:
         """
@@ -994,11 +1029,10 @@ class LamaHIce(LamaHCE):
             stn_id: Union[str, list] = 'all',
             static_features: Union[str, list] = None
     ) -> pd.DataFrame:
-
-        basin = self.basin_attributes()
-        gauge = self.gauge_attributes()
-
-        df = pd.concat([basin, gauge], axis=1)
+        """
+        fetches static features of one or more stations
+        """
+        df = self.static_data()
         df.index = df.index.astype(str)
 
         static_features = check_attributes(static_features, self.static_features, 'static_features')
@@ -1238,7 +1272,7 @@ class LamaHIce(LamaHCE):
 
         if cpus > 1:
 
-            dynamic_features = [dynamic_features for _ in range(len(stations))]
+            #dynamic_features = [dynamic_features for _ in range(len(stations))]
 
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
@@ -1247,11 +1281,17 @@ class LamaHIce(LamaHCE):
                     #dynamic_features
                 )
 
-            results = {stn: data for stn, data in zip(stations, results)}
+            if dynamic_features == 'all':
+                results = {stn: data for stn, data in zip(stations, results)}
+            else:
+                results = {stn: data.loc[:, dynamic_features] for stn, data in zip(stations, results)}
         else:
             results = {}
             for idx, stn in enumerate(stations):
-                results[stn] = self.read_ts_of_station(stn)
+                if dynamic_features == 'all':
+                    results[stn] = self.read_ts_of_station(stn)
+                else:
+                    results[stn] = self.read_ts_of_station(stn).loc[:, dynamic_features]
 
                 if idx % 10 == 0:
                     print(f"processed {idx} stations")

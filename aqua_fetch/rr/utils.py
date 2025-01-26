@@ -12,6 +12,12 @@ from .._backend import shapefile
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
 from ..utils import check_attributes
 
+from ._map import (
+    catchment_area,
+    gauge_latitude,
+    gauge_longitude,
+)
+
 # directory separator
 SEP = os.sep
 
@@ -280,10 +286,10 @@ class _RainfallRunoff(Datasets):
 
         stations = check_attributes(stations, self.stations(), 'stations')
 
-        df = self.fetch_static_features(static_features=[self._area_name])
-        df.columns = ['area']
+        df = self.fetch_static_features(static_features=[catchment_area()])
+        #df.columns = [catchment_area()]
 
-        return df.loc[stations, 'area']
+        return df.loc[stations, catchment_area()]
 
     def _check_length(self, st, en):
         if st is None:
@@ -758,8 +764,8 @@ class _RainfallRunoff(Datasets):
         >>> dataset.stn_coords(['G0050115', '912101A'])  # returns coordinates of two stations
 
         """
-        df = self.fetch_static_features(static_features=self._coords_name)
-        df.columns = ['lat', 'long']
+        df = self.fetch_static_features(static_features=[gauge_latitude(), gauge_longitude()])
+        #df.columns = ['lat', 'long']
         stations = check_attributes(stations, self.stations())
 
         df = df.loc[stations, :].astype(self.fp)
