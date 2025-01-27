@@ -9,7 +9,7 @@ import os
 from typing import Union, List
 
 import pandas as pd
-from .._backend import plt, plt_Axes
+from .._backend import plt, plt_Axes, xarray as xr
 
 from .utils import _RainfallRunoff
 from ._camels import CAMELS_AUS
@@ -427,7 +427,7 @@ class RainfallRunoff(object):
               en: Union[None, str] = None,
               as_dataframe: bool = False,
               **kwargs  # todo, where do these keyword args go?
-              ) -> Union[dict, pd.DataFrame]:
+              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         Fetches the features of one or more stations.
 
@@ -467,12 +467,19 @@ class RainfallRunoff(object):
         kwargs :
             keyword arguments
 
-        returns
+        Returns
         -------
-            If both static  and dynamic features are obtained then it returns a
-            dictionary whose keys are station/gauge_ids and values are the
-            attributes and dataframes.
-            Otherwise either dynamic or static features are returned.
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as pandas DataFrame with shape (stations, staticfeatures).
+            The index of static features is the station/gauge ids while the columns 
+            are the static features. Dynamic features are returned as either
+            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            is True or False and whether the xarray module is installed or not.
+            If dynamic features are xarray Dataset, then it consists of `data_vars`
+            equal to the number of stations and `time` adn `dynamic_features` as
+            dimensions. If dynamic features are returned as pandas DataFrame, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Examples
         --------
@@ -487,8 +494,8 @@ class RainfallRunoff(object):
         ... # fetch data of a single stations
         >>> single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
-        >>> data = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
-        >>> data['dynamic']
+        >>> static, dyanmic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
+        >>> dynamic
         ... # get only selected dynamic features
         >>> sel_dyn_features = dataset.fetch(stations='318076',
         ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
@@ -507,7 +514,7 @@ class RainfallRunoff(object):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         Reads attributes of more than one stations.
 
@@ -533,21 +540,17 @@ class RainfallRunoff(object):
 
         Returns
         -------
-        pd.DataFrame or xr.Dataset or dict
-            Dynamic and static features of one or multiple stations. Dynamic features
-            are by default returned as xr.Dataset unless `as_dataframe` is True or xarray is not installed, in
-            such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
-            it consists of `data_vars` equal to number of stations and for each
-            station, the `DataArray` is of dimensions (time, dynamic_features).
-            where `time` is defined by `st` and `en` i.e. length of `DataArray`.
-            In case, when the returned object is pandas DataFrame, the first index
-            is `time` and second index is `dyanamic_features`. Static attributes
-            are always returned as pandas DataFrame and have following shape
-            `(stations, static_features). If `dynamic_features` is None,
-            then they are not returned and the returned value only consists of
-            static features. Same holds true for `static_features`.
-            If both are not None, then the returned type is a dictionary with
-            `static` and `dynamic` keys.
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as pandas DataFrame with shape (stations, staticfeatures).
+            The index of static features is the station/gauge ids while the columns 
+            are the static features. Dynamic features are returned as either
+            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            is True or False and whether the xarray module is installed or not.
+            If dynamic features are xarray Dataset, then it consists of `data_vars`
+            equal to the number of stations and `time` adn `dynamic_features` as
+            dimensions. If dynamic features are returned as pandas DataFrame, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Raises
         ------
@@ -555,13 +558,13 @@ class RainfallRunoff(object):
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> dataset = RainfallRunoff('CAMELS_AUS')
-            ... # find out station ids
-            >>> dataset.stations()
-            ... # get data of selected stations
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-            ...  as_dataframe=True)
+        >>> from water_datasets import RainfallRunoff
+        >>> dataset = RainfallRunoff('CAMELS_AUS')
+        ... # find out station ids
+        >>> dataset.stations()
+        ... # get data of selected stations
+        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        ...  as_dataframe=True)
         """
         return self.dataset.fetch_stations_features(stations, dynamic_features, static_features, st, en, as_dataframe,
                                                     **kwargs)

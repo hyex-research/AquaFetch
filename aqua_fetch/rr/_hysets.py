@@ -1,6 +1,6 @@
 
 import os
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -93,13 +93,13 @@ class HYSETS(_RainfallRunoff):
     >>> from aqua_fetch import HYSETS
     >>> dataset = HYSETS(path="path/to/HYSETS")
     ... # fetch data of a random station
-    >>> df = dataset.fetch(1, as_dataframe=True)
+    >>> _, df = dataset.fetch(1, as_dataframe=True)
     >>> df.shape
     (25202, 5)
     >>> stations = dataset.stations()
     >>> len(stations)
     14425
-    >>> df = dataset.fetch('999', as_dataframe=True)
+    >>> _, df = dataset.fetch('999', as_dataframe=True)
     >>> df.unstack().shape
     (25202, 5)
 
@@ -162,6 +162,8 @@ class HYSETS(_RainfallRunoff):
 
         self.path = path
 
+        self._stations = self.__stations()
+
         fpath = os.path.join(self.path, 'hysets_dyn.nc')
         if not os.path.exists(fpath):
             self._maybe_to_netcdf('hysets_dyn')
@@ -174,7 +176,7 @@ class HYSETS(_RainfallRunoff):
     @property
     def static_map(self) -> Dict[str, str]:
         return {
-                'Drainage_Area_km2': catchment_area(),
+                'Drainage_Area_km2': catchment_area(), # todo: why give preference to, Drainage_Area_GSIM_km2
                 'Centroid_Lat_deg_N': gauge_latitude(),
                 'Slope_deg': slope('degrees'),
                 'Centroid_Lon_deg_E': gauge_longitude(),
@@ -200,8 +202,8 @@ class HYSETS(_RainfallRunoff):
             assert os.path.exists(fpath), f'{fpath} does not exist'
             xds = xr.open_dataset(fpath)
 
-            for var in xds.variables:
-                print(f'getting {var} from source {src} ')
+            for idx, var in enumerate(xds.variables):
+                if self.verbosity: print(f'{idx}: getting {var} from source {src} ')
 
                 if len(xds[var].data.shape) > 1:
                     xar = xds[var]
@@ -212,8 +214,13 @@ class HYSETS(_RainfallRunoff):
                     xar.name = f"{xar.name}_{src}"
                     oneD_vars.append(xar)
 
+        if self.verbosity>1:
+            print('merging 1D vars')
         oneD_xds = xr.merge(oneD_vars)
         twoD_xds = xr.merge(twoD_vars)
+
+        if self.verbosity>1:
+            print('saving to netcdf')
         oneD_xds.to_netcdf(os.path.join(self.path, "hysets_static.nc"))
         twoD_xds.to_netcdf(os.path.join(self.path, "hysets_dyn.nc"))
 
@@ -254,6 +261,9 @@ class HYSETS(_RainfallRunoff):
         >>> dataset.stations()
 
         """
+        return self._stations
+
+    def __stations(self)->List[str]:
         return self.read_static_data().index.to_list()
 
     @property
@@ -342,7 +352,7 @@ class HYSETS(_RainfallRunoff):
 
         """
         stations = check_attributes(stations, self.stations())
-        q = self.fetch_stations_features(stations,
+        _, q = self.fetch_stations_features(stations,
                                            dynamic_features='discharge',
                                            as_dataframe=True)
         # todo: this is not good practice. fetch_stations_features should requrn q with correct
@@ -388,51 +398,51 @@ class HYSETS(_RainfallRunoff):
 
         SRC_MAP = {
             'gsim': 'Drainage_Area_GSIM_km2',
-            'other': 'Drainage_Area_km2'
+            'other': 'area_km2'
         }
 
         s = self.fetch_static_features(
             static_features=[SRC_MAP[source]],
         )
 
-        s.columns = ['area']
-        return s.loc[stations, 'area']
+        s.columns = ['area_km2']
+        return s.loc[stations, 'area_km2']
 
-    def stn_coords(
-            self,
-            stations:Union[str, List[str]] = 'all'
-    ) ->pd.DataFrame:
-        """
-        returns coordinates of stations as DataFrame
-        with ``long`` and ``lat`` as columns.
+    # def stn_coords(
+    #         self,
+    #         stations:Union[str, List[str]] = 'all'
+    # ) ->pd.DataFrame:
+    #     """
+    #     returns coordinates of stations as DataFrame
+    #     with ``long`` and ``lat`` as columns.
 
-        Parameters
-        ----------
-        stations :
-            name/names of stations. If not given, coordinates
-            of all stations will be returned.
+    #     Parameters
+    #     ----------
+    #     stations :
+    #         name/names of stations. If not given, coordinates
+    #         of all stations will be returned.
 
-        Returns
-        -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
-            The length of dataframe will be equal to number of stations
-            wholse coordinates are to be fetched.
+    #     Returns
+    #     -------
+    #     coords :
+    #         pandas DataFrame with ``long`` and ``lat`` columns.
+    #         The length of dataframe will be equal to number of stations
+    #         wholse coordinates are to be fetched.
 
-        Examples
-        --------
-        >>> dataset = HYSETS()
-        >>> dataset.stn_coords() # returns coordinates of all stations
-        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
-        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
+    #     Examples
+    #     --------
+    #     >>> dataset = HYSETS()
+    #     >>> dataset.stn_coords() # returns coordinates of all stations
+    #     >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
+    #     >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
 
-        """
-        df = self.fetch_static_features(
-            static_features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
-        df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
+    #     """
+    #     df = self.fetch_static_features(
+    #         static_features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
+    #     df.columns = ['lat', 'long']
+    #     stations = check_attributes(stations, self.stations())
 
-        return df.loc[stations, :]
+    #     return df.loc[stations, :]
 
     def fetch_stations_features(
             self,
@@ -443,7 +453,7 @@ class HYSETS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
         """returns features of multiple stations
         Examples
         --------
@@ -455,9 +465,11 @@ class HYSETS(_RainfallRunoff):
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
 
+        static, dynamic = None, None
+
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -466,21 +478,16 @@ class HYSETS(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -488,12 +495,12 @@ class HYSETS(_RainfallRunoff):
         else:
             raise ValueError
 
-        return to_return
+        return static, dynamic
 
     def fetch_dynamic_features(
             self,
             stn_id,
-            features = 'all',
+            dynamic_features = 'all',
             st=None,
             en=None,
             as_dataframe=False
@@ -509,7 +516,7 @@ class HYSETS(_RainfallRunoff):
         station = [int(stn_id)]
         return self._fetch_dynamic_features(
             stations=station,
-            dynamic_features=features,
+            dynamic_features=dynamic_features,
             st=st,
             en=en,
             as_dataframe=as_dataframe
@@ -567,21 +574,14 @@ class HYSETS(_RainfallRunoff):
 
         df = self.read_static_data()
 
-        static_features = check_attributes(static_features, self.static_features)
+        static_features = check_attributes(static_features, self.static_features, 'static_features')
 
-        if station == "all":
-            station = self.stations()
-
-        if isinstance(station, str):
-            station = [station]
-        elif isinstance(station, int):
-            station = [str(station)]
-        elif isinstance(station, list):
+        if isinstance(station, list):
             station = [str(stn) for stn in station]
-        else:
-            raise ValueError
 
-        return self.to_ts(df.loc[station][static_features], st=st, en=en, as_ts=as_ts)
+        stations = check_attributes(station, self.stations(), 'stations')
+
+        return df.loc[stations, static_features]
 
     def fetch_static_features(
             self,
@@ -624,7 +624,7 @@ class HYSETS(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'Elevation_m'])
         >>> static_data.shape
            (14425, 2)
         """
@@ -639,4 +639,6 @@ class HYSETS(_RainfallRunoff):
         fname = os.path.join(self.path, 'HYSETS_watershed_properties.txt')
         static_df = pd.read_csv(fname, index_col='Watershed_ID', sep=';', usecols=usecols, nrows=nrows)
         static_df.index = static_df.index.astype(str)
+
+        static_df.rename(columns=self.static_map, inplace=True)
         return static_df

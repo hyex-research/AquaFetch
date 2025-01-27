@@ -10,8 +10,8 @@ __all__ = [
 
 import os
 import time
-from typing import List, Union, Dict
 import concurrent.futures as cf
+from typing import List, Union, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -90,7 +90,7 @@ class GSHA(_RainfallRunoff):
     >>> dataset.end
     Timestamp('2022-12-31 00:00:00')
     >>> dataset.static_features
-    ['ele_mt_uav', 'slp_dg_uav', 'lat', 'long', 'area', 'agency', ...]
+    ['ele_mt_uav', 'slp_dg_uav', 'lat', 'long', 'area_km2', 'agency', ...]
     >>> len(dataset.dynamic_features)
     26
     >>> len(dataset.daily_dynamic_features)
@@ -269,13 +269,18 @@ class GSHA(_RainfallRunoff):
     def dynamic_features(self) -> List[str]:
         return self.daily_dynamic_features
 
-    def __static_features(self):
-        return pd.concat(
+    def __static_features(self)->List[str]:
+        df = pd.concat(
             [self.atlas('1001_arcticnet'),
-             self.uncertainty('1001_arcticnet')
+             self.uncertainty('1001_arcticnet'),
+             self.wsAll.copy(),
              ],
             axis=1
-        ).columns.tolist() + self.wsAll.columns.tolist()
+        ) #+ self.wsAll
+
+        df.rename(columns = self.static_map, inplace = True)
+
+        return df.columns.tolist()
 
     def agency_of_stn(self, stn: str) -> str:
         """find the agency to which a station belongs """
@@ -344,7 +349,9 @@ class GSHA(_RainfallRunoff):
     def area(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.Series:
         """area of catchments"""
         stations = self._get_stations(stations, agency)
-        return self.wsAll.loc[stations, 'area']
+        s = self.wsAll.loc[stations, 'area']
+        s.name = 'area_km2'
+        return s
 
     def uncertainty(
             self,
@@ -581,6 +588,8 @@ class GSHA(_RainfallRunoff):
 
             encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in meteo_vars.keys()}
 
+            if self.verbosity>1:
+                print(f"Creating xr.Dataset from {len(meteo_vars)} stations")
             ds = xr.Dataset(meteo_vars)
 
             if self.verbosity: print(f"Saving to {nc_path}")
@@ -762,13 +771,17 @@ class GSHA(_RainfallRunoff):
 
         features = check_attributes(static_features, self.static_features, 'static_features')
 
-        return pd.concat([
+        df = pd.concat([
             self.atlas(stations),
             self.uncertainty(stations),
             self.wsAll.loc[stations, :]
         ],
             axis=1
-        ).loc[:, features]
+        )#.loc[:, features]
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df.loc[:, features]
 
     def fetch_stn_dynamic_features(
             self,
@@ -820,8 +833,9 @@ class GSHA(_RainfallRunoff):
             en=None,
             as_dataframe=False,
             agency: List[str] = "all",
-    ):
-        """Fetches all or selected dynamic features of one station.
+    )-> xr.Dataset:
+        """
+        Fetches all or selected dynamic features of one station.
 
         Parameters
         ----------
@@ -845,7 +859,7 @@ class GSHA(_RainfallRunoff):
             >>> camels.fetch_dynamic_features('1001_arcticnet', as_dataframe=True).unstack()
             >>> camels.dynamic_features
             >>> camels.fetch_dynamic_features('1001_arcticnet',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
+            ... features=['tmax_AWAP', 'vprp_AWAP', 'q_mmd_obs'],
             ... as_dataframe=True).unstack()
         """
 
@@ -966,17 +980,17 @@ class _GSHA(_RainfallRunoff):
     def static_features(self) -> List[str]:
         return self.gsha.static_features
 
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['lat', 'long']
+    # @property
+    # def _coords_name(self) -> List[str]:
+    #     return ['lat', 'long']
 
-    @property
-    def _area_name(self) -> str:
-        return 'area'
+    # @property
+    # def _area_name(self) -> str:
+    #     return 'area'
 
-    @property
-    def _q_name(self) -> str:
-        return observed_streamflow_cms()
+    # @property
+    # def _q_name(self) -> str:
+    #     return observed_streamflow_cms()
 
     def stations(self) -> List[str]:
         return self._stations
@@ -1109,7 +1123,7 @@ class _GSHA(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
         """
         returns features of multiple stations
 
@@ -1119,12 +1133,28 @@ class _GSHA(_RainfallRunoff):
         >>> dataset = Arcticnet()
         >>> stations = dataset.stations()
         >>> features = dataset.fetch_stations_features(stations)
+
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as pandas DataFrame with shape (stations, staticfeatures).
+            The index of static features is the station/gauge ids while the columns 
+            are the static features. Dynamic features are returned as either
+            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            is True or False and whether the xarray module is installed or not.
+            If dynamic features are xarray Dataset, then it consists of `data_vars`
+            equal to the number of stations and `time` adn `dynamic_features` as
+            dimensions. If dynamic features are returned as pandas DataFrame, then
+            the first index is `time` and the second index is `dynamic_features`.
         """
         stations = check_attributes(stations, self.stations(), 'stations')
 
+        static, dynamic = None, None
+
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -1133,21 +1163,17 @@ class _GSHA(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
+
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -1156,7 +1182,7 @@ class _GSHA(_RainfallRunoff):
             raise ValueError(f"""
             static features are {static_features} and dynamic features are also {dynamic_features}""")
 
-        return to_return
+        return static, dynamic
 
     def fetch_static_features(
             self,

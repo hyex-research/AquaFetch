@@ -73,7 +73,7 @@ class CAMELS_US(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_US
     >>> dataset = CAMELS_US()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (12784, 8)
@@ -82,33 +82,32 @@ class CAMELS_US(_RainfallRunoff):
     >>> len(stns)
     671
     # we can get data of 10% catchments as below
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (460488, 51)
     # the data is multi-index with ``time`` and ``dynamic_features`` as indices
     >>> data.index.names == ['time', 'dynamic_features']
      True
     # get data by station id
-    >>> df = dataset.fetch(stations='11478500', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='11478500', as_dataframe=True).unstack()
     >>> df.shape
     (12784, 8)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
     ... dynamic_features=['prcp(mm/day)', 'srad(W/m2)', 'tmax(C)', 'tmin(C)', 'Flow']).unstack()
     >>> df.shape
     (12784, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (102272, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='11478500', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we want to get both static and dynamic data 
+    >>> static, dynamic = dataset.fetch(stations='11478500', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 59), (102272, 1))
 
     """
@@ -170,6 +169,7 @@ class CAMELS_US(_RainfallRunoff):
         self.attr_dir = os.path.join(self.path, f'catchment_attrs{SEP}camels_attributes_v2.0')
         self.dataset_dir = os.path.join(self.path, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
 
+        self._static_features = self._read_static().columns.tolist()
         self._maybe_to_netcdf('camels_us_dyn')
 
     @property
@@ -209,35 +209,12 @@ class CAMELS_US(_RainfallRunoff):
         return "20141231"
 
     @property
-    def static_features(self):
-        static_fpath = os.path.join(self.path, 'static_features.csv')
-        if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.path, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
-            cols = []
-            for f in files:
-                _df = pd.read_csv(f, sep=';', index_col='gauge_id', nrows=1)
-                cols += list(_df.columns)
-        else:
-            df = pd.read_csv(static_fpath, index_col='gauge_id', nrows=1)
-            cols = list(df.columns)
-
-        return cols
-
-    @property
-    def _q_name(self) -> str:
-        return observed_streamflow_cms()
+    def static_features(self)->List[str]:
+        return self._static_features
 
     @property
     def dynamic_features(self) -> List[str]:
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
-
-    @property
-    def _area_name(self) -> str:
-        return 'area_gages2'
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['gauge_lat', 'gauge_lon']
 
     def stations(self) -> list:
         stns = []
@@ -339,7 +316,7 @@ class CAMELS_US(_RainfallRunoff):
         >>> camels.static_features
         get specific features of one station
         >>> static_data = camels.fetch_static_features('11528700',
-        >>> static_features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+        >>> static_features=['area_km2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
         >>> static_data.shape
             (1, 4)
         get names of allstations
@@ -353,6 +330,10 @@ class CAMELS_US(_RainfallRunoff):
         features = check_attributes(static_features, self.static_features, 'static_features')
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
 
+        static_df = self._read_static()
+        return static_df.loc[stn_id, features]
+
+    def _read_static(self)->pd.DataFrame:
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.path, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
@@ -371,11 +352,13 @@ class CAMELS_US(_RainfallRunoff):
 
         static_df.index = static_df.index.astype(str)
 
-        df = static_df.loc[stn_id][features]
-        if isinstance(df, pd.Series):
-            df = pd.DataFrame(df).transpose()
+        static_df = static_df#.loc[stn_id][features]
+        if isinstance(static_df, pd.Series):
+            static_df = pd.DataFrame(static_df).transpose()
 
-        return df
+        static_df.rename(columns=self.static_map, inplace=True)
+        
+        return static_df
 
 
 class CAMELS_GB(_RainfallRunoff):
@@ -390,12 +373,12 @@ class CAMELS_GB(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_GB
     >>> dataset = CAMELS_GB()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
      (164360, 67)
     >>> data.index.names == ['time', 'dynamic_features']
     True
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (16436, 10)
@@ -404,26 +387,26 @@ class CAMELS_GB(_RainfallRunoff):
     >>> len(stns)
     671
     # get data by station id
-    >>> df = dataset.fetch(stations='97002', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='97002', as_dataframe=True).unstack()
     >>> df.shape
     (16436, 10)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['windspeed', 'temperature', 'pet', 'precipitation', 'discharge_vol']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['windspeed_mps', 'airtemp_C_mean', 'pet_mm', 'pcp_mm', 'q_cms_obs']).unstack()
     >>> df.shape
     (16436, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (164360, 10)  # remember this is multi-indexed DataFrame
     # when we get both static and dynamic data, the returned data is a dictionary
     # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='97002', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    >>> static, dynamic = dataset.fetch(stations='97002', static_features="all", as_dataframe=True)
+    >>> static, dynamic.shape
     ((1, 290), (164360, 1))
     """
     dynamic_features_ = ["precipitation", "pet", "temperature", "discharge_spec",
@@ -464,6 +447,8 @@ class CAMELS_GB(_RainfallRunoff):
         else:
             if self.verbosity > 0:
                 print(f"dataset is already available at {self.path}")
+
+        self._static_features = self._static_path().columns.tolist()
 
         self._maybe_to_netcdf('camels_gb_dyn')
 
@@ -525,14 +510,8 @@ class CAMELS_GB(_RainfallRunoff):
         return pd.Timestamp("20150930")
 
     @property
-    def static_features(self):
-        files = glob.glob(f"{self.data_path}/*.csv")
-        cols = []
-        for f in files:
-            if 'static_features.csv' not in f:
-                df = pd.read_csv(f, nrows=1, index_col='gauge_id')
-                cols += (list(df.columns))
-        return cols
+    def static_features(self)->List[str]:
+        return self._static_features
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -622,14 +601,20 @@ class CAMELS_GB(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['area', 'elev_mean'])
+        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'elev_mean'])
         >>> static_data.shape
            (671, 2)
         """
 
         features = check_attributes(static_features, self.static_features, 'static_features')
-        static_fname = 'static_features.csv'
-        static_fpath = os.path.join(self.data_path, static_fname)
+        station = check_attributes(stn_id, self.stations(), 'stations')
+
+        static_df = self._static_path()
+
+        return static_df.loc[station][features]
+
+    def _static_path(self)->pd.DataFrame:
+        static_fpath = os.path.join(self.data_path, 'static_features.csv')
         if os.path.exists(static_fpath):
             static_df = pd.read_csv(static_fpath, index_col='gauge_id')
         else:
@@ -641,11 +626,11 @@ class CAMELS_GB(_RainfallRunoff):
             static_df = pd.concat(static_dfs, axis=1)
             static_df.to_csv(static_fpath)
 
-        station = check_attributes(stn_id, self.stations(), 'stations')
-
         static_df.index = static_df.index.astype(str)
 
-        return static_df.loc[station][features]
+        static_df.rename(columns=self.static_map, inplace=True)
+
+        return static_df
 
 
 class CAMELS_AUS(_RainfallRunoff):
@@ -664,7 +649,7 @@ class CAMELS_AUS(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_AUS
     >>> dataset = CAMELS_AUS()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
        (21184, 26)
@@ -673,7 +658,7 @@ class CAMELS_AUS(_RainfallRunoff):
     >>> len(stns)
        222
     ... # get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (550784, 22)
     ... # The returned dataframe is a multi-indexed data
@@ -686,20 +671,19 @@ class CAMELS_AUS(_RainfallRunoff):
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'et_morton_actual_SILO', 'q_cms_obs']).unstack()
     >>> data.shape
        (21184, 4)
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (21184, 260)
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     >>> ((1, 166), (550784, 1))
     """
 
@@ -809,11 +793,6 @@ class CAMELS_AUS(_RainfallRunoff):
             version: version of the dataset to download. Allowed values are 1 and 2.
             to_netcdf :
         """
-        # if path is not None:
-        #     assert isinstance(path, (str, os.PathLike)), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
-        #     if not os.path.exists(path) or len(os.listdir(path)) < 2:
-        #         raise FileNotFoundError(f"The path {path} does not exist")
-
         self.version = version
 
         super().__init__(path=path, verbosity=verbosity, **kwargs)
@@ -859,8 +838,8 @@ class CAMELS_AUS(_RainfallRunoff):
         return {
                 'catchment_area': catchment_area(),
                 'maen_slope_pct': slope('%'),
-                'lat_centroide': gauge_latitude(),
-                'long_centroid': gauge_longitude(),
+                'lat_outlet': gauge_latitude(),
+                'long_outlet': gauge_longitude(),
         }
 
     @property
@@ -931,71 +910,30 @@ class CAMELS_AUS(_RainfallRunoff):
         return features
 
     @property
-    def static_features(self) -> list:
-        static_fpath = os.path.join(self.path, 'CAMELS_AUS_Attributes&Indices_MasterTable.csv')
+    def static_features(self) -> List[str]:
 
-        df = pd.read_csv(static_fpath, index_col='station_id', nrows=1)
-        cols = list(df.columns)
-
-        return cols
+        return self._read_static().columns.tolist()
 
     @property
     def dynamic_features(self) -> list:
         return [self.dyn_map.get(feat, feat) for feat in list(self.folders[self.version].keys())]
 
-    def q_mmd(
-            self,
-            stations: Union[str, List[str]] = None
-    ) -> pd.DataFrame:
-        """
-        returns streamflow in the units of milimeter per day. This is obtained
-        by diving q_cms/area
-
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is None, which will return
-            area of all stations
-
-        Returns
-        --------
-        pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
-            are catchment/station ids.
-
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        q = self.fetch_stations_features(stations,
-                                         dynamic_features=observed_streamflow_cms(),
-                                         as_dataframe=True)
-        q.index = q.index.get_level_values(0)
-        q = q * 0.01157  # mega liter per day to cms
-        area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # to m/day
-        return q * 1e3  # to mm/day
-
-    @property
-    def _area_name(self) -> str:
-        return 'catchment_area'
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['lat_outlet', 'long_outlet']
-
-    def _read_static(self, stations, features,
+    def _read_static(self, #stations, #features,
                      st=None, en=None):
 
-        features = check_attributes(features, self.static_features)
+        #features = check_attributes(features, self.static_features, 'static_features')
         static_fname = 'CAMELS_AUS_Attributes&Indices_MasterTable.csv'
         static_fpath = os.path.join(self.path, static_fname)
         static_df = pd.read_csv(static_fpath, index_col='station_id')
 
         static_df.index = static_df.index.astype(str)
-        df = static_df.loc[stations][features]
-        if isinstance(df, pd.Series):
-            df = pd.DataFrame(df).transpose()
+        #static_df = static_df.loc[stations]#[features]
+        if isinstance(static_df, pd.Series):
+            static_df = pd.DataFrame(static_df).transpose()
+        
+        static_df.rename(columns=self.static_map, inplace=True)
 
-        return self.to_ts(df, st, en)
+        return static_df
 
     def _read_dynamic_from_csv(self, stations, dynamic_features, **kwargs):
 
@@ -1068,8 +1006,9 @@ class CAMELS_AUS(_RainfallRunoff):
         """
 
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
+        static_features = check_attributes(static_features, self.static_features, 'static_features')
 
-        return self._read_static(stn_id, static_features)
+        return self._read_static().loc[stn_id, static_features]
 
 
 class CAMELS_CL(_RainfallRunoff):
@@ -1084,7 +1023,7 @@ class CAMELS_CL(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_CL
     >>> dataset = CAMELS_CL()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
         (38374, 12)
@@ -1093,33 +1032,32 @@ class CAMELS_CL(_RainfallRunoff):
     >>> len(stns)
     516
     # we can get data of 10% catchments as below
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (460488, 51)
     # the data is multi-index with ``time`` and ``dynamic_features`` as indices
     >>> df.index.names == ['time', 'dynamic_features']
      True
     # get data by station id
-    >>> df = dataset.fetch(stations='8350001', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='8350001', as_dataframe=True).unstack()
     >>> df.shape
     (38374, 12)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pet_hargreaves', 'precip_tmpa', 'tmean_cr2met', 'streamflow_m3s']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pet_mm_hargreaves', 'pcp_mm_mswep', 'airtemp_C_mean', 'q_cms_obs']).unstack()
     >>> df.shape
     (38374, 4)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (460488, 10)
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='8350001', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='8350001', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     >>> ((1, 104), (460488, 1))
     """
 
@@ -1169,6 +1107,8 @@ class CAMELS_CL(_RainfallRunoff):
             if not os.path.exists(fpath):
                 download(url + _file, fpath)
                 _unzip(self.path)
+            
+        self._static_features = self._read_static().columns.tolist()
 
         self.dyn_fname = os.path.join(self.path, 'camels_cl_dyn.nc')
         self._maybe_to_netcdf('camels_cl_dyn')
@@ -1226,10 +1166,20 @@ class CAMELS_CL(_RainfallRunoff):
         return "Chile"
 
     @property
-    def static_features(self) -> list:
+    def static_features(self) -> List[str]:
+        return self._static_features
+
+    def _read_static(self)->pd.DataFrame:
         path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
-        return df.index.to_list()
+        df = df.transpose()
+
+        df.rename(columns=self.static_map, inplace=True)
+                
+        # remove empty space in index of df
+        df.index = df.index.str.strip()
+
+        return df
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -1238,10 +1188,6 @@ class CAMELS_CL(_RainfallRunoff):
     @property
     def _mmd_feature_name(self) -> str:
         return observed_streamflow_mmd()
-
-    @property
-    def _area_name(self) -> str:
-        return 'area'
 
     def stn_coords(
             self,
@@ -1336,24 +1282,6 @@ class CAMELS_CL(_RainfallRunoff):
 
         return dyn
 
-    def _read_static(self, stations: list, features: list) -> pd.DataFrame:
-        # overwritten for speed
-        path = os.path.join(self.path, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
-        _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
-
-        stns_df = []
-        for stn in stations:
-            df = pd.DataFrame()
-            if stn in _df:
-                df[stn] = _df[stn]
-            elif ' ' + stn in _df:
-                df[stn] = _df[' ' + stn]
-
-            stns_df.append(df.transpose()[features])
-
-        stns_df = pd.concat(stns_df)
-        return stns_df
-
     def fetch_static_features(
             self,
             stn_id: Union[str, List[str]] = "all",
@@ -1389,10 +1317,10 @@ class CAMELS_CL(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'area'])
+        >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'area_km2'])
         >>> static_data.shape
            (516, 2)
-        >>> data = dataset.fetch_static_features('2110002', static_features=['slope_mean', 'area'])
+        >>> data = dataset.fetch_static_features('2110002', static_features=['slope_mean', 'area_km2'])
         >>> data.shape
            (1, 2)
         """
@@ -1400,7 +1328,7 @@ class CAMELS_CL(_RainfallRunoff):
 
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
 
-        return self._read_static(stn_id, features)
+        return self._read_static().loc[stn_id, features]
 
 
 class CAMELS_CH(_RainfallRunoff):
@@ -1416,12 +1344,12 @@ class CAMELS_CH(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_CH
     >>> dataset = CAMELS_CH()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (128560, 10)
     >>> data.index.names == ['time', 'dynamic_features']
     True
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (8036, 9)
@@ -1430,25 +1358,24 @@ class CAMELS_CH(_RainfallRunoff):
     >>> len(stns)
     331
     # get data by station id
-    >>> df = dataset.fetch(stations='2004', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='2004', as_dataframe=True).unstack()
     >>> df.shape
     (8036, 9)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True, dynamic_features=['precipitation(mm/d)', 'temperature_mean(°C)', 'discharge_vol(m3/s)']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs']).unstack()
     >>> df.shape
     (8036, 3)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (72324, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='2004', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data 
+    >>> static, dynamic = dataset.fetch(stations='2004', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 209), (72324, 1))
 
     """
@@ -1584,7 +1511,7 @@ class CAMELS_CH(_RainfallRunoff):
 
     @property
     def static_features(self):
-        return self.fetch_static_features().columns.tolist()
+        return self._read_static().columns.tolist()
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -1859,15 +1786,23 @@ class CAMELS_CH(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['gauge_lon', 'gauge_lat', 'area'])
+        >>> static_data = dataset.fetch_static_features(stns, ['long', 'lat', 'area_km2'])
         >>> static_data.shape
            (331, 3)
-        >>> data = dataset.fetch_static_features('2004', static_features=['gauge_lon', 'gauge_lat', 'area'])
+        >>> data = dataset.fetch_static_features('2004', static_features=['long', 'lat', 'area_km2'])
         >>> data.shape
            (1, 3)
         """
         stations = check_attributes(stn_id, self.stations(), 'stations')
 
+
+        features = check_attributes(static_features, self.static_features,
+                                    "static_features")
+        
+        df = self._read_static()
+        return df.loc[stations, features]
+
+    def _read_static(self)->pd.DataFrame:
         df = pd.concat(
             [
                 self.climate_attrs(),
@@ -1884,9 +1819,9 @@ class CAMELS_CH(_RainfallRunoff):
             axis=1)
         df.index = df.index.astype(str)
 
-        features = check_attributes(static_features, df.columns.tolist(),
-                                    "static_features")
-        return df.loc[stations, features]
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def _read_dynamic_from_csv(
             self,
@@ -1928,18 +1863,6 @@ class CAMELS_CH(_RainfallRunoff):
 
         return df
 
-    @property
-    def _area_name(self) -> str:
-        return 'area'
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['gauge_lat', 'gauge_lon']
-
-    @property
-    def _mmd_feature_name(self) -> str:
-        return observed_streamflow_mmd()
-
 
 class CAMELS_DE(_RainfallRunoff):
     """
@@ -1953,7 +1876,7 @@ class CAMELS_DE(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_DE
     >>> dataset = CAMELS_DE()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
        (25568, 21)
@@ -1962,33 +1885,32 @@ class CAMELS_DE(_RainfallRunoff):
     >>> len(stns)
        1555
     get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
         (536928, 155)
     The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     get data by station id
-    >>> df = dataset.fetch(stations='DE110260', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='DE110260', as_dataframe=True).unstack()
     >>> df.shape
         (25568, 21)
     get names of available dynamic features
     >>> dataset.dynamic_features
     get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['temperature_mean', 'humidity_mean', 'precipitation_mean', 'discharge_vol']).unstack()
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_mean', 'rh_%', 'pcp_mm_mean', 'q_cms_obs']).unstack()
     >>> data.shape
         (25568, 4)
     get names of available static features
     >>> dataset.static_features
     get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
         (536928, 10)
-    when we get both static and dynamic data, the returned data is a dictionary
-    with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='DE110260', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    If we want to get both static and dynamic data 
+    >>> static, dynamic = dataset.fetch(stations='DE110260', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
         ((1, 111), (536928, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -2153,7 +2075,7 @@ class CAMELS_DE(_RainfallRunoff):
                            )
 
     def static_data(self) -> pd.DataFrame:
-        return pd.concat([
+        df = pd.concat([
             self.clim_attrs(),
             self.hum_infl_attrs(),
             self.hydrogeol_attrs(),
@@ -2163,6 +2085,10 @@ class CAMELS_DE(_RainfallRunoff):
             self.soil_attrs(),
             self.topo_attrs()
         ], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def fetch_static_features(
             self,
@@ -2306,7 +2232,7 @@ class CAMELS_SE(_RainfallRunoff):
     >>> from aqua_fetch import CAMELS_SE
     >>> dataset = CAMELS_SE()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> _, df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
        (21915, 4)
     get name of all stations as list
@@ -2314,33 +2240,32 @@ class CAMELS_SE(_RainfallRunoff):
     >>> len(stns)
        50
     get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (87660, 5)
     The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     get data by station id
-    >>> df = dataset.fetch(stations='5', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='5', as_dataframe=True).unstack()
     >>> df.shape
          (21915, 4)
     get names of available dynamic features
     >>> dataset.dynamic_features
     get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
     ...  dynamic_features=['Qobs_m3s', 'Qobs_mm', 'Pobs_mm', 'Tobs_C']).unstack()
     >>> data.shape
         (21915, 4)
     get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
         (87660, 10)
-    when we get both static and dynamic data, the returned data is a dictionary
-    with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
         ((1, 76), (87660, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -2440,13 +2365,13 @@ class CAMELS_SE(_RainfallRunoff):
     def _mmd_feature_name(self) -> str:
         return observed_streamflow_cms()
 
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['Latitude_WGS84', 'Longitude_WGS84']
+    # @property
+    # def _coords_name(self) -> List[str]:
+    #     return ['Latitude_WGS84', 'Longitude_WGS84']
 
-    @property
-    def _area_name(self) -> str:
-        return 'Area_km2'
+    # @property
+    # def _area_name(self) -> str:
+    #     return 'Area_km2'
 
     @property
     def start(self):
@@ -2498,7 +2423,7 @@ class CAMELS_SE(_RainfallRunoff):
         return df
 
     def static_data(self) -> pd.DataFrame:
-        return pd.concat([
+        df = pd.concat([
             self.landcover(),
             self.physical_properties(),
             self.soil_classes(),
@@ -2506,6 +2431,10 @@ class CAMELS_SE(_RainfallRunoff):
             self.hydro_signatures_CNP_1961_1990(),
             self.hydro_signatures_CNP_1990_2020()
         ], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def _read_dynamic_from_csv(
             self,
@@ -2620,21 +2549,21 @@ class CAMELS_DK(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_DK
     >>> dataset = CAMELS_DK()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (166166, 30)  # 30 represents number of stations
     Since data is a multi-index dataframe, we can get data of one station as below
     >>> data['54130033'].unstack().shape
     (12782, 13)
     If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> data = dataset.fetch(0.1)
+    >>> _, data = dataset.fetch(0.1)
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
     FrozenMappingWarningOnValuesAccess({'time': 12782, 'dynamic_features': 13})
     >>> len(data.data_vars)
         30
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (12782, 13)
@@ -2643,26 +2572,25 @@ class CAMELS_DK(_RainfallRunoff):
     >>> len(stns)
     304
     # get data by station id
-    >>> df = dataset.fetch(stations='54130033', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='54130033', as_dataframe=True).unstack()
     >>> df.shape
     (12782, 13)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
     ... dynamic_features=['Abstraction', 'pet', 'temperature', 'precipitation', 'Qobs']).unstack()
     >>> df.shape
     (12782, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (166166, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='54130033', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='54130033', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 119), (166166, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -2836,12 +2764,16 @@ class CAMELS_DK(_RainfallRunoff):
         pd.DataFrame
             a pandas DataFrame of static features of all catchments of shape (3330, 119)
         """
-        return pd.concat([self.climate_data(),
+        df = pd.concat([self.climate_data(),
                           self.geology_data(),
                           self.landuse_data(),
                           self.soil_data(),
                           self.topography_data()
                           ], axis=1)
+        
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def stations(self) -> List[str]:
         return [fname.split(".csv")[0].split('_')[4] for fname in os.listdir(self.gaug_catch_path)]
@@ -2983,21 +2915,21 @@ class CAMELS_IND(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_IND
     >>> dataset = CAMELS_IND()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (299520, 47)  # 47 represents number of stations
     Since data is a multi-index dataframe, we can get data of one station as below
     >>> data['17015'].unstack().shape
     (14976, 20)
     If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> data = dataset.fetch(0.1)
+    >>> _, data = dataset.fetch(0.1)
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
     FrozenMappingWarningOnValuesAccess({'time': 14976, 'dynamic_features': 20})
     >>> len(data.data_vars)
         47
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (14976, 20)
@@ -3006,26 +2938,25 @@ class CAMELS_IND(_RainfallRunoff):
     >>> len(stns)
     472
     # get data by station id
-    >>> df = dataset.fetch(stations='3001', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='3001', as_dataframe=True).unstack()
     >>> df.shape
     (14976, 20)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['prcp(mm/day)', 'rel_hum(%)', 'tavg(C)', 'pet(mm/day)', 'streamflow_cms']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['prcp(mm/day)', 'rel_hum(%)', 'tavg(C)', 'pet(mm/day)', 'q_cms_obs']).unstack()
     >>> df.shape
     (14976, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (299520, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='3001', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='3001', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 220), (299520, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -3127,18 +3058,6 @@ class CAMELS_IND(_RainfallRunoff):
         return self._static_features
 
     @property
-    def _coords_name(self) -> List[str]:
-        return ['cwc_lat', 'cwc_lon']
-
-    @property
-    def _area_name(self) -> str:
-        return 'cwc_area'
-
-    @property
-    def _q_name(self) -> str:
-        return observed_streamflow_cms()
-
-    @property
     def start(self) -> pd.Timestamp:  # start of data
         return pd.Timestamp('1980-01-01')
 
@@ -3208,7 +3127,11 @@ class CAMELS_IND(_RainfallRunoff):
             df.index = df.index.astype(str)
             dfs.append(df)
 
-        return pd.concat(dfs, axis=1)
+        df = pd.concat(dfs, axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def _read_q(self, stn: str = None, ) -> pd.DataFrame:
         """reads observed streamflow data"""
@@ -3350,16 +3273,26 @@ class CAMELS_FR(_RainfallRunoff):
         self._dynamic_features = self._read_dyn_stn(self.stations()[0]).columns.to_list()
 
         if self.to_netcdf:
-            self._maybe_to_netcdf('camels_ind_dyn')
+            self._maybe_to_netcdf('camels_fr_dyn')
+
+        # todo : must be read using fiona/geopandas
+        self.boudary_file = os.path.join(
+            self.path, 
+            'CAMELS_FR_geography', 
+            'CAMELS_FR_geography', 
+            'catchment_boundaries.gpkg')
 
     @property
     def static_map(self) -> Dict[str, str]:
         return {
                 'hyd_slope_fdc': slope(''),
+                # 'sit_latitude', 'sit_longitude', todo : what is difference between site and guage lat/lon?
+                # gauge latitude/longitude in WGS84 (Hydroportail coordinates)
                 'sta_x_w84': gauge_latitude(),
                 'sta_y_w84': gauge_longitude(),
                 # todo: should we use sta_x_w84_snap and sta_y_w84_snap which are 
                 # gauge longitude in WGS84 (INRAE's own estimation, snapped on thorical river network)
+                'sit_area_hydro': catchment_area(),
         }
 
     @property
@@ -3422,22 +3355,6 @@ class CAMELS_FR(_RainfallRunoff):
     @property
     def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2021-12-31')
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return [
-            #'sit_latitude', 'sit_longitude', todo : what is difference between site and guage lat/lon?
-                # gauge latitude/longitude in WGS84 (Hydroportail coordinates)
-                'sta_y_w84', 'sta_x_w84',
-                ]
-
-    @property
-    def _area_name(self) -> str:
-        return 'sit_area_hydro'
-
-    @property
-    def _q_name(self) -> str:
-        return 'tsd_q_mm'
 
     def __stations(self) -> List[str]:
         return pd.read_csv(os.path.join(
@@ -3530,7 +3447,11 @@ class CAMELS_FR(_RainfallRunoff):
             self.ts_attrs()
         ], axis=1)
         # remove duplicated columns
-        return static_data.loc[:, ~static_data.columns.duplicated()].copy()
+        df = static_data.loc[:, ~static_data.columns.duplicated()].copy()
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def fetch_static_features(
             self,
@@ -3595,6 +3516,9 @@ class CAMELS_FR(_RainfallRunoff):
         )
         df.columns.name = 'dynamic_features'
         df.index.name = 'time'
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
         return df
 
     def _read_dynamic_from_csv(

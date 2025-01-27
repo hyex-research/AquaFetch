@@ -58,12 +58,12 @@ class CCAM(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CCAM
     >>> dataset = CCAM()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (128560, 10)
     >>> data.index.names == ['time', 'dynamic_features']
     True
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (8035, 16)
@@ -72,24 +72,23 @@ class CCAM(_RainfallRunoff):
     >>> len(stns)
     102
     # get data by station id
-    >>> df = dataset.fetch(stations='0010', as_dataframe=True).unstack()
+    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True).unstack()
     >>> df.shape
     (8035, 16)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pre', 'tem_mean', 'evp', 'rhu', 'q']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pre', 'tem_mean', 'evp', 'rhu', 'q']).unstack()
     >>> df.shape
     (8035, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (128560, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
     >>> data['static'].shape, data['dynamic'].shape
     ((1, 124), (128560, 1))
 
@@ -156,7 +155,7 @@ class CCAM(_RainfallRunoff):
     @property
     def dyn_map(self):
         return {
-        'q': observed_streamflow_mmd(),
+        'q': observed_streamflow_cms(),  # todo: check the units
         'tem_min': min_air_temp(),
         'tem_max': max_air_temp(),
         'tem_mean': mean_air_temp(),
@@ -190,43 +189,47 @@ class CCAM(_RainfallRunoff):
     def yr_data_path(self):
         return os.path.join(self.path, "7_HydroMLYR", "7_HydroMLYR", '1_data')
 
-    def q_mmd(
-            self,
-            stations: Union[str, List[str]] = "all"
-    )->pd.DataFrame:
-        """
-        returns streamflow in the units of milimeter per day. This is obtained
-        by diving ``q``/area
+    # def q_mmd(
+    #         self,
+    #         stations: Union[str, List[str]] = "all"
+    # )->pd.DataFrame:
+    #     """
+    #     returns streamflow in the units of milimeter per day. This is obtained
+    #     by diving ``q``/area
 
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is ``all``, which will return
-            area of all stations
+    #     parameters
+    #     ----------
+    #     stations : str/list
+    #         name/names of stations. Default is ``all``, which will return
+    #         area of all stations
 
-        Returns
-        --------
-        pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
-            are catchment/station ids.
+    #     Returns
+    #     --------
+    #     pd.DataFrame
+    #         a pandas DataFrame whose indices are time-steps and columns
+    #         are catchment/station ids.
 
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        q = self.fetch_stations_features(stations,
-                                           dynamic_features='q',
-                                           as_dataframe=True)
-        q.index = q.index.get_level_values(0)
-        area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # cms to m/day
-        return q * 1e3  # to mm/day
+    #     """
+    #     stations = check_attributes(stations, self.stations(), 'stations')
+    #     q = self.fetch_stations_features(stations,
+    #                                        dynamic_features='q',
+    #                                        as_dataframe=True)
+    #     q.index = q.index.get_level_values(0)
+    #     area_m2 = self.area(stations) * 1e6  # area in m2
+    #     q = (q / area_m2) * 86400  # cms to m/day
+    #     return q * 1e3  # to mm/day
 
-    @property
-    def _area_name(self) ->str:
-        return 'area'
+    # @property
+    # def _area_name(self) ->str:
+    #     return 'area'
 
-    @property
-    def _coords_name(self) ->List[str]:
-        return ['lat', 'lon']
+    # @property
+    # def _coords_name(self) ->List[str]:
+    #     return ['lat', 'lon']
+
+    # @property
+    # def _mmd_feature_name(self) ->str:
+    #     return observed_streamflow_mmd()
 
     def stations(self):
         """Returns station ids for catchments on Yellow River"""
@@ -236,9 +239,9 @@ class CCAM(_RainfallRunoff):
     def dynamic_features(self)->List[str]:
         """names of hydro-meteorological time series data for Yellow River catchments"""
 
-        return ['pre', 'evp', 'gst_mean', 'prs_mean', 'tem_mean', 'rhu', 'win_mean',
+        return [self.dyn_map.get(feat, feat) for feat in ['pre', 'evp', 'gst_mean', 'prs_mean', 'tem_mean', 'rhu', 'win_mean',
        'gst_min', 'prs_min', 'tem_min', 'gst_max', 'prs_max', 'tem_max', 'ssd',
-       'win_max', 'q']
+       'win_max', 'q']]
 
     @property
     def static_features(self)->List[str]:
@@ -246,7 +249,7 @@ class CCAM(_RainfallRunoff):
         attr_fpath = os.path.join(self.yr_data_path, self.stations()[0], 'attributes.json')
         with open(attr_fpath, 'r') as fp:
             data = json.load(fp)
-        return list(data.keys())
+        return [self.static_map.get(feat, feat) for feat in data.keys()]
 
     @property
     def start(self):  # start of data
@@ -290,7 +293,13 @@ class CCAM(_RainfallRunoff):
 
     def _maybe_meteo_to_nc(self):
         if os.path.exists(self.meteo_nc_path):
+            if self.verbosity>1:
+                print(f"meteo data already converted to netcdf file at {self.meteo_nc_path}")
             return
+        
+        if self.verbosity:
+            print(f"converting meteo data to netcdf file")
+
         stations = os.listdir(self.meteo_path)
         dyn = {}
         for idx, stn in enumerate(stations):
@@ -299,6 +308,12 @@ class CCAM(_RainfallRunoff):
                 stn_id = stn.split('.')[0]
 
                 dyn[stn_id] = self._read_meteo_from_csv(stn_id).astype(np.float32)
+            
+            if self.verbosity and idx % 500 == 0:
+                print(f"{idx}/{len(stations)} stations processed")
+            
+            elif self.verbosity>1 and idx % 200 == 0:
+                print(f"{idx}/{len(stations)} stations processed")
 
         data_vars = {}
         coords = {}
@@ -311,12 +326,17 @@ class CCAM(_RainfallRunoff):
                 'time': index
             }
 
+        if self.verbosity>1:
+            print(f"Creating xarray dataset")
+
         xds = xr.Dataset(
             data_vars=data_vars,
             coords=coords,
             attrs={'date': f"create on {dateandtime_now()}"}
         )
 
+        if self.verbosity>1:
+            print(f"creating netcdf file at {self.meteo_nc_path}")
         xds.to_netcdf(self.meteo_nc_path)
         return
 
@@ -370,7 +390,14 @@ class CCAM(_RainfallRunoff):
         q = pd.read_csv(q_fpath)
         q.index = pd.to_datetime(q.pop('date'))
 
-        return pd.concat([meteo, q], axis=1).astype(np.float32)
+        df = pd.concat([meteo, q], axis=1).astype(np.float32)
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        df.index.name = 'time'
+        df.columns.name = 'dynamic_features'
+
+        return df
 
     def _read_dynamic_from_csv(
             self,
@@ -388,6 +415,10 @@ class CCAM(_RainfallRunoff):
         # and removign duplicates
         dyn = {stn:drop_duplicate_indices(data) for stn, data in dyn.items()}
         dummy = pd.DataFrame(index=pd.date_range("19990101", "20201231", freq="D"))
+
+        dummy.index.name = 'time'
+        dummy.columns.name = 'dynamic_features'
+
         dyn = {stn: pd.concat([v, dummy], axis=1) for stn, v in dyn.items()}
         return dyn
 
@@ -431,10 +462,10 @@ class CCAM(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['lon', 'lat', 'area'])
+        >>> static_data = dataset.fetch_static_features(stns, ['long', 'lat', 'area_km2'])
         >>> static_data.shape
            (102, 3)
-        >>> data = dataset.fetch_static_features('0140', static_features=['lon', 'lat', 'area'])
+        >>> data = dataset.fetch_static_features('0140', static_features=['long', 'lat', 'area_km2'])
         >>> data.shape
            (1, 3)
 
@@ -445,7 +476,11 @@ class CCAM(_RainfallRunoff):
         for stn in stations:
             d = self._read_yr_static(stn)
             ds.append(d)
-        return pd.concat(ds, axis=1).transpose().loc[:, features]
+        df = pd.concat(ds, axis=1).transpose()
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df.loc[:, features]
 
     def _read_yr_static(
             self,

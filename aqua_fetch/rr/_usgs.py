@@ -4,7 +4,7 @@ import re
 import time
 import requests
 from io import StringIO
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 from requests.exceptions import JSONDecodeError
 from concurrent.futures import ProcessPoolExecutor
 
@@ -16,6 +16,10 @@ from .._backend import netCDF4, shapefile, xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
 from ._hysets import HYSETS
+
+from ._map import (
+    observed_streamflow_cms,
+)
 
 from ._map import (
     catchment_area,
@@ -98,7 +102,7 @@ class USGS(_RainfallRunoff):
 
     @property
     def dynamic_features(self)->List[str]:
-        return ['obs_q_cms'] + self.hysets.dynamic_features[1:]
+        return [observed_streamflow_cms()] + self.hysets.dynamic_features[1:]
 
     def stations(self)->List[str]:
         return self._stations
@@ -109,7 +113,7 @@ class USGS(_RainfallRunoff):
 
     @property
     def _q_name(self)->str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     def get_boundary(
             self,
@@ -180,7 +184,7 @@ class USGS(_RainfallRunoff):
 
         area = self.metadata['drain_area_va']
 
-        area.name = 'area'
+        area.name = 'area_km2'
         return area.loc[stations]
 
     def fetch_static_features(
@@ -224,7 +228,7 @@ class USGS(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'Elevation_m'])
         >>> static_data.shape
            (12004, 2)
         """
@@ -277,7 +281,7 @@ class USGS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
         """
         returns features of multiple stations
 
@@ -289,11 +293,13 @@ class USGS(_RainfallRunoff):
         >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations(), 'stations')
-        #stations = [int(stn) for stn in stations]
+        static, dynamic = None, None
+
+        # todo : reading data for 500 stations is taking ~ 10 minutes which is not sustainable
 
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -302,21 +308,16 @@ class USGS(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -324,7 +325,7 @@ class USGS(_RainfallRunoff):
         else:
             raise ValueError(f"static features are {static_features} and dynamic features are {dynamic_features}")
 
-        return to_return
+        return static, dynamic
 
     def _fetch_dynamic_features(
             self,
@@ -341,7 +342,7 @@ class USGS(_RainfallRunoff):
 
         daily_q = None
 
-        if 'obs_q_cms' in features:
+        if observed_streamflow_cms() in features:
             # todo:  we are reading all file even for one station
             daily_q = self._q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
@@ -349,7 +350,7 @@ class USGS(_RainfallRunoff):
             else:
                 daily_q = daily_q.loc[st:en, stations]
             
-            features.remove('obs_q_cms')
+            features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
             return daily_q
@@ -363,7 +364,7 @@ class USGS(_RainfallRunoff):
                 data = data.rename({int(k)-1:v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations})
 
                 # first create a new dimension in daily_q named dynamic_features
-                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features')
             else:
                 # -1 because the data in .nc files hysets starts with 0

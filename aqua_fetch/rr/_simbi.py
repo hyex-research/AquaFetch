@@ -457,10 +457,14 @@ class Simbi(_RainfallRunoff):
         """
         Read the static data.
         """
-        return pd.concat([
+        df = pd.concat([
             self.other_attributes(),
             self.clim_sigs()
         ], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def fetch_static_features(
             self,

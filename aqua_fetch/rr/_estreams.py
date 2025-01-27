@@ -109,6 +109,15 @@ class EStreams(_RainfallRunoff):
         return pd.Timestamp('2023-06-30')
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area_estreams': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_sawicz': slope('no_unit'),
+                'lon': gauge_longitude(),
+        }
+    
+    @property
     def dyn_map(self):
         return {
             't_min': min_air_temp(),
@@ -136,7 +145,7 @@ class EStreams(_RainfallRunoff):
 
         df = pd.concat(dfs, axis=1)
 
-        df.rename(columns={'area_estreams': catchment_area()}, inplace=True)
+        df.rename(columns=self.static_map, inplace=True)
 
         df.columns.name = 'static_features'
         df.index.name = 'station_id'
@@ -737,16 +746,6 @@ class Finland(_EStreams):
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
     @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-
-        }
-
-    @property
     def country_name(self)->str:
         return 'FI'
 
@@ -1014,16 +1013,6 @@ class Ireland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope(''),
-                'lon': gauge_longitude(),
-
-        }
 
     @property
     def country_name(self)->str:
@@ -1413,16 +1402,6 @@ class Italy(_EStreams):
         self._stations = self.ispra_stations()
 
     @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope(''),
-                'lon': gauge_longitude(),
-
-        }
-
-    @property
     def country_name(self)->str:
         return 'IT'
 
@@ -1547,16 +1526,6 @@ class Poland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-
-        }
 
     @property
     def country_name(self)->str:
@@ -1764,15 +1733,6 @@ class Portugal(_EStreams):
 
         fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-        }
 
     @property
     def country_name(self)->str:

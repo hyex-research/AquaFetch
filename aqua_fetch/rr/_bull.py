@@ -42,7 +42,8 @@ from ._map import (
     )
 
 BUL_COLUMNS = [
-    'snow_depth_water_equivalent_mean_BULL', 'surface_net_solar_radiation_mean_BULL',
+    'snow_depth_water_equivalent_mean_BULL', 
+    'surface_net_solar_radiation_mean_BULL',
     'surface_net_thermal_radiation_mean_BULL',
     'surface_pressure_mean_BULL', 'temperature_2m_mean_BULL', 'dewpoint_temperature_2m_mean_BULL',
     'u_component_of_wind_10m_mean_BULL',
@@ -62,7 +63,8 @@ BUL_COLUMNS = [
     'u_component_of_wind_10m_max_BULL', 'v_component_of_wind_10m_max_BULL', 'volumetric_soil_water_layer_1_max_BULL',
     'volumetric_soil_water_layer_2_max_BULL', 'volumetric_soil_water_layer_3_max_BULL',
     'volumetric_soil_water_layer_4_max_BULL',
-    'total_precipitation_sum_BULL', 'potential_evaporation_sum_BULL', 'streamflow_BULL'
+    'total_precipitation_sum_BULL', 'potential_evaporation_sum_BULL', 
+    'streamflow_BULL'
 ]
 
 
@@ -77,7 +79,7 @@ class Bull(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import Bull
     >>> dataset = Bull()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (1426260, 48)  # 40 represents number of stations
     Since data is a multi-index dataframe, we can get data of one station as below
@@ -91,7 +93,7 @@ class Bull(_RainfallRunoff):
     FrozenMappingWarningOnValuesAccess({'time': 25932, 'dynamic_features': 55})
     >>> len(data.data_vars)
         48
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (25932, 55)
@@ -106,21 +108,19 @@ class Bull(_RainfallRunoff):
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['potential_evapotranspiration_AEMET',  'temperature_mean_AEMET',
-    ... 'total_precipitation_ERA5_Land', 'obs_q_cms']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms']).unstack()
     >>> df.shape
     (25932, 4)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (166166, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 214), (1426260, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -172,7 +172,7 @@ class Bull(_RainfallRunoff):
             'dewpoint_temperature_2m_mean_BULL': mean_dewpoint_temperature(),
             'dewpoint_temperature_2m_min_BULL': min_dewpoint_temperature(),  # todo: are we considering height
             'potential_evaporation_sum_BULL': mean_potential_evaporation(),  # todo: is it mean or total?
-            'streamflow': observed_streamflow_cms(),
+            'streamflow_BULL': observed_streamflow_cms(),
             'potential_evapotranspiration_AEMET': total_potential_evapotranspiration_with_specifier('AEMET'),
             'potential_evapotranspiration_EMO1_arc': total_potential_evapotranspiration_with_specifier('EMO1arc'),
             'potential_evapotranspiration_ERA5_Land': total_potential_evapotranspiration_with_specifier('ERA5Land'),
@@ -243,18 +243,6 @@ class Bull(_RainfallRunoff):
         return os.path.join(self.ts_path, self.ftype, "EMO1_arc")
 
     @property
-    def _q_name(self) -> str:
-        return "obs_q_cms"
-
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['gauge_lat', 'gauge_lon']
-
-    @property
-    def _area_name(self) -> str:
-        return 'area'
-
-    @property
     def start(self):
         return pd.Timestamp("19510102")
 
@@ -295,11 +283,13 @@ class Bull(_RainfallRunoff):
             index_col=0)
 
     def static_data(self) -> pd.DataFrame:
-        return pd.concat([
+        df = pd.concat([
             self.caravan_attributes(),
             self.hydroatlas_attributes(),
             self.other_attributes()
         ], axis=1)
+        df.rename(columns=self.static_map, inplace=True)
+        return df
 
     def _read_dynamic_for_stn(self, stn_id: str) -> pd.DataFrame:
 
@@ -364,7 +354,9 @@ class Bull(_RainfallRunoff):
         return df
 
     def _read_aemet_for_stn(self, stn_id) -> pd.DataFrame:
-        """a dataframe of shape (time, 5)
+        """
+        reads a dataframe of shape (time, 5)
+
         'temperature_max_AEMET',
         'temperature_min_AEMET',
         'temperature_mean_AEMET',
@@ -486,7 +478,7 @@ class Bull(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations())
+        stations = check_attributes(stn_id, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]

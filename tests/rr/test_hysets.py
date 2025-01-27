@@ -1,7 +1,7 @@
 
 import os
 import site
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import logging
@@ -36,7 +36,7 @@ gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 def test_hysets():
 
-    hy = HYSETS(path=os.path.join(gscad_path, "HYSETS"))
+    hy = HYSETS(path=os.path.join(gscad_path, "HYSETS"), verbosity=5)
 
     # because it takes very long time, we don't test with all the data
     test_dynamic_data(hy, 0.003, int(14425 * 0.003), 25202)
@@ -74,5 +74,6 @@ def test_hysets():
     test_boundary(hy)
 
     return
+
 
 test_hysets()

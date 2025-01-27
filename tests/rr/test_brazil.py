@@ -1,6 +1,6 @@
 
 import os
-import site   # so that water_datasets directory is in path
+import site   # so that aqua_fetch directory is in path
 import logging
 
 # add the parent directory in the path
@@ -22,7 +22,7 @@ from utils import (
 
 
 for source in ['era5', 'ref', 'ens']:
-    dataset = CABra(path=gscad_path, met_src=source)
+    dataset = CABra(path=gscad_path, met_src=source, verbosity=4)
     test_dataset(dataset, 735, 10957, 97, 12)
 
 

@@ -52,7 +52,7 @@ and the catchment boundary. The following example demonstrates how to fetch data
 ```python
 from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
-df = dataset.fetch(stations=1, as_dataframe=True)
+_, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
@@ -62,20 +62,20 @@ stns = dataset.stations()
 len(stns)
    222
 # get data of 10 % of stations as dataframe
-df = dataset.fetch(0.1, as_dataframe=True)
+_, df = dataset.fetch(0.1, as_dataframe=True)
 df.shape
    (550784, 22)
 # The returned dataframe is a multi-indexed data
 df.index.names == ['time', 'dynamic_features']
     True
 # get data by station id
-df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+_, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
 df.shape
     (21184, 26)
 # get names of available dynamic features
 dataset.dynamic_features
 # get only selected dynamic features
-data = dataset.fetch(1, as_dataframe=True,
+_, data = dataset.fetch(1, as_dataframe=True,
 ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
 data.shape
    (21184, 4)
@@ -85,10 +85,9 @@ dataset.static_features
 df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe
    (21184, 260)
-# when we get both static and dynamic data, the returned data is a dictionary
-# with ``static`` and ``dyanic`` keys.
-data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-data['static'].shape, data['dynamic'].shape
+# If we get both static and dynamic data
+static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+static.shape, dynamic.shape
 ((1, 166), (550784, 1))
 coords = dataset.stn_coords() # returns coordinates of all stations
 coords.shape

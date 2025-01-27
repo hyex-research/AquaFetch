@@ -1,9 +1,14 @@
 
 import os
 import site
-# add the parent directory in the path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# add the aqua_fetch directory in the path
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
+
+import logging
+
+if __name__ == "__main__":
+    logging.basicConfig(filename='test_usgs.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 import numpy as np 
  
@@ -35,6 +40,7 @@ def test_daily_q():
 
     return
 
+
 def test_metadata():
     metadata_nwis = nwis.get_record(site, 
                     parameterCd="00060", 
@@ -50,6 +56,7 @@ def test_metadata():
     for i,j in zip(metadata_nwis.values.reshape(-1,), metadata_usgs.values.reshape(-1,)):
         np.testing.assert_array_equal([i], [j])
     return
+
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 

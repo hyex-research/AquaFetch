@@ -107,7 +107,7 @@ def test_boundary(dataset):
 def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features):
     logger.info(f"testing fetch_static_features method for {dataset.name}")
     if len(dataset.static_features) > 0:
-        df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
+        df, _ = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
         assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
 
@@ -162,7 +162,7 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
         logger.info(f"randomly selected {len(stations)} stations for {dataset.name}")
         num_stations = len(stations)
 
-    df = dataset.fetch(stations=stations, static_features=None, as_dataframe=as_dataframe)
+    _, df = dataset.fetch(stations=stations, static_features=None, as_dataframe=as_dataframe)
 
     logger.info(f"fetched data for {stations} stations for {dataset.name}")
 
@@ -177,7 +177,7 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
 def test_selected_dynamic_features(dataset, as_dataframe=False):
     logger.info(f"test_selected_dynamic_features for {dataset.name}")
     features = dataset.dynamic_features[0:2]
-    data = dataset.fetch(dataset.stations()[0], dynamic_features=features, as_dataframe=as_dataframe)
+    _, data = dataset.fetch(dataset.stations()[0], dynamic_features=features, as_dataframe=as_dataframe)
 
     if as_dataframe:
         data = data.unstack()
@@ -195,16 +195,15 @@ def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
         logger.info(f"test_all_data for {dataset.name}")
 
     if len(dataset.static_features) > 0:
-        df = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
-        assert df['static'].shape == (stations, len(dataset.static_features)), f"shape is {df['static'].shape}"
+        static, dynamic = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
+        assert static.shape == (stations, len(dataset.static_features)), f"shape is {static.shape}"
     else:
-        df = dataset.fetch(stations, static_features=None, as_ts=False, as_dataframe=as_dataframe)
-        df = {'dynamic': df}
+        _, dynamic = dataset.fetch(stations, static_features=None, as_ts=False, as_dataframe=as_dataframe)
 
     if as_dataframe:
-        check_dataframe(dataset, df['dynamic'], stations, stn_data_len, raise_len_error=raise_len_error)
+        check_dataframe(dataset, dynamic, stations, stn_data_len, raise_len_error=raise_len_error)
     else:
-        check_dataset(dataset, df['dynamic'], stations, stn_data_len, raise_len_error=raise_len_error)
+        check_dataset(dataset, dynamic, stations, stn_data_len, raise_len_error=raise_len_error)
 
     return
 
@@ -259,7 +258,7 @@ def test_static_data(dataset, stations, target):
         logger.info(f"test_static_data for {dataset.name} for {stations} stations expected {target}")
 
     if len(dataset.static_features) > 0:
-        df = dataset.fetch(stations=stations, dynamic_features=None, static_features='all')
+        df, _ = dataset.fetch(stations=stations, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
         assert len(df) == target, f'length of static df is {len(df)} Expected {target}'
         exp_shape = (target, len(dataset.static_features))
@@ -292,7 +291,7 @@ def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
 def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataframe=False):
     logger.info(f"testing fetch_dynamic_multiple_stations for {dataset.name} for {n_stns} stations")
     stations = dataset.stations()
-    data = dataset.fetch(stations[0:n_stns], as_dataframe=as_dataframe)
+    _, data = dataset.fetch(stations[0:n_stns], as_dataframe=as_dataframe)
 
     if as_dataframe:
         check_dataframe(dataset, data, n_stns, stn_data_len)
@@ -312,15 +311,15 @@ def test_st_en_with_static_and_dynamic(
     logger.info(f"testing {dataset.name} with st and en with both static and dynamic")
 
     if len(dataset.static_features) > 0:
-        data = dataset.fetch([station], static_features='all',
+        static, dynamic = dataset.fetch([station], static_features='all',
                              st=st,
                              en=en, as_dataframe=as_dataframe)
         if as_dataframe:
-            check_dataframe(dataset, data['dynamic'], 1, yearly_steps)
+            check_dataframe(dataset, dynamic, 1, yearly_steps)
         else:
-            check_dataset(dataset, data['dynamic'], 1, yearly_steps)
+            check_dataset(dataset, dynamic, 1, yearly_steps)
 
-        assert data['static'].shape == (1, len(dataset.static_features))
+        assert static.shape == (1, len(dataset.static_features))
 
         data = dataset.fetch_dynamic_features(station, st=st, en=en,
                                               as_dataframe=as_dataframe)

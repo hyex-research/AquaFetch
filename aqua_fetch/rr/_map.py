@@ -259,7 +259,7 @@ def min_solar_radiation()->str:
     downard shortwave radiation
     net solar radiation
     """
-    return "solrad_wm2_max"
+    return "solrad_wm2_min"
 
 
 def downward_longwave_radiation()->str:
@@ -384,7 +384,7 @@ def mean_vapor_pressure()->str:
 
 
 def mean_vapor_pressure_with_specifier(specifier)->str:
-    return f"{specifier}_vp_hpa"
+    return f"vp_hpa_{specifier}"
 
 
 # %%
