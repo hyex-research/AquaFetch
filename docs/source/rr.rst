@@ -186,9 +186,9 @@ List of datasets
 
 High Level API
 ==============
-The high level API is provided by :py:class:`aqua_fetch.rr.RainfallRunoff` 
-class to provide a unified and easy-to-use interface to access all the datasets. 
-The datasets are accessed by their names.
+The :py:class:`aqua_fetch.rr.RainfallRunoff` class represents high level API
+which provides a unified and easy-to-use interface to access all the datasets. 
+It is recommended to use this class to access the datasets.
 
 .. autoclass:: aqua_fetch.rr.RainfallRunoff
    :members:

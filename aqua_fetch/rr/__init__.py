@@ -419,15 +419,16 @@ class RainfallRunoff(object):
         """
         return self.dataset.area(stations)
 
-    def fetch(self,
-              stations: Union[str, List[str], int, float] = "all",
-              dynamic_features: Union[List[str], str, None] = 'all',
-              static_features: Union[str, List[str], None] = None,
-              st: Union[None, str] = None,
-              en: Union[None, str] = None,
-              as_dataframe: bool = False,
-              **kwargs  # todo, where do these keyword args go?
-              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
+    def fetch(
+            self,
+            stations: Union[str, List[str], int, float] = "all",
+            dynamic_features: Union[List[str], str, None] = 'all',
+            static_features: Union[str, List[str], None] = None,
+            st: Union[None, str] = None,
+            en: Union[None, str] = None,
+            as_dataframe: bool = False,
+            **kwargs  # todo, where do these keyword args go?
+            ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         Fetches the features of one or more stations.
 
@@ -471,13 +472,13 @@ class RainfallRunoff(object):
         -------
         tuple
             A tuple of static and dynamic features. Static features are always
-            returned as pandas DataFrame with shape (stations, staticfeatures).
-            The index of static features is the station/gauge ids while the columns 
-            are the static features. Dynamic features are returned as either
+            returned as pandas DataFrame with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
             xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
-            If dynamic features are xarray Dataset, then it consists of `data_vars`
-            equal to the number of stations and `time` adn `dynamic_features` as
+            If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
+            equal to the number of stations and `time` and `dynamic_features` as
             dimensions. If dynamic features are returned as pandas DataFrame, then
             the first index is `time` and the second index is `dynamic_features`.
 
@@ -498,7 +499,7 @@ class RainfallRunoff(object):
         >>> dynamic
         ... # get only selected dynamic features
         >>> sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        ...     dynamic_features=['q_cms_obs', 'solarrad_AWAP'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
@@ -542,13 +543,13 @@ class RainfallRunoff(object):
         -------
         tuple
             A tuple of static and dynamic features. Static features are always
-            returned as pandas DataFrame with shape (stations, staticfeatures).
-            The index of static features is the station/gauge ids while the columns 
-            are the static features. Dynamic features are returned as either
+            returned as pandas DataFrame with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
             xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
-            If dynamic features are xarray Dataset, then it consists of `data_vars`
-            equal to the number of stations and `time` adn `dynamic_features` as
+            If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
+            equal to the number of stations and `time` and `dynamic_features` as
             dimensions. If dynamic features are returned as pandas DataFrame, then
             the first index is `time` and the second index is `dynamic_features`.
 
@@ -566,8 +567,14 @@ class RainfallRunoff(object):
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
         ...  as_dataframe=True)
         """
-        return self.dataset.fetch_stations_features(stations, dynamic_features, static_features, st, en, as_dataframe,
-                                                    **kwargs)
+        return self.dataset.fetch_stations_features(
+            stations, 
+            dynamic_features, 
+            static_features, 
+            st, 
+            en, 
+            as_dataframe,
+            **kwargs)
 
     def fetch_dynamic_features(
             self,
@@ -576,8 +583,9 @@ class RainfallRunoff(object):
             st=None,
             en=None,
             as_dataframe=False
-    ):
-        """Fetches all or selected dynamic attributes of one station.
+    )->Union[pd.DataFrame, xr.Dataset]:
+        """
+        Fetches all or selected dynamic attributes of one station.
 
         Parameters
         ----------
@@ -593,16 +601,22 @@ class RainfallRunoff(object):
             as_dataframe : bool, optional (default=False)
                 if true, the returned data is pandas DataFrame otherwise it
                 is xarray dataset
+        
+        Returns
+        -------
+        pd.DataFrame or xr.Dataset
+            a pandas dataframe or xarray dataset depending upon the value of
+            `as_dataframe` and whether xarray is installed or not.
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> camels = RainfallRunoff('CAMELS_AUS')
-            >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('224214A',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
-            ... as_dataframe=True).unstack()
+        >>> from water_datasets import RainfallRunoff
+        >>> camels = RainfallRunoff('CAMELS_AUS')
+        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.dynamic_features
+        >>> camels.fetch_dynamic_features('224214A',
+        ... features=['tmax_AWAP', 'vprp_AWAP', 'q_cms_obs'],
+        ... as_dataframe=True).unstack()
         """
         return self.dataset.fetch_dynamic_features(
             stn_id, dynamic_features, st, en, as_dataframe)
@@ -646,9 +660,9 @@ class RainfallRunoff(object):
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> dataset = RainfallRunoff('CAMELS_AUS')
-            >>> dataset.fetch_station_features('912101A')
+        >>> from water_datasets import RainfallRunoff
+        >>> dataset = RainfallRunoff('CAMELS_AUS')
+        >>> dataset.fetch_station_features('912101A')
 
         """
         return self.dataset.fetch_station_features(stn_id, dynamic_features, static_features, as_ts, st, en, **kwargs)
