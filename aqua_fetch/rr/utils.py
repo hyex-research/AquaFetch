@@ -328,7 +328,7 @@ class _RainfallRunoff(Datasets):
               en: Union[None, str] = None,
               as_dataframe: bool = False,
               **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         Fetches the features of one or more stations.
 
@@ -438,7 +438,7 @@ class _RainfallRunoff(Datasets):
             en: Union[str, pd.Timestamp] = None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         Reads features of more than one stations.
 

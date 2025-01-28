@@ -281,7 +281,7 @@ class USGS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """
         returns features of multiple stations
 

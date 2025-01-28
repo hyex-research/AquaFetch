@@ -164,7 +164,7 @@ class RainfallRunoff(object):
     --------
     >>> from water_datasets import RainfallRunoff
     >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.columns = df.columns.get_level_values('dynamic_features')
     >>> df.shape
@@ -174,33 +174,32 @@ class RainfallRunoff(object):
     >>> len(stns)
        222
     ... # get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (550784, 22)
     ... # The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
     >>> df.shape
         (21184, 26)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
     >>> data.shape
        (21184, 4)
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (21184, 260)
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we want to get both static and dynamic data 
+    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 166), (550784, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -380,12 +379,12 @@ class RainfallRunoff(object):
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> camels = RainfallRunoff('CAMELS_AUS')
-            >>> camels.fetch_static_features('224214A')
-            >>> camels.static_features
-            >>> camels.fetch_static_features('224214A',
-            ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
+        >>> from water_datasets import RainfallRunoff
+        >>> camels = RainfallRunoff('CAMELS_AUS')
+        >>> camels.fetch_static_features('224214A')
+        >>> camels.static_features
+        >>> camels.fetch_static_features('224214A',
+        ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         """
 
         return self.dataset.fetch_static_features(stations, static_features)
@@ -487,21 +486,21 @@ class RainfallRunoff(object):
         >>> from water_datasets import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> # get data of 10% of stations
-        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        >>> _, df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
         ...  # fetch data of 5 (randomly selected) stations
-        >>> five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
+        >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
         ... # fetch data of 3 selected stations
-        >>> three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        >>> _, three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
         ... # fetch data of a single stations
-        >>> single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
+        >>> _, single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
         >>> static, dyanmic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> dynamic
         ... # get only selected dynamic features
-        >>> sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['q_cms_obs', 'solarrad_AWAP'], as_dataframe=True)
+        >>> _, sel_dyn_features = dataset.fetch(stations='318076',
+        ...     dynamic_features=['q_cms_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
-        >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
+        >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         return self.dataset.fetch(stations, dynamic_features, static_features, st, en, as_dataframe, **kwargs)
@@ -564,7 +563,7 @@ class RainfallRunoff(object):
         ... # find out station ids
         >>> dataset.stations()
         ... # get data of selected stations
-        >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        >>> static, dynamic = dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
         ...  as_dataframe=True)
         """
         return self.dataset.fetch_stations_features(
@@ -615,7 +614,7 @@ class RainfallRunoff(object):
         >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
         >>> camels.fetch_dynamic_features('224214A',
-        ... features=['tmax_AWAP', 'vprp_AWAP', 'q_cms_obs'],
+        ... features=['airtemp_C_silo_max', 'vp_hpa_silo', 'q_cms_obs'],
         ... as_dataframe=True).unstack()
         """
         return self.dataset.fetch_dynamic_features(

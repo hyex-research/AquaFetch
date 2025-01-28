@@ -202,8 +202,11 @@ class HYSETS(_RainfallRunoff):
             assert os.path.exists(fpath), f'{fpath} does not exist'
             xds = xr.open_dataset(fpath)
 
+            if self.verbosity>1:
+                print(f'processing {src}')
+
             for idx, var in enumerate(xds.variables):
-                if self.verbosity: print(f'{idx}: getting {var} from source {src} ')
+                if self.verbosity>2: print(f'{idx}: getting {var} from source {src} ')
 
                 if len(xds[var].data.shape) > 1:
                     xar = xds[var]
@@ -453,7 +456,7 @@ class HYSETS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame: xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
         """returns features of multiple stations
         Examples
         --------
