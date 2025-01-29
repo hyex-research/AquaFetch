@@ -17,6 +17,8 @@
 # https://www.sciencedirect.com/science/article/pii/S2352340922003961
 # https://www.sciencedirect.com/science/article/pii/S2352340922001810
 
+# https://essd.copernicus.org/articles/17/1/2025/
+
 from ._doce_river import DoceRiver
 from ._busan_beach import busan_beach
 from ._misc import SeluneRiver

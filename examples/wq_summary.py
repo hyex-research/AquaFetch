@@ -53,11 +53,13 @@ print_info()
 
 # %%
 
-DATA_PATH = '/mnt/datawaha/hyex/atr/data'
-
 coords_data = {}
-for ds in [SWatCh, GRQA, Quadica, 
-           #GRiMeDB, RC4USCoast, CamelsChem, 
+for ds in [SWatCh,
+           # GRQA, 
+           Quadica, 
+           GRiMeDB, 
+           RC4USCoast, 
+           CamelsChem, 
            SyltRoads, ecoli_mekong, RiverChemSiberia
            ]:
 
@@ -74,8 +76,12 @@ for ds in [SWatCh, GRQA, Quadica,
 # %%
 colors = plt.cm.tab20.colors
 
-block1 = ['SWatCh', 'GRQA', 'Quadica', 
-          #'GRiMeDB', 'RC4USCoast', 'CamelsChem'
+block1 = ['SWatCh', 
+          #'GRQA', 
+          'Quadica', 
+          'GRiMeDB', 
+          'RC4USCoast', 
+          'CamelsChem'
           ]
 block2 = ['SyltRoads', 'ecoli_mekong', 'RiverChemSiberia']
 
