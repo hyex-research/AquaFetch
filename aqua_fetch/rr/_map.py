@@ -185,7 +185,7 @@ def v_component_of_wind_with_specifier(specifier:str)->str:
 # %% relative humidity
 
 def mean_rel_hum()->str:
-    # in percentage
+    # mean relative humidity in percentage
     return "rh_%"
 
 
@@ -286,6 +286,9 @@ def min_themal_radiation()->str:
 
 # %% 
 # snow water equivalent depth
+
+def snow_depth()->str:
+    return "snowdepth_m"
 
 def snow_water_equivalent()->str:
     # is it total or mean?

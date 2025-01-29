@@ -296,7 +296,7 @@ def maybe_download(
                                include=include, 
                                verbosity=verbosity,
                                **kwargs)
-        elif files_to_check:
+        elif files_to_check:  # todo: not checking which files are present or not
             download_and_unzip(path, 
                                url=url,
                                files_to_check=files_to_check,
@@ -383,6 +383,8 @@ def download_and_unzip(
                                      include=include,
                                      files_to_check=files_to_check,
                                      **kwargs)
+            elif 'drive.google' in url:
+                download_from_google_drive(url, path, fname, verbosity=verbosity)   
             else:
                 if include is not None or files_to_check is not None:
                     raise ValueError("include and files_to_check are available only for zenodo")
@@ -392,6 +394,36 @@ def download_and_unzip(
     else:
         raise ValueError(f"Invalid url: {path}, {url}")
 
+    return
+
+
+def download_from_google_drive(url, path, fname, verbosity=1):
+
+    def get_confirm_token(response):
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                return value
+        return None
+
+    URL = "https://drive.google.com/uc?export=download"
+    # get the file id from url which exists between d/ and /view
+    file_id = url.split('/')[-2]
+    session = requests.Session()
+
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = {'id': id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    destination = os.path.join(path, fname)
+    CHUNK_SIZE = 32768  # The size of each chunk to write (you can adjust this)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
     return
 
 

@@ -452,6 +452,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.NPCTRCatchments
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 The following datasets are very much similar to RainfallRunoff datasets,
 but they do not have observed streamflow data. They are used
 to provide static and dynamic features to other datasets.

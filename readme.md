@@ -177,6 +177,7 @@ mg_data_ohe.shape
 | Portugal       | 280                    |                         | 27                       | 35                      | 1992 - 2020       | Portugal                                    | [SNIRH Portugal](https://snirh.apambiente.pt)                                                               |
 | Italy          | 294                    |                         | 27                       | 35                      | 1992 - 2020       | Italy                                       | [Nascimento et al., 2024](http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient) |
 | CAMELS_FR      | 654                    |                         | 22                       | 344                     | 1970 - 2021       | France                                      | [Delaigue et al., 2024](https://essd.copernicus.org/preprints/essd-2024-415/)                               |
+| NPCTRCatchments| -                      | 7                       | 8                        | 12                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
 
 ## Summary of Water Quality Datasets
 
