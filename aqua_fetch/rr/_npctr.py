@@ -29,7 +29,7 @@ from ._map import (
     max_catchment_elevation_meters,
 )
 
-# todo : what is difference between SSN and WSN stations?
+# SSN : Stream Sensor Node and WSN : Weather Sensor Node
 
 class NPCTRCatchments(_RainfallRunoff):
     """
@@ -51,6 +51,9 @@ class NPCTRCatchments(_RainfallRunoff):
     >>> area = ds.area()
     >>> area.shape
     (7,)
+    >>> coords = ds.stn_coords()
+    >>> coords.shape
+    (7, 2)
     """
     url = {
         "2013-2019_Discharge1015_5min.csv":
@@ -139,7 +142,51 @@ class NPCTRCatchments(_RainfallRunoff):
     def q_attributes(self):
         return ["Qrate", "Qrate_min", "Qrate_max", "Qvol", "Qvol_min", "Qvol_max",
                 "Qmm", "Qmm_min", "Qmm_max"]
-    
+
+    def stn_coords(self, stations = 'all', sensor='SSN')->pd.DataFrame:
+        """
+        By default uses coordinate information of Stream Sensor Nodes, assuming that
+        stream sensors would be closer to the stream gauge. The values are taken
+        from `Table A1 of paper <https://essd.copernicus.org/articles/14/4231/2022/essd-14-4231-2022.html#&gid=1&pid=1>`_
+        """        
+        coords = self.all_stn_coords()
+
+        if sensor == 'SSN':
+            coords.index = coords.index.astype(str).str.strip('SSN')
+        elif sensor == 'WSN':
+            coords.index = coords.index.astype(str).str.strip('WSN')
+
+        stations = check_attributes(stations, self.stations(), 'stations')
+        
+        return coords.loc[stations, :]
+
+    def all_stn_coords(self)->pd.DataFrame:
+        """
+        Using coordinate information of Stream Sensor Nodes, assuming that
+        stream sensors would be closer to the stream gauge. The values are taken
+        from `Table A1 of paper <https://essd.copernicus.org/articles/14/4231/2022/essd-14-4231-2022.html#&gid=1&pid=1>`_
+        """
+        stations = {
+            "RefStn": {gauge_latitude: 51.6520, gauge_longitude(): -128.1287},
+            "SSN626": {gauge_latitude: 51.6408, gauge_longitude(): -128.1219},
+            "WSN626": {gauge_latitude: 51.6262, gauge_longitude(): -128.1018},
+            "SSN693": {gauge_latitude: 51.6442, gauge_longitude(): -127.9978},
+            "WSN693_703": {gauge_latitude: 51.6106, gauge_longitude(): -127.9871},
+            "SSN703": {gauge_latitude: 51.6166, gauge_longitude(): -128.0257},
+            "WSN703": {gauge_latitude: 51.6433, gauge_longitude(): -128.0228},
+            "WSN703_708": {gauge_latitude: 51.6222, gauge_longitude(): -128.0507},
+            "SSN708": {gauge_latitude: 51.6486, gauge_longitude(): -128.0684},
+            "SSN819": {gauge_latitude: 51.6619, gauge_longitude(): -128.0419},
+            "WSN819_1015": {gauge_latitude: 51.6827, gauge_longitude(): -128.0433},
+            "SSN844": {gauge_latitude: 51.6608, gauge_longitude(): -128.0025},
+            "WSN844": {gauge_latitude: 51.6614, gauge_longitude(): -127.9975},
+            "SSN1015": {gauge_latitude: 51.6906, gauge_longitude(): -128.0653},
+            "East Buxton": {gauge_latitude: 51.5899, gauge_longitude(): -128.9752},
+            "Hecate": {gauge_latitude: 51.6826, gauge_longitude():-128.0228}
+        }
+
+        return pd.DataFrame(stations).T
+
     def read_hourly_q(self)->Dict[str, pd.DataFrame]:
         fpath = os.path.join(self.path, '2013-2019_Discharge_Hourly.csv')
         df = pd.read_csv(fpath, 
@@ -172,8 +219,19 @@ class NPCTRCatchments(_RainfallRunoff):
             dfs[stn] = df
         return dfs
 
-    def get_pcp(self):
-        return
+    def get_pcp(self, sensor="SSN"):
+
+        df = self.read_pcp()
+        if sensor == "SSN":
+            df['Site'] = df['Site'].str.strip('SSN')
+        elif sensor == "WSN":
+            df['Site'] = df['Site'].str.strip('WSN')
+        
+        data = {n: g for n, g in df.groupby('Site')}
+
+        # remove Site column
+        data = {k: v.drop(columns='Site') for k, v in data.items()}
+        return data
 
     def read_pcp(
             self,
@@ -214,10 +272,19 @@ class NPCTRCatchments(_RainfallRunoff):
 
         df.rename(columns={'Rain': total_precipitation()}, inplace=True)
 
-        #df['Site'] = df['Site'].str.strip('SSN')
-        #df['Site'] = df['Site'].str.strip('WSN')
-
         return df
+
+    def get_temp(self, sensor="SSN"):
+        df = self.read_temp()
+        if sensor == "SSN":
+            df['Site'] = df['Site'].str.strip('SSN')
+        elif sensor == "WSN":
+            df['Site'] = df['Site'].str.strip('WSN')
+        
+        data = {n: g for n, g in df.groupby('Site')}
+
+        # remove Site column
+        data = {k: v.drop(columns='Site') for k, v in data.items()}
 
     def read_temp(
             self,
@@ -511,7 +578,8 @@ class NPCTRCatchments(_RainfallRunoff):
         static[catchment_area()] = static[catchment_area()] / 100
         static['land_area_km2'] = static['land_area_km2'] / 100
         static['waterbody_area_km2'] = static['waterbody_area_km2'] / 100
-        return static.astype(self.fp)
+        static =  pd.concat([static.astype(self.fp), self.stn_coords()], axis=1)
+        return static
 
     def fetch_static_features(
             self,
@@ -545,7 +613,7 @@ class NPCTRCatchments(_RainfallRunoff):
 
         stn_id = check_attributes(stn_id, self.stations(), 'stations')
         static_features = check_attributes(static_features, self.static_features, 'static_features')
-        return self._get_static().loc[stn_id, static_features]
+        df =  self._get_static().loc[stn_id, static_features]
 
 
 def _verify_timestep(timestep):

@@ -11,6 +11,7 @@ ipykernel
 
 git+https://github.com/AtrCheema/tabulight.git  # for examples
 basemap    # for example scripts
+shapely    # for example scripts
 
 openpyxl
 seaborn

@@ -46,8 +46,10 @@ sol = ds.read_sol_rad()
 snowdepth = ds.read_snow_depth()
 winddir = ds.read_wind_dir()
 
+pcp = ds.get_pcp()
 
-ds = NPCTRCatchments(path=gscad_path, timestep='5min')
+
+ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data', timestep='5min')
 
 pcp_5m = ds.read_pcp()
 rh_5m = ds.read_rel_hum()
@@ -59,6 +61,6 @@ winddir_5m = ds.read_wind_dir()
 
 static = ds._get_static()
 
-assert len(ds.static_features) == 12
+assert len(ds.static_features) == 14
 
 test_area(ds)
