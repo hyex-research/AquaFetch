@@ -33,13 +33,13 @@ class Caravan_DK(_RainfallRunoff):
 
     Please note that there is an updated version of this dataset following the works
     of `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ . This dataset
-    is associated with the :py:class:`water_datasets.CAMELS_DK` class which can be imported as follows:
+    is associated with the :py:class:`aqua_fetch.CAMELS_DK` class which can be imported as follows:
 
-    >>> from water_datasets import CAMELS_DK
+    >>> from aqua_fetch import CAMELS_DK
 
     Examples
     ---------
-    >>> from water_datasets import Caravan_DK
+    >>> from aqua_fetch import Caravan_DK
     >>> dataset = Caravan_DK()
     >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
@@ -296,7 +296,7 @@ class Caravan_DK(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import Caravan_DK
+        >>> from aqua_fetch import Caravan_DK
         >>> dataset = Caravan_DK()
         get the names of stations
         >>> stns = dataset.stations()

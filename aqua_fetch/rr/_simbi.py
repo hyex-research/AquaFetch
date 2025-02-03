@@ -490,7 +490,7 @@ class Simbi(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_quality import Simbi
+        >>> from aqua_fetch import Simbi
         >>> dataset = Simbi()
         get all static data of all stations
         >>> stns = dataset.static_data_stations()

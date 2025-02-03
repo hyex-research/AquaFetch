@@ -3,11 +3,11 @@
 CAMELS Australia
 ====================
 
-.. currentmodule:: water_datasets
+.. currentmodule:: aqua_fetch
 
-This example demonstrates how to use the `water_datasets` package to download and
+This example demonstrates how to use the `aqua_fetch` package to download and
 explore the `CAMELS Australia <https://doi.org/10.5194/essd-2024-263>`_ dataset 
-using the :py:class:`water_datasets.RainfallRunoff` class. Although we show it
+using the :py:class:`aqua_fetch.RainfallRunoff` class. Although we show it
 for CAMELS Australia, the same can be done for all other rainfall runoff datasets.
 
 **Note:** This file runs online on readthedocs everytime the documentation is built.

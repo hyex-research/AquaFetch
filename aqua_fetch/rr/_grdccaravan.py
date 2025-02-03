@@ -62,7 +62,7 @@ class GRDCCaravan(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import GRDCCaravan
+    >>> from aqua_fetch import GRDCCaravan
     >>> dataset = GRDCCaravan()
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -291,7 +291,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         Examples
         --------
-            >>> from water_datasets import GRDCCaravan
+            >>> from aqua_fetch import GRDCCaravan
             >>> dataset = GRDCCaravan()
             >>> dataset.fetch_station_features('912101A')
         """
@@ -339,7 +339,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         Examples
         ---------
-        >>> from water_datasets import GRDCCaravan
+        >>> from aqua_fetch import GRDCCaravan
         >>> dataset = GRDCCaravan()
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)

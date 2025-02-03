@@ -9,7 +9,7 @@ import os
 from typing import Union, List
 
 import pandas as pd
-from .._backend import plt, plt_Axes, xarray as xr
+from .._backend import plt, plt_Axes
 
 from .utils import _RainfallRunoff
 from ._camels import CAMELS_AUS
@@ -104,7 +104,7 @@ class RainfallRunoff(object):
 
     Examples
     --------
-    >>> from water_datasets import RainfallRunoff
+    >>> from aqua_fetch import RainfallRunoff
     >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
@@ -215,20 +215,20 @@ class RainfallRunoff(object):
             from this path. If provided and the path/dataset does not exist,
             then the data will be downloaded at this path. If not provided,
             then the data will be downloaded in the default path which is
-            ``.../water-datasts/data/``.
+            ``.../aqua_fetch/data/``.
         overwrite : bool
             If the data is already downloaded then you can set it to True,
             to make a fresh download.
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarray.
+            require netcdf5 package as well as :obj:`xarray`.
         verbosity : int
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`water_quality.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`water_quality.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
+            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
+            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
         """
 
         if dataset not in DATASETS:
@@ -269,7 +269,7 @@ class RainfallRunoff(object):
     def path(self) -> str:
         """
         returns path where the data is stored. The default path is
-        ~../water_quality/data
+        ~../aqua_fetch/data
         """
         return self.dataset.path
 
@@ -280,7 +280,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.static_features
         """
@@ -293,7 +293,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.dynamic_features
         """
@@ -321,7 +321,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
         >>> camels.fetch_static_features('224214A')
         >>> camels.static_features
@@ -352,7 +352,7 @@ class RainfallRunoff(object):
 
         Examples
         ---------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_CH')
         >>> dataset.area()  # returns area of all stations
         >>> dataset.area('2004')  # returns area of station whose id is 2004
@@ -379,23 +379,23 @@ class RainfallRunoff(object):
             It can have following values:
 
                 - :obj:`int` : number of (randomly selected) stations to fetch
-                - float : fraction of (randomly selected) stations to fetch
-                - str : name/id of station to fetch. However, if ``all`` is
+                - :obj:`float` : fraction of (randomly selected) stations to fetch
+                - :obj:`str` : name/id of station to fetch. However, if ``all`` is
                   provided, then all stations will be fetched.
-                - list : list of names/ids of stations to fetch
+                - :obj:`list` : list of names/ids of stations to fetch
         dynamic_features : (default=``all``)
             It can have following values:
 
-                - str : name of dynamic feature to fetch. If ``all`` is
+                - :obj:`str` : name of dynamic feature to fetch. If ``all`` is
                   provided, then all dynamic features will be fetched.
-                - list : list of dynamic features to fetch.
+                - :obj:`list` : list of dynamic features to fetch.
                 - None : No dynamic feature will be fetched. The second returned value will be None.
         static_features : (default=None)
             It can have following values:
 
-                - str : name of static feature to fetch. If ``all`` is
+                - :obj:`str` : name of static feature to fetch. If ``all`` is
                   provided, then all static features will be fetched.
-                - list : list of static features to fetch.
+                - :obj:`list` : list of static features to fetch.
                 - None : No static feature will be fetched. The first returned value will be None.
         st :
             starting date of data to be returned. If None, the data will be
@@ -404,8 +404,10 @@ class RainfallRunoff(object):
             end date of data to be returned. If None, then the data will be
             returned till the date data is available.
         as_dataframe :
-            whether to return dynamic attributes as pandas
-            dataframe or as :obj:`xarray.Dataset`.
+            whether to return dynamic attributes as :obj:`pandas.DataFrame`
+            or as :obj:`xarray.Dataset`. if :obj:`xarray` library is not
+            installed, then this parameter will be ignored and the data will
+            be returned as :obj:`pandas.DataFrame`.
         kwargs :
             keyword arguments
 
@@ -426,7 +428,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> # get data of 10% of stations
         >>> _, df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
@@ -498,11 +500,12 @@ class RainfallRunoff(object):
 
         Raises
         ------
-        ValueError, if both ``dynamic_features`` and ``static_features`` are None
+        ValueError
+            if both ``dynamic_features`` and ``static_features`` are None
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         ... # find out station ids
         >>> dataset.stations()
@@ -549,11 +552,11 @@ class RainfallRunoff(object):
         -------
         pd.DataFrame or xr.Dataset
             a :obj:`pandas.DataFrame` or :obj:`xarray.Dataset` depending upon the value of
-            `as_dataframe` and whether xarray is installed or not.
+            `as_dataframe` and whether :obj:`xarray` is installed or not.
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
         >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
@@ -593,6 +596,7 @@ class RainfallRunoff(object):
 
         Returns
         -------
+        tuple
             A tuple of static and dynamic features. Static features are always
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
@@ -607,7 +611,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.fetch_station_features('912101A')
 
@@ -643,7 +647,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.plot_stations()
         >>> dataset.plot_stations(['1', '2', '3'])
@@ -701,13 +705,13 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_CH')
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
         >>> dataset.stn_coords(['2004', '6004'])  # returns coordinates of two stations
 
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
@@ -733,7 +737,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_SE')
         >>> dataset.get_boundary(dataset.stations()[0])
         """
@@ -763,7 +767,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.plot_catchment()
         >>> dataset.plot_catchment(marker='o', ms=0.3)
@@ -780,7 +784,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.stations()
         """
@@ -793,7 +797,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.start()
         """
@@ -806,7 +810,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.end()
         """

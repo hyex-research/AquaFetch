@@ -245,7 +245,7 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
 
     DeprecationWarning("load_nasdaq is deprecated and will be removed in future versions."
-                       "See water_datasets to get an appropriate dataset")
+                       "See aqua_fetch to get an appropriate dataset")
 
     fname = os.path.join(os.path.dirname(__file__), "data", "nasdaq100_padding.csv")
 

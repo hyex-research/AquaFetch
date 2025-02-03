@@ -151,7 +151,7 @@ class MtropicsLaos(Datasets):
 
         Examples
         --------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> suro = laos.fetch_suro()
         """
@@ -204,7 +204,7 @@ class MtropicsLaos(Datasets):
 
         Examples
         --------
-        >>> from water_quality import MtropicsLaos
+        >>> from aqua_fetch import MtropicsLaos
         >>> laos = MtropicsLaos()
         >>> phy_chem = laos.fetch_physiochem('T_deg')
         >>> phy_chem.shape
@@ -347,7 +347,7 @@ class MtropicsLaos(Datasets):
 
         Examples
         --------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> rg = laos.fetch_rain_gauges()
 
@@ -733,7 +733,7 @@ class MtropicsLaos(Datasets):
 
         Example
         -------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> df = laos.make_classification()
         """
@@ -809,7 +809,7 @@ class MtropicsLaos(Datasets):
 
         Example
         -------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> ins = ['pcp', 'air_temp']
             >>> out = ['Ecoli_mpn100']
