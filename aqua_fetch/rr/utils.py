@@ -328,7 +328,7 @@ class _RainfallRunoff(Datasets):
               en: Union[None, str] = None,
               as_dataframe: bool = False,
               **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Fetches the features of one or more stations.
 
@@ -438,7 +438,7 @@ class _RainfallRunoff(Datasets):
             en: Union[str, pd.Timestamp] = None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Reads features of more than one stations.
 
@@ -466,10 +466,10 @@ class _RainfallRunoff(Datasets):
         -------
         tuple
             A tuple of static and dynamic features. Static features are always
-            returned as pandas DataFrame with shape (stations, staticfeatures).
+            returned as :obj:`pandas.DataFrame` with shape (stations, staticfeatures).
             The index of static features is the station/gauge ids while the columns 
             are the static features. Dynamic features are returned as either
-            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
             If dynamic features are xarray Dataset, then it consists of `data_vars`
             equal to the number of stations and `time` adn `dynamic_features` as
@@ -536,7 +536,7 @@ class _RainfallRunoff(Datasets):
             st=None,
             en=None,
             as_dataframe=False
-    )-> Union[pd.DataFrame, xr.Dataset]:
+    )-> Union[pd.DataFrame, "Dataset"]:
         """Fetches all or selected dynamic features of one station.
 
         Parameters

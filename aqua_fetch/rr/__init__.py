@@ -428,7 +428,7 @@ class RainfallRunoff(object):
             en: Union[None, str] = None,
             as_dataframe: bool = False,
             **kwargs  # todo, where do these keyword args go?
-            ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
+            ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Fetches the features of one or more stations.
 
@@ -472,14 +472,14 @@ class RainfallRunoff(object):
         -------
         tuple
             A tuple of static and dynamic features. Static features are always
-            returned as pandas DataFrame with shape (stations, static features).
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            xarray Dataset or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
             If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
             equal to the number of stations and `time` and `dynamic_features` as
-            dimensions. If dynamic features are returned as pandas DataFrame, then
+            dimensions. If dynamic features are returned as :obj:`pandas.DataFrame`, then
             the first index is `time` and the second index is `dynamic_features`.
 
         Examples
@@ -515,7 +515,7 @@ class RainfallRunoff(object):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, xr.Dataset]]:
+              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Reads attributes of more than one stations.
 
@@ -543,14 +543,14 @@ class RainfallRunoff(object):
         -------
         tuple
             A tuple of static and dynamic features. Static features are always
-            returned as pandas DataFrame with shape (stations, static features).
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            xarray Dataset or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
             If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
             equal to the number of stations and `time` and `dynamic_features` as
-            dimensions. If dynamic features are returned as pandas DataFrame, then
+            dimensions. If dynamic features are returned as :obj:`pandas.DataFrame`, then
             the first index is `time` and the second index is `dynamic_features`.
 
         Raises
@@ -583,7 +583,7 @@ class RainfallRunoff(object):
             st=None,
             en=None,
             as_dataframe=False
-    )->Union[pd.DataFrame, xr.Dataset]:
+    )->Union[pd.DataFrame, "Dataset"]:
         """
         Fetches all or selected dynamic attributes of one station.
 
@@ -605,7 +605,7 @@ class RainfallRunoff(object):
         Returns
         -------
         pd.DataFrame or xr.Dataset
-            a pandas dataframe or xarray dataset depending upon the value of
+            a :obj:`pandas.DataFrame` or xarray dataset depending upon the value of
             `as_dataframe` and whether xarray is installed or not.
 
         Examples
