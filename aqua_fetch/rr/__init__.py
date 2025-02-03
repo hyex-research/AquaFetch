@@ -95,66 +95,7 @@ DATASETS = {
     'Portugal': Portugal,
 }
 
-"""
-    .. list-table:: Naming Convention for dynamic features
-       :widths: 20 30
-       :header-rows: 1
 
-       * - Feature Name
-         - Description
-       * - obs_q_cms
-         - observed streamflow in cms
-       * - obs_q_mmd
-         - observed streamflow in mm/day
-       * - pcp_mm
-         - precipitation in mm
-       * - max_temp_C
-         - maximum air temperature in degree celcius
-       * - min_temp_C
-         - minimum air temperature in degree celcius
-       * - mean_temp_C
-         - mean temperature in degree celcius
-       * - method_pet_mm
-         - potential evapotranspiration in mm
-       * - et_mm
-         - evapotranspiration in mm
-       * - rh_%
-         - relative humidity in percentage
-       * - min_rh_%
-         - minimum relative humidity
-       * - max_rh_%
-         - maximum relative humidity
-       * - swe_mm
-         - snow water equivalent
-       * - solrad_wm2
-         - solar radiation watt per meter square
-       * - windspeed_ms
-         - wind speed in meter per second
-       * - sim_q_cms
-         - simulated streamflow in cms
-       * - dwn_lw_rad_wm2
-         - downward long wave radiation in watt per meter square
-       * - dwn_sw_rad_wm2
-         - downward short wave radiation in watt per meter square
-       * - airpres_hpa
-         - Mean air pressure at sea level in hectopascal
-
-
-    .. list-table:: Naming Convention for static features
-       :widths: 20 30
-       :header-rows: 1
-
-       * - Feature Name
-         - Description
-       * - guage_lat
-         - Latitude of the guage station
-       * - guage_long
-         - Longitude of the guage station
-       * - area_km2
-         - catchment area in km2
-       * - mean_elev
-         - mean elevation in meters
-"""
 class RainfallRunoff(object):
     """
     This  class provides access to all the rainfall-runoff
@@ -376,7 +317,7 @@ class RainfallRunoff(object):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe
+            a pandas :obj:`pandas.DataFrame`
 
         Examples
         --------
@@ -437,7 +378,7 @@ class RainfallRunoff(object):
         stations :
             It can have following values:
 
-                - int : number of (randomly selected) stations to fetch
+                - :obj:`int` : number of (randomly selected) stations to fetch
                 - float : fraction of (randomly selected) stations to fetch
                 - str : name/id of station to fetch. However, if ``all`` is
                   provided, then all stations will be fetched.
@@ -448,14 +389,14 @@ class RainfallRunoff(object):
                 - str : name of dynamic feature to fetch. If ``all`` is
                   provided, then all dynamic features will be fetched.
                 - list : list of dynamic features to fetch.
-                - None : No dynamic feature will be fetched.
+                - None : No dynamic feature will be fetched. The second returned value will be None.
         static_features : (default=None)
             It can have following values:
 
                 - str : name of static feature to fetch. If ``all`` is
                   provided, then all static features will be fetched.
                 - list : list of static features to fetch.
-                - None : No static feature will be fetched.
+                - None : No static feature will be fetched. The first returned value will be None.
         st :
             starting date of data to be returned. If None, the data will be
             returned from where it is available.
@@ -464,7 +405,7 @@ class RainfallRunoff(object):
             returned till the date data is available.
         as_dataframe :
             whether to return dynamic attributes as pandas
-            dataframe or as xarray dataset.
+            dataframe or as :obj:`xarray.Dataset`.
         kwargs :
             keyword arguments
 
@@ -475,11 +416,12 @@ class RainfallRunoff(object):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            xarray Dataset or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
-            is True or False and whether the xarray module is installed or not.
-            If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
-            equal to the number of stations and `time` and `dynamic_features` as
-            dimensions. If dynamic features are returned as :obj:`pandas.DataFrame`, then
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
             the first index is `time` and the second index is `dynamic_features`.
 
         Examples
@@ -535,7 +477,7 @@ class RainfallRunoff(object):
         en :
             end of data to be fetched.
         as_dataframe : whether to return the data as pandas dataframe. default
-                is xr.Dataset object
+                is :obj:`xarray.Dataset` object
         kwargs dict:
             additional keyword arguments
 
@@ -546,11 +488,12 @@ class RainfallRunoff(object):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            xarray Dataset or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
-            is True or False and whether the xarray module is installed or not.
-            If dynamic features are xarray Dataset, then this dataset consists of `data_vars`
-            equal to the number of stations and `time` and `dynamic_features` as
-            dimensions. If dynamic features are returned as :obj:`pandas.DataFrame`, then
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
             the first index is `time` and the second index is `dynamic_features`.
 
         Raises
@@ -599,13 +542,13 @@ class RainfallRunoff(object):
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
-                is xarray dataset
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
+                is :obj:`xarray.Dataset`
         
         Returns
         -------
         pd.DataFrame or xr.Dataset
-            a :obj:`pandas.DataFrame` or xarray dataset depending upon the value of
+            a :obj:`pandas.DataFrame` or :obj:`xarray.Dataset` depending upon the value of
             `as_dataframe` and whether xarray is installed or not.
 
         Examples
@@ -626,11 +569,11 @@ class RainfallRunoff(object):
             stn_id: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
+            #as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
-    ) -> pd.DataFrame:
+    ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Fetches features for one station.
 
@@ -642,10 +585,6 @@ class RainfallRunoff(object):
                 names of dynamic features/attributes to fetch
             static_features :
                 names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
             st : str,optional
                 starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
@@ -654,9 +593,17 @@ class RainfallRunoff(object):
 
         Returns
         -------
-        pd.DataFrame
-            dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic features for a station/gauge_id
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Examples
         --------
@@ -665,7 +612,7 @@ class RainfallRunoff(object):
         >>> dataset.fetch_station_features('912101A')
 
         """
-        return self.dataset.fetch_station_features(stn_id, dynamic_features, static_features, as_ts, st, en, **kwargs)
+        return self.dataset.fetch_station_features(stn_id, dynamic_features, static_features, st, en, **kwargs)
 
     def plot_stations(
             self,
@@ -725,7 +672,7 @@ class RainfallRunoff(object):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -736,7 +683,7 @@ class RainfallRunoff(object):
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
-        returns coordinates of stations as DataFrame
+        returns coordinates of stations as :obj:`pandas.DataFrame`
         with ``long`` and ``lat`` as columns.
 
         Parameters
@@ -748,7 +695,7 @@ class RainfallRunoff(object):
         Returns
         -------
         coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 

@@ -1,7 +1,7 @@
 
 requests
 pandas<=2.1.4
-xarray<=2024.7.0
+xarray<2025.1.0
 easy_mpl
 
 openpyxl

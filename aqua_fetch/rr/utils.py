@@ -592,7 +592,7 @@ class _RainfallRunoff(Datasets):
             station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
+            #as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
@@ -608,10 +608,6 @@ class _RainfallRunoff(Datasets):
                 names of dynamic features/attributes to fetch
             static_features :
                 names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
             st : str,optional
                 starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
@@ -633,24 +629,19 @@ class _RainfallRunoff(Datasets):
         """
         st, en = self._check_length(st, en)
 
-        station_df = pd.DataFrame()
+        static, dynamic = None, None
+
         if dynamic_features:
             dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st,
                                                   en=en, **kwargs)
-            station_df = pd.concat([station_df, dynamic])
 
             if static_features is not None:
                 static = self.fetch_static_features(station, static_features)
 
-                if as_ts:
-                    station_df = pd.concat([station_df, static], axis=1)
-                else:
-                    station_df = {'dynamic': station_df, 'static': static}
-
         elif static_features is not None:
-            station_df = self.fetch_static_features(station, static_features)
+            static = self.fetch_static_features(station, static_features)
 
-        return station_df
+        return static, dynamic
 
     def plot_stations(
             self,
