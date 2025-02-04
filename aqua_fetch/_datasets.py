@@ -197,7 +197,7 @@ import os
 import glob
 import random
 import warnings
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 import pandas as pd
@@ -661,7 +661,7 @@ class WeatherJena(Datasets):
         return
 
     @property
-    def dynamic_features(self)->list:
+    def dynamic_features(self)->List[str]:
         """returns names of features available"""
         return self.fetch().columns.tolist()
 
@@ -781,7 +781,7 @@ class SWECanada(Datasets):
 
         self._download()
 
-    def stations(self) -> list:
+    def stations(self) -> List[str]:
         nc = netCDF4.Dataset(os.path.join(self.path, 'CanSWE-CanEEN_1928-2023_v6.nc'))
         s = nc['station_id'][:]
         return s.tolist()
@@ -796,7 +796,7 @@ class SWECanada(Datasets):
 
     def fetch(
             self,
-            station_id: Union[None, str, float, int, list] = None,
+            stations: Union[None, str, float, int, list] = None,
             features: Union[None, str, list] = None,
             q_flags: Union[None, str, list] = None,
             st=None,
@@ -807,7 +807,7 @@ class SWECanada(Datasets):
 
         Parameters
         ----------
-            station_id :
+            stations :
                 station/stations to be retrieved. In None, then data
                 from all stations will be returned.
             features :
@@ -839,22 +839,22 @@ class SWECanada(Datasets):
         """
         # todo, q_flags not working
 
-        if station_id is None:
-            station_id = self.stations()
-        elif isinstance(station_id, str):
-            station_id = [station_id]
-        elif isinstance(station_id, list):
+        if stations is None:
+            stations = self.stations()
+        elif isinstance(stations, str):
+            stations = [stations]
+        elif isinstance(stations, list):
             pass
-        elif isinstance(station_id, int):
-            station_id = random.sample(self.stations(), station_id)
-        elif isinstance(station_id, float):
-            num_stations = int(len(self.stations()) * station_id)
-            station_id = random.sample(self.stations(), num_stations)
+        elif isinstance(stations, int):
+            stations = random.sample(self.stations(), stations)
+        elif isinstance(stations, float):
+            num_stations = int(len(self.stations()) * stations)
+            stations = random.sample(self.stations(), num_stations)
 
         stns = self.stations()
         stn_id_dict = {k: v for k, v in zip(stns, np.arange(len(stns)))}
         stn_id_dict_inv = {v: k for k, v in stn_id_dict.items()}
-        stn_ids = [stn_id_dict[i] for i in station_id]
+        stn_ids = [stn_id_dict[i] for i in stations]
 
         features = check_attributes(features, self.features)
         qflags = []

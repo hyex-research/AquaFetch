@@ -309,10 +309,12 @@ class RainfallRunoff(object):
         Parameters
         ----------
             stations : str
-                name/id of station of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
+                name/id of station of which to extract the data . For names of stations
+                see :meth:`stations` .
+            static_features : list/str, optional (default="all")
+                The name/names of static features to fetch. By default, all available
+                static features are returned. For names of static features, see
+                :meth:`static_features` .
 
         Returns
         -------
@@ -342,7 +344,7 @@ class RainfallRunoff(object):
         ----------
         stations : str/list (default=``all``)
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            area of all stations. For names of stations, see :meth:`stations`.
 
         Returns
         --------
@@ -381,20 +383,23 @@ class RainfallRunoff(object):
                 - :obj:`int` : number of (randomly selected) stations to fetch
                 - :obj:`float` : fraction of (randomly selected) stations to fetch
                 - :obj:`str` : name/id of station to fetch. However, if ``all`` is
-                  provided, then all stations will be fetched.
+                  provided, then all stations will be fetched. For names of stations,
+                  see :meth:`stations`.
                 - :obj:`list` : list of names/ids of stations to fetch
         dynamic_features : (default=``all``)
             It can have following values:
 
                 - :obj:`str` : name of dynamic feature to fetch. If ``all`` is
-                  provided, then all dynamic features will be fetched.
+                  provided, then all dynamic features will be fetched. For names
+                  of dynamic features, see :meth:`dynamic_features`.
                 - :obj:`list` : list of dynamic features to fetch.
                 - None : No dynamic feature will be fetched. The second returned value will be None.
         static_features : (default=None)
             It can have following values:
 
                 - :obj:`str` : name of static feature to fetch. If ``all`` is
-                  provided, then all static features will be fetched.
+                  provided, then all static features will be fetched. For names
+                  of static features, see :meth:`static_features`.
                 - :obj:`list` : list of static features to fetch.
                 - None : No static feature will be fetched. The first returned value will be None.
         st :
@@ -466,14 +471,18 @@ class RainfallRunoff(object):
         parameters
         ----------
         stations :
-            list of stations for which data is to be fetched.
+            name/ids of stations for which data is to be fetched. For names
+            of stations, see :meth:`stations`.
         dynamic_features :
-            list of dynamic features to be fetched.
-                if 'all', then all dynamic features will be fetched.
+            list of dynamic features to be fetched. For names of dynamic features,
+            see :meth:`dynamic_features`. if ``all``, then all dynamic features 
+            will be fetched. If None, then no dynamic attribute will be fetched 
+            and the second returned value will be None.
         static_features :
             list of static features to be fetched.
             If `all`, then all static features will be fetched. If None,
-            then no static attribute will be fetched.
+            then no static attribute will be fetched. For names of static features,
+            see :meth:`static_features`.
         st :
             start of data to be fetched.
         en :
@@ -538,9 +547,10 @@ class RainfallRunoff(object):
             station : str
                 name/id of station of which to extract the data. For names of stations
                 see :meth:`stations`
-            features : list/str, optional (default="all")
+            dynamic_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
-                dynamic features are returned.
+                dynamic features are returned. For names of dynamic features, see
+                :meth:`dynamic_features`
             st : Optional (default=None)
                 start time from where to fetch the data.
             en : Optional (default=None)
@@ -634,7 +644,8 @@ class RainfallRunoff(object):
         Parameters
         ----------
         stations :
-            name/names of stations. If not given, all stations will be plotted
+            name/names of stations. If not given, all stations will be plotted.
+            For names of stations, see :meth:`stations`.
         marker :
             marker to use.
         ax : plt.Axes
@@ -673,7 +684,7 @@ class RainfallRunoff(object):
         ----------
         stations : str/list
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            area of all stations. For names of stations, see :meth:`stations`.
 
         Returns
         --------
@@ -696,11 +707,12 @@ class RainfallRunoff(object):
         ----------
         stations :
             name/names of stations. If not given, coordinates
-            of all stations will be returned.
+            of all stations will be returned. For names of stations,
+            see :meth:`stations`.
 
         Returns
         -------
-        coords :
+        pd.DataFrame
             :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
@@ -733,7 +745,7 @@ class RainfallRunoff(object):
         Parameters
         ----------
         station : str
-            name/id of catchment
+            name/id of catchment. For names of catchments, see :meth:`stations`.
         as_type : str
             'numpy' or 'geopandas'
 
@@ -784,7 +796,8 @@ class RainfallRunoff(object):
 
     def stations(self) -> List[str]:
         """
-        returns names of all stations
+        returns names/ids of all stations. This can be either gauge id or basin id.
+        Every catchment has a unique name/id which can be used to fetch its data.
 
         Examples
         --------

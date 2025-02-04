@@ -370,7 +370,7 @@ class CAMELS_BR(_RainfallRunoff):
 
     def fetch_raw_streamflow(
             self,
-            station_id: str = None
+            stations: str = None
     ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
@@ -384,20 +384,20 @@ class CAMELS_BR(_RainfallRunoff):
 
         """
 
-        if station_id is None:
-            station_id = self.all_stations('streamflow_m3s_raw')
+        if stations is None:
+            stations = self.all_stations('streamflow_m3s_raw')
 
-        if not isinstance(station_id, list):
-            station_id = [station_id]
+        if not isinstance(stations, list):
+            stations = [stations]
 
         raw_q = []
-        for stn in station_id:
+        for stn in stations:
             self._read_dynamic_feature('streamflow_m3s_raw', stn)
         return pd.concat(raw_q, axis=1)
 
     def fetch_simulated_streamflow(
             self,
-            station_id: str = None
+            stations: str = None
     ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
@@ -411,14 +411,14 @@ class CAMELS_BR(_RainfallRunoff):
 
         """
 
-        if station_id is None:
-            station_id = self.all_stations('simulated_streamflow_m3s')
+        if stations is None:
+            stations = self.all_stations('simulated_streamflow_m3s')
 
-        if not isinstance(station_id, list):
-            station_id = [station_id]
+        if not isinstance(stations, list):
+            stations = [stations]
 
         raw_q = []
-        for stn in station_id:
+        for stn in stations:
             self._read_dynamic_feature('simulated_streamflow_m3s', stn)
         return pd.concat(raw_q, axis=1)
 
