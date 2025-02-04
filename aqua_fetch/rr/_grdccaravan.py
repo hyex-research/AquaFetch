@@ -153,7 +153,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         # so that we dont have to read the files again and again
         self._stations = self.other_attributes().index.to_list()
-        self._static_attributes = self.static_data().columns.tolist()
+        self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
 
         self.dyn_fname = ''
@@ -241,7 +241,7 @@ class GRDCCaravan(_RainfallRunoff):
     def caravan_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_caravan_grdc.csv'), index_col='gauge_id')
 
-    def static_data(self) -> pd.DataFrame:
+    def _static_data(self) -> pd.DataFrame:
         df = pd.concat([
             self.other_attributes(),
             self.hydroatlas_attributes(),
@@ -315,58 +315,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         return {'static': static, 'dynamic': df[dynamic_features]}
 
-    def fetch_static_features(
-            self,
-            stations: Union[str, list] = "all",
-            static_features: Union[str, list] = "all"
-    ) -> pd.DataFrame:
-        """
-
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import GRDCCaravan
-        >>> dataset = GRDCCaravan()
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (1555, 111)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('DE110010')
-        >>> static_data.shape
-           (1, 111)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> static_data.shape
-           (1555, 3)
-        >>> data = dataset.fetch_static_features('DE110000', static_features=['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> data.shape
-           (1, 3)
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-
-        df = self.static_data()
-        features = check_attributes(static_features, df.columns.tolist(),
-                                    "static_features")
-        return df.loc[stations, features]
-
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,

@@ -149,7 +149,7 @@ class Bull(_RainfallRunoff):
             self.ftype = "netcdf"
 
         self._dynamic_features = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
-        self._static_features = list(set(self.static_data().columns.tolist()))
+        self._static_features = list(set(self._static_data().columns.tolist()))
 
         self.boundary_file = os.path.join(self.shapefiles_path, "BULL_basin_shapes.shp")
 
@@ -282,7 +282,7 @@ class Bull(_RainfallRunoff):
             os.path.join(self.attributes_path, "attributes_other_ss.csv"),
             index_col=0)
 
-    def static_data(self) -> pd.DataFrame:
+    def _static_data(self) -> pd.DataFrame:
         df = pd.concat([
             self.caravan_attributes(),
             self.hydroatlas_attributes(),
@@ -309,7 +309,7 @@ class Bull(_RainfallRunoff):
 
         return df
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -429,56 +429,3 @@ class Bull(_RainfallRunoff):
         df.columns.name = 'dynamic_features'
         df.columns = [col + '_EMO1_arc' for col in df.columns]
         return df
-
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = 'all',
-            static_features: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import Bull
-        >>> dataset = Bull()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            484
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (484, 214)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('42600042')
-        >>> static_data.shape
-           (1, 214)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['seasonality', 'moisture_index'])
-        >>> static_data.shape
-           (484, 2)
-        >>> data = dataset.fetch_static_features('42600042', static_features=['seasonality', 'moisture_index'])
-        >>> data.shape
-           (1, 2)
-
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        features = check_attributes(static_features, self.static_features, 'static_features')
-        df = self.static_data()
-        return df.loc[stations, features]

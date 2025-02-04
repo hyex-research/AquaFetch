@@ -422,7 +422,7 @@ class CAMELS_BR(_RainfallRunoff):
             self._read_dynamic_feature('simulated_streamflow_m3s', stn)
         return pd.concat(raw_q, axis=1)
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             attributes: Union[str, list] = 'all',
@@ -514,35 +514,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         return df.astype(np.float32)
 
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = "all",
-            static_features: Union[str, List[str]] = "all"
-    ) -> pd.DataFrame:
-        """
-        fetches static feature/features of one or more stations
-
-        Parameters
-        ----------
-            stations : int/list
-                station id whose attribute to fetch. For all stations, use 'all'
-                For names of stations check method ``stations``.
-            static_features : str/list
-                name of attribute to fetch. Default is None, which will return all the
-                attributes for a particular station of the specified category.
-        Example
-        -------
-        >>> dataset = Camels()
-        >>> df = dataset.fetch_static_features('11500000', 'climate')
-        # read all static features of all stations
-        >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
-        >>> data.shape
-        (597, 67)
-        """
-
-        station = check_attributes(stations, self.stations(), 'stations')
-
-        attributes = check_attributes(static_features, self.static_features, 'static_features')
+    def _static_data(self)->pd.DataFrame:
 
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
@@ -560,7 +532,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         static_df.rename(columns = self.static_map, inplace=True)
 
-        return pd.DataFrame(static_df.loc[station, attributes])
+        return static_df
 
 
 class CABra(_RainfallRunoff):
@@ -1190,58 +1162,7 @@ class CABra(_RainfallRunoff):
         df.rename(columns=self.dyn_map, inplace=True)
         return df
 
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = 'all',
-            static_features: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import CABra
-        >>> dataset = CABra()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            735
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (735, 97)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('92')
-        >>> static_data.shape
-           (1, 97)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['lat', 'area_km2'])
-        >>> static_data.shape
-           (735, 2)
-        >>> data = dataset.fetch_static_features('92', static_features=['lat', 'area_km2'])
-        >>> data.shape
-           (1, 2)
-
-        """
-
-        stations = check_attributes(stations, self.stations())
-        features = check_attributes(static_features, self.static_features, 'static_features')
-
+    def _static_data(self)->pd.DataFrame:
         df = pd.concat([self.climate_attrs(),
                         self.general_attrs(),
                         self.geology_attrs(),
@@ -1258,9 +1179,9 @@ class CABra(_RainfallRunoff):
 
         df.rename(columns=self.static_map, inplace=True)
 
-        return df.loc[stations, features]
+        return df
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,

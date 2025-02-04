@@ -261,7 +261,7 @@ class Caravan_DK(_RainfallRunoff):
 
         return df.loc[stations, :]
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -272,61 +272,6 @@ class Caravan_DK(_RainfallRunoff):
         dyn = {stn: self._read_csv(stn)[features] for stn in stations}
 
         return dyn
-
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = 'all',
-            static_features: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import Caravan_DK
-        >>> dataset = Caravan_DK()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            308
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (308, 211)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('80001')
-        >>> static_data.shape
-           (1, 211)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['lat', 'area_km2'])
-        >>> static_data.shape
-           (308, 2)
-        >>> data = dataset.fetch_static_features('80001', static_features=['lat', 'area_km2'])
-        >>> data.shape
-           (1, 2)
-
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        features = check_attributes(static_features, self.static_features, 'static_features')
-
-        df = self._static_data()
-
-        return df.loc[stations, features]
     
     def _static_data(self)->pd.DataFrame:
         df = pd.concat([self.hyd_atlas_attributes(),

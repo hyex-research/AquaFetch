@@ -151,10 +151,10 @@ class WaterBenchIowa(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
+        >>> static_data = dataset.fetch_static_features(stns, ['slope', 'area_km2'])
         >>> static_data.shape
            (125, 2)
-        >>> data = dataset.fetch_static_features('592', static_features=['slope', 'area'])
+        >>> data = dataset.fetch_static_features('592', static_features=['slope', 'area_km2'])
         >>> data.shape
            (1, 2)
 
@@ -171,7 +171,7 @@ class WaterBenchIowa(_RainfallRunoff):
 
         return pd.concat(dfs)
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,

@@ -363,7 +363,7 @@ class LamaHCE(_RainfallRunoff):
             if netCDF4 is None or not self.all_ncs_exist:
                 # read from csv files
                 # following code will run only once when fetch is called inside init method
-                dyn = self._read_dynamic_from_csv(stations, dynamic_features, st=st, en=en)
+                dyn = self._read_dynamic(stations, dynamic_features, st=st, en=en)
             else:
                 dyn = self._make_ds_from_ncs(dynamic_features, stations, st, en)
 
@@ -427,7 +427,7 @@ class LamaHCE(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
         return df
 
-    def _read_dynamic_from_csv1(
+    def _read_dynamic1(
             self,
             stations,
             dynamic_features: Union[str, list] = 'all',
@@ -449,7 +449,7 @@ class LamaHCE(_RainfallRunoff):
 
         return stations_features
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features: Union[str, list] = 'all',
@@ -1256,7 +1256,7 @@ class LamaHIce(LamaHCE):
 
         return [self.dyn_map[self.timestep].get(col, col) for col in dyn_feats]
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features: Union[str, list] = 'all',

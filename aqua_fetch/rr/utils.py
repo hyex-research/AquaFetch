@@ -188,14 +188,14 @@ class _RainfallRunoff(Datasets):
     def stations(self) -> List[str]:
         raise NotImplementedError("The base class must implement this method")
 
-    def _read_dynamic_from_csv(self, stations, dynamic_features, st=None,
+    def _read_dynamic(self, stations, dynamic_features, st=None,
                                en=None) -> dict:
         raise NotImplementedError
 
     def fetch_static_features(
             self,
-            stations: Union[str, list] = None,
-            static_features: Union[str, list] = None
+            stations: Union[str, list] = "all",
+            static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """Fetches all or selected static features of one or more stations.
 
@@ -214,14 +214,45 @@ class _RainfallRunoff(Datasets):
 
         Examples
         --------
-            >>> from aqua_fetch import CAMELS_AUS
-            >>> camels = CAMELS_AUS()
-            >>> camels.fetch_static_features('224214A')
-            >>> camels.static_features
-            >>> camels.fetch_static_features('224214A',
-            ... static_features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
+        >>> from aqua_fetch import CAMELS_AUS
+        >>> camels = CAMELS_AUS()
+        >>> camels.fetch_static_features('224214A')
+        >>> camels.static_features
+        >>> camels.fetch_static_features('224214A',
+        ... static_features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
+        for CAMELS_FR
+        >>> from aqua_fetch import CAMELS_FR
+        >>> dataset = CAMELS_FR()
+        get the names of stations
+        >>> stns = dataset.stations()
+        >>> len(stns)
+            654
+        get all static data of all stations
+        >>> static_data = dataset.fetch_static_features(stns)
+        >>> static_data.shape
+           (472, 210)
+        get static data of one station only
+        >>> static_data = dataset.fetch_static_features('42600042')
+        >>> static_data.shape
+           (1, 210)
+        get the names of static features
+        >>> dataset.static_features
+        get only selected features of all stations
+        >>> static_data = dataset.fetch_static_features(stns, ['slope_mean', 'aridity'])
+        >>> static_data.shape
+           (472, 2)
+        >>> data = dataset.fetch_static_features('42600042', static_features=['slope_mean', 'aridity'])
+        >>> data.shape
+           (1, 2)
         """
-        raise NotImplementedError
+        stations = check_attributes(stations, self.stations(), 'stations')
+        features = check_attributes(static_features, self.static_features, 'static_features')
+        df:pd.DataFrame = self._static_data()
+        return df.loc[stations, features]
+
+    def _static_data(self) -> pd.DataFrame:
+        """returns all static data as DataFrame"""
+        raise NotImplementedError(f"Must be implemented in the child class")
 
     @property
     def start(self):  # start of data
@@ -506,7 +537,7 @@ class _RainfallRunoff(Datasets):
             if netCDF4 is None or not os.path.exists(self.dyn_fname):
                 # read from csv files
                 # following code will run only once when fetch is called inside init method
-                dyn = self._read_dynamic_from_csv(stations, dynamic_features, st=st, en=en)
+                dyn = self._read_dynamic(stations, dynamic_features, st=st, en=en)
 
             else:
                 dyn = xr.open_dataset(self.dyn_fname)  # daataset

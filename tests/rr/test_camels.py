@@ -87,20 +87,19 @@ class TestCamels(unittest.TestCase):
                     logger.info(idx)
         return
 
-
     def test_waterbenchiowa(self):
 
         dataset = WaterBenchIowa(path=gscad_path)
 
-        data = dataset.fetch(static_features=None)
+        _, data = dataset.fetch(static_features=None)
         assert len(data) == 125
         for k, v in data.items():
             assert v.shape == (61344, 3)
 
-        data = dataset.fetch(5, as_dataframe=True)
+        _, data = dataset.fetch(5, as_dataframe=True)
         assert data.shape == (184032, 5)
 
-        data = dataset.fetch(5, static_features="all", as_dataframe=True)
+        _, data = dataset.fetch(5, static_features="all", as_dataframe=True)
         assert data['static'].shape == (5, 7)
         data = dataset.fetch_dynamic_features('644', as_dataframe=True)
         assert data.unstack().shape == (61344, 3)

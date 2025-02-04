@@ -206,7 +206,7 @@ from ._backend import netCDF4, xarray as xr
 
 from .download_pangaea import PanDataSet
 from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
-from .utils import check_attributes, check_st_en
+from .utils import check_attributes
 
 
 SEP = os.sep

@@ -399,7 +399,7 @@ class CCAM(_RainfallRunoff):
 
         return df
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -422,65 +422,16 @@ class CCAM(_RainfallRunoff):
         dyn = {stn: pd.concat([v, dummy], axis=1) for stn, v in dyn.items()}
         return dyn
 
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = "all",
-            static_features:Union[str, List[str]] = "all"
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from stations import CAMELS_DK
-        >>> dataset = CAMELS_DK()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            102
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (102, 124)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('0140')
-        >>> static_data.shape
-           (1, 124)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['long', 'lat', 'area_km2'])
-        >>> static_data.shape
-           (102, 3)
-        >>> data = dataset.fetch_static_features('0140', static_features=['long', 'lat', 'area_km2'])
-        >>> data.shape
-           (1, 3)
-
-        """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        features = check_attributes(static_features, self.static_features, 'static_features')
+    def _static_data(self)->pd.DataFrame:
         ds = []
-        for stn in stations:
+        for stn in self.stations():
             d = self._read_yr_static(stn)
             ds.append(d)
         df = pd.concat(ds, axis=1).transpose()
 
         df.rename(columns=self.static_map, inplace=True)
 
-        return df.loc[:, features]
+        return df
 
     def _read_yr_static(
             self,

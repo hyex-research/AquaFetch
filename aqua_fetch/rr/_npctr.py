@@ -520,7 +520,7 @@ class NPCTRCatchments(_RainfallRunoff):
                          )
         return df
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,

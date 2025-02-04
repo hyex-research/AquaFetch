@@ -82,7 +82,7 @@ class EStreams(_RainfallRunoff):
         self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
         self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
-        self._static_features = self.static_data().columns.tolist()
+        self._static_features = self._static_data().columns.tolist()
 
         self.boundary_file = os.path.join(self.path2,
                                           "shapefiles", "estreams_catchments.shp")
@@ -131,7 +131,7 @@ class EStreams(_RainfallRunoff):
             'ws_mean': mean_windspeed()
         }
 
-    def static_data(self) -> pd.DataFrame:
+    def _static_data(self) -> pd.DataFrame:
         """
         Returns a dataframe with static attributes of catchments
         """
@@ -238,62 +238,6 @@ class EStreams(_RainfallRunoff):
 
         stations = self._get_stations(countries, stations)
         return self.md.loc[stations, catchment_area()]
-
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = "all",
-            static_features: Union[str, List[str]] = "all",
-            countries: List[str] = "all",
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, static_features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import EStreams
-        >>> dataset = EStreams()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            15047
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (15047, 153)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('IEEP0281')
-        >>> static_data.shape
-           (1, 153)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['slp_dg_mean', 'ele_mt_mean'])
-        >>> static_data.shape
-           (15047, 2)
-        >>> data = dataset.fetch_static_features('IEEP0281', static_features=['slp_dg_mean', 'ele_mt_mean'])
-        >>> data.shape
-           (1, 2)
-        >>> out = ds.fetch_static_features(countries='IE')
-        >>> out.shape
-        (464, 153
-        """
-        stations = self._get_stations(countries, stations)
-        features = check_attributes(static_features, self.static_features, 'static_features')
-
-        return self.static_data().loc[stations, features]
 
     def meteo_data_station(self, station: str) -> pd.DataFrame:
         """

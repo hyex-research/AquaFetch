@@ -200,6 +200,7 @@ class SWatCh(Datasets):
             name/names of station id for which the data is to be fetched.
             By default, the data for all stations is fetched. If given, then ``station_id``
             should not be given.
+
         Returns
         -------
         pd.DataFrame
