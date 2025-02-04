@@ -283,7 +283,7 @@ class Quadica(Datasets):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (time_steps, stations). With default input
+            a :obj:`pandas.DataFrame` of shape (time_steps, stations). With default input
             arguments, the shape is (828, 1386)
 
         Examples
@@ -427,7 +427,7 @@ class Quadica(Datasets):
         Returns
         --------
         pd.DataFrame
-            a pandas dataframe of shape (stations, parameters). With default input arguments,
+            a :obj:`pandas.DataFrame` of shape (stations, parameters). With default input arguments,
             shape is (1386, 113)
 
         Examples
@@ -528,8 +528,8 @@ class Quadica(Datasets):
         --------
         tuple
             two dataframes whose length is same but the columns are different
-                - a pandas dataframe of timeseries of parameters (stations*timesteps, dynamic_features)
-                - a pandas dataframe of static parameters (stations*timesteps, catchment_features)
+                - a :obj:`pandas.DataFrame` of timeseries of parameters (stations*timesteps, dynamic_features)
+                - a :obj:`pandas.DataFrame` of static parameters (stations*timesteps, catchment_features)
 
         Examples
         --------

@@ -350,7 +350,7 @@ class HYSETS(_RainfallRunoff):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -373,7 +373,7 @@ class HYSETS(_RainfallRunoff):
             source:str = 'other'
     ) ->pd.Series:
         """
-        Returns area_gov (Km2) of all catchments as pandas series
+        Returns area_gov (Km2) of all catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -386,7 +386,7 @@ class HYSETS(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -502,7 +502,7 @@ class HYSETS(_RainfallRunoff):
 
     def fetch_dynamic_features(
             self,
-            stn_id,
+            station,
             dynamic_features = 'all',
             st=None,
             en=None,
@@ -516,7 +516,7 @@ class HYSETS(_RainfallRunoff):
         >>> dataset = HYSETS()
         >>> dyn_features = dataset.fetch_dynamic_features('station_name')
         """
-        station = [int(stn_id)]
+        station = [int(station)]
         return self._fetch_dynamic_features(
             stations=station,
             dynamic_features=dynamic_features,

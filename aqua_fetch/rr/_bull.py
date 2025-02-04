@@ -291,16 +291,16 @@ class Bull(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
         return df
 
-    def _read_dynamic_for_stn(self, stn_id: str) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station: str) -> pd.DataFrame:
 
-        stn_id = stn_id.split('_')[1]
+        station = station.split('_')[1]
 
         df = pd.concat([
-            self._read_q_for_stn(stn_id),
-            self._read_aemet_for_stn(stn_id),
-            self._read_bull_for_stn(stn_id),
-            self._read_era5_land_for_stn(stn_id),
-            self._read_emo1_arc_for_stn(stn_id)
+            self._read_q_for_stn(station),
+            self._read_aemet_for_stn(station),
+            self._read_bull_for_stn(station),
+            self._read_era5_land_for_stn(station),
+            self._read_emo1_arc_for_stn(station)
         ], axis=1)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
@@ -341,19 +341,19 @@ class Bull(_RainfallRunoff):
 
         return dyn
 
-    def _read_q_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_q_for_stn(self, station) -> pd.DataFrame:
         """a dataframe of shape (time, 1)"""
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.q_path, f'streamflow_{stn_id}.nc')
+            fpath = os.path.join(self.q_path, f'streamflow_{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.q_path, f'streamflow_{stn_id}.csv')
+            fpath = os.path.join(self.q_path, f'streamflow_{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
         return df
 
-    def _read_aemet_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_aemet_for_stn(self, station) -> pd.DataFrame:
         """
         reads a dataframe of shape (time, 5)
 
@@ -364,23 +364,23 @@ class Bull(_RainfallRunoff):
         'potential_evapotranspiration_AEMET'
         """
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.aemet_path, f'AEMET_{stn_id}.nc')
+            fpath = os.path.join(self.aemet_path, f'AEMET_{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.aemet_path, f'AEMET_{stn_id}.csv')
+            fpath = os.path.join(self.aemet_path, f'AEMET_{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
         df.columns = [col + '_AEMET' for col in df.columns]
         return df
 
-    def _read_bull_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_bull_for_stn(self, station) -> pd.DataFrame:
         """a dataframe of shape (time, 39) except for stn 3163"""
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.bull_path, f'BULL_{stn_id}.nc')
+            fpath = os.path.join(self.bull_path, f'BULL_{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.bull_path, f'BULL_{stn_id}.csv')
+            fpath = os.path.join(self.bull_path, f'BULL_{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
@@ -392,7 +392,7 @@ class Bull(_RainfallRunoff):
                     df[col] = None
         return df
 
-    def _read_era5_land_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_era5_land_for_stn(self, station) -> pd.DataFrame:
         """a dataframe of shape (time, 5) with following columns
             - 'temperature_max_ERA5_Land',
             - 'temperature_min_ERA5_Land',
@@ -401,17 +401,17 @@ class Bull(_RainfallRunoff):
             - 'potential_evapotranspiration_ERA5_Land'
         """
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.era5_land_path, f'ERA5_Land_{stn_id}.nc')
+            fpath = os.path.join(self.era5_land_path, f'ERA5_Land_{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.era5_land_path, f'ERA5_Land_{stn_id}.csv')
+            fpath = os.path.join(self.era5_land_path, f'ERA5_Land_{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
         df.columns = [col + '_ERA5_Land' for col in df.columns]
         return df
 
-    def _read_emo1_arc_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_emo1_arc_for_stn(self, station) -> pd.DataFrame:
         """a dataframe of shape (time, 5) with following columns
             - 'temperature_max_EMO1_arc'
             - 'temperature_min_EMO1_arc'
@@ -420,10 +420,10 @@ class Bull(_RainfallRunoff):
             - 'potential_evapotranspiration_EMO1_arc'
         """
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.emo1_arc_path, f'EMO1_{stn_id}.nc')
+            fpath = os.path.join(self.emo1_arc_path, f'EMO1_{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.emo1_arc_path, f'EMO1_{stn_id}.csv')
+            fpath = os.path.join(self.emo1_arc_path, f'EMO1_{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'
@@ -432,7 +432,7 @@ class Bull(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = 'all',
+            stations: Union[str, List[str]] = 'all',
             static_features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
@@ -440,7 +440,7 @@ class Bull(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -449,7 +449,7 @@ class Bull(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -478,7 +478,7 @@ class Bull(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]

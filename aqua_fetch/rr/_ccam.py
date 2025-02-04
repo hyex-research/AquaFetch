@@ -261,7 +261,7 @@ class CCAM(_RainfallRunoff):
 
     def _read_meteo_from_csv(
             self,
-            stn_id:str
+            station:str
     )->pd.DataFrame:
         """returns daily meteorological data of one station as DataFrame after reading it
         from csv file. This data is from 1990-01-01 to 2021-03-31. The returned
@@ -277,7 +277,7 @@ class CCAM(_RainfallRunoff):
             - 'PET'
 
         """
-        fpath = os.path.join(self.meteo_path, f"{stn_id}.txt")
+        fpath = os.path.join(self.meteo_path, f"{station}.txt")
 
         df = pd.read_csv(fpath)
         df.index = pd.to_datetime(df.pop("Date"))
@@ -286,7 +286,7 @@ class CCAM(_RainfallRunoff):
             df['PET'] = None
 
         # following two stations have multiple enteries
-        if stn_id in ['17456', '18161']:
+        if station in ['17456', '18161']:
             df = drop_duplicate_indices(df)
 
         return df
@@ -342,7 +342,7 @@ class CCAM(_RainfallRunoff):
 
     def fetch_meteo(
             self,
-            stn_id:Union[str, List[str]] = "all",
+            station:Union[str, List[str]] = "all",
             features:Union[str, List[str]] = "all",
             st = '1990-01-01',
             en = '2021-03-31',
@@ -362,7 +362,7 @@ class CCAM(_RainfallRunoff):
         """
         def_features = ['PRE', 'TEM', 'PRS', 'RHU', 'EVP', 'WIN', 'SSD', 'GST', 'PET']
         features = check_attributes(features, def_features)
-        stations = check_attributes(stn_id, self.meteo_stations)
+        stations = check_attributes(station, self.meteo_stations)
         if xr is None:
             raise ModuleNotFoundError(f"xarray must be installed")
         else:
@@ -376,14 +376,14 @@ class CCAM(_RainfallRunoff):
 
     def _read_yr_dynamic_from_csv(
             self,
-            stn_id:str
+            station:str
         )->pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment of
         yellow river and returns as DataFrame
         """
-        meteo_fpath = os.path.join(self.yr_data_path, stn_id, 'meteorological.txt')
-        q_fpath = os.path.join(self.yr_data_path, stn_id, 'streamflow_raw.txt')
+        meteo_fpath = os.path.join(self.yr_data_path, station, 'meteorological.txt')
+        q_fpath = os.path.join(self.yr_data_path, station, 'streamflow_raw.txt')
 
         meteo = pd.read_csv(meteo_fpath)
         meteo.index = pd.to_datetime(meteo.pop('date'))
@@ -424,7 +424,7 @@ class CCAM(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features:Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
@@ -432,7 +432,7 @@ class CCAM(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -441,7 +441,7 @@ class CCAM(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -470,7 +470,7 @@ class CCAM(_RainfallRunoff):
            (1, 3)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         ds = []
         for stn in stations:
@@ -484,17 +484,17 @@ class CCAM(_RainfallRunoff):
 
     def _read_yr_static(
             self,
-            stn_id:str
+            station:str
         )->pd.Series:
         """
         Reads catchment attributes data for Yellow River catchments
         """
-        fpath = os.path.join(self.yr_data_path, stn_id, 'attributes.json')
+        fpath = os.path.join(self.yr_data_path, station, 'attributes.json')
 
         with open(fpath, 'r') as fp:
             data = json.load(fp)
 
-        return pd.Series(data, name=stn_id)
+        return pd.Series(data, name=station)
 
 
 def drop_duplicate_indices(df):

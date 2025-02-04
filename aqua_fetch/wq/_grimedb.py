@@ -131,7 +131,7 @@ class GRiMeDB(Datasets):
             self,
             stations: Union[str, List[str]] = "all",
             )->pd.DataFrame:
-        """returns fluxes data as a pandas dataframe"""
+        """returns fluxes data as a :obj:`pandas.DataFrame`"""
         fpath = os.path.join(self.path, 'fluxes.csv')
         df = pd.read_csv(fpath)
 

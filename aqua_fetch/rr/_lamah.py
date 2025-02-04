@@ -319,7 +319,7 @@ class LamaHCE(_RainfallRunoff):
             st : start of data to be fetched.
             en : end of data to be fetched.
             as_dataframe : whether to return the data as pandas dataframe. default
-                is xr.dataset object
+                is :obj:`xarray.Dataset` object
             kwargs dict: additional keyword arguments
 
         Returns:
@@ -502,7 +502,7 @@ class LamaHCE(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = None
     ) -> pd.DataFrame:
         """
@@ -510,7 +510,7 @@ class LamaHCE(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -530,7 +530,7 @@ class LamaHCE(_RainfallRunoff):
         df = self.static_data()
 
         static_features = check_attributes(static_features, self.static_features, 'static features')
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = df[static_features]
 
@@ -1026,7 +1026,7 @@ class LamaHIce(LamaHCE):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = 'all',
+            stations: Union[str, list] = 'all',
             static_features: Union[str, list] = None
     ) -> pd.DataFrame:
         """
@@ -1036,7 +1036,7 @@ class LamaHIce(LamaHCE):
         df.index = df.index.astype(str)
 
         static_features = check_attributes(static_features, self.static_features, 'static_features')
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = df.loc[stations, static_features]
 
@@ -1059,7 +1059,7 @@ class LamaHIce(LamaHCE):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -1093,7 +1093,7 @@ class LamaHIce(LamaHCE):
         Returns
         --------
         pd.DataFrame
-            a pandas dataframe whose index is the time and columns are names of stations
+            a :obj:`pandas.DataFrame` whose index is the time and columns are names of stations
             For daily timestep, the dataframe has shape of 32630 rows and 111 columns
 
         """
@@ -1183,7 +1183,7 @@ class LamaHIce(LamaHCE):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe with 23 columns
+            a :obj:`pandas.DataFrame` with 23 columns
         """
         fpath = os.path.join(self._clim_ts_path(), f"ID_{stn}.csv")
 
@@ -1300,7 +1300,7 @@ class LamaHIce(LamaHCE):
 
     def read_ts_of_station(
             self,
-            stn_id: str,
+            station: str,
             # dynamic_features
     ) -> pd.DataFrame:
         """
@@ -1309,10 +1309,10 @@ class LamaHIce(LamaHCE):
         """
 
         if self.verbosity>2:
-            print(f"reading data for {stn_id}")
+            print(f"reading data for {station}")
 
-        q = self.fetch_stn_q(stn_id)
-        met = self.fetch_stn_meteo(stn_id)
+        q = self.fetch_stn_q(station)
+        met = self.fetch_stn_meteo(station)
 
         # drop duplicated index from met
         met = met.loc[~met.index.duplicated(keep='first')]

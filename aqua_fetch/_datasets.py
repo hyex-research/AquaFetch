@@ -671,7 +671,7 @@ class WeatherJena(Datasets):
             en: Union[str, int, pd.DatetimeIndex] = None
     ) -> pd.DataFrame:
         """
-        Fetches the time series data between given period as pandas dataframe.
+        Fetches the time series data between given period as :obj:`pandas.DataFrame`.
 
         Parameters
         ----------
@@ -685,7 +685,7 @@ class WeatherJena(Datasets):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (972111, 21)
+            a :obj:`pandas.DataFrame` of shape (972111, 21)
 
         Examples
         --------
@@ -953,7 +953,7 @@ def gw_punjab(
     Returns
     -------
     pd.DataFrame
-        a pandas DataFrame with datetime index
+        a :obj:`pandas.DataFrame` with datetime index
 
     Examples
     ---------

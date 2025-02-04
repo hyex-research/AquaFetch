@@ -104,18 +104,18 @@ def test_boundary(dataset):
     return
 
 
-def test_fetch_static_feature(dataset, stn_id, num_stations, num_static_features):
+def test_fetch_static_feature(dataset, station, num_stations, num_static_features):
     logger.info(f"testing fetch_static_features method for {dataset.name}")
     if len(dataset.static_features) > 0:
-        df, _ = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
+        df, _ = dataset.fetch(station, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
-        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
+        assert len(df.loc[station, :]) == len(dataset.static_features), f'shape is: {df.loc[station].shape}'
 
-        df = dataset.fetch_static_features(stn_id, static_features='all')
+        df = dataset.fetch_static_features(station, static_features='all')
 
         assert isinstance(df,
                           pd.DataFrame), f'fetch_static_features for {dataset.name} returned of type {df.__class__.__name__}'
-        assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df.loc[stn_id].shape}'
+        assert len(df.loc[station, :]) == len(dataset.static_features), f'shape is: {df.loc[station].shape}'
 
         df = dataset.fetch_static_features("all", static_features='all')
 
@@ -132,9 +132,9 @@ def assert_dataframe(df, dataset):
     return
 
 
-def test_fetch_dynamic_features(dataset, stn_id, as_dataframe=False):
-    logger.info(f"test_fetch_dynamic_features for {dataset.name} and {stn_id} stations")
-    df = dataset.fetch_dynamic_features(stn_id, as_dataframe=as_dataframe)
+def test_fetch_dynamic_features(dataset, station, as_dataframe=False):
+    logger.info(f"test_fetch_dynamic_features for {dataset.name} and {station} stations")
+    df = dataset.fetch_dynamic_features(station, as_dataframe=as_dataframe)
     if as_dataframe:
         assert df.unstack().shape[1] == len(
             dataset.dynamic_features), f'for {dataset.name}, num_dyn_attributes are {df.shape[1]}'
@@ -142,9 +142,9 @@ def test_fetch_dynamic_features(dataset, stn_id, as_dataframe=False):
         assert isinstance(df, xr.Dataset), f'data is of type {df.__class__.__name__}'
         assert len(df.data_vars) == 1, f'{len(df.data_vars)}'
 
-    dataset.fetch_dynamic_features(stn_id, dynamic_features=dataset.dynamic_features[0])
+    dataset.fetch_dynamic_features(station, dynamic_features=dataset.dynamic_features[0])
 
-    logger.info(f"Finished test_fetch_dynamic_features for {dataset.name} and {stn_id} stations")
+    logger.info(f"Finished test_fetch_dynamic_features for {dataset.name} and {station} stations")
     return
 
 

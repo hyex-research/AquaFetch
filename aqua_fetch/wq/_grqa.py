@@ -700,7 +700,7 @@ class GRQA(Datasets):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe
+            a :obj:`pandas.DataFrame`
 
         Example
         --------

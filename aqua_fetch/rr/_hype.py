@@ -159,7 +159,7 @@ class HYPE(_RainfallRunoff):
     def _mmd_feature_name(self) ->str:
         return 'Streamflow_mm'
 
-    def fetch_static_features(self, stn_id, static_features=None):
+    def fetch_static_features(self, station, static_features=None):
         """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 
@@ -168,7 +168,7 @@ class HYPE(_RainfallRunoff):
             stations: Union[str, List[str]] = None
     ) ->pd.Series:
         """
-        Returns area (Km2) of all catchments as pandas series
+        Returns area (Km2) of all catchments as :obj:`pandas.Series`
 
 
         parameters
@@ -180,7 +180,7 @@ class HYPE(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples

@@ -291,7 +291,7 @@ class CAMELS_US(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ):
         """
@@ -299,7 +299,7 @@ class CAMELS_US(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -328,10 +328,10 @@ class CAMELS_US(_RainfallRunoff):
             (671, 59)
         """
         features = check_attributes(static_features, self.static_features, 'static_features')
-        stn_id = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         static_df = self._read_static()
-        return static_df.loc[stn_id, features]
+        return static_df.loc[stations, features]
 
     def _read_static(self)->pd.DataFrame:
         static_fpath = os.path.join(self.path, 'static_features.csv')
@@ -547,10 +547,10 @@ class CAMELS_GB(_RainfallRunoff):
     ):
         """Fetches dynamic attribute/features of one or more station."""
         dyn = {}
-        for stn_id in stations:
+        for station in stations:
             # making one separate dataframe for one station
             path = os.path.join(self.data_path, f"timeseries")
-            fname = f"CAMELS_GB_hydromet_timeseries_{stn_id}_19701001-20150930.csv"
+            fname = f"CAMELS_GB_hydromet_timeseries_{station}_19701001-20150930.csv"
 
             df = pd.read_csv(os.path.join(path, fname), index_col='date')
             df.index = pd.to_datetime(df.index)
@@ -561,13 +561,13 @@ class CAMELS_GB(_RainfallRunoff):
             df.columns.name = 'dynamic_features'
             df.index.name = 'time'
 
-            dyn[stn_id] = df
+            dyn[station] = df
 
         return dyn
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
@@ -576,7 +576,7 @@ class CAMELS_GB(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -607,7 +607,7 @@ class CAMELS_GB(_RainfallRunoff):
         """
 
         features = check_attributes(static_features, self.static_features, 'static_features')
-        station = check_attributes(stn_id, self.stations(), 'stations')
+        station = check_attributes(station, self.stations(), 'stations')
 
         static_df = self._static_path()
 
@@ -968,14 +968,14 @@ class CAMELS_AUS(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all",
     ) -> pd.DataFrame:
         """Fetches static features of one or more stations as dataframe.
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -1005,10 +1005,10 @@ class CAMELS_AUS(_RainfallRunoff):
            (222, 2)
         """
 
-        stn_id = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         static_features = check_attributes(static_features, self.static_features, 'static_features')
 
-        return self._read_static().loc[stn_id, static_features]
+        return self._read_static().loc[stations, static_features]
 
 
 class CAMELS_CL(_RainfallRunoff):
@@ -1205,8 +1205,8 @@ class CAMELS_CL(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -1284,7 +1284,7 @@ class CAMELS_CL(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ):
         """
@@ -1292,7 +1292,7 @@ class CAMELS_CL(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -1326,9 +1326,9 @@ class CAMELS_CL(_RainfallRunoff):
         """
         features = check_attributes(static_features, self.static_features, 'static_features')
 
-        stn_id = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
-        return self._read_static().loc[stn_id, features]
+        return self._read_static().loc[stations, features]
 
 
 class CAMELS_CH(_RainfallRunoff):
@@ -1748,7 +1748,7 @@ class CAMELS_CH(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = "all",
+            stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
@@ -1756,7 +1756,7 @@ class CAMELS_CH(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -1765,7 +1765,7 @@ class CAMELS_CH(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -1793,7 +1793,7 @@ class CAMELS_CH(_RainfallRunoff):
         >>> data.shape
            (1, 3)
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
 
         features = check_attributes(static_features, self.static_features,
@@ -1842,14 +1842,14 @@ class CAMELS_CH(_RainfallRunoff):
         }
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id: str) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station: str) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
         """
 
         df = pd.read_csv(
-            os.path.join(self.dynamic_path, f"CAMELS_CH_obs_based_{stn_id}.csv"),
+            os.path.join(self.dynamic_path, f"CAMELS_CH_obs_based_{station}.csv"),
             sep=';',
             index_col='date',
             parse_dates=True,
@@ -2092,7 +2092,7 @@ class CAMELS_DE(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = "all",
+            stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
@@ -2101,7 +2101,7 @@ class CAMELS_DE(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -2110,7 +2110,7 @@ class CAMELS_DE(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -2134,7 +2134,7 @@ class CAMELS_DE(_RainfallRunoff):
         >>> data.shape
            (1, 3)
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = self.static_data()
         features = check_attributes(static_features, df.columns.tolist(),
@@ -2170,14 +2170,14 @@ class CAMELS_DE(_RainfallRunoff):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
         """
 
         df = pd.read_csv(
-            os.path.join(self.ts_dir, f"CAMELS_DE_hydromet_timeseries_{stn_id}.csv"),
+            os.path.join(self.ts_dir, f"CAMELS_DE_hydromet_timeseries_{station}.csv"),
             # sep=';',
             index_col='date',
             parse_dates=True,
@@ -2456,13 +2456,13 @@ class CAMELS_SE(_RainfallRunoff):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id, nrows=None) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station, nrows=None) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
         """
         # find file starting with 'catchment_id_stn_id_' in self.path
-        stn_id = f'catchment_id_{stn_id}_'
+        stn_id = f'catchment_id_{station}_'
         fname = [f for f in os.listdir(self.ts_dir) if f.startswith(stn_id)]
         assert len(fname) == 1
         fname = fname[0]
@@ -2485,7 +2485,7 @@ class CAMELS_SE(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = "all",
+            stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
@@ -2494,7 +2494,7 @@ class CAMELS_SE(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -2503,7 +2503,7 @@ class CAMELS_SE(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -2527,7 +2527,7 @@ class CAMELS_SE(_RainfallRunoff):
         >>> data.shape
            (1, 3)
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = self.static_data().copy()
         features = check_attributes(static_features, self.static_features,
@@ -2762,7 +2762,7 @@ class CAMELS_DK(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of static features of all catchments of shape (3330, 119)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (3330, 119)
         """
         df = pd.concat([self.climate_data(),
                           self.geology_data(),
@@ -2835,7 +2835,7 @@ class CAMELS_DK(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
@@ -2843,7 +2843,7 @@ class CAMELS_DK(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -2852,7 +2852,7 @@ class CAMELS_DK(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -2881,7 +2881,7 @@ class CAMELS_DK(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
@@ -3117,7 +3117,7 @@ class CAMELS_IND(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of static features of all catchments of shape (3330, 119)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (3330, 119)
         """
         files = glob.glob(f"{self.static_path}/*.txt")
 
@@ -3190,7 +3190,7 @@ class CAMELS_IND(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
@@ -3198,7 +3198,7 @@ class CAMELS_IND(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -3207,7 +3207,7 @@ class CAMELS_IND(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -3236,7 +3236,7 @@ class CAMELS_IND(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
@@ -3378,7 +3378,7 @@ class CAMELS_FR(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (654, xxxx)
         """
         files = glob.glob(f"{self.static_attr_path}/*.csv")
         dfs = []
@@ -3418,7 +3418,7 @@ class CAMELS_FR(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (654, xxxx)
         """
         files = glob.glob(f"{self.ts_stat_path}/*.csv")
         dfs = []
@@ -3439,7 +3439,7 @@ class CAMELS_FR(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of static features of all catchments of shape (654, xxxx)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (654, xxxx)
         """
 
         static_data = pd.concat([
@@ -3455,7 +3455,7 @@ class CAMELS_FR(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
@@ -3463,7 +3463,7 @@ class CAMELS_FR(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str/list
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -3472,7 +3472,7 @@ class CAMELS_FR(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -3501,14 +3501,14 @@ class CAMELS_FR(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
         df = self.static_data()
         return df.loc[stations, features]
 
-    def _read_dyn_stn(self, stn_id: str) -> pd.DataFrame:
+    def _read_dyn_stn(self, station: str) -> pd.DataFrame:
         df = pd.read_csv(
-            os.path.join(self.daily_ts_path, f"CAMELS_FR_tsd_{stn_id}.csv"),
+            os.path.join(self.daily_ts_path, f"CAMELS_FR_tsd_{station}.csv"),
             sep=";",
             index_col=0,
             parse_dates=True,

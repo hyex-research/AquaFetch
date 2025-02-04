@@ -10,7 +10,6 @@ import pandas as pd
 from .._backend import xarray as xr
 
 from .._datasets import Datasets
-from ..utils import check_st_en
 
 
 class RC4USCoast(Datasets):
@@ -162,7 +161,7 @@ class RC4USCoast(Datasets):
 
         Returns
         -------
-        pandas DataFrame or xarray Dataset
+        pd.DataFrame or xarray Dataset
 
         Examples
         --------

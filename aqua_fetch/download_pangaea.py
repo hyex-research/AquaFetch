@@ -77,7 +77,7 @@ class PanDataSet:
     projects : list of PanProject
         a list containing the PanProjects objects referenced by this dataset
     data : pandas.DataFrame
-        a pandas dataframe holding all the data
+        a :obj:`pandas.DataFrame` holding all the data
     loginstatus : str
         a label which indicates if the data set is protected or not default value: 'unrestricted'
     """

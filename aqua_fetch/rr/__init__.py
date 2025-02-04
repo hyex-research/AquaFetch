@@ -336,7 +336,7 @@ class RainfallRunoff(object):
             stations: Union[str, List[str]] = "all"
     ) -> pd.Series:
         """
-        Returns area (Km2) of all/selected catchments as pandas series
+        Returns area (Km2) of all/selected catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -347,7 +347,7 @@ class RainfallRunoff(object):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -478,7 +478,7 @@ class RainfallRunoff(object):
             start of data to be fetched.
         en :
             end of data to be fetched.
-        as_dataframe : whether to return the data as pandas dataframe. default
+        as_dataframe : whether to return the data as :obj:`pandas.DataFrame`. default
                 is :obj:`xarray.Dataset` object
         kwargs dict:
             additional keyword arguments
@@ -524,7 +524,7 @@ class RainfallRunoff(object):
 
     def fetch_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
             st=None,
             en=None,
@@ -535,8 +535,9 @@ class RainfallRunoff(object):
 
         Parameters
         ----------
-            stn_id : str
-                name/id of station of which to extract the data
+            station : str
+                name/id of station of which to extract the data. For names of stations
+                see :meth:`stations`
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 dynamic features are returned.
@@ -565,11 +566,11 @@ class RainfallRunoff(object):
         ... as_dataframe=True).unstack()
         """
         return self.dataset.fetch_dynamic_features(
-            stn_id, dynamic_features, st, en, as_dataframe)
+            station, dynamic_features, st, en, as_dataframe)
 
     def fetch_station_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
             #as_ts: bool = False,
@@ -584,6 +585,7 @@ class RainfallRunoff(object):
         -----------
             station :
                 station id/gauge id for which the data is to be fetched.
+                For names of stations, see :meth:`stations`
             dynamic_features : str/list, optional
                 names of dynamic features/attributes to fetch
             static_features :
@@ -616,7 +618,7 @@ class RainfallRunoff(object):
         >>> dataset.fetch_station_features('912101A')
 
         """
-        return self.dataset.fetch_station_features(stn_id, dynamic_features, static_features, st, en, **kwargs)
+        return self.dataset.fetch_station_features(station, dynamic_features, static_features, st, en, **kwargs)
 
     def plot_stations(
             self,
@@ -722,7 +724,7 @@ class RainfallRunoff(object):
 
     def get_boundary(
             self,
-            stn_id: str,
+            station: str,
             as_type: str = 'numpy'
     ):
         """
@@ -730,7 +732,7 @@ class RainfallRunoff(object):
 
         Parameters
         ----------
-        stn_id : str
+        station : str
             name/id of catchment
         as_type : str
             'numpy' or 'geopandas'
@@ -741,11 +743,11 @@ class RainfallRunoff(object):
         >>> dataset = RainfallRunoff('CAMELS_SE')
         >>> dataset.get_boundary(dataset.stations()[0])
         """
-        return self.dataset.get_boundary(stn_id, as_type)
+        return self.dataset.get_boundary(station, as_type)
 
     def plot_catchment(
             self,
-            stn_id: str,
+            station: str,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -755,6 +757,8 @@ class RainfallRunoff(object):
 
         Parameters
         ----------
+        station : str
+            name/id of station. For names of stations, see :meth:`stations`
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -776,7 +780,7 @@ class RainfallRunoff(object):
         >>> plt.show()
 
         """
-        return self.dataset.plot_catchment(stn_id, ax, show, **kwargs)
+        return self.dataset.plot_catchment(station, ax, show, **kwargs)
 
     def stations(self) -> List[str]:
         """

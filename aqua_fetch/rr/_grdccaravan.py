@@ -317,7 +317,7 @@ class GRDCCaravan(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = "all",
+            stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """
@@ -326,7 +326,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -335,7 +335,7 @@ class GRDCCaravan(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -359,7 +359,7 @@ class GRDCCaravan(_RainfallRunoff):
         >>> data.shape
            (1, 3)
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = self.static_data()
         features = check_attributes(static_features, df.columns.tolist(),
@@ -391,12 +391,12 @@ class GRDCCaravan(_RainfallRunoff):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station) -> pd.DataFrame:
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.ts_path, f'{stn_id}.nc')
+            fpath = os.path.join(self.ts_path, f'{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.ts_path, f'{stn_id}.csv')
+            fpath = os.path.join(self.ts_path, f'{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
 
         df.rename(columns=self.dyn_map, inplace=True)

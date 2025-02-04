@@ -232,8 +232,8 @@ class Caravan_DK(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -275,7 +275,7 @@ class Caravan_DK(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = 'all',
+            stations: Union[str, List[str]] = 'all',
             static_features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
@@ -283,7 +283,7 @@ class Caravan_DK(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -292,7 +292,7 @@ class Caravan_DK(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -321,7 +321,7 @@ class Caravan_DK(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         features = check_attributes(static_features, self.static_features, 'static_features')
 
         df = self._static_data()
@@ -348,7 +348,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 196)
+            a :obj:`pandas.DataFrame` of shape (308, 196)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.hyd_atlas_fpath)
@@ -361,7 +361,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 5)
+            a :obj:`pandas.DataFrame` of shape (308, 5)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.other_attr_fpath)
@@ -373,7 +373,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 10)
+            a :obj:`pandas.DataFrame` of shape (308, 10)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.caravan_attr_fpath)

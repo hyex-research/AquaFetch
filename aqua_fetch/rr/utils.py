@@ -194,14 +194,14 @@ class _RainfallRunoff(Datasets):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = None,
+            stations: Union[str, list] = None,
             static_features: Union[str, list] = None
     ) -> pd.DataFrame:
         """Fetches all or selected static features of one or more stations.
 
         Parameters
         ----------
-            stn_id : str
+            stations : str/list
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -210,7 +210,7 @@ class _RainfallRunoff(Datasets):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe
+            a :obj:`pandas.DataFrame`
 
         Examples
         --------
@@ -261,7 +261,7 @@ class _RainfallRunoff(Datasets):
             stations: Union[str, List[str]] = 'all'
     ) -> pd.Series:
         """
-        Returns area (Km2) of all/selected catchments as pandas series
+        Returns area (Km2) of all/selected catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -272,7 +272,7 @@ class _RainfallRunoff(Datasets):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -349,8 +349,8 @@ class _RainfallRunoff(Datasets):
                 returned from where it is available.
             en : end date of data to be returned. If None, then the data will be
                 returned till the date data is available.
-            as_dataframe : whether to return dynamic features as pandas
-                dataframe or as xarray dataset.
+            as_dataframe : whether to return dynamic features as :obj:`pandas.DataFrame` 
+                or as :obj:`xarray.Dataset`.
             kwargs : keyword arguments to read the files
 
         Returns
@@ -458,7 +458,7 @@ class _RainfallRunoff(Datasets):
             end of data to be fetched.
         as_dataframe :
             whether to return the dynamic data as pandas dataframe. default
-            is xr.Dataset object
+            is :obj:`xarray.Dataset` object
         kwargs dict:
             additional keyword arguments
 
@@ -531,7 +531,7 @@ class _RainfallRunoff(Datasets):
 
     def fetch_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
             st=None,
             en=None,
@@ -541,7 +541,7 @@ class _RainfallRunoff(Datasets):
 
         Parameters
         ----------
-            stn_id : str
+            station : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -552,7 +552,7 @@ class _RainfallRunoff(Datasets):
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
                 if true, the returned data is pandas DataFrame otherwise it
-                is xarray dataset
+                is :obj:`xarray.Dataset`
         
         Returns
         -------
@@ -576,8 +576,8 @@ class _RainfallRunoff(Datasets):
         ... as_dataframe=True).unstack()
         """
 
-        assert isinstance(stn_id, str), f"station id must be string is is of type {type(stn_id)}"
-        station = [stn_id]
+        assert isinstance(station, str), f"station id must be string is is of type {type(station)}"
+        station = [station]
         return self.fetch_stations_features(
             stations=station,
             dynamic_features=dynamic_features,
@@ -710,7 +710,7 @@ class _RainfallRunoff(Datasets):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -752,8 +752,8 @@ class _RainfallRunoff(Datasets):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 

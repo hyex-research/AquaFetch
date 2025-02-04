@@ -228,7 +228,7 @@ def check_st_en(
         st:Union[int, str, pd.DatetimeIndex]=None,
         en:Union[int, str, pd.DatetimeIndex]=None
 )->pd.DataFrame:
-    """slices the dataframe based upon st and en"""
+    """slices the :obj:`pandas.DataFrame` based upon st and en"""
     if isinstance(st, int):
         if en is None:
             en = len(df)
@@ -543,7 +543,7 @@ def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
 
 
 def le_column(df:pd.DataFrame, col_name:str)->tuple:
-    """label encode a column in dataframe"""
+    """label encode a column in dat:obj:`pandas.DataFrame`aframe"""
     encoder = LabelEncoder()
     index = df.columns.to_list().index(col_name)
     encoded = encoder.fit_transform(df[col_name])

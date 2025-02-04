@@ -249,7 +249,7 @@ class CAMELS_BR(_RainfallRunoff):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -270,7 +270,7 @@ class CAMELS_BR(_RainfallRunoff):
             source: str = "gsim",
     ) -> pd.Series:
         """
-        Returns area (Km2) of all catchments as pandas series
+        Returns area (Km2) of all catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -283,7 +283,7 @@ class CAMELS_BR(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -316,7 +316,7 @@ class CAMELS_BR(_RainfallRunoff):
             stations: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
-        returns coordinates of stations as DataFrame
+        returns coordinates of stations as :obj:`pandas.DataFrame`
         with ``long`` and ``lat`` as columns.
 
         Parameters
@@ -327,8 +327,8 @@ class CAMELS_BR(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -453,9 +453,9 @@ class CAMELS_BR(_RainfallRunoff):
         dyn = {}
 
         if cpus == 1:
-            for idx, stn_id in enumerate(stations):
+            for idx, station in enumerate(stations):
                 # making one separate dataframe for one station
-                dyn[stn_id] = self.get_dynamic_features(stn_id, features).loc[st:en]
+                dyn[station] = self.get_dynamic_features(station, features).loc[st:en]
 
                 if idx % 20 == 0:
                     print(f"completed {idx} stations")
@@ -468,20 +468,20 @@ class CAMELS_BR(_RainfallRunoff):
             with cf.ProcessPoolExecutor(cpus) as executor:
                 results = executor.map(self.get_dynamic_features, stations, features)
 
-            for stn_id, stn_df in zip(stations, results):
-                dyn[stn_id] = stn_df.loc[st:en]
+            for station, stn_df in zip(stations, results):
+                dyn[station] = stn_df.loc[st:en]
 
             if self.verbosity > 1:
                 print(f"completed fetching data for {len(stations)} stations")
 
         return dyn
 
-    def get_dynamic_features(self, stn_id, features, st=None, en=None):
+    def get_dynamic_features(self, station, features, st=None, en=None):
         feature_dfs = []
         for feature, path in self.folders.items():
             if feature in ['simulated_streamflow_m3s', 'streamflow_m3s_raw']:
                 continue
-            feature_df = self._read_dynamic_feature(path, feature=feature, stn_id=stn_id, st=st, en=en)
+            feature_df = self._read_dynamic_feature(path, feature=feature, station=station, st=st, en=en)
             feature_dfs.append(feature_df)
 
         stn_df = pd.concat(feature_dfs, axis=1)
@@ -494,11 +494,11 @@ class CAMELS_BR(_RainfallRunoff):
         stn_df.index.name = 'time'
         return stn_df
 
-    def _read_dynamic_feature(self, folder, feature, stn_id, st=None, en=None):
+    def _read_dynamic_feature(self, folder, feature, station, st=None, en=None):
         path = os.path.join(self.path, f'{folder}{SEP}{folder}')
         # supposing that the filename starts with stn_id and has .txt extension.
-        fname = [f for f in os.listdir(path) if f.startswith(str(stn_id)) and f.endswith('.txt')]
-        assert len(fname) == 1, f"{len(fname)} {stn_id} in {folder} for {feature}"
+        fname = [f for f in os.listdir(path) if f.startswith(str(station)) and f.endswith('.txt')]
+        assert len(fname) == 1, f"{len(fname)} {station} in {folder} for {feature}"
         fname = fname[0]
         if os.path.exists(os.path.join(path, fname)):
             df = pd.read_csv(os.path.join(path, fname), sep=' ')
@@ -516,16 +516,17 @@ class CAMELS_BR(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = "all",
+            stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
-        fetches static feature/features of one or mroe stations
+        fetches static feature/features of one or more stations
 
         Parameters
         ----------
-            stn_id : int/list
-                station id whose attribute to fetch.
+            stations : int/list
+                station id whose attribute to fetch. For all stations, use 'all'
+                For names of stations check method ``stations``.
             static_features : str/list
                 name of attribute to fetch. Default is None, which will return all the
                 attributes for a particular station of the specified category.
@@ -539,7 +540,7 @@ class CAMELS_BR(_RainfallRunoff):
         (597, 67)
         """
 
-        station = check_attributes(stn_id, self.stations(), 'stations')
+        station = check_attributes(stations, self.stations(), 'stations')
 
         attributes = check_attributes(static_features, self.static_features, 'static_features')
 
@@ -1130,8 +1131,8 @@ class CABra(_RainfallRunoff):
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def _read_q_from_csv(self, stn_id: str) -> pd.DataFrame:
-        q_fpath = os.path.join(self.q_path, f"CABra_{stn_id}_streamflow.txt")
+    def _read_q_from_csv(self, station: str) -> pd.DataFrame:
+        q_fpath = os.path.join(self.q_path, f"CABra_{station}_streamflow.txt")
 
         df = pd.read_csv(q_fpath, sep='\t',
                          header=8,
@@ -1148,7 +1149,7 @@ class CABra(_RainfallRunoff):
 
     def _read_meteo_from_csv(
             self,
-            stn_id: str,
+            station: str,
             source="ens") -> pd.DataFrame:
 
         meteo_path = os.path.join(self.path,
@@ -1157,7 +1158,7 @@ class CABra(_RainfallRunoff):
                                   source
                                   )
         meteo_fpath = os.path.join(meteo_path,
-                                   f"CABra_{stn_id}_climate_{source.upper()}.txt")
+                                   f"CABra_{station}_climate_{source.upper()}.txt")
 
         dtypes = {"Year": int,
                   "Month": int,
@@ -1173,7 +1174,7 @@ class CABra(_RainfallRunoff):
                   "pet_pt": np.float32,
                   "pet_hg": np.float32}
 
-        if source == "ref" and stn_id in [
+        if source == "ref" and station in [
             '1', '2', '3', '4', '5', '6', '7', '8', '9',
             '15', '17', '18', '19', '27', '28', '34', '526',
             '564', '567', '569'
@@ -1191,7 +1192,7 @@ class CABra(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]] = 'all',
+            stations: Union[str, List[str]] = 'all',
             static_features: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
@@ -1199,7 +1200,7 @@ class CABra(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -1208,7 +1209,7 @@ class CABra(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -1238,7 +1239,7 @@ class CABra(_RainfallRunoff):
 
         """
 
-        stations = check_attributes(stn_id, self.stations())
+        stations = check_attributes(stations, self.stations())
         features = check_attributes(static_features, self.static_features, 'static_features')
 
         df = pd.concat([self.climate_attrs(),
@@ -1277,7 +1278,7 @@ class CABra(_RainfallRunoff):
         if self.verbosity>2:
             print("getting streamflow data")
 
-        qs = [self._read_q_from_csv(stn_id=stn_id) for stn_id in stations]
+        qs = [self._read_q_from_csv(station=station) for station in stations]
         q_idx = pd.to_datetime(
             qs[0]['Year'].astype(str) + '-' + qs[0]['Month'].astype(str) + '-' + qs[0]['Day'].astype(str))
 
@@ -1285,7 +1286,7 @@ class CABra(_RainfallRunoff):
             print("getting meteo data")
 
         meteos = [
-            self._read_meteo_from_csv(stn_id=stn_id, source=self.met_src) for stn_id in stations]
+            self._read_meteo_from_csv(station=station, source=self.met_src) for station in stations]
         # 10 because first 10 stations don't have data for "ref" source
         met_idx = pd.to_datetime(
             meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(

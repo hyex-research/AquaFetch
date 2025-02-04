@@ -325,7 +325,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 2) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 2) where n is the number of stations
 
         Examples
         --------
@@ -372,7 +372,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 7) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 7) where n is the number of stations
         """
         stations = self._get_stations(stations, agency)
 
@@ -393,7 +393,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 24) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 24) where n is the number of stations
         """
         stations = self._get_stations(stations, agency)
 
@@ -419,7 +419,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 3) where n is the number of years
+            a :obj:`pandas.DataFrame` of shape (n, 3) where n is the number of years
         """
         return lc_variable_stn(self.path, stn)
 
@@ -430,7 +430,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Landcover variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -451,7 +451,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (42, 2) where 42 is the number of years
+            a :obj:`pandas.DataFrame` of shape (42, 2) where 42 is the number of years
         """
         return reservoir_vars_stn(self.path, stn)
 
@@ -462,7 +462,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Reservoir variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -479,7 +479,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 16) where n is the number of years
+            a :obj:`pandas.DataFrame` of shape (n, 16) where n is the number of years
         """
         return streamflow_indices_stn(self.path, stn)
 
@@ -490,7 +490,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Landcover variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -513,7 +513,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.Series
-            a pandas Series of shape (14571,) where 14571 is the number of days
+            a :obj:`pandas.Series` of shape (14571,) where 14571 is the number of days
         """
         return lai_stn(self.path, stn)
 
@@ -524,7 +524,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Leaf Area Index timeseries for one or more than one station either
-        as xr.Dataset or pandas DataFrame. The data has daily timestep.
+        as :obj:`xarray.Dataset` or :obj:`pandas.DataFrame`. The data has daily timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -542,7 +542,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (16071, 19) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (16071, 19) where n is the number of days
         """
         path = os.path.join(
             self.path,
@@ -554,7 +554,7 @@ class GSHA(_RainfallRunoff):
     def meteo_vars_all_stns(self):
         """
         Meteorological variables from 1979-01-01 to 2022-12-31 for all stations either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         nc_path = os.path.join(self.path, 'meteo_vars.nc')
 
@@ -607,7 +607,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Meteorological variables from 1979-01-01 to 2022-12-31 for one or more than one station either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         if agency != "all" and stations != 'all':
             raise ValueError("Either provide agency or stations not both")
@@ -639,7 +639,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (15706, 6) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (15706, 6) where n is the number of days
         """
         path = os.path.join(
             self.path,
@@ -652,7 +652,7 @@ class GSHA(_RainfallRunoff):
     def storage_vars_all_stns(self):
         """
         Water storage term variables from 1979-01-01 to 2021-12-31 for all stations either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         nc_path = os.path.join(self.path, 'storage.nc')
 
@@ -704,7 +704,7 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Water storage term variables from 1979-01-01 to 2021-12-31 for one or more than one station either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -735,7 +735,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -785,7 +785,7 @@ class GSHA(_RainfallRunoff):
 
     def fetch_stn_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
     ) -> pd.DataFrame:
         """
@@ -793,7 +793,7 @@ class GSHA(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            station : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -802,7 +802,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (n, features) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (n, features) where n is the number of days
 
         Examples
         --------
@@ -816,9 +816,9 @@ class GSHA(_RainfallRunoff):
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         out = pd.concat(
-            [self.meteo_vars_stn(stn_id),
-             self.storage_vars_stn(stn_id),
-             self.lai_stn(stn_id).rename('lai')
+            [self.meteo_vars_stn(station),
+             self.storage_vars_stn(station),
+             self.lai_stn(station).rename('lai')
              ],
             axis=1
         ).loc[:, features]
@@ -849,7 +849,7 @@ class GSHA(_RainfallRunoff):
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
                 is xarray dataset
 
         Examples
@@ -2034,7 +2034,7 @@ class Spain(_GSHA):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (39721, 1447)
+            a :obj:`pandas.DataFrame` of shape (39721, 1447)
         """
 
         fpath = os.path.join(self.path, 'daily_q.csv')
@@ -2201,8 +2201,8 @@ class Thailand(_GSHA):
 
             yr_dfs.append(df)
 
-            stn_id = file.split('RID')[1].split('_m3s')[0]
-            stn_ids.append(stn_id)
+            station = file.split('RID')[1].split('_m3s')[0]
+            stn_ids.append(station)
 
         df = pd.concat(yr_dfs, axis=1)
         df.columns = stn_ids

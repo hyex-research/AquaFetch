@@ -77,9 +77,9 @@ class TestCamels(unittest.TestCase):
 
             if stn not in ['35616.txt']:
 
-                stn_id = stn.split('.')[0]
+                station = stn.split('.')[0]
 
-                df = dataset._read_meteo_from_csv(stn_id)
+                df = dataset._read_meteo_from_csv(station)
 
                 assert df.shape == (11413, 9)
 

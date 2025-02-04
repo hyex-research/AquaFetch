@@ -200,7 +200,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, 2)
+            a :obj:`pandas.DataFrame` of shape (stations, 2)
 
         Examples
         --------
@@ -250,7 +250,7 @@ class EStreams(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -259,7 +259,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, static_features)
+            a :obj:`pandas.DataFrame` of shape (stations, static_features)
 
         Examples
         ---------
@@ -295,17 +295,17 @@ class EStreams(_RainfallRunoff):
 
         return self.static_data().loc[stations, features]
 
-    def meteo_data_station(self, stn_id: str) -> pd.DataFrame:
+    def meteo_data_station(self, station: str) -> pd.DataFrame:
         """
         Returns the meteorological data of a station
 
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of meteorological data of shape (time, 9)
+            a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
         df = pd.read_csv(
-            os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{stn_id}.csv'),
+            os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{station}.csv'),
             index_col='date',
             parse_dates=True
         )
@@ -381,7 +381,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of hydro-climatic signatures of shape (stations, 31)
+            a :obj:`pandas.DataFrame` of hydro-climatic signatures of shape (stations, 31)
         """
         stations = self._get_stations(countries, stations)
 
@@ -397,7 +397,7 @@ class EStreams(_RainfallRunoff):
 
     def fetch_stn_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
     ) -> pd.DataFrame:
         """
@@ -405,7 +405,7 @@ class EStreams(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            station : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -414,7 +414,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (n, features) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (n, features) where n is the number of days
 
         Examples
         --------
@@ -427,7 +427,7 @@ class EStreams(_RainfallRunoff):
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
-        return self.meteo_data_station(stn_id).loc[:, features]
+        return self.meteo_data_station(station).loc[:, features]
 
     def fetch_dynamic_features(
             self,
@@ -452,8 +452,8 @@ class EStreams(_RainfallRunoff):
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
-                is xarray dataset
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
+                is :obj:`xarray.Dataset`
 
         Examples
         --------
@@ -772,7 +772,7 @@ class Finland(_EStreams):
     def get_q(self, as_dataframe:bool=True, overwrite:bool=False):
         """
         downloads (if not already downloaded) and returns the daily streamflow data of Finland.
-        either as pandas dataframe or as xarray dataset.
+        either as :obj:`pandas.DataFrame` or as xarray dataset.
         """
         fpath = os.path.join(self.path, 'daily_q.csv')
 

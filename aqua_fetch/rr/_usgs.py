@@ -158,7 +158,7 @@ class USGS(_RainfallRunoff):
             stations: Union[str, List[str]] = 'all',
     ) ->pd.Series:
         """
-        Returns area_gov (Km2) of all catchments as pandas series
+        Returns area_gov (Km2) of all catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -169,7 +169,7 @@ class USGS(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -255,8 +255,8 @@ class USGS(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 

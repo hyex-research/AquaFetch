@@ -468,7 +468,7 @@ class Simbi(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = 'all',
+            stations: Union[str, list] = 'all',
             static_features: Union[str, list] = 'all'
     )->pd.DataFrame:
         """
@@ -477,7 +477,7 @@ class Simbi(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            stations : str/list
                 name/id of station/stations of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -486,7 +486,7 @@ class Simbi(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -511,7 +511,7 @@ class Simbi(_RainfallRunoff):
         >>> data.shape
            (1, 3)
         """
-        stations = check_attributes(stn_id, self.static_data_stations())
+        stations = check_attributes(stations, self.static_data_stations())
 
         df = self.static_data().copy()
         features = check_attributes(static_features, self.static_features,

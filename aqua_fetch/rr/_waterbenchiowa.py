@@ -119,14 +119,14 @@ class WaterBenchIowa(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, List[str]],
+            stations: Union[str, List[str]],
             static_features:Union[str, List[str]] = "all"
     )->pd.DataFrame:
         """
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -159,12 +159,12 @@ class WaterBenchIowa(_RainfallRunoff):
            (1, 2)
 
         """
-        stn_id = check_attributes(stn_id, self.stations())
+        stations = check_attributes(stations, self.stations())
 
         features = check_attributes(static_features, self.static_features, 'static_features')
 
         dfs = []
-        for stn in stn_id:
+        for stn in stations:
             fname = os.path.join(self.ts_path, f"{stn}_data.csv")
             df = pd.read_csv(fname, nrows=1)
             dfs.append(df[features])

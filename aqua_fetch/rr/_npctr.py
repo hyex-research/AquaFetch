@@ -583,14 +583,14 @@ class NPCTRCatchments(_RainfallRunoff):
 
     def fetch_static_features(
             self,
-            stn_id: Union[str, list] = "all",
+            stations: Union[str, list] = "all",
             static_features: Union[str, list] = "all"
     ) -> pd.DataFrame:
         """Fetches all or selected static features of one or more stations.
 
         Parameters
         ----------
-            stn_id : str
+            stations : str
                 name/id of station of which to extract the data
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -599,7 +599,7 @@ class NPCTRCatchments(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe
+            a :obj:`pandas.DataFrame`
 
         Examples
         --------
@@ -611,9 +611,9 @@ class NPCTRCatchments(_RainfallRunoff):
         ... static_features=['area_km2', 'elev_catch_m', 'slope_%'])
         """
 
-        stn_id = check_attributes(stn_id, self.stations(), 'stations')
+        stations = check_attributes(stations, self.stations(), 'stations')
         static_features = check_attributes(static_features, self.static_features, 'static_features')
-        df =  self._get_static().loc[stn_id, static_features]
+        df =  self._get_static().loc[stations, static_features]
 
 
 def _verify_timestep(timestep):
