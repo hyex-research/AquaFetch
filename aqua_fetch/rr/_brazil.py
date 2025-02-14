@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes, get_cpus
+from ..utils import check_attributes, get_cpus, download, _unzip
 from ._map import (
     min_air_temp,
     max_air_temp,
@@ -94,6 +94,23 @@ class CAMELS_BR(_RainfallRunoff):
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
+    urls = {
+        '01_CAMELS_BR_attributes.zip': 'https://zenodo.org/records/3964745/files/',
+        '02_CAMELS_BR_streamflow_m3s.zip': 'https://zenodo.org/records/3964745/files/',
+        '03_CAMELS_BR_streamflow_mm_selected_catchments.zip': 'https://zenodo.org/records/3964745/files/',
+        '04_CAMELS_BR_streamflow_simulated.zip': 'https://zenodo.org/records/3964745/files/',
+        '05_CAMELS_BR_precipitation_chirps.zip': 'https://zenodo.org/records/3964745/files/',
+        '06_CAMELS_BR_precipitation_mswep.zip': 'https://zenodo.org/records/3964745/files/',
+        '07_CAMELS_BR_precipitation_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '08_CAMELS_BR_evapotransp_gleam.zip': 'https://zenodo.org/records/3964745/files/',
+        '09_CAMELS_BR_evapotransp_mgb.zip': 'https://zenodo.org/records/3964745/files/',
+        '10_CAMELS_BR_potential_evapotransp_gleam.zip': 'https://zenodo.org/records/3964745/files/',
+        '11_CAMELS_BR_temperature_min_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '12_CAMELS_BR_temperature_mean_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '13_CAMELS_BR_temperature_max_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '14_CAMELS_BR_catchment_boundaries.zip': 'https://zenodo.org/records/3964745/files/',
+        '15_CAMELS_BR_gauges_location_shapefile.zip': 'https://zenodo.org/records/3964745/files/'
+    }
 
     folders = {'streamflow_m3s_raw': '02_CAMELS_BR_streamflow_m3s',
                'streamflow_mm': '03_CAMELS_BR_streamflow_mm_selected_catchments',
@@ -122,7 +139,18 @@ class CAMELS_BR(_RainfallRunoff):
         """
         super().__init__(path=path, name="CAMELS_BR", verbosity=verbosity, **kwargs)
 
-        self._download()
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        for fname, url in self.urls.items():
+            fpath = os.path.join(self.path, fname)
+            if not os.path.exists(fpath) or (os.path.exists(fpath) and self.overwrite):
+                if self.verbosity:
+                    print(f"Downloading {fname} from {url + fname} at {fpath}")
+                download(url + fname, self.path, verbosity=self.verbosity)
+                _unzip(self.path, verbosity=self.verbosity)
+            elif self.verbosity>1:
+                print(f"{fpath} already exists")
 
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
         self._maybe_to_netcdf('camels_dyn_br')
