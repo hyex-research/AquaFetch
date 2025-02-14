@@ -968,9 +968,11 @@ class CAMELS_CL(_RainfallRunoff):
 
         for _file, url in self.urls.items():
             fpath = os.path.join(self.path, _file)
-            if not os.path.exists(fpath):
-                download(url + _file, fpath)
-                _unzip(self.path)
+            if not os.path.exists(fpath) or (os.path.exists(fpath) and self.overwrite):
+                if self.verbosity:
+                    print(f"Downloading {_file} from {url + _file} at {fpath}")
+                download(url + _file, self.path, verbosity=self.verbosity)
+                _unzip(self.path, verbosity=self.verbosity)
             
         self._static_features = self._static_data().columns.tolist()
 
@@ -982,7 +984,7 @@ class CAMELS_CL(_RainfallRunoff):
             "CAMELS_CL",
             "CAMELScl_catchment_boundaries",
             "CAMELScl_catchment_boundaries",
-            "catchments_camels_cl_v1_3.shp"
+            "catchments_camels_cl_v1.3.shp"
         )
 
         self._create_boundary_id_map(self.boundary_file, 0)

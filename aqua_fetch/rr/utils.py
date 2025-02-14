@@ -139,6 +139,7 @@ class _RainfallRunoff(Datasets):
         # decoded with utf-8
         if os.path.basename(bndry_sf.shapeName) in [
             'catchments_camels_cl_v1_3',
+            'catchments_camels_cl_v1.3',
             "WKMSBSN",
             'estreams_catchments',
             'CAMELS_DE_catchments',
