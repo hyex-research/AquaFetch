@@ -72,8 +72,8 @@ class LamaHCE(_RainfallRunoff):
     static_attribute_categories = ['']
 
     def __init__(self, *,
-                 timestep: str,
-                 data_type: str,
+                 timestep: str = 'D',
+                 data_type: str = 'total_upstrm',
                  path=None,
                  to_netcdf: bool = True,
                  overwrite=False,
