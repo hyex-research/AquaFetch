@@ -109,7 +109,8 @@ class HYSETS(_RainfallRunoff):
     Q_SRC = ['ERA5', 'ERA5Land', 'ERA5Land_SWE', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS_SWE']
     SWE_SRC = ['ERA5Land_SWE', 'SNODAS_SWE']
     OTHER_SRC = [src for src in Q_SRC if src not in ['ERA5Land_SWE', 'SNODAS_SWE']]
-    dynamic_features = ['discharge', 'swe', 'tasmin', 'tasmax', 'pr']
+    dynamic_features = [observed_streamflow_cms(), snow_water_equivalent(), 
+                        min_air_temp(), max_air_temp(), total_precipitation()]
 
     def __init__(self,
                  path: str,
@@ -158,6 +159,14 @@ class HYSETS(_RainfallRunoff):
             'pr': pr_source
         }
 
+        self.sources_map = {
+            snow_water_equivalent(): 'swe',
+            observed_streamflow_cms(): 'discharge',
+            min_air_temp(): 'tasmin',
+            max_air_temp(): 'tasmax',
+            total_precipitation(): 'pr'
+        }
+
         super().__init__(**kwargs)
 
         self.path = path
@@ -183,7 +192,7 @@ class HYSETS(_RainfallRunoff):
         }
 
     @property
-    def dyn_map(self):
+    def dyn_map(self)->Dict[str, str]:
         return {
         'discharge': observed_streamflow_cms(), 
         'tasmin': min_air_temp(),
@@ -356,7 +365,7 @@ class HYSETS(_RainfallRunoff):
         """
         stations = check_attributes(stations, self.stations())
         _, q = self.fetch_stations_features(stations,
-                                           dynamic_features='discharge',
+                                           dynamic_features=observed_streamflow_cms(),
                                            as_dataframe=True)
         # todo: this is not good practice. fetch_stations_features should requrn q with correct
         # column names and after correcting it correct it in USGS as well
@@ -536,7 +545,15 @@ class HYSETS(_RainfallRunoff):
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
-        attrs = check_attributes(dynamic_features, self.dynamic_features)
+        #attrs = check_attributes(dynamic_features, self.dynamic_features)
+        if dynamic_features == 'all':
+            attrs = list(self.sources.keys())
+        else:
+            if isinstance(dynamic_features, str):
+                dynamic_features = [dynamic_features]
+            assert isinstance(dynamic_features, list), 'dynamic_features must be a list'
+            attrs = [self.sources_map[feature] for feature in dynamic_features]
+
 
         stations = np.subtract(stations, 1).tolist()
         # maybe we don't need to read all variables
@@ -560,6 +577,10 @@ class HYSETS(_RainfallRunoff):
         xds = xr.Dataset(x)
         xds = xds.rename_dims({'dim_1': 'dynamic_features'})
         xds = xds.rename_vars({'dim_1': 'dynamic_features'})
+
+        old_vals = xds.coords["dynamic_features"].values
+        new_vals = [self.dyn_map[val] for val in old_vals]
+        xds = xds.assign_coords(dynamic_features=new_vals)
 
         if as_dataframe:
             return xds.to_dataframe(['time', 'dynamic_features'])
