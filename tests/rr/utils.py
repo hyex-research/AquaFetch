@@ -187,6 +187,23 @@ def test_selected_dynamic_features(dataset, as_dataframe=False):
     return
 
 
+def test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_length):
+    logger.info(f"testing fetch_station_features for {dataset.name}")
+
+    station = random.choice(dataset.stations())
+
+    static, dynamic = dataset.fetch_station_features(station)
+
+    assert static.shape == (1, num_static_attrs), f"shape is {static.shape}"
+    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.data_vars)}"
+    assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
+
+    # test for single static feature
+
+    # test for single dynamic feature
+
+    return
+
 def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
                   raise_len_error=True):
     if as_dataframe:
@@ -385,6 +402,8 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset, as_dataframe=test_df)
+
+    # test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_data_len)
 
     test_coords(dataset)
 

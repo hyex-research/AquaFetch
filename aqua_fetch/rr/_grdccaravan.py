@@ -1,6 +1,7 @@
+
 import os
 import concurrent.futures as cf
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple, Callable, Any
 
 import pandas as pd
 
@@ -87,7 +88,7 @@ class GRDCCaravan(_RainfallRunoff):
     >>> dataset.dynamic_features
     get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'streamflow']).unstack()
+    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs']).unstack()
     >>> data.shape
         (26800, 4)
     get names of available static features
@@ -169,11 +170,17 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def dyn_map(self):
         return {
-            'streamflow': observed_streamflow_cms(),
+            'streamflow': observed_streamflow_mmd(),
             'temperature_2m_mean': mean_air_temp_with_specifier('2m'),
             'temperature_2m_min': min_air_temp_with_specifier('2m'),
             'temperature_2m_max': max_air_temp_with_specifier('2m'),
             'total_precipitation_sum': total_precipitation(),
+        }
+
+    @property
+    def dyn_generator(self)->Dict[str, Tuple[Callable, Any]]:
+        return {
+            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
         }
 
     @property
@@ -212,14 +219,6 @@ class GRDCCaravan(_RainfallRunoff):
     def stations(self) -> List[str]:
         return self._stations
 
-    # @property
-    # def _coords_name(self) -> List[str]:
-    #     return ['gauge_lat', 'gauge_lon']
-
-    # @property
-    # def _area_name(self) -> str:
-    #     return 'area'
-
     @property
     def start(self):
         return pd.Timestamp("19500102")
@@ -227,10 +226,6 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def end(self):
         return pd.Timestamp("20230519")
-
-    # @property
-    # def _q_name(self) -> str:
-    #     return observed_streamflow_cms()
 
     def other_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_other_grdc.csv'), index_col='gauge_id')
@@ -252,12 +247,18 @@ class GRDCCaravan(_RainfallRunoff):
 
         return df
 
+    def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
+        """converts discharge from mmd to cms"""
+        area_m2 = self.area(q_mmd.name) * 1e6
+        #assert len(q_mmd) == len(area_m2), "Length of discharge and area should be same"
+        q_md = q_mmd * 0.001  # convert mm/day to m/day
+        return q_md * area_m2.iloc[0] / 86400
+
     def fetch_station_features(
             self,
             station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
@@ -273,10 +274,6 @@ class GRDCCaravan(_RainfallRunoff):
                 names of dynamic features/attributes to fetch
             static_features :
                 names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
             st : str,optional
                 starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
@@ -349,6 +346,10 @@ class GRDCCaravan(_RainfallRunoff):
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        for new_feature, (func, old_feature) in self.dyn_generator.items():
+            if new_feature not in df.columns:
+                df[new_feature] = func(pd.Series(df[old_feature], name=station))
 
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'

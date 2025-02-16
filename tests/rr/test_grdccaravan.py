@@ -19,4 +19,4 @@ from aqua_fetch import GRDCCaravan
 from utils import test_dataset
 
 dataset = GRDCCaravan(path=gscad_path)
-test_dataset(dataset, 5357, 26801, 211, 39)
+test_dataset(dataset, 5357, 26801, 211, 40)
