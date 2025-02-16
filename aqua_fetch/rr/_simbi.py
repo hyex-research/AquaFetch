@@ -14,15 +14,20 @@ from ._map import (
     slope
     )
 
+from ._map import (
+    observed_streamflow_cms,  
+    total_precipitation,
+    mean_air_temp
+)
+
 
 class Simbi(_RainfallRunoff):
     """
     monthly rainfall from 1905 - 2005, daily rainfall from 1920-1940, 70 daily
     streamflow series, and 23 monthly temperature series for 24 catchments of Haiti
 
-    `Bathelemy et al., 2023 <https://doi.org/10.23708/02POK6>`_
-    `Bathelemy et al., 2024 <doi: 10.5194/essd-16-2073-2024>`_
-
+    Data is obtained from `Bathelemy et al., 2023 <https://doi.org/10.23708/02POK6>`_
+    while related publication is `Bathelemy et al., 2024 <doi: 10.5194/essd-16-2073-2024>`_
 
     Examples
     ---------
@@ -60,7 +65,7 @@ class Simbi(_RainfallRunoff):
         self._download(overwrite=overwrite)
 
         self._static_features = self.static_data().columns.tolist()
-        self._dynamic_features = ['q', 'pcp', 'temp']
+        self._dynamic_features = list(self.dyn_map.values())
 
         self.boundary_file = os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')
 
@@ -76,7 +81,15 @@ class Simbi(_RainfallRunoff):
                 'Slope': slope('degrees'),
                 'Lon_Cent': gauge_longitude(),
         }
-    
+
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        return {
+            'temp': mean_air_temp(),
+            'q': observed_streamflow_cms(),
+            'pcp': total_precipitation()
+        }
+
     @property
     def static_features(self):
         return self._static_features
@@ -518,14 +531,6 @@ class Simbi(_RainfallRunoff):
                                     "static_features")
         return df.loc[stations, features]            
  
-    @property
-    def dyn_map(self):
-        return {
-        'q': 'obs_q_cms',
-        'temp': 'mean_temp_C',
-        'pcp': 'pcp_mm',
-        }
-
     def _read_dynamic(
         self,
         stations,
@@ -594,6 +599,9 @@ class Simbi(_RainfallRunoff):
         df3 = self.read_stn_temp(stn)
         df = pd.concat([df1, df2, df3], axis=1)
         df.columns = ['q', 'pcp', 'temp']
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
         df.index = pd.to_datetime(df.index)
         df.columns.name = 'dynamic_features'
         df.index.name = 'time'
