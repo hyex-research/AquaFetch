@@ -192,8 +192,7 @@ class USGS(_RainfallRunoff):
             stations: Union[str, List[str]] = "all",
             static_features:Union[str, List[str]] = "all",
             st=None,
-            en=None,
-            as_ts=False
+            en=None
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -207,7 +206,6 @@ class USGS(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -235,7 +233,7 @@ class USGS(_RainfallRunoff):
         stations = check_attributes(stations, self.stations())
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]        
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en, as_ts)
+        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en)
         static_feats.set_index('Official_ID', inplace=True)
         return static_feats
 
@@ -333,8 +331,7 @@ class USGS(_RainfallRunoff):
             dynamic_features = 'all',
             st=None,
             en=None,
-            as_dataframe=False,
-            as_ts=False
+            as_dataframe=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -385,8 +382,7 @@ class USGS(_RainfallRunoff):
             station="all",
             static_features: Union[str, list] = 'all',
             st=None,
-            en=None,
-            as_ts=False
+            en=None
     )->pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity>1:
@@ -394,7 +390,7 @@ class USGS(_RainfallRunoff):
         stations = check_attributes(station, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en, as_ts).copy()
+        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en).copy()
         static_feats = static_feats.set_index('Official_ID')
         return static_feats
 

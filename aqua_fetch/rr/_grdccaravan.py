@@ -255,7 +255,7 @@ class GRDCCaravan(_RainfallRunoff):
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Fetches features for one station.
 
@@ -275,9 +275,10 @@ class GRDCCaravan(_RainfallRunoff):
 
         Returns
         -------
-        Dict
-            dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic features for a station/gauge_id
+        tuple
+            A tuple of static and dynamic features, both as :obj:`pandas.DataFrame`.
+            The dataframe of static features will be of single row while the dynamic
+            features will be of shape (time, dynamic features).
 
         Examples
         --------

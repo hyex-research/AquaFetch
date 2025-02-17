@@ -212,10 +212,10 @@ def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
         logger.info(f"test_all_data for {dataset.name}")
 
     if len(dataset.static_features) > 0:
-        static, dynamic = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
+        static, dynamic = dataset.fetch(stations, static_features='all', as_dataframe=as_dataframe)
         assert static.shape == (stations, len(dataset.static_features)), f"shape is {static.shape}"
     else:
-        _, dynamic = dataset.fetch(stations, static_features=None, as_ts=False, as_dataframe=as_dataframe)
+        _, dynamic = dataset.fetch(stations, static_features=None, as_dataframe=as_dataframe)
 
     if as_dataframe:
         check_dataframe(dataset, dynamic, stations, stn_data_len, raise_len_error=raise_len_error)

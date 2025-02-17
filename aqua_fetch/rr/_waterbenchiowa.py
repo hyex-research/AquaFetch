@@ -96,7 +96,6 @@ class WaterBenchIowa(_RainfallRunoff):
             station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs

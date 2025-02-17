@@ -502,8 +502,7 @@ class HYSETS(_RainfallRunoff):
             dynamic_features = 'all',
             st=None,
             en=None,
-            as_dataframe=False,
-            as_ts=False
+            as_dataframe=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -554,8 +553,7 @@ class HYSETS(_RainfallRunoff):
             station="all",
             static_features: Union[str, list] = 'all',
             st=None,
-            en=None,
-            as_ts=False
+            en=None
     ):
 
         df = self.read_static_data()
@@ -575,7 +573,6 @@ class HYSETS(_RainfallRunoff):
             static_features:Union[str, List[str]]="all",
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -589,7 +586,6 @@ class HYSETS(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -614,7 +610,7 @@ class HYSETS(_RainfallRunoff):
         >>> static_data.shape
            (14425, 2)
         """
-        return self._fetch_static_features(stations, static_features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en)
 
     def read_static_data(self, usecols=None, nrows=None):
         """

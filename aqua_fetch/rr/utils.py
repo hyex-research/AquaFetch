@@ -351,18 +351,6 @@ class _RainfallRunoff(Datasets):
             en = pd.Timestamp(en)
         return st, en
 
-    def to_ts(self, static, st, en, as_ts=False, freq='D'):
-
-        st, en = self._check_length(st, en)
-
-        if as_ts:
-            idx = pd.date_range(st, en, freq=freq)
-            static = pd.DataFrame(np.repeat(static.values, len(idx), axis=0), index=idx,
-                                  columns=static.columns)
-            return static
-        else:
-            return static
-
     @property
     def camels_dir(self):
         """Directory where all camels datasets will be saved. This will under

@@ -1053,7 +1053,6 @@ class _GSHA(_RainfallRunoff):
             st=None,
             en=None,
             as_dataframe=False,
-            as_ts=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -1103,7 +1102,6 @@ class _GSHA(_RainfallRunoff):
             static_features: Union[str, list] = 'all',
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity > 1:
@@ -1190,7 +1188,6 @@ class _GSHA(_RainfallRunoff):
             static_features: Union[str, List[str]] = "all",
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -1204,7 +1201,6 @@ class _GSHA(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -1229,7 +1225,7 @@ class _GSHA(_RainfallRunoff):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, static_features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en)
 
 
 def streamflow_indices_all_stations(
