@@ -192,13 +192,10 @@ class CAMELS_BR(_RainfallRunoff):
     @property
     def dyn_generators(self):
         return {
-            # new column to be created : (old column, function to be applied)
-            observed_streamflow_cms(): (observed_streamflow_mmd(), self.func1),
+            # new column to be created : function to be applied, inputs
+            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
+            #mean_air_temp(): (self.mean_temp, (min_air_temp(), max_air_temp())),
         }
-
-    def func1(self, x):
-        # convert cms to mmd
-        return x / 86400
 
     @property
     def _all_dirs(self):
@@ -224,7 +221,7 @@ class CAMELS_BR(_RainfallRunoff):
     @property
     def dynamic_features(self) -> List[str]:
         features = list(CAMELS_BR.folders.keys())
-        features.remove('simulated_streamflow_m3s')
+        features.remove('simulated_streamflow_m3s')  # todo: why we need to remove this?
         features.remove('streamflow_m3s_raw')
         return [self.dyn_map.get(feature, feature) for feature in features] + list(self.dyn_generators.keys())
 
@@ -327,7 +324,7 @@ class CAMELS_BR(_RainfallRunoff):
             'gsim': 'area_gsim',
             'ana': 'area_ana'
         }
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         fpath = os.path.join(self.path, '01_CAMELS_BR_attributes',
                              '01_CAMELS_BR_attributes',
@@ -374,7 +371,7 @@ class CAMELS_BR(_RainfallRunoff):
         df.index = df['gauge_id'].astype(str)
         df = df[['gauge_lat', 'gauge_lon']]
         df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         return df.loc[stations, :]
 
@@ -514,9 +511,16 @@ class CAMELS_BR(_RainfallRunoff):
 
         stn_df = pd.concat(feature_dfs, axis=1)
 
-        for new_col, (old_col, func) in self.dyn_generators.items():
-            if old_col in stn_df.columns:
-                stn_df[new_col] = func(stn_df[old_col])
+        for new_col, (func, old_col) in self.dyn_generators.items():
+            if isinstance(old_col, str):
+                if old_col in stn_df.columns:
+                    # name of Series to func should be same as station id
+                    stn_df[new_col] = func(pd.Series(stn_df[old_col], name=station))
+            else:
+                assert isinstance(old_col, tuple)
+                if all([col in stn_df.columns for col in old_col]):
+                    # feed all old_cols to the function
+                    stn_df[new_col] = func(*[pd.Series(stn_df[col], name=station) for col in old_col])
 
         stn_df.columns.name = 'dynamic_features'
         stn_df.index.name = 'time'
@@ -611,6 +615,9 @@ class CABra(_RainfallRunoff):
     ((1, 97), (131472, 1))
 
     """
+
+    # todo : generate mean air temperature from max and min
+
     url = 'https://zenodo.org/record/7612350'
 
     def __init__(self,

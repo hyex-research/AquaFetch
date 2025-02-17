@@ -753,7 +753,6 @@ class CAMELS_AUS(_RainfallRunoff):
     @property
     def dyn_map(self):
         # table 2 in https://essd.copernicus.org/articles/13/3847/2021/#&gid=1&pid=1
-
         return {
             'streamflow_MLd': observed_streamflow_cms(),
             'streamflow_mmd': observed_streamflow_mmd(),

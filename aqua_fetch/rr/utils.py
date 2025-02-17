@@ -118,6 +118,23 @@ class _RainfallRunoff(Datasets):
     def dyn_factors(self) -> Dict[str, float]:
         return {}
 
+    def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
+        """converts discharge from mmd to cms"""
+        area_m2 = self.area(q_mmd.name) * 1e6
+        q_md = q_mmd * 0.001  # convert mm/day to m/day
+        return q_md * area_m2.iloc[0] / 86400
+
+    def cms_to_mmd(self, q_cms:pd.Series)->pd.Series:
+        """convert streamflow from cms to mmd"""
+        area_m2 = self.area(q_cms.name) * 1e6  # area in m2
+        return ((q_cms * 86400)/area_m2.iloc[0]) * 1e3  # cms to m/day
+
+    @staticmethod
+    def mean_temp(tmin:pd.Series, tmax:pd.Series)->pd.Series:
+        """calculates mean temperature from tmin and tmax"""
+        assert len(tmin) == len(tmax), f"length of tmin {len(tmin)} and tmax {len(tmax)} must be same"
+        return (tmin + tmax)/2
+
     def _create_boundary_id_map(self, boundary_file, id_idx_in_bndry_shape):
 
         if boundary_file is None:

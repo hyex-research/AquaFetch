@@ -247,13 +247,6 @@ class GRDCCaravan(_RainfallRunoff):
 
         return df
 
-    def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
-        """converts discharge from mmd to cms"""
-        area_m2 = self.area(q_mmd.name) * 1e6
-        #assert len(q_mmd) == len(area_m2), "Length of discharge and area should be same"
-        q_md = q_mmd * 0.001  # convert mm/day to m/day
-        return q_md * area_m2.iloc[0] / 86400
-
     def fetch_station_features(
             self,
             station: str,
