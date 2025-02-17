@@ -69,9 +69,11 @@ class USGS(_RainfallRunoff):
         super().__init__(path, verbosity=verbosity, **kwargs)
 
         if hysets_path is None:
-            hysets_path = os.path.join(os.path.dirname(self.path), 'HYSETS')
-            if os.path.exists(hysets_path):
-                self.hysets_path = hysets_path
+            hysets_path = os.path.dirname(self.path)
+            # if os.path.exists(hysets_path):
+            #     self.hysets_path = hysets_path
+            if self.verbosity:
+                print(f"hysets_path is {hysets_path}")
 
         self.hysets = HYSETS(path = hysets_path, verbosity=verbosity)
         self.hysets_path = self.hysets.path

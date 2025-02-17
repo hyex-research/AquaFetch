@@ -239,7 +239,7 @@ plt.show()
 _ = hist(streamflow.skew().values.reshape(-1,), bins=50)
 
 # %%
-df = dataset.fetch(stations=1, as_dataframe=True)
+_, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
@@ -255,7 +255,7 @@ len(stns)
 
 # %%
 # get data of 10 % of stations as dataframe
-df = dataset.fetch(0.1, as_dataframe=True)
+_, df = dataset.fetch(0.1, as_dataframe=True)
 df.shape
 
 # %%
@@ -269,7 +269,7 @@ df.index.names == ['time', 'dynamic_features']
 df
 # %%
 # get data by station id
-df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+df = dataset.fetch(stations='224214A', as_dataframe=True)[1].unstack()
 df.shape
 
 # %%
@@ -281,7 +281,7 @@ df
 dataset.dynamic_features
 # get only selected dynamic features
 data = dataset.fetch(1, as_dataframe=True,
-dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
+dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs'])[1].unstack()
 data.shape
 
 # %%
@@ -293,24 +293,28 @@ data
 # get names of available static features
 dataset.static_features
 # get data of 10 random stations
-df = dataset.fetch(10, as_dataframe=True)
+_, df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe
 
 # %%
 
 # when we get both static and dynamic data, the returned data is a dictionary
 # with ``static`` and ``dyanic`` keys.
-data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-data['static'].shape, data['dynamic'].shape
+static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+static.shape, dynamic.shape
 
 # %%
-data['static']
+static
 
 # %%
 
-data['dynamic']
+dynamic
 
 # %%
 # get data data of all stations as xarray dataset
-data = dataset.fetch()
-data
+static, dynamic = dataset.fetch()
+static
+
+# %%
+
+dynamic
