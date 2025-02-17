@@ -7,12 +7,13 @@ import pandas as pd
 
 from .utils import _RainfallRunoff
 from .._backend import shapefile, xarray as xr
-from ..utils import check_attributes, sanity_check
+from ..utils import check_attributes
 
 from ._map import (
     observed_streamflow_cms,
     min_air_temp,
     max_air_temp,
+    mean_air_temp,
     total_precipitation,
     snow_water_equivalent,
     )
@@ -125,8 +126,9 @@ class HYSETS(_RainfallRunoff):
         parameters
         --------------
             path : str
-                If the data is alredy downloaded then provide the complete
-                path to it. If None, then the data will be downloaded.
+                The path under which the data is to be saved or is saved already.
+                If the data is alredy downloaded then provide the path under which
+                HYSETS data is located. If None, then the data will be downloaded.
                 The data is downloaded once and therefore susbsequent
                 calls to this class will not download the data unless
                 ``overwrite`` is set to True.
@@ -141,7 +143,7 @@ class HYSETS(_RainfallRunoff):
             pr_source :
                 source of pr data
             kwargs :
-                arguments for ``Camels`` base class
+                arguments for ``_RainfallRunoff`` base class
 
         """
 
@@ -167,9 +169,7 @@ class HYSETS(_RainfallRunoff):
             total_precipitation(): 'pr'
         }
 
-        super().__init__(**kwargs)
-
-        self.path = path
+        super().__init__(path=path, **kwargs)
 
         self._stations = self.__stations()
 
@@ -177,7 +177,7 @@ class HYSETS(_RainfallRunoff):
         if not os.path.exists(fpath):
             self._maybe_to_netcdf('hysets_dyn')
         
-        self.boundary_file = os.path.join(path,  
+        self.boundary_file = os.path.join(self.path,  
                                           "HYSETS_watershed_boundaries", 
                                           "HYSETS_watershed_boundaries_20200730.shp")
         self._create_boundary_id_map(self.boundary_file, 2)
@@ -199,6 +199,13 @@ class HYSETS(_RainfallRunoff):
         'tasmax': max_air_temp(),
         'pr': total_precipitation(),
         'swe': snow_water_equivalent()
+        }
+
+    @property
+    def dyn_generators(self):
+        return {
+            # new column to be created : function to be applied, inputs
+            mean_air_temp(): (self.mean_temp, (min_air_temp(), max_air_temp())),
         }
 
     def _maybe_to_netcdf(self, fname: str):
@@ -237,15 +244,6 @@ class HYSETS(_RainfallRunoff):
         twoD_xds.to_netcdf(os.path.join(self.path, "hysets_dyn.nc"))
 
         return
-
-    @property
-    def path(self):
-        return self._path
-
-    @path.setter
-    def path(self, x):
-        sanity_check('HYSETS', x)
-        self._path = x
 
     @property
     def static_features(self)->List[str]:
@@ -419,42 +417,6 @@ class HYSETS(_RainfallRunoff):
 
         s.columns = ['area_km2']
         return s.loc[stations, 'area_km2']
-
-    # def stn_coords(
-    #         self,
-    #         stations:Union[str, List[str]] = 'all'
-    # ) ->pd.DataFrame:
-    #     """
-    #     returns coordinates of stations as DataFrame
-    #     with ``long`` and ``lat`` as columns.
-
-    #     Parameters
-    #     ----------
-    #     stations :
-    #         name/names of stations. If not given, coordinates
-    #         of all stations will be returned.
-
-    #     Returns
-    #     -------
-    #     coords :
-    #         pandas DataFrame with ``long`` and ``lat`` columns.
-    #         The length of dataframe will be equal to number of stations
-    #         wholse coordinates are to be fetched.
-
-    #     Examples
-    #     --------
-    #     >>> dataset = HYSETS()
-    #     >>> dataset.stn_coords() # returns coordinates of all stations
-    #     >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
-    #     >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
-
-    #     """
-    #     df = self.fetch_static_features(
-    #         static_features=['Centroid_Lat_deg_N', 'Centroid_Lon_deg_E'])
-    #     df.columns = ['lat', 'long']
-    #     stations = check_attributes(stations, self.stations())
-
-    #     return df.loc[stations, :]
 
     def fetch_stations_features(
             self,

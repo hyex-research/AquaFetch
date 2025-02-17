@@ -34,7 +34,7 @@ from utils import (
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 
-hy = HYSETS(path=os.path.join(gscad_path, "HYSETS"), verbosity=5)
+hy = HYSETS(path=gscad_path, verbosity=5)
 
 # because it takes very long time, we don't test with all the data
 test_dynamic_data(hy, 0.003, int(14425 * 0.003), 25202)
