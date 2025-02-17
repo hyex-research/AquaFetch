@@ -1933,7 +1933,8 @@ class CAMELS_DE(_RainfallRunoff):
 class CAMELS_SE(_RainfallRunoff):
     """
     Dataset of 50 Swedish catchments following the works of
-    `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ .
+    `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_ . The data is downloaded
+    from Swedish National Data Service `website <https://snd.se/en/catalogue/dataset/2023-173>`_ .
     The dataset consists of 76 static catchment features and 4 dynamic features.
     The dynamic features span from 19610101 to 20201231 with daily timestep.
 
@@ -1989,7 +1990,8 @@ class CAMELS_SE(_RainfallRunoff):
     url = {
         'catchment properties.zip': "https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment+properties.zip",
         'catchment time series.zip': 'https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment+time+series.zip',
-        'catchment_GIS_shapefiles.zip': "https://snd.se/sv/catalogue/download/dataset/2023-173/2?principal=user.uu.se&filename=catchment_GIS_shapefiles.zip",
+        'catchment_GIS_shapefiles.zip': "https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment_GIS_shapefiles.zip",
+        'Documentation_2024-01-02.pdf': 'https://snd.se/en/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=Documentation_2024-01-02.pdf&isDoc=y'
     }
 
     def __init__(
@@ -2009,11 +2011,14 @@ class CAMELS_SE(_RainfallRunoff):
         """
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
         for _file, url in self.url.items():
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
                 if verbosity > 0:
-                    print(f"Downloading {_file} from {url + _file}")
+                    print(f"Downloading {_file} from {url}")
                 download(url, outdir=self.path, fname=_file, )
                 _unzip(self.path)
             else:
@@ -2074,14 +2079,6 @@ class CAMELS_SE(_RainfallRunoff):
     @property
     def _mmd_feature_name(self) -> str:
         return observed_streamflow_cms()
-
-    # @property
-    # def _coords_name(self) -> List[str]:
-    #     return ['Latitude_WGS84', 'Longitude_WGS84']
-
-    # @property
-    # def _area_name(self) -> str:
-    #     return 'Area_km2'
 
     @property
     def start(self):
