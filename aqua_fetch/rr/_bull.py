@@ -143,6 +143,8 @@ class Bull(_RainfallRunoff):
 
         self._download(overwrite=overwrite)
 
+        self._unzip_7z_files()
+
         if netCDF4 is None:
             self.ftype = "csv"
         else:
@@ -212,7 +214,7 @@ class Bull(_RainfallRunoff):
 
     @property
     def attributes_path(self):
-        return os.path.join(self.path, "attributes", "attributes")
+        return os.path.join(self.path, "attributes")
 
     @property
     def shapefiles_path(self):
@@ -260,6 +262,22 @@ class Bull(_RainfallRunoff):
     @property
     def static_features(self) -> List[str]:
         return self._static_features
+
+    def _unzip_7z_files(self):
+        # The attributes file is .7z file
+        try:
+            import py7zr
+        except (ModuleNotFoundError, ImportError):
+            raise ImportError('py7zr is required to extract the .7z files. Please install it using `pip install py7zr`')
+
+        # get all .7z files in self.path
+        files = [f for f in os.listdir(self.path) if f.endswith('.7z')]
+
+        for file in files:
+            fpath = os.path.join(self.path, file)
+            with py7zr.SevenZipFile(fpath, mode='r') as z:
+                z.extractall(path = self.path)
+                print(f'Extracted {file}')
 
     def caravan_attributes(self) -> pd.DataFrame:
         """a dataframe of shape (484, 10)"""
