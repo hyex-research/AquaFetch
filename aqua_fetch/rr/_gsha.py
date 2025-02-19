@@ -1671,7 +1671,7 @@ def download_daily_data(
     stations_ = [item for sublist in stations_ for item in sublist]
     years_ = list(years) * len(stations)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     if verbosity:
         print(f"downloading daily data for {len(stations)} stations from {years[0]} to {years[-1]}")

@@ -491,7 +491,7 @@ def maybe_make_and_get_metadata(
         cpus:int=None
         )->pd.DataFrame:
 
-    cpus = get_cpus()-2 if cpus is None else cpus
+    cpus = max(get_cpus()-2, 1) if cpus is None else cpus
 
     fpath = os.path.join(path, 'metadata.csv')
     if os.path.exists(fpath):

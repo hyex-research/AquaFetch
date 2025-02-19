@@ -787,7 +787,7 @@ class Finland(_EStreams):
 
         if self.verbosity: print("Downloading 2012-2023 year data")
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or max(get_cpus()-2, 1)
 
         if self.verbosity:
             print(f"downloading daily data for {len(self.stations())} stations from {2012} to {2023}")
@@ -1075,7 +1075,7 @@ class Ireland(_EStreams):
 
             print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
 
-            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep, verbosity=self.verbosity-1)
+            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep)
 
             epa_dfs.append(df) 
 
@@ -1534,7 +1534,7 @@ class Poland(_EStreams):
                 years.append(yr)
                 months.append(month)
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or max(get_cpus()-2, 1)
 
         if self.verbosity:
             print(f"Downloading zip files using {cpus} cpus")
