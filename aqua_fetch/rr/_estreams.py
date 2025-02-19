@@ -287,7 +287,7 @@ class EStreams(_RainfallRunoff):
                 print(f"Reading from {nc_path}")
             return xr.open_dataset(nc_path)
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         stations = self.stations()
         meteo_vars = {}
 
@@ -1008,7 +1008,7 @@ class Ireland(_EStreams):
 
         if not os.path.exists(fpath) or overwrite:
 
-            cpus = self.processes or min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
             if cpus > 1:
                 epa_df = self.download_epa_data_parallel(cpus=cpus)
@@ -1091,7 +1091,7 @@ class Ireland(_EStreams):
     def download_epa_data_parallel(self, cpus=None):
 
         if cpus is None:
-            cpus = min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
         folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
@@ -1768,7 +1768,7 @@ class Portugal(_EStreams):
 
             if self.verbosity>1: print(f"Downloading q data at {self.path}")
 
-            cpus = self.processes or min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
             if cpus > 1:
                 q_df = self.download_q_data_parallel(cpus=cpus)

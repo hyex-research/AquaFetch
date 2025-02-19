@@ -91,7 +91,6 @@ class USGS(_RainfallRunoff):
             'Centroid_Lat_deg_N': gauge_latitude(),
             'Slope_deg': slope('degrees'),
             'Centroid_Lon_deg_E': gauge_longitude(),
-
         }
 
     @property
@@ -104,7 +103,7 @@ class USGS(_RainfallRunoff):
 
     @property
     def dynamic_features(self)->List[str]:
-        return [observed_streamflow_cms()] + self.hysets.dynamic_features[1:]
+        return self.hysets.dynamic_features
 
     def stations(self)->List[str]:
         return self._stations
@@ -453,7 +452,7 @@ class USGS(_RainfallRunoff):
         sites = df.loc[df['Source']=='USGS']['Official_ID']
 
         if cpus is None:
-            cpus = get_cpus() - 2
+            cpus = max(get_cpus() - 2, 1)
         
         if not os.path.exists(self.path):
             os.makedirs(self.path)
