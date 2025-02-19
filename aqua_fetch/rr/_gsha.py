@@ -568,7 +568,7 @@ class GSHA(_RainfallRunoff):
             METEO_MAP[self.agency_of_stn(stn)],
             f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         start = time.time()
 
         if self.verbosity:
@@ -667,7 +667,7 @@ class GSHA(_RainfallRunoff):
             "Storage",
             f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         start = time.time()
 
         if self.verbosity: print(f"Reading storage vars for {len(self.stations())} stations using {cpus} cpus")
@@ -1240,7 +1240,7 @@ def streamflow_indices_all_stations(
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus() - 2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     start = time.time()
 
@@ -1278,12 +1278,12 @@ def streamflow_indices_stn(
 ) -> pd.DataFrame:
     fpath = os.path.join(
         ds_path,
-        "StreamflowIndices",
+        "StreamflowIndices_yearly",
         "StreamflowIndices",
         f'{stn}.csv')
 
     if not os.path.exists(fpath):
-        raise FileNotFoundError(f"{ds_path} for station {stn} not found")
+        raise FileNotFoundError(f"{fpath} not found")
 
     df = pd.read_csv(
         fpath, index_col=0,
@@ -1347,7 +1347,7 @@ def lc_vars_all_stns(
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus() - 2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     start = time.time()
 
@@ -1412,7 +1412,7 @@ def reservoir_vars_all_stns(
         if verbosity: print(f"Reading from pre-existing {nc_path}")
         return xr.open_dataset(nc_path)
 
-    cpus = cpus or get_cpus() - 2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     start = time.time()
 
@@ -1479,7 +1479,7 @@ def lai_all_stns(
         if verbosity: print(f"Reading from pre-existing {ds_path}")
         return pd.read_csv(os.path.join(ds_path, 'lai.csv'), index_col=0)
 
-    cpus = cpus or get_cpus() - 2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     start = time.time()
 
@@ -1517,7 +1517,7 @@ def lai_all_stns(
 
 # the dates for data to be downloaded 
 START_YEAR = 1979
-END_YEAR = 2023
+END_YEAR = 2024
 
 
 class Japan(_GSHA):
@@ -1675,32 +1675,66 @@ def download_daily_data(
 
     if verbosity:
         print(f"downloading daily data for {len(stations)} stations from {years[0]} to {years[-1]}")
-    
+
     if verbosity>1:
         print(f"Total function calls: {len(stations_)} with {cpus} cpus")
 
+    # It takes ~ 100 seconds to download data for a single station for all years (1979-2024) with 1 cpu
+
     start = time.time()
-    with cf.ProcessPoolExecutor(cpus) as executor:
-        results = executor.map(download_daily_stn_yr, stations_, years_)
+
+    if cpus == 1:
+        all_data = []
+        for idx, stn in enumerate(stations):
+            stn_data = []
+            for yr in years:
+                stn_yr_data = download_daily_stn_yr(stn, yr)
+                stn_data.append(stn_yr_data)
+            
+            stn_data = pd.concat(stn_data, axis=0)
+            stn_data.name = stn
+            all_data.append(stn_data)
+        
+            if verbosity==1 and idx % 1000 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==2 and idx % 500 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==3 and idx % 100 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==4 and idx % 10 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity>4:
+                print(f"Data for {idx+1} stations downloaded")
+
+    else:
+        with cf.ProcessPoolExecutor(cpus) as executor:
+            results = executor.map(download_daily_stn_yr, stations_, years_)
     
+        all_data = []
+        for idx, stn in stations:
+            stn_data = []
+            for yr in years:
+                stn_yr_data = next(results)
+                stn_data.append(stn_yr_data)
+            
+            if verbosity==1 and idx % 1000 == 0:
+                print(f"{idx} stations downloaded")
+            elif verbosity==2 and idx % 500 == 0:
+                print(f"{idx} stations downloaded")
+            elif verbosity>2 and idx % 100 == 0:
+                print(f"{idx} stations downloaded")
+            
+            stn_data = pd.concat(stn_data, axis=0)
+            stn_data.name = stn
+
+            if verbosity>2:
+                print(f"total number of years: {yr} for {stn} with shape {stn_data.shape}")
+
+            all_data.append(stn_data)
+
     if verbosity:
         print(f"total time taken to download data: {time.time() - start}")
 
-    all_data = []
-    for stn in stations:
-        stn_data = []
-        for yr in years:
-            stn_yr_data = next(results)
-            stn_data.append(stn_yr_data)
-        
-        stn_data = pd.concat(stn_data, axis=0)
-        stn_data.name = stn
-
-        if verbosity>2:
-            print(f"total number of years: {yr} for {stn} with shape {stn_data.shape}")
-
-        all_data.append(stn_data)
-    
     if verbosity>2:
         print(f"total number of stations: {len(all_data)} each with shape {all_data[0].shape}")
     
