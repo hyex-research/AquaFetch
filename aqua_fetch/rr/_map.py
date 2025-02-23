@@ -123,6 +123,11 @@ def mean_daily_evaporation()->str:
     """catchment daily averaged evaporation (observations) mm/day"""
     return "evap_mm"
 
+
+def mean_daily_evaporation_with_specifier(specifier:str)->str:
+    """catchment daily averaged evaporation (observations) mm/day"""
+    return f"evap_mm_{specifier}"
+
 # %%
 # wind speed
 
@@ -221,14 +226,25 @@ def min_air_pressure()->str:
 
 
 # %% solar radiation
+# The term 'solar' and 'shortwave' refers to the same thing, similarly
+# 'longwave' and 'thermal' refers to the same thing.
+
+def net_solar_radiation()->str:
+    """
+    Net solar (shorwave) radiation is the difference between the incoming (shortwave) and 
+    outgoing solar (shotwave) radiation
+    """
+    return "solradnet_wm2"
+
 
 def solar_radiation()->str:
     """
+    Since the the word 'solar' is used, it is assumed that it is shortwave radiation.
+    It is also customary to refer this term for shorwave downward radiation
     # todo: is it mean or total?
     also know as
     shortwave radiation
     downard shortwave radiation
-    net solar radiation
     """
     return "solrad_wm2"
 
@@ -263,12 +279,24 @@ def min_solar_radiation()->str:
 
 
 def downward_longwave_radiation()->str:
+    """
+    Downward longwave radiation is usually/always thermal radiation
+    downloard longwave radiation
+    downward thermal radiation
+    """
     return "lwdownrad_wm2"
 
 
 def download_longwave_radiation_with_specifier(specifier:str)->str:
     return f"lwdownrad_wm2_{specifier}"
 
+
+def net_longwave_radiation()->str:
+    """
+    Net longwave (thermal) radiation is the difference between the incoming and 
+    outgoing longwave radiation
+    """
+    return "lwnetrad_wm2"
 
 # %%
 # thermal radiation
@@ -285,7 +313,7 @@ def min_themal_radiation()->str:
 
 
 # %% 
-# snow water equivalent depth
+# snow water equivalent, depth, density
 
 def snow_depth()->str:
     return "snowdepth_m"
@@ -307,6 +335,20 @@ def max_snow_water_equivalent()->str:
 def min_snow_water_equivalent()->str:
     return "swe_mm_min"
 
+
+def snowfall()->str:
+    """total snowfall mm per units of time"""
+    return "snowfall_mm"
+
+
+def snowmelt()->str:
+    """total snowmelt mm per units of time"""
+    return "snowmelt_mm"
+
+
+def snow_density()->str:
+    """Average daily snow density in kg m-3"""
+    return "snowdensity_kgm3"
 
 # %%
 
@@ -395,6 +437,12 @@ def mean_vapor_pressure_with_specifier(specifier)->str:
 
 def sunshine_duration()->str:
     return "ssd_hr"
+
+# %%
+# cloud cover
+
+def cloud_cover()->str:
+    return "cloudcover"
 
 # %%
 # ****STATIC FEATURES****

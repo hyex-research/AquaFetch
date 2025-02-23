@@ -892,8 +892,7 @@ class GSHA(_RainfallRunoff):
         if not os.path.exists(fpath):
             raise FileNotFoundError(f"{fpath} not found")
 
-        df = pd.read_csv(fpath, index_col=0,
-                         )
+        df = pd.read_csv(fpath, index_col=0)
 
         df.index = pd.to_datetime(df.index)
 
@@ -906,7 +905,7 @@ class GSHA(_RainfallRunoff):
             if col in df.columns:
                 df[col] = df[col].apply(func)
 
-        return df
+        return df.astype(self.fp)
 
     def _storage_vars_stn(self, fpath) -> pd.DataFrame:
 

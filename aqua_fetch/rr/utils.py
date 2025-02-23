@@ -752,7 +752,7 @@ class _RainfallRunoff(Datasets):
 
         """
 
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         if self._mmd_feature_name is None:
             _, q = self.fetch_stations_features(
@@ -811,7 +811,7 @@ class _RainfallRunoff(Datasets):
         """
         df = self.fetch_static_features(static_features=[gauge_latitude(), gauge_longitude()])
         #df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         df = df.loc[stations, :].astype(self.fp)
 

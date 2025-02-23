@@ -104,6 +104,10 @@ def download(
 
     if fname:
         filename = fname
+    
+    if filename is None:
+        filename = 'temp'
+        warnings.warn(f"saving file from {url} as {filename}")
 
     fpath = outdir + os.sep + filename
 
