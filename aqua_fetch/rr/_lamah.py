@@ -11,7 +11,7 @@ from .._backend import xarray as xr
 from .._backend import netCDF4
 
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import check_attributes, download, unzip
 from .utils import _RainfallRunoff, _handle_dynamic
 
 from ._map import (
@@ -59,17 +59,14 @@ class LamaHCE(_RainfallRunoff):
     and 17 dynamic features. The temporal extent of data is from 1981-01-01
     to 2019-12-31.
     """
-    # url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
+
     url = {
         '1_LamaH-CE_daily_hourly.tar.gz': 'https://zenodo.org/records/5153305/files/1_LamaH-CE_daily_hourly.tar.gz',
         '2_LamaH-CE_daily.tar.gz': 'https://zenodo.org/records/5153305/files/2_LamaH-CE_daily.tar.gz'
     }
 
-    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp',
-                   'intermediate_all']
+    _data_types = ['total_upstrm', 'intermediate_all', 'intermediate_lowimp']
     time_steps = ['D', 'H']
-
-    static_attribute_categories = ['']
 
     def __init__(self, *,
                  timestep: str = 'D',
@@ -92,8 +89,8 @@ class LamaHCE(_RainfallRunoff):
         timestep :
                 possible values are ``D`` for daily or ``H`` for hourly timestep
         data_type :
-                possible values are ``total_upstrm``, ``diff_upstrm_all``
-                or ``diff_upstrm_lowimp``
+                possible values are ``total_upstrm``, ``intermediate_all``
+                or ``intermediate_lowimp``
 
         Examples
         --------
@@ -126,7 +123,17 @@ class LamaHCE(_RainfallRunoff):
         if timestep == 'H' and '2_LamaH-CE_daily.tar.gz' in self.url:
             self.url.pop('2_LamaH-CE_daily.tar.gz')
 
-        self._download(overwrite=overwrite)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        for fname, url in self.url.items():
+            fpath = os.path.join(self.path, fname)
+            if not os.path.exists(fpath):
+                if self.verbosity: 
+                    print(f'downloading {fname}')
+                download(url, self.path, fname)
+
+                unzip(self.path, verbosity=self.verbosity)
 
         self._static_features = self.static_data().columns.to_list()
 
@@ -196,13 +203,11 @@ class LamaHCE(_RainfallRunoff):
     @property
     def boundary_file(self):
         if self.timestep == 'D':
-            return os.path.join(self.ts_path,
-                                # "CAMELS_AT1",
+            return os.path.join(self.path,
                                 "A_basins_total_upstrm",
-                                "3_shapefiles", "Upstrm_area_total.shp")
+                                "3_shapefiles", "Basins_A.shp")
         else:
-            return os.path.join(self.ts_path,
-                                # "CAMELS_AT1",
+            return os.path.join(self.path,
                                 "A_basins_total_upstrm",
                                 "3_shapefiles", "Basins_A.shp")
 
@@ -228,7 +233,7 @@ class LamaHCE(_RainfallRunoff):
 
                 if not os.path.exists(dyn_fname):
                     print(f'Saving {feature} as {dyn_fname}')
-                    data: pd.DataFrame = self.fetch(static_features=None, dynamic_features=feature)
+                    _, data = self.fetch(static_features=None, dynamic_features=feature)
 
                     data.to_netcdf(dyn_fname)
 
@@ -253,7 +258,6 @@ class LamaHCE(_RainfallRunoff):
         df = self.read_ts_of_station(station)  # this takes time
         cols = df.columns.to_list()
         [cols.remove(val) for val in ['DOY', 'ckhs', 'checked', 'HOD', 'qceq', 'qcol'] if val in cols]
-        # return [self.dyn_map[self.timestep].get(col, col) for col in cols]
         return cols
 
     @property
@@ -261,28 +265,13 @@ class LamaHCE(_RainfallRunoff):
         return self._static_features
 
     @property
-    def ts_path(self):
-        directory = f'2_LamaH-CE_daily{SEP}CAMELS_AT'
-        if self.timestep == 'H':
-            directory = f'1_LamaH-CE_daily_hourly'
-        return os.path.join(self.path, directory)
-
-    @property
     def data_type_dir(self):
-        directory = f'2_LamaH-CE_daily{SEP}CAMELS_AT'
-        if self.timestep == 'H':
-            directory = f'1_LamaH-CE_daily_hourly'
-        # self.path/CAMELS_AT/data_type_dir
-        f = [f for f in os.listdir(self.ts_path) if self.data_type in f][0]
-        return os.path.join(self.path, f'{self.ts_path}{SEP}{f}')
+        f = [f for f in os.listdir(self.path) if f.endswith(self.data_type)][0]
+        return os.path.join(self.path, f'{self.path}{SEP}{f}')
 
     @property
     def q_dir(self):
-        directory = f'2_LamaH-CE_daily{SEP}CAMELS_AT'
-        if self.timestep == 'H':
-            directory = f'1_LamaH-CE_daily_hourly'
-        # self.path/CAMELS_AT/data_type_dir
-        return os.path.join(self.path, f'{directory}', 'D_gauges', '2_timeseries')
+        return os.path.join(self.path, 'D_gauges', '2_timeseries')
 
     def stations(self) -> list:
         # assuming file_names of the format ID_{stn_id}.csv
@@ -322,21 +311,20 @@ class LamaHCE(_RainfallRunoff):
                 is :obj:`xarray.Dataset` object
             kwargs dict: additional keyword arguments
 
-        Returns:
-            Dynamic and static features of multiple stations. Dynamic features
-            are by default returned as xr.Dataset unless ``as_dataframe`` is True, in
-            such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
-            it consists of ``data_vars`` equal to number of stations and for each
-            station, the ``DataArray`` is of dimensions (time, dynamic_features).
-            where `time` is defined by ``st`` and ``en`` i.e length of ``DataArray``.
-            In case, when the returned object is pandas DataFrame, the first index
-            is `time` and second index is `dyanamic_features`. Static attributes
-            are always returned as pandas DataFrame and have the shape:
-            ``(stations, static_features)``. If ``dynamic_features`` is None,
-            then they are not returned and the returned value only consists of
-            static features. Same holds true for `static_features`.
-            If both are not None, then the returned type is a dictionary with
-            `static` and `dynamic` keys.
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Raises:
             ValueError, if both dynamic_features and static_features are None
@@ -352,6 +340,7 @@ class LamaHCE(_RainfallRunoff):
         ...  as_dataframe=True)
         """
         st, en = self._check_length(st, en)
+        static, dynamic = None, None
 
         if dynamic_features is not None:
 
@@ -363,48 +352,36 @@ class LamaHCE(_RainfallRunoff):
             if netCDF4 is None or not self.all_ncs_exist:
                 # read from csv files
                 # following code will run only once when fetch is called inside init method
-                dyn = self._read_dynamic(stations, dynamic_features, st=st, en=en)
+                dynamic = self._read_dynamic(stations, dynamic_features, st=st, en=en)
             else:
-                dyn = self._make_ds_from_ncs(dynamic_features, stations, st, en)
+                dynamic = self._make_ds_from_ncs(dynamic_features, stations, st, en)
 
                 if as_dataframe:
-                    dyn = dyn.to_dataframe(['time', 'dynamic_features'])
+                    dynamic = dynamic.to_dataframe(['time', 'dynamic_features'])
 
             if static_features is not None:
                 static = self.fetch_static_features(stations, static_features)
-                dyn = _handle_dynamic(dyn, as_dataframe)
-                stns = {'dynamic': dyn, 'static': static}
+                dynamic = _handle_dynamic(dynamic, as_dataframe)
             else:
                 # if the dyn is a dictionary of key, DataFames, we will return a MultiIndex
                 # dataframe instead of a dictionary
-                dyn = _handle_dynamic(dyn, as_dataframe)
-                stns = dyn
+                dynamic = _handle_dynamic(dynamic, as_dataframe)
 
         elif static_features is not None:
 
-            return self.fetch_static_features(stations, static_features)
+            static = self.fetch_static_features(stations, static_features)
 
         else:
             raise ValueError
 
-        return stns
+        return static, dynamic
 
     @property
     def _q_name(self) -> str:
         return observed_streamflow_cms()
 
-    # @property
-    # def _area_name(self) -> str:
-    #     
-    #     return catchment_area()
-
-    # @property
-    # def _coords_name(self) -> List[str]:
-    #     return ['lat', 'lon']
-
     def gauge_attributes(self) -> pd.DataFrame:
-        fname = os.path.join(self.ts_path,
-                             # 'CAMELS_AT1',
+        fname = os.path.join(self.path,
                              'D_gauges',
                              '1_attributes',
                              'Gauge_attributes.csv')
@@ -879,14 +856,6 @@ class LamaHIce(LamaHCE):
         if self.timestep == "H":
             return "20230930 23:00"
         return "20211231"
-
-    # @property
-    # def _coords_name(self) -> List[str]:
-    #     return ['lat_gauge', 'lon_gauge']
-
-    # @property
-    # def _area_name(self) -> str:
-    #     return 'area_calc_basin'
 
     @property
     def gauges_path(self):

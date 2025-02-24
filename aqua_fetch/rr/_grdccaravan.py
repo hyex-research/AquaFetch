@@ -8,7 +8,7 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from ..utils import get_cpus
 from ..utils import check_st_en
-from ..utils import check_attributes, download, _unzip
+from ..utils import check_attributes, download, unzip
 
 from .._backend import netCDF4, xarray as xr
 
@@ -142,7 +142,7 @@ class GRDCCaravan(_RainfallRunoff):
                 if self.verbosity > 0:
                     print(f"Downloading {_file} from {url + _file}")
                 download(url + _file, outdir=self.path, fname=_file, )
-                _unzip(self.path)
+                unzip(self.path)
             elif self.verbosity > 0:
                 print(f"{_file} at {self.path} already exists")
 

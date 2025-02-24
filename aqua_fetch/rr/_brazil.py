@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes, get_cpus, download, _unzip
+from ..utils import check_attributes, get_cpus, download, unzip
 from ._map import (
     min_air_temp,
     max_air_temp,
@@ -148,7 +148,7 @@ class CAMELS_BR(_RainfallRunoff):
                 if self.verbosity:
                     print(f"Downloading {fname} from {url + fname} at {fpath}")
                 download(url + fname, self.path, verbosity=self.verbosity)
-                _unzip(self.path, verbosity=self.verbosity)
+                unzip(self.path, verbosity=self.verbosity)
             elif self.verbosity>1:
                 print(f"{fpath} already exists")
 

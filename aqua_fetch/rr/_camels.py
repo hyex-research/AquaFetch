@@ -12,7 +12,7 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from .._project import utm_to_lat_lon
 from ..utils import get_cpus
-from ..utils import check_attributes, download, _unzip
+from ..utils import check_attributes, download, unzip
 
 from .._backend import netCDF4, xarray as xr
 
@@ -164,7 +164,7 @@ class CAMELS_US(_RainfallRunoff):
         else:
             download(self.url, os.path.join(self.camels_dir, f'CAMELS_US{SEP}CAMELS_US.zip'))
             download(self.catchment_attr_url, os.path.join(self.camels_dir, f"CAMELS_US{SEP}catchment_attrs.zip"))
-            _unzip(self.path)
+            unzip(self.path)
 
         self.attr_dir = os.path.join(self.path, f'catchment_attrs{SEP}camels_attributes_v2.0')
         self.dataset_dir = os.path.join(self.path, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
@@ -393,7 +393,7 @@ class CAMELS_GB(_RainfallRunoff):
             )
             if self.verbosity > 0:
                 print("unzipping the downloaded file")
-            _unzip(self.path, verbosity=self.verbosity)
+            unzip(self.path, verbosity=self.verbosity)
 
             # rename the folder camels_gb/8344e4f3-d2ea-44f5-8afa-86d2987543a9 to camels_gb/caemls_gb
             shutil.move(
@@ -415,7 +415,7 @@ class CAMELS_GB(_RainfallRunoff):
         )
 
         if not os.path.exists(self.boundary_file):
-            _unzip(self.data_path)
+            unzip(self.data_path)
 
         self._create_boundary_id_map(self.boundary_file, 0)
 
@@ -724,7 +724,7 @@ class CAMELS_AUS(_RainfallRunoff):
                 print(f"{_file} already exists at {self.path}")
 
         # maybe the .zip file has been downloaded previously but not unzipped
-        _unzip(self.path, verbosity=verbosity, overwrite=overwrite)
+        unzip(self.path, verbosity=verbosity, overwrite=overwrite)
 
         if netCDF4 is None:
             to_netcdf = False
@@ -971,7 +971,7 @@ class CAMELS_CL(_RainfallRunoff):
                 if self.verbosity:
                     print(f"Downloading {_file} from {url + _file} at {fpath}")
                 download(url + _file, self.path, verbosity=self.verbosity)
-                _unzip(self.path, verbosity=self.verbosity)
+                unzip(self.path, verbosity=self.verbosity)
             
         self._static_features = self._static_data().columns.tolist()
 
@@ -2020,7 +2020,7 @@ class CAMELS_SE(_RainfallRunoff):
                 if verbosity > 0:
                     print(f"Downloading {_file} from {url}")
                 download(url, outdir=self.path, fname=_file, )
-                _unzip(self.path)
+                unzip(self.path)
             else:
                 if self.verbosity > 0: print(f"{_file} at {self.path} already exists")
 

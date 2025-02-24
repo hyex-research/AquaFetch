@@ -359,7 +359,7 @@ def download_and_unzip(
                                  **kwargs)
         else:
             download(url, path, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
     elif isinstance(url, list):
         if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
@@ -374,7 +374,7 @@ def download_and_unzip(
                                      **kwargs)
             else:
                 download(url, path, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
     elif isinstance(url, dict):
         if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
@@ -393,7 +393,7 @@ def download_and_unzip(
                 if include is not None or files_to_check is not None:
                     raise ValueError("include and files_to_check are available only for zenodo")
                 download(url, path, fname, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
 
     else:
         raise ValueError(f"Invalid url: {path}, {url}")
@@ -431,7 +431,7 @@ def download_from_google_drive(url, path, fname, verbosity=1):
     return
 
 
-def _unzip(
+def unzip(
         path:Union[str, os.PathLike], 
         overwrite:bool=False, 
         verbosity=1

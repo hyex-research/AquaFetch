@@ -13,7 +13,7 @@ except (ModuleNotFoundError, ImportError):
 
 from .utils import _RainfallRunoff
 from .._backend import shapefile, xarray as xr
-from ..utils import check_attributes, download, _unzip
+from ..utils import check_attributes, download, unzip
 
 from ._map import (
     observed_streamflow_cms,
@@ -54,10 +54,10 @@ class HYSETS(_RainfallRunoff):
     """
     database for hydrometeorological modeling of 14,425 North American watersheds
     from 1950-2023 following the work of `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
-    The user must manually download the files, unpack them and provide
-    the `path` where these files are saved.
+    This data has 20 dynamic features and 30 static features. Most of the dynamic features
+    have more than one source. The data is available in netcdf format therefore, 
+    this package requires xarray and netCDF4 to be installed..
 
-    This data comes with multiple sources. Each source having one or more dynamic_features
     Following data_source are available.
 
     +---------------+------------------------------+
@@ -120,13 +120,13 @@ class HYSETS(_RainfallRunoff):
     ... # fetch data of a random station
     >>> _, df = dataset.fetch(1, as_dataframe=True)
     >>> df.shape
-    (25202, 5)
+    (27028, 20)
     >>> stations = dataset.stations()
     >>> len(stations)
     14425
     >>> _, df = dataset.fetch('999', as_dataframe=True)
     >>> df.unstack().shape
-    (25202, 5)
+    (27028, 20)
 
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
@@ -263,7 +263,7 @@ class HYSETS(_RainfallRunoff):
                     print(f'downloading {fname}')
                 download(url, self.path, fname)
 
-                _unzip(self.path, verbosity=self.verbosity)
+            unzip(self.path, verbosity=self.verbosity)
 
         self._stations = self.__stations()
 

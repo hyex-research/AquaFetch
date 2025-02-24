@@ -1655,7 +1655,7 @@ def download_daily_data(
         path:Union[str, os.PathLike], 
         verbosity:int=1,
         cpus:int=None
-        ):
+        )->pd.DataFrame:
     """downloads daily data for all stations"""
     csv_path = os.path.join(path, 'daily_q.csv')
 
@@ -1710,7 +1710,7 @@ def download_daily_data(
             results = executor.map(download_daily_stn_yr, stations_, years_)
     
         all_data = []
-        for idx, stn in stations:
+        for idx, stn in enumerate(stations):
             stn_data = []
             for yr in years:
                 stn_yr_data = next(results)
@@ -1744,7 +1744,7 @@ def download_daily_data(
     if verbosity:
         print(f"saving daily data to {csv_path} with shape {all_data.shape}")
     all_data.to_csv(csv_path)
-    return
+    return all_data
 
 
 def download_hourly_stn_day(

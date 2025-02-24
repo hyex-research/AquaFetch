@@ -23,21 +23,23 @@ from utils import (
     )
 
 stations = {'D': [859, 859, 454], 'H': [859, 859, 454]}
-static = {'D': [80, 81, 80], 'H': [84, 85, 80]}
+static = {'D': [84, 85, 85], 'H': [84, 85, 80]}
 num_dyn_attrs = {'D': 22, 'H': 16}
 len_dyn_data = {'D': 14244, 'H': 341856}
 yearly_steps = {'D': 366, 'H': 8761}  # 8784
 
-for idx, dt in enumerate(['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp_D']):
+for idx, dt in enumerate(['total_upstrm', 
+                          'intermediate_all', 
+                          'intermediate_lowimp']):
 
     logger.info(f'testing for {dt} at daily time step')
 
-    ds_eu = LamaHCE(timestep='D', data_type=dt, path=gscad_path)
+    ds_eu = LamaHCE(timestep='D', data_type=dt, path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=4)
 
     test_dataset(ds_eu,
                  stations['D'][idx],
                     14244,
-                    static['D'][idx],
+                    num_static_attrs=static['D'][idx],
                     num_dyn_attrs=22,
                     test_df=True,
                     yearly_steps=366)
