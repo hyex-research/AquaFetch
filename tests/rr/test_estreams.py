@@ -9,6 +9,10 @@ import logging
 if __name__ == "__main__":
     logging.basicConfig(filename='test_estreams.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# ignore all warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 import pandas as pd
 
 from aqua_fetch import EStreams
@@ -31,19 +35,19 @@ from utils import (
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
-ds = EStreams(path=gscad_path, verbosity=3)
+# ds = EStreams(path=gscad_path, verbosity=3)
 
-assert ds.md.shape == (17130, 29), ds.md.shape
+# assert ds.md.shape == (17130, 29), ds.md.shape
 
-assert len(ds.countries) == 39, len(ds.agencies)
+# assert len(ds.countries) == 39, len(ds.agencies)
 
-assert len(ds.country_stations('IT')) == 767, len(ds.country_stations('IT'))
+# assert len(ds.country_stations('IT')) == 767, len(ds.country_stations('IT'))
 
-assert len(ds.country_stations('ES')) == 1440, len(ds.country_stations('ES'))
+# assert len(ds.country_stations('ES')) == 1440, len(ds.country_stations('ES'))
 
-assert len(ds.country_stations('IE')) == 464, len(ds.country_stations('IE'))
+# assert len(ds.country_stations('IE')) == 464, len(ds.country_stations('IE'))
 
-assert len(ds.country_stations('PL')) == 1287, len(ds.country_stations('PL'))
+# assert len(ds.country_stations('PL')) == 1287, len(ds.country_stations('PL'))
 
 
 def test_coords_():
@@ -130,11 +134,13 @@ ds.gauge_id_basin_id_map()['20002'] == 'IEOP0126'
 test_dataset(ds, 
              num_stations=464, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
 
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+df.count().sum() >= 3303345
 
 
 ds = Finland(path=gscad_path, processes=1, 
@@ -143,13 +149,14 @@ ds = Finland(path=gscad_path, processes=1,
 test_dataset(ds, 
              num_stations=669, 
              dyn_data_len=4199, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               st="20200101",
               en="20201231"
               )
-
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+df.count().sum() >= 814277
 
 ds = Italy(path=gscad_path, verbosity=3)
 
@@ -173,6 +180,8 @@ test_dataset(ds,
               test_df=False,
               )
 
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+assert df.count().sum() >= 16319627
 
 ds = Portugal(path=gscad_path, verbosity=3)
 

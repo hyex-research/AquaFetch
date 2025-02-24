@@ -805,7 +805,7 @@ class Finland(_EStreams):
         cpus = self.processes or max(get_cpus()-2, 1)
 
         if self.verbosity:
-            print(f"downloading daily data for {len(self.stations())} stations from {2012} to {2023}")
+            print(f"downloading daily data for {len(self.stations())} stations from {2012} to {2023} with {cpus} cpus")
 
         if cpus == 1:
             all_data = self.download_data_seq()
@@ -867,7 +867,8 @@ class Finland(_EStreams):
         # takes around 1 hour to download all the data
         failures = 0
         dfs = []
-        for idx, bsn_id in enumerate(self.stations()):
+        stations = self.stations()
+        for idx, bsn_id in enumerate(stations):
 
             gauge_id = self.basin_id_gauge_id_map()[bsn_id]
 
@@ -905,7 +906,7 @@ class Finland(_EStreams):
             if len(stn_dfs) > 0:
                 stn_df = pd.concat(stn_dfs, axis=0)
                 if self.verbosity:
-                    print(f"{idx}: for {bsn_id} {stn_df.shape} {len(stn_dfs)}")
+                    print(f"{idx}/{len(stations)}: for {bsn_id} {stn_df.shape} {len(stn_dfs)}")
 
                 dfs.append(stn_df[bsn_id].astype('float32'))
 
@@ -1017,7 +1018,7 @@ class Ireland(_EStreams):
             overwrite:bool=False, 
             ):
         fname = 'daily_q' if self.timestep in ["D", 'daily'] else 'hourly_q'
-        ext = '.nc' if self.to_netcdf else '.csv'
+        ext = '.csv'
     
         fpath = os.path.join(self.path, fname + ext)
 
