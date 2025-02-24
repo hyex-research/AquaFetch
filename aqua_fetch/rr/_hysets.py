@@ -204,41 +204,41 @@ class HYSETS(_RainfallRunoff):
         """
         parameters
         --------------
-            path : str
-                The path under which the data is to be saved or is saved already.
-                If the data is alredy downloaded then provide the path under which
-                HYSETS data is located. If None, then the data will be downloaded.
-                The data is downloaded once and therefore susbsequent
-                calls to this class will not download the data unless
-                ``overwrite`` is set to True.
-            sources : dict
-                sources for each dynamic feature. The keys should be dynamic features
-                and values should be sources. Available sources for the dynamic 
-                features are as below
-                    
-                    - 10m_u_component_of_wind: ['ERA5', 'ERA5Land']
-                    - 10m_v_component_of_wind: ['ERA5', 'ERA5Land']
-                    - 2m_dewpoint: ['ERA5', 'ERA5Land']
-                    - 2m_tasmax: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
-                    - 2m_tasmin: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
-                    - discharge: ['NRCAN', 'ERA5', 'ERA5Land', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS', 'QC_stations']
-                    - evaporation: ['ERA5', 'ERA5Land']
-                    - snow_density: ['ERA5', 'ERA5Land']
-                    - snow_evaporation: ['ERA5', 'ERA5Land']
-                    - snow_water_equivalent: ['ERA5', 'ERA5Land', 'SNODAS']
-                    - snowfall: ['ERA5', 'ERA5Land']
-                    - snowmelt: ['ERA5', 'ERA5Land']
-                    - surface_downwards_solar_radiation: ['ERA5', 'ERA5Land']
-                    - surface_downwards_thermal_radiation: ['ERA5', 'ERA5Land']
-                    - surface_net_solar_radiation: ['ERA5', 'ERA5Land']
-                    - surface_net_thermal_radiation: ['ERA5', 'ERA5Land']
-                    - surface_pressure: ['ERA5', 'ERA5Land']
-                    - surface_runoff: ['ERA5', 'ERA5Land']
-                    - total_cloud_cover: ['ERA5']
-                    - total_precipitation: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
+        path : str
+            The path under which the data is to be saved or is saved already.
+            If the data is alredy downloaded then provide the path under which
+            HYSETS data is located. If None, then the data will be downloaded.
+            The data is downloaded once and therefore susbsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        sources : dict
+            sources for each dynamic feature. The keys should be dynamic features
+            and values should be sources. Available sources for the dynamic 
+            features are as below
+                
+                - 10m_u_component_of_wind: ['ERA5', 'ERA5Land']
+                - 10m_v_component_of_wind: ['ERA5', 'ERA5Land']
+                - 2m_dewpoint: ['ERA5', 'ERA5Land']
+                - 2m_tasmax: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
+                - 2m_tasmin: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
+                - discharge: ['NRCAN', 'ERA5', 'ERA5Land', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS', 'QC_stations']
+                - evaporation: ['ERA5', 'ERA5Land']
+                - snow_density: ['ERA5', 'ERA5Land']
+                - snow_evaporation: ['ERA5', 'ERA5Land']
+                - snow_water_equivalent: ['ERA5', 'ERA5Land', 'SNODAS']
+                - snowfall: ['ERA5', 'ERA5Land']
+                - snowmelt: ['ERA5', 'ERA5Land']
+                - surface_downwards_solar_radiation: ['ERA5', 'ERA5Land']
+                - surface_downwards_thermal_radiation: ['ERA5', 'ERA5Land']
+                - surface_net_solar_radiation: ['ERA5', 'ERA5Land']
+                - surface_net_thermal_radiation: ['ERA5', 'ERA5Land']
+                - surface_pressure: ['ERA5', 'ERA5Land']
+                - surface_runoff: ['ERA5', 'ERA5Land']
+                - total_cloud_cover: ['ERA5']
+                - total_precipitation: ['NRCAN', 'Livneh', 'QC_stations', 'ERA5', 'nonQC_stations', 'ERA5Land', 'SCDNA']
 
-            kwargs :
-                arguments for ``_RainfallRunoff`` base class
+        kwargs :
+            arguments for ``_RainfallRunoff`` base class
 
         """
 
@@ -264,6 +264,8 @@ class HYSETS(_RainfallRunoff):
                 download(url, self.path, fname)
 
             unzip(self.path, verbosity=self.verbosity)
+
+        self._maybe_to_netcdf('')
 
         self._stations = self.__stations()
 
@@ -306,7 +308,6 @@ class HYSETS(_RainfallRunoff):
             'total_precipitation': total_precipitation(),
 
             # 'total_runoff': observed_streamflow_mmd(), todo : it appears same as runoff?
-
         }
 
     @property
@@ -321,36 +322,9 @@ class HYSETS(_RainfallRunoff):
         return sorted(list(self.dyn_map.values()))
 
     def _maybe_to_netcdf(self, fname: str):
-        # # todo saving as one file takes very long time
-        # oneD_vars = []
-
-        # for src in self.Q_SRC:
-        #     fpath = os.path.join(self.path, f'HYSETS_2023_update_{src}.nc')
-        #     assert os.path.exists(fpath), f'{fpath} does not exist'
-        #     xds = xr.open_dataset(fpath)
-
-        #     if self.verbosity>1:
-        #         print(f'processing {src}')
-
-        #     for idx, var in enumerate(xds.variables):
-        #         if self.verbosity>2: print(f'{idx}: getting {var} from source {src} ')
-
-        #         if len(xds[var].data.shape) == 1:
-        #             xar = xds[var]
-        #             xar.name = f"{xar.name}_{src}"
-        #             oneD_vars.append(xar)
-
-        # if self.verbosity>1:
-        #     print('merging 1D vars')
-        # oneD_xds = xr.merge(oneD_vars)
-
-        # if self.verbosity>1:
-        #     print('saving to netcdf')
-        # oneD_xds.to_netcdf(os.path.join(self.path, "hysets_static.nc"))
 
         for src in list(set(list(self.sources.values()))):
             fname = f'HYSETS_2023_update_{src}.nc'
-            #fpath = os.path.join(self.path, fname)
             outpath = os.path.join(self.path, f'HYSETS_2023_update_{src}1.nc')
             if not os.path.exists(outpath):
                 self.transform(fname)

@@ -13,7 +13,7 @@ from typing import Union, List
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import _unzip, check_attributes
+from ..utils import check_attributes
 
 
 class SanFranciscoBay(Datasets):

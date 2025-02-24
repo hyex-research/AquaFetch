@@ -22,11 +22,8 @@ from utils import (
     test_attributes
     )
 
-stations = {'D': [859, 859, 454], 'H': [859, 859, 454]}
-static = {'D': [84, 85, 85], 'H': [84, 85, 80]}
-num_dyn_attrs = {'D': 22, 'H': 16}
-len_dyn_data = {'D': 14244, 'H': 341856}
-yearly_steps = {'D': 366, 'H': 8761}  # 8784
+stations = [859, 859, 454]
+static = [84, 85, 85]
 
 for idx, dt in enumerate(['total_upstrm', 
                           'intermediate_all', 
@@ -37,14 +34,15 @@ for idx, dt in enumerate(['total_upstrm',
     ds_eu = LamaHCE(timestep='D', data_type=dt, path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=4)
 
     test_dataset(ds_eu,
-                 stations['D'][idx],
+                 stations[idx],
                     14244,
-                    num_static_attrs=static['D'][idx],
+                    num_static_attrs=static[idx],
                     num_dyn_attrs=22,
                     test_df=True,
                     yearly_steps=366)
 
 
+static = 85
 for idx, dt in enumerate(['total_upstrm',
                           'intermediate_all', 'intermediate_lowimp']):
 
@@ -53,9 +51,9 @@ for idx, dt in enumerate(['total_upstrm',
     ds_eu = LamaHCE(timestep='H', data_type=dt, path=gscad_path, verbosity=4)
 
     test_dataset(ds_eu,
-                 stations['H'][idx],
+                 stations[idx],
                     341856,
-                    static['H'][idx],
+                    static,
                     num_dyn_attrs=16,
                     test_df=False,
                     yearly_steps=8761)

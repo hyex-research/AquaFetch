@@ -440,6 +440,9 @@ class _EStreams(_RainfallRunoff):
             **kwargs):
         super().__init__(path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
         if estreams_path is None:
             if self.verbosity:
                 print(f"estreams_path is not provided, using {os.path.dirname(self.path)} as default")
@@ -568,6 +571,21 @@ class _EStreams(_RainfallRunoff):
         """
         returns features of multiple stations
 
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
+
         Examples
         --------
         >>> from aqua_fetch import Arcticnet
@@ -576,10 +594,11 @@ class _EStreams(_RainfallRunoff):
         >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations(), 'stations')
+        static, dynamic = None, None
 
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -588,21 +607,17 @@ class _EStreams(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
+
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -611,7 +626,7 @@ class _EStreams(_RainfallRunoff):
             raise ValueError(f"""
             static features are {static_features} and dynamic features are also {dynamic_features}""")
 
-        return to_return
+        return static, dynamic
 
     def fetch_static_features(
             self,
