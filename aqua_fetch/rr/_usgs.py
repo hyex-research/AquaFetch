@@ -446,8 +446,9 @@ class USGS(_RainfallRunoff):
             cpus:int = None,
             ):
 
-        df = pd.read_csv(os.path.join(self.hysets_path, "HYSETS_watershed_properties.txt"),
-                 sep=";")
+        df = pd.read_csv(
+            os.path.join(self.hysets_path, "HYSETS_watershed_properties.txt"),
+            sep=",")
 
         sites = df.loc[df['Source']=='USGS']['Official_ID']
 

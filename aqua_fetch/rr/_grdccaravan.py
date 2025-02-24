@@ -136,6 +136,11 @@ class GRDCCaravan(_RainfallRunoff):
 
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
+        if not os.path.exists(self.path):
+            if self.verbosity>1:
+                print(f"Creating directory {self.path}")
+            os.makedirs(self.path)
+
         for _file, url in self.url.items():
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
