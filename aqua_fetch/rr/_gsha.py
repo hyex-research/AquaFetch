@@ -885,7 +885,7 @@ class GSHA(_RainfallRunoff):
 
         ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
         ds = ds.rename({'features': 'dynamic_features'})
-        return ds.sel(time=slice(st, en))
+        return ds.sel(time=slice(st, en), dynamic_features=features)
 
     def _meteo_vars_stn(self, fpath) -> pd.DataFrame:
 
@@ -978,18 +978,6 @@ class _GSHA(_RainfallRunoff):
     @property
     def static_features(self) -> List[str]:
         return self.gsha.static_features
-
-    # @property
-    # def _coords_name(self) -> List[str]:
-    #     return ['lat', 'long']
-
-    # @property
-    # def _area_name(self) -> str:
-    #     return 'area'
-
-    # @property
-    # def _q_name(self) -> str:
-    #     return observed_streamflow_cms()
 
     def stations(self) -> List[str]:
         return self._stations
