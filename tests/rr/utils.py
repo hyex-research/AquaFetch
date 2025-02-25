@@ -183,7 +183,17 @@ def test_selected_dynamic_features(dataset, as_dataframe=False):
         data = data.unstack()
         assert data.shape[1] == 2
     else:
-        assert len(data.dynamic_features) == 2
+        assert len(data.dynamic_features) == 2, len(data.dynamic_features)
+
+    # checking for multiple stations
+    features = dataset.dynamic_features[0:2]
+    _, data = dataset.fetch(dataset.stations()[0:3], dynamic_features=features, as_dataframe=as_dataframe)
+
+    if as_dataframe:
+        data = data.unstack()
+        assert data.shape[1] == 2
+    else:
+        assert len(data.dynamic_features) == 2, len(data.dynamic_features)
     return
 
 
