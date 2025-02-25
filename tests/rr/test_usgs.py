@@ -61,4 +61,4 @@ def test_metadata():
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 dataset = USGS(path=gscad_path, verbosity=3)
-test_dataset(dataset, 12004, 25202, 27, 5, test_df=False)
+test_dataset(dataset, 12004, 25202, 29, 20, test_df=False)

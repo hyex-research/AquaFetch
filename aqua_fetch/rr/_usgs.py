@@ -353,20 +353,23 @@ class USGS(_RainfallRunoff):
         if len(features) == 0:
             return daily_q
 
-        stations_ = [int(self.hysets.OfficialID_WatershedID_map[stn]) for stn in stations]
+        karte = self.hysets.OfficialID_WatershedID_map
+        stations_ = [int(karte[stn]) for stn in stations]
         data = self.hysets._fetch_dynamic_features(stations_, features, st, en, as_dataframe)
 
         if daily_q is not None:
             if isinstance(daily_q, xr.Dataset):
                 assert isinstance(data, xr.Dataset), "xarray dataset not supported"
-                data = data.rename({int(k)-1:v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations})
+                # todo : why shoule we not subtract 1
+                karte = {str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations}
+                data = data.rename(karte)
 
                 # first create a new dimension in daily_q named dynamic_features
                 daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features')
             else:
                 # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={int(k)-1:v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
+                data.rename(columns={str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
                 assert isinstance(data.index, pd.MultiIndex)
                 # data is multiindex dataframe but daily_q is not
                 # first make daily_q multiindex
