@@ -601,7 +601,7 @@ class HYSETS(_RainfallRunoff):
 
         xds = None
         features = {}
-        for f in attrs:
+        for idx, f in enumerate(attrs):
             f_ = dyn_map_[f]
             fpath = os.path.join(self.path, f'HYSETS_2023_update_{self.sources[f_]}1.nc')
             
@@ -609,8 +609,14 @@ class HYSETS(_RainfallRunoff):
                 xds = xr.open_dataset(fpath)
 
             features[f] = xds.sel(dynamic_features=[f_], time=slice(st, en))[stations]
-        
+
+            if self.verbosity>1:
+                print(f"{idx+1}/{len(attrs)} fetched {f}")
+
+        if self.verbosity>1: print('concatenating along features')
         xds = xr.concat(list(features.values()), dim='dynamic_features')
+
+        if self.verbosity>1: print('transposing')
 
         old_vals = xds.coords["dynamic_features"].values
         new_vals = [self.dyn_map[val] for val in old_vals]

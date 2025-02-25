@@ -423,7 +423,7 @@ class EStreams(_RainfallRunoff):
         if as_dataframe:
             raise NotImplementedError("as_dataframe=True is not implemented yet")
 
-        return self.meteo_data(stations)
+        return self.meteo_data(stations).sel(dynamic_features=features)
 
 
 class _EStreams(_RainfallRunoff):

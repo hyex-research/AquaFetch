@@ -35,19 +35,19 @@ from utils import (
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
-# ds = EStreams(path=gscad_path, verbosity=3)
+ds = EStreams(path=gscad_path, verbosity=3)
 
-# assert ds.md.shape == (17130, 29), ds.md.shape
+assert ds.md.shape == (17130, 29), ds.md.shape
 
-# assert len(ds.countries) == 39, len(ds.agencies)
+assert len(ds.countries) == 39, len(ds.agencies)
 
-# assert len(ds.country_stations('IT')) == 767, len(ds.country_stations('IT'))
+assert len(ds.country_stations('IT')) == 767, len(ds.country_stations('IT'))
 
-# assert len(ds.country_stations('ES')) == 1440, len(ds.country_stations('ES'))
+assert len(ds.country_stations('ES')) == 1440, len(ds.country_stations('ES'))
 
-# assert len(ds.country_stations('IE')) == 464, len(ds.country_stations('IE'))
+assert len(ds.country_stations('IE')) == 464, len(ds.country_stations('IE'))
 
-# assert len(ds.country_stations('PL')) == 1287, len(ds.country_stations('PL'))
+assert len(ds.country_stations('PL')) == 1287, len(ds.country_stations('PL'))
 
 
 def test_coords_():
