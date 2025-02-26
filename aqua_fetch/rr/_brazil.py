@@ -571,7 +571,7 @@ class CABra(_RainfallRunoff):
     """
     Reads and fetches CABra dataset which is catchment attribute dataset
     following the work of `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_
-    This dataset consists of 87 static and 12 dynamic features of 735 Brazilian
+    This dataset consists of 87 static and 13 dynamic features of 735 Brazilian
     catchments. The temporal extent is from 1980 to 2020. The dyanmic features
     consist of daily hydro-meteorological time series
 
@@ -587,7 +587,7 @@ class CABra(_RainfallRunoff):
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
-    (10956, 12)
+    (10956, 13)
     # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -595,7 +595,7 @@ class CABra(_RainfallRunoff):
     # get data by station id
     >>> _, df = dataset.fetch(stations='92', as_dataframe=True).unstack()
     >>> df.shape
-    (10956, 12)
+    (10956, 13)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
@@ -612,7 +612,7 @@ class CABra(_RainfallRunoff):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic.shape
-    ((1, 97), (131472, 1))
+    ((1, 87), (131472, 1))
 
     """
 
@@ -724,6 +724,15 @@ class CABra(_RainfallRunoff):
         }
 
     @property
+    def dyn_generators(self):
+        return {
+# new column to be created : function to be applied, inputs
+mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_specifier(self.met_src), max_air_temp_with_specifier(self.met_src))),
+#mean_air_temp_with_specifier('era5'): (self.mean_temp, (min_air_temp_with_specifier('era5'), max_air_temp_with_specifier('era5'))),
+#mean_air_temp_with_specifier('ref'): (self.mean_temp, (min_air_temp_with_specifier('ref'), max_air_temp_with_specifier('ref'))),
+        }
+
+    @property
     def q_path(self):
         return os.path.join(self.path, "CABra_streamflow_daily_series",
                             "CABra_daily_streamflow")
@@ -738,7 +747,7 @@ class CABra(_RainfallRunoff):
 
     def __dynamic_features(self) -> List[str]:
         stn = self.stations()[0]
-        df = pd.concat([self._read_q_from_csv(stn), self._read_meteo_from_csv(stn)], axis=1)
+        df = pd.concat([self._read_q_from_csv(stn), self._read_meteo_from_csv(stn, self.met_src)], axis=1)
         cols = df.columns.to_list()
         cols = [col for col in cols if col not in ['Year', 'Month', 'Day']]
         return cols
@@ -1103,13 +1112,13 @@ class CABra(_RainfallRunoff):
         dtypes = {"Year": int,
                   "Month": int,
                   "Day": int,
-                  "p_ens": np.float32,
-                  "tmin_ens": np.float32,
-                  "tmax_ens": np.float32,
-                  "rh_ens": np.float32,
-                  "wnd_ens": np.float32,
-                  "srad_ens": np.float32,
-                  "et_ens": np.float32,
+                  f"p_{source}": np.float32,
+                  f"tmin_{source}": np.float32,
+                  f"tmax_{source}": np.float32,
+                  f"rh_{source}": np.float32,
+                  f"wnd_{source}": np.float32,
+                  f"srad_{source}": np.float32,
+                  f"et_{source}": np.float32,
                   "pet_pm": np.float32,
                   "pet_pt": np.float32,
                   "pet_hg": np.float32}
@@ -1128,6 +1137,17 @@ class CABra(_RainfallRunoff):
                              header=12)
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        for new_col, (func, old_col) in self.dyn_generators.items():
+            if isinstance(old_col, str):
+                if old_col in df.columns:
+                    # name of Series to func should be same as station id
+                    df[new_col] = func(pd.Series(df[old_col], name=station))
+            else:
+                assert isinstance(old_col, tuple)
+                if all([col in df.columns for col in old_col]):
+                    # feed all old_cols to the function
+                    df[new_col] = func(*[pd.Series(df[col], name=station) for col in old_col])
         return df
 
     def _static_data(self)->pd.DataFrame:
@@ -1182,6 +1202,9 @@ class CABra(_RainfallRunoff):
                 str))
 
         met_cols = [col for col in meteos[0].columns if col not in ['Year', 'Month', 'Day']]
+
+        if self.verbosity>2:
+            print("putting data in dictionary")
 
         dyn = {}
 
