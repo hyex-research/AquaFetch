@@ -434,11 +434,50 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = lc_vars_all_stns(self.path)
+        lc_vars = self.lc_vars_all_stns()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def lc_vars_all_stns(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'lc_variables.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading landcover variables for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                lc_variable_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            if self.verbosity: print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+        return ds
 
     def reservoir_variables_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -466,11 +505,50 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = reservoir_vars_all_stns(self.path)
+        lc_vars = self.reservoir_vars_all_stns()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def reservoir_vars_all_stns(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'reservoir_variables.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading reservoir variables for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                reservoir_vars_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
+
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            self.print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+        return ds
 
     def streamflow_indices_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -494,15 +572,51 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = streamflow_indices_all_stations(
-            self.path,
-            to_netcdf=self.to_netcdf,
-            verbosity=self.verbosity
-        )
+        lc_vars = self.streamflow_indices_all_stations()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def streamflow_indices_all_stations(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'streamflow_indices.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading streamflow indices for {len(stations)} stations using {cpus} cpus")
+        # takes ~20 seconds with 110 cpus
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                streamflow_indices_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+
+            ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
+            if self.verbosity: print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+
+        return ds
 
     def lai_stn(self, stn: str) -> pd.Series:
         """
@@ -517,7 +631,7 @@ class GSHA(_RainfallRunoff):
         """
         return lai_stn(self.path, stn)
 
-    def lai(
+    def fetch_lai(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
@@ -528,12 +642,61 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        lai = lai_all_stns(
-            self.path,
-            to_netcdf=self.to_netcdf,
-            verbosity=self.verbosity
-        )
+        lai = self.lai_all_stns()
         return lai[stations]
+
+    def lai_all_stns(
+            self
+    ):
+        if self.to_netcdf:
+            nc_path = os.path.join(self.path, 'lai.nc')
+            if os.path.exists(nc_path):
+                if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+                return xr.open_dataset(nc_path)
+        elif os.path.exists(os.path.join(self.path, 'lai.csv')):
+            if self.verbosity: print(f"Reading from pre-existing {self.path}")
+            return pd.read_csv(os.path.join(self.path, 'lai.csv'), index_col=0)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading lai for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                lai_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
+
+            nc_path = os.path.join(self.path, 'lai.nc')
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = pd.concat(results, axis=1)
+            csv_path = os.path.join(self.path, 'lai.csv')
+            if self.verbosity: print(f"Saving to {csv_path}")
+            ds.to_csv(csv_path, index=True)
+
+        return ds
+
+    def meteo_vars(self)->List[str]:
+        """
+        returns names of meteorological variables
+        """
+        return self.meteo_vars_stn('1001_arcticnet').columns.tolist()
 
     def meteo_vars_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -600,7 +763,7 @@ class GSHA(_RainfallRunoff):
 
         return ds
 
-    def meteo_vars(
+    def fetch_meteo_vars(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
@@ -697,7 +860,11 @@ class GSHA(_RainfallRunoff):
 
         return ds
 
-    def storage_vars(
+    def storage_vars(self)->List[str]:
+        """returns names of storage variables"""
+        return self.storage_vars_stn('1001_arcticnet').columns.tolist()
+
+    def fetch_storage_vars(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
@@ -878,12 +1045,16 @@ class GSHA(_RainfallRunoff):
         if as_dataframe:
             raise NotImplementedError("as_dataframe=True is not implemented yet")
 
-        meteo_vars = self.meteo_vars(stations)
-        storage_vars = self.storage_vars(stations)
-        # since lai does not have 'features' dimension, we need to add it
-        lai = self.lai(stations).expand_dims({'features': ['lai']})
+        # todo : we should read meteo, storage and lai only when they are required!
+        meteo_vars = self.fetch_meteo_vars(stations)
+        storage_vars = self.fetch_storage_vars(stations)
+        if 'lai' in features:
+            # since lai does not have 'features' dimension, we need to add it
+            lai = self.fetch_lai(stations).expand_dims({'features': ['lai']})
+            ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
+        else:
+            ds = xr.concat([meteo_vars, storage_vars], dim='features')
 
-        ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
         ds = ds.rename({'features': 'dynamic_features'})
         return ds.sel(time=slice(st, en), dynamic_features=features)
 
@@ -1215,50 +1386,6 @@ class _GSHA(_RainfallRunoff):
         return self._fetch_static_features(stations, static_features, st, en)
 
 
-def streamflow_indices_all_stations(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'streamflow_indices.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or max(get_cpus() - 2, 1)
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading streamflow indices for {len(stations)} stations using {cpus} cpus")
-    # takes ~20 seconds with 110 cpus
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            streamflow_indices_stn,
-            paths,
-            stations,
-        )
-
-    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
-
-        ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
-        if verbosity: print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-
-    return ds
-
-
 def streamflow_indices_stn(
         ds_path: Union[str, os.PathLike],
         stn: str
@@ -1322,49 +1449,6 @@ def lc_variable_stn(ds_path, stn: str) -> pd.DataFrame:
     return df
 
 
-def lc_vars_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'lc_variables.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or max(get_cpus() - 2, 1)
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading landcover variables for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            lc_variable_stn,
-            paths,
-            stations,
-        )
-
-    print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
-
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-    return ds
-
-
 def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
     fpath = os.path.join(
         ds_path,
@@ -1387,49 +1471,6 @@ def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
     return df
 
 
-def reservoir_vars_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'reservoir_variables.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or max(get_cpus() - 2, 1)
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading reservoir variables for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            reservoir_vars_stn,
-            paths,
-            stations,
-        )
-
-    print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
-
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-    return ds
-
-
 def lai_stn(ds_path, stn: str) -> pd.Series:
     fpath = os.path.join(
         ds_path,
@@ -1449,57 +1490,6 @@ def lai_stn(ds_path, stn: str) -> pd.Series:
     df.index.name = 'time'
 
     return df[stn]
-
-
-def lai_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    if to_netcdf:
-        nc_path = os.path.join(ds_path, 'lai.nc')
-        if os.path.exists(nc_path):
-            if verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
-    elif os.path.exists(os.path.join(ds_path, 'lai.csv')):
-        if verbosity: print(f"Reading from pre-existing {ds_path}")
-        return pd.read_csv(os.path.join(ds_path, 'lai.csv'), index_col=0)
-
-    cpus = cpus or max(get_cpus() - 2, 1)
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading lai for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            lai_stn,
-            paths,
-            stations,
-        )
-
-    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
-
-        nc_path = os.path.join(ds_path, 'lai.nc')
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = pd.concat(results, axis=1)
-        csv_path = os.path.join(ds_path, 'lai.csv')
-        if verbosity: print(f"Saving to {csv_path}")
-        ds.to_csv(csv_path, index=True)
-
-    return ds
 
 
 # the dates for data to be downloaded 
@@ -1820,7 +1810,9 @@ class Arcticnet(_GSHA):
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
-    data is available from 1979-01-01 to 2003-12-31.
+    data is available from 1979-01-01 to 2003-12-31 although the observed
+    streamflow (q_cms_obs) for some stations is available as earlier as from
+    1913-01-01.
     """
 
     def __init__(

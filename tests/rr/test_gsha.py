@@ -270,7 +270,7 @@ ds = Arcticnet(path=gscad_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=106, 
-             dyn_data_len=16071, 
+             dyn_data_len=9131, 
              num_static_attrs=35,
               num_dyn_attrs=27,
               test_df=False,
