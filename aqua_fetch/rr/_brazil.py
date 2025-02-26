@@ -571,7 +571,7 @@ class CABra(_RainfallRunoff):
     """
     Reads and fetches CABra dataset which is catchment attribute dataset
     following the work of `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_
-    This dataset consists of 97 static and 12 dynamic features of 735 Brazilian
+    This dataset consists of 87 static and 12 dynamic features of 735 Brazilian
     catchments. The temporal extent is from 1980 to 2020. The dyanmic features
     consist of daily hydro-meteorological time series
 
@@ -761,6 +761,9 @@ class CABra(_RainfallRunoff):
                 self.q_attrs(),
                 self.topology_attrs()], axis=1)
         
+        # drop duplicate columns from df which might have come due to concatenation
+        df = df.loc[:, ~df.columns.duplicated()]
+
         df.rename(columns = self.static_map, inplace=True)
         return df.columns.to_list()
 
@@ -774,76 +777,6 @@ class CABra(_RainfallRunoff):
     @property
     def end(self) -> pd.Timestamp:
         return pd.Timestamp("2010-09-30")
-
-    # def q_mmd(
-    #         self,
-    #         stations: Union[str, List[str]] = 'all'
-    # ) -> pd.DataFrame:
-    #     """
-    #     returns streamflow in the units of milimeter per day. It is obtained
-    #     by dividing ``Streamflow`` time series by area
-
-    #     parameters
-    #     ----------
-    #     stations : str/list
-    #         name/names of stations. Default is ``all``, which will return
-    #         area of all stations
-
-    #     Returns
-    #     --------
-    #     pd.DataFrame
-    #         a pandas DataFrame whose indices are time-steps and columns
-    #         are catchment/station ids.
-
-    #     """
-    #     stations = check_attributes(stations, self.stations())
-    #     q = self.fetch_stations_features(stations,
-    #                                      dynamic_features=observed_streamflow_cms(),
-    #                                      as_dataframe=True)
-    #     q.index = q.index.get_level_values(0)
-    #     area_m2 = self.area(stations) * 1e6  # area in m2
-    #     q = (q / area_m2) * 86400  # cms to m/day
-    #     return q * 1e3  # to mm/day
-
-    # @property
-    # def _area_name(self) -> str:
-    #     return 'catch_area'
-
-    # def stn_coords(
-    #         self,
-    #         stations: Union[str, List[str]] = 'all'
-    # ) -> pd.DataFrame:
-    #     """
-    #     returns coordinates of stations as DataFrame
-    #     with ``long`` and ``lat`` as columns.
-
-    #     Parameters
-    #     ----------
-    #     stations :
-    #         name/names of stations. If not given, coordinates
-    #         of all stations will be returned.
-
-    #     Returns
-    #     -------
-    #     coords :
-    #         pandas DataFrame with ``long`` and ``lat`` columns.
-    #         The length of dataframe will be equal to number of stations
-    #         wholse coordinates are to be fetched.
-
-    #     Examples
-    #     --------
-    #     >>> dataset = CABra()
-    #     >>> dataset.stn_coords() # returns coordinates of all stations
-    #     >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
-    #     >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
-
-    #     """
-    #     df = self.general_attrs()
-    #     df.index = df.index.astype(str)
-    #     df = df[['latitude', 'longitude']]
-    #     df.columns = ['lat', 'long']
-    #     stations = check_attributes(stations, self.stations())
-    #     return df.loc[stations, :]
 
     def add_attrs(self) -> pd.DataFrame:
         """

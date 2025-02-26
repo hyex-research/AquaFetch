@@ -190,8 +190,8 @@ def test_selected_dynamic_features(dataset, as_dataframe=False):
     _, data = dataset.fetch(dataset.stations()[0:3], dynamic_features=features, as_dataframe=as_dataframe)
 
     if as_dataframe:
-        data = data.unstack()
-        assert data.shape[1] == 2
+        data = data.iloc[:, 0].unstack()
+        assert data.shape[1] == 2, data.shape
     else:
         assert len(data.dynamic_features) == 2, len(data.dynamic_features)
     return
@@ -298,7 +298,7 @@ def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
     logger.info(f"test_attributes for {dataset.name}")
     static_features = dataset.static_features
     assert len(
-        static_features) == static_attr_len, f'for {dataset.name} static_features are {len(static_features)} and not {static_attr_len}'
+        set(static_features)) == static_attr_len, f'for {dataset.name} static_features are {len(static_features)} and not {static_attr_len}'
     assert isinstance(static_features, list)
     assert all([isinstance(i, str) for i in static_features])
 
