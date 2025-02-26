@@ -544,7 +544,7 @@ class CAMELS_GB(_RainfallRunoff):
 class CAMELS_AUS(_RainfallRunoff):
     """
     This is a dataset of 561 Australian catchments with 187 static features and
-    26 dyanmic features for each catchment. The dyanmic features are timeseries
+    28 dyanmic features for each catchment. The dyanmic features are timeseries
     from 1950-01-01 to 2022-03-31. This class Reads CAMELS-AUS dataset of
     `Fowler et al., 2024 <https://doi.org/10.5194/essd-2024-263>`_ .
 
@@ -560,7 +560,7 @@ class CAMELS_AUS(_RainfallRunoff):
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
-       (21184, 26)
+       (21184, 28)
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -575,7 +575,7 @@ class CAMELS_AUS(_RainfallRunoff):
     ... # get data by station id
     >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
     >>> df.shape
-        (21184, 26)
+        (21184, 28)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
@@ -787,6 +787,21 @@ class CAMELS_AUS(_RainfallRunoff):
         }
 
     @property
+    def dyn_generators(self):
+        if self.version == 1:
+            return {
+    # new column to be created : function to be applied, inputs
+    mean_air_temp_with_specifier('silo'): (self.mean_temp, (min_air_temp_with_specifier('silo'), max_air_temp_with_specifier('silo'))), 
+    mean_air_temp_with_specifier('awap'): (self.mean_temp, (min_air_temp_with_specifier('awap'), max_air_temp_with_specifier('awap'))),
+        }
+        else:
+            return {
+    # new column to be created : function to be applied, inputs
+    mean_air_temp_with_specifier('silo'): (self.mean_temp, (min_air_temp_with_specifier('silo'), max_air_temp_with_specifier('silo'))),
+    mean_air_temp_with_specifier('agcd'): (self.mean_temp, (min_air_temp_with_specifier('agcd'), max_air_temp_with_specifier('agcd'))),
+        }
+
+    @property
     def start(self):
         return "19500101"
 
@@ -823,7 +838,7 @@ class CAMELS_AUS(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> list:
-        return [self.dyn_map.get(feat, feat) for feat in list(self.folders[self.version].keys())]
+        return [self.dyn_map.get(feat, feat) for feat in list(self.folders[self.version].keys())] + list(self.dyn_generators.keys())
 
     def _static_data(self, #stations, #features,
                      st=None, en=None):
@@ -855,7 +870,7 @@ class CAMELS_AUS(_RainfallRunoff):
             dyn_attrs[_attr] = attr_df
 
         # making one separate dataframe for one station
-        for stn in stations:
+        for idx, stn in enumerate(stations):
             stn_df = pd.DataFrame()
             for attr, attr_df in dyn_attrs.items():
                 # if attr in dynamic_features:
@@ -866,6 +881,20 @@ class CAMELS_AUS(_RainfallRunoff):
             for col, fact in self.dyn_factors.items():
                 if col in stn_df.columns:
                     stn_df[col] = stn_df[col] * fact
+
+            for new_col, (func, old_col) in self.dyn_generators.items():
+                if isinstance(old_col, str):
+                    if old_col in stn_df.columns:
+                        # name of Series to func should be same as station id
+                        stn_df[new_col] = func(pd.Series(stn_df[old_col], name=stn))
+                else:
+                    assert isinstance(old_col, tuple)
+                    if all([col in stn_df.columns for col in old_col]):
+                        # feed all old_cols to the function
+                        stn_df[new_col] = func(*[pd.Series(stn_df[col], name=stn) for col in old_col])
+            
+            if self.verbosity>1 and idx % 100 == 0:
+                print(f"processed {idx} stations")
 
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'

@@ -616,8 +616,6 @@ class CABra(_RainfallRunoff):
 
     """
 
-    # todo : generate mean air temperature from max and min
-
     url = 'https://zenodo.org/record/7612350'
 
     def __init__(self,
