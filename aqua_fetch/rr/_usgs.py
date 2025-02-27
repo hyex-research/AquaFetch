@@ -29,9 +29,9 @@ from ._map import (
     )
 
 DAILY_START = "1820-01-01"
-DAILY_END = "2024-05-30"
+DAILY_END = "2024-12-31"
 HOURLY_START = "1910-01-01"
-HOURLY_END = "2024-05-30"
+HOURLY_END = "2024-12-31"
 
 
 class USGS(_RainfallRunoff):
@@ -99,7 +99,7 @@ class USGS(_RainfallRunoff):
 
     @property
     def end(self)->str:
-        return "20181231"
+        return "20231231"
 
     @property
     def dynamic_features(self)->List[str]:
@@ -712,7 +712,7 @@ def _read_json(json):
 def download_daily_q_nwis(
         site:str = '14105700', 
         start = '1820-01-01', 
-        end='2024-05-30'
+        end='2024-12-31'
         )->pd.DataFrame:
 
     response = requests.get(
@@ -749,7 +749,7 @@ def download_daily_record(
 
     site_data = download_daily_q_nwis(site, 
                     start="1820-01-01",  # DAILY_START
-                    end="2024-05-30",    # DAILY_END
+                    end="2024-12-31",    # DAILY_END
                     )
     if f'00060_Mean' in site_data.columns:
         # get data for stations which have A in 00060_Mean_cd column
@@ -773,12 +773,12 @@ def download_daily_record(
     elif len(site_data) == 0:
         # return empty series
         site_data = pd.Series(name=f"{site}__empty",
-                              index = pd.date_range(start="2024-01-01", end="2024-05-30", freq='D')
+                              index = pd.date_range(start="2024-01-01", end="2024-12-31", freq='D')
                               )
     else:
         #print(f"Site: {site} has {site_data.columns}")
         site_data = pd.Series(name=f"{site}__empty",
-                            index = pd.date_range(start="2024-01-01", end="2024-05-30", freq='D')
+                            index = pd.date_range(start="2024-01-01", end="2024-12-31", freq='D')
                             )
     
     site_data.name = site
