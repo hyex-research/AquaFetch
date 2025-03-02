@@ -163,7 +163,7 @@ ds = Italy(path=gscad_path, verbosity=3)
 test_dataset(ds, 
              num_stations=294, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
@@ -175,13 +175,17 @@ ds = Poland(path=gscad_path, verbosity=3)
 test_dataset(ds, 
              num_stations=1287, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
 
 _, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
 assert df.count().sum() >= 16319627
+
+q = ds.get_q()
+
+assert q.shape[1]>1287
 
 ds = Portugal(path=gscad_path, verbosity=3)
 
@@ -197,7 +201,7 @@ nan_cols = q.columns[q.isna().all()]
 test_dataset(ds, 
              num_stations=280, 
              dyn_data_len=18628, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )

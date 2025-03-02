@@ -688,7 +688,7 @@ class Finland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 2012-01-01 to 2023-06-30.
     """
     def __init__(
@@ -958,7 +958,7 @@ class Ireland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1343,7 +1343,7 @@ class Italy(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1471,7 +1471,7 @@ class Poland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1573,6 +1573,8 @@ class Poland(_EStreams):
             print(f"Data for 2023 has shape: {data23.shape}")
     
         data = pd.concat([data, data23], axis=0)
+        if self.verbosity>1:
+            print(f"Data after 2023 has shape: {data.shape}")
         data.sort_index(inplace=True)
 
         data.index.name = 'time'
@@ -1601,7 +1603,6 @@ def download_single_file(year, month:str):
                                },
                         #parse_dates={'date': ['year', 'month', 'day']},
                         #index_col='date',
-                        na_values=[99999.999]
                         )
     except HTTPError:
         raise Exception(f"Failed to download {url}")
@@ -1675,7 +1676,7 @@ class Portugal(_EStreams):
     features and catchment boundaries for the 280 catchments are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1972-01-01 to 2022-12-31 .
     """
     def __init__(
