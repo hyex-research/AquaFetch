@@ -76,7 +76,7 @@ df.shape
 dataset.dynamic_features
 # get only selected dynamic features
 _, data = dataset.fetch(1, as_dataframe=True,
-...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
 data.shape
    (21184, 4)
 # get names of available static features
