@@ -17,7 +17,7 @@ and similarly for Japan, Thailand, Arcticnet, and Spain from GSHA (`Peirong et a
 For USGS, the catchment boundaries are sourced from HYSETS (`Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_).
 
 Although each data source has a dedicated, however
-all datasets listed in Table \ref{tbl:table1} are accessible via the :py:class:`aqua_fetch.rr.RainfallRunoff` 
+all datasets listed in Table :ref:`rr_table` are accessible via the :py:class:`aqua_fetch.rr.RainfallRunoff` 
 class, which allows for a unified and consistent approach to each dataset. The class 
 provides several methods to access static features, dynamic features, or catchment 
 boundaries. Although the raw data files for each dataset may come in different formats, 
@@ -27,7 +27,7 @@ users over specific datasets. However, for most cases, the use of the :py:class:
 class will suffice.
 
 The naming and units of dynamic features in each dataset may vary. However, we have 
-standardized these features using the formula `name_unit_specifier` for each dynamic 
+standardized these features using the formula ``name_unit_specifier`` for each dynamic 
 feature across all datasets. In this formula, the specifier can indicate the source 
 (such as ERA5 or MSWEP for precipitation), the method used to calculate the feature 
 (like makkink or penman for evapotranspiration), or the aggregation type (min, max, mean). 
@@ -36,7 +36,7 @@ This approach ensures that feature names are representative and understandable.
 Dynamic features for which this method is inapplicable retain their original names.
 
 Another feature of the AquaFetch is the optional inclusion of static and dynamic 
-features from EStreams and GSHA for all datasets listed in Table \ref{tbl:table1}. 
+features from EStreams and GSHA for all datasets listed in Table :ref:`rr_table`. 
 This is beneficial as EStreams and GSHA include several static and dynamic features 
 calculated for the catchments, which are not included in other datasets. For instance, 
 EStreams provides information on annual variation in land use for all European catchments, 
@@ -60,6 +60,7 @@ result, we introduced the USGS class, which focuses specifically on the US regio
 The catchment boundaries, static features, and meteorological data for USGS, however, 
 are still obtained from HYSETS.
 
+.. _rr_table:
 List of datasets
 ================
 .. list-table:: Stations per Source
@@ -100,6 +101,7 @@ List of datasets
      - 12
      - 97
      - 1980 - 2010
+     - Brazil
      - `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_ 
    * - ``CAMELS_AUS``
      - :py:class:`aqua_fetch.rr.CAMELS_AUS`
@@ -107,17 +109,9 @@ List of datasets
      - 
      - 26
      - 166, 187
+     - 1900 - 2018
      - Australia
      - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
-   * - ``CAMELS_GB``
-     - :py:class:`aqua_fetch.rr.CAMELS_GB`
-     - 671
-     - 
-     - 10
-     - 145
-     - 1970 - 2015
-     - Britain
-     - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_
    * - ``CAMELS_BR``
      - :py:class:`aqua_fetch.rr.CAMELS_BR`
      - 897
@@ -145,15 +139,6 @@ List of datasets
      - 1913 - 2018
      - Chile
      - `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_
-   * - ``CAMELS_DK``
-     - :py:class:`aqua_fetch.rr.CAMELS_DK`
-     - 304
-     - 
-     - 13
-     - 119
-     - 1989 - 2023
-     - Denmark
-     - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
      - 1555
@@ -163,6 +148,15 @@ List of datasets
      - 1951 - 2020
      - Germany
      - `Loritz et al., 2024 <https://essd.copernicus.org/preprints/essd-2024-318/>`_
+   * - ``CAMELS_DK``
+     - :py:class:`aqua_fetch.rr.CAMELS_DK`
+     - 304
+     - 
+     - 13
+     - 119
+     - 1989 - 2023
+     - Denmark
+     - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -172,6 +166,15 @@ List of datasets
      - 1970 - 2021
      - France
      - `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_
+   * - ``CAMELS_GB``
+     - :py:class:`aqua_fetch.rr.CAMELS_GB`
+     - 671
+     - 
+     - 10
+     - 145
+     - 1970 - 2015
+     - Britain
+     - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_
    * - ``CAMELS_IND``
      - :py:class:`aqua_fetch.rr.CAMELS_IND`
      - 472
@@ -319,6 +322,7 @@ List of datasets
    * - ``RRLuleaSweden``
      - :py:class:`aqua_fetch.RRLuleaSweden`
      - 1
+     - 
      - 2
      - 0
      - 2016 - 2019
@@ -403,11 +407,13 @@ This provides more control over the datasets.
 
    .. automethod:: __init__
 
+
 .. autoclass:: aqua_fetch.rr._misc._EStreams
    :members:
    :show-inheritance:
 
    .. automethod:: __init__
+
 
 .. autoclass:: aqua_fetch.Arcticnet
    :members:
@@ -458,20 +464,6 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr.CAMELS_GB
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
-.. autoclass:: aqua_fetch.rr.CAMELS_US
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
 .. autoclass:: aqua_fetch.rr.CAMELS_DE
    :members:
    :show-inheritance:
@@ -500,6 +492,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.CAMELS_GB
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.CAMELS_IND
    :members:
    :show-inheritance:
@@ -508,6 +507,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_SE
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_US
    :members:
    :show-inheritance:
 
