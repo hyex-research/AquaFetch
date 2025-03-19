@@ -795,3 +795,28 @@ def photodegradation_Jiang(
                                         ], encoding)
 
     return data, encoders
+
+
+def dye_removal_hassan(
+        parameters: Union[str, List[str]] = "all",
+        encoding: str = None,
+)->Tuple[pd.DataFrame, Dict[str, Union[OneHotEncoder, LabelEncoder, Any]]]:
+    """
+    Data for photodegradation of multiple dyes using various photocatalysts.
+    For details on data see `Ali et al., 2024 <https://doi.org/10.5281/zenodo.13843658>`_ .
+
+    Parameters
+    ----------
+    parameters : list, optional
+        Names of the parameters to use. By default following parameters are used
+
+            - ``dye``
+            - ``bandgap``
+            - ``dye_concentration_mg/L``
+            - ``time_min``
+            - ``catalyst_loading_g/l``
+            - ``surface_area`` 
+            -  ``solution_volume_L``
+            - ``k_first`` 
+    """
+    url = "https://zenodo.org/records/13843658"

@@ -151,7 +151,7 @@ class MtropicsLaos(Datasets):
 
         Examples
         --------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> suro = laos.fetch_suro()
         """
@@ -200,11 +200,11 @@ class MtropicsLaos(Datasets):
 
         Returns
         -------
-            a pandas dataframe
+            a :obj:`pandas.DataFrame`
 
         Examples
         --------
-        >>> from water_quality import MtropicsLaos
+        >>> from aqua_fetch import MtropicsLaos
         >>> laos = MtropicsLaos()
         >>> phy_chem = laos.fetch_physiochem('T_deg')
         >>> phy_chem.shape
@@ -275,7 +275,7 @@ class MtropicsLaos(Datasets):
 
         Returns
         -------
-            a pandas dataframe consisting of features as columns.
+            a :obj:`pandas.DataFrame` consisting of features as columns.
 
         .. _Ribolzi:
             https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
@@ -347,7 +347,7 @@ class MtropicsLaos(Datasets):
 
         Examples
         --------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> rg = laos.fetch_rain_gauges()
 
@@ -418,7 +418,7 @@ class MtropicsLaos(Datasets):
                 frequency at which the data is to be fetched.
         Returns
         -------
-            a pandas dataframe consisting of 4 columns
+            a :obj:`pandas.DataFrame` consisting of 4 columns
 
         .. [1]:
             https://doi.org/10.1038/s41598-017-04385-2
@@ -511,7 +511,7 @@ class MtropicsLaos(Datasets):
 
         Returns
         -------
-            pandas dataframe of precipitation data
+            :obj:`pandas.DataFrame` of precipitation data
 
         .. _precipitation:
             https://doi.org/10.1038/s41598-017-04385-2
@@ -733,7 +733,7 @@ class MtropicsLaos(Datasets):
 
         Example
         -------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> df = laos.make_classification()
         """
@@ -809,7 +809,7 @@ class MtropicsLaos(Datasets):
 
         Example
         -------
-            >>> from water_quality import MtropicsLaos
+            >>> from aqua_fetch import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> ins = ['pcp', 'air_temp']
             >>> out = ['Ecoli_mpn100']

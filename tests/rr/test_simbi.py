@@ -29,7 +29,7 @@ test_dynamic_data(dataset, None, 24, 17167)
 test_dynamic_data(dataset, None, 24, 17167, as_dataframe=True)
 
 # check that dynamic data of 10% of stations can be retrieved
-test_dynamic_data(dataset, 0.1, int(7), 17167, 
+test_dynamic_data(dataset, 0.1, 2, 17167, 
                     raise_len_error=False)
 test_dynamic_data(dataset, 0.5, int(24*0.5), 17167, True,
                     raise_len_error=False)

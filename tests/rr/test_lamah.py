@@ -1,6 +1,6 @@
 
 import os
-import site   # so that water_datasets directory is in path
+import site   # so that aqua_fetch directory is in path
 import logging
 
 # add the parent directory in the path
@@ -22,27 +22,27 @@ from utils import (
     test_attributes
     )
 
-stations = {'D': [859, 859, 454], 'H': [859, 859, 454]}
-static = {'D': [80, 81, 80], 'H': [84, 85, 80]}
-num_dyn_attrs = {'D': 22, 'H': 16}
-len_dyn_data = {'D': 14244, 'H': 341856}
-yearly_steps = {'D': 366, 'H': 8761}  # 8784
+stations = [859, 859, 454]
+static = [84, 85, 85]
 
-for idx, dt in enumerate(['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp_D']):
+for idx, dt in enumerate(['total_upstrm', 
+                          'intermediate_all', 
+                          'intermediate_lowimp']):
 
     logger.info(f'testing for {dt} at daily time step')
 
-    ds_eu = LamaHCE(timestep='D', data_type=dt, path=gscad_path)
+    ds_eu = LamaHCE(timestep='D', data_type=dt, path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=4)
 
     test_dataset(ds_eu,
-                 stations['D'][idx],
+                 stations[idx],
                     14244,
-                    static['D'][idx],
+                    num_static_attrs=static[idx],
                     num_dyn_attrs=22,
                     test_df=True,
                     yearly_steps=366)
 
 
+static = 85
 for idx, dt in enumerate(['total_upstrm',
                           'intermediate_all', 'intermediate_lowimp']):
 
@@ -51,9 +51,9 @@ for idx, dt in enumerate(['total_upstrm',
     ds_eu = LamaHCE(timestep='H', data_type=dt, path=gscad_path, verbosity=4)
 
     test_dataset(ds_eu,
-                 stations['H'][idx],
+                 stations[idx],
                     341856,
-                    static['H'][idx],
+                    static,
                     num_dyn_attrs=16,
                     test_df=False,
                     yearly_steps=8761)
@@ -76,9 +76,9 @@ for idx, data_type in enumerate(['total_upstrm',
     dataset = LamaHIce(path=gscad_path, timestep="H", data_type=data_type, verbosity=4)
 
     test_dataset(dataset, 
-                    76, 
-                    412825, 
-                    138, 
+                    num_stations=76, 
+                    dyn_data_len=412825, 
+                    num_static_attrs=138, 
                     num_dyn_attrs=28,
                     yearly_steps=8761
                     )

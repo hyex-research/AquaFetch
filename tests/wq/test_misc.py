@@ -1,5 +1,5 @@
 import os
-import site   # so that water_datasets directory is in path
+import site   # so that aqua_fetch directory is in path
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)

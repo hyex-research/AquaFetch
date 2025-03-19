@@ -51,6 +51,7 @@ from ._map import (
     max_air_temp,
     min_air_temp,
     solar_radiation,
+    observed_streamflow_cms,
     )
 
 
@@ -60,8 +61,8 @@ class EStreams(_RainfallRunoff):
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
     The data is available at its `zenodo repository <https://zenodo.org/records/13961394>`_ .
     It should be noted that this dataset does not contain observed streamflow data.
-    It has 15047 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
-    features with yearly timestep and 208 static features. The dynamic features
+    It has 17130 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
+    features with yearly timestep and 214 static features. The dynamic features
     are from 1950-01-01 to 2023-06-30.
 
     Examples
@@ -78,9 +79,10 @@ class EStreams(_RainfallRunoff):
         self._download()
 
         self.md = self.gauge_stations()
+        self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
         self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
-        self._static_features = self.static_data().columns.tolist()
+        self._static_features = self._static_data().columns.tolist()
 
         self.boundary_file = os.path.join(self.path2,
                                           "shapefiles", "estreams_catchments.shp")
@@ -107,6 +109,15 @@ class EStreams(_RainfallRunoff):
         return pd.Timestamp('2023-06-30')
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+                'area_estreams': catchment_area(),
+                'lat': gauge_latitude(),
+                'slope_sawicz': slope('no_unit'),
+                'lon': gauge_longitude(),
+        }
+    
+    @property
     def dyn_map(self):
         return {
             't_min': min_air_temp(),
@@ -120,7 +131,7 @@ class EStreams(_RainfallRunoff):
             'ws_mean': mean_windspeed()
         }
 
-    def static_data(self) -> pd.DataFrame:
+    def _static_data(self) -> pd.DataFrame:
         """
         Returns a dataframe with static attributes of catchments
         """
@@ -133,6 +144,9 @@ class EStreams(_RainfallRunoff):
                 dfs.append(df)
 
         df = pd.concat(dfs, axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
         df.columns.name = 'static_features'
         df.index.name = 'station_id'
         return df
@@ -150,7 +164,8 @@ class EStreams(_RainfallRunoff):
 
     def stations(self) -> List[str]:
         """
-        Returns a list of all station names
+        Returns a list of all station names. Note that the `basin_id` column is 
+        used as the station name.
         """
         return self._stations
 
@@ -185,7 +200,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, 2)
+            a :obj:`pandas.DataFrame` of shape (stations, 2)
 
         Examples
         --------
@@ -222,75 +237,19 @@ class EStreams(_RainfallRunoff):
         """area of catchments im km2"""
 
         stations = self._get_stations(countries, stations)
-        return self.md.loc[stations, 'area']
+        return self.md.loc[stations, catchment_area()]
 
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]] = "all",
-            static_features: Union[str, List[str]] = "all",
-            countries: List[str] = "all",
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a pandas dataframe of shape (stations, static_features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import EStreams
-        >>> dataset = EStreams()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            15047
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (15047, 153)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('IEEP0281')
-        >>> static_data.shape
-           (1, 153)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['slp_dg_mean', 'ele_mt_mean'])
-        >>> static_data.shape
-           (15047, 2)
-        >>> data = dataset.fetch_static_features('IEEP0281', static_features=['slp_dg_mean', 'ele_mt_mean'])
-        >>> data.shape
-           (1, 2)
-        >>> out = ds.fetch_static_features(countries='IE')
-        >>> out.shape
-        (464, 153
-        """
-        stations = self._get_stations(countries, stations)
-        features = check_attributes(static_features, self.static_features, 'static_features')
-
-        return self.static_data().loc[stations, features]
-
-    def meteo_data_station(self, stn_id: str) -> pd.DataFrame:
+    def meteo_data_station(self, station: str) -> pd.DataFrame:
         """
         Returns the meteorological data of a station
 
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of meteorological data of shape (time, 9)
+            a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
         df = pd.read_csv(
-            os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{stn_id}.csv'),
+            os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{station}.csv'),
             index_col='date',
             parse_dates=True
         )
@@ -328,7 +287,7 @@ class EStreams(_RainfallRunoff):
                 print(f"Reading from {nc_path}")
             return xr.open_dataset(nc_path)
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         stations = self.stations()
         meteo_vars = {}
 
@@ -366,7 +325,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of hydro-climatic signatures of shape (stations, 31)
+            a :obj:`pandas.DataFrame` of hydro-climatic signatures of shape (stations, 31)
         """
         stations = self._get_stations(countries, stations)
 
@@ -382,7 +341,7 @@ class EStreams(_RainfallRunoff):
 
     def fetch_stn_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
     ) -> pd.DataFrame:
         """
@@ -390,7 +349,7 @@ class EStreams(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            station : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -399,7 +358,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (n, features) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (n, features) where n is the number of days
 
         Examples
         --------
@@ -412,7 +371,7 @@ class EStreams(_RainfallRunoff):
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
-        return self.meteo_data_station(stn_id).loc[:, features]
+        return self.meteo_data_station(station).loc[:, features]
 
     def fetch_dynamic_features(
             self,
@@ -437,8 +396,8 @@ class EStreams(_RainfallRunoff):
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
-                is xarray dataset
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
+                is :obj:`xarray.Dataset`
 
         Examples
         --------
@@ -464,7 +423,7 @@ class EStreams(_RainfallRunoff):
         if as_dataframe:
             raise NotImplementedError("as_dataframe=True is not implemented yet")
 
-        return self.meteo_data(stations)
+        return self.meteo_data(stations).sel(dynamic_features=features)
 
 
 class _EStreams(_RainfallRunoff):
@@ -481,7 +440,12 @@ class _EStreams(_RainfallRunoff):
             **kwargs):
         super().__init__(path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
         if estreams_path is None:
+            if self.verbosity:
+                print(f"estreams_path is not provided, using {os.path.dirname(self.path)} as default")
             self.estreams_path = os.path.dirname(self.path)
         else:
             self.estreams_path = estreams_path
@@ -496,7 +460,7 @@ class _EStreams(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        return ['obs_q_cms'] + self.estreams.dynamic_features
+        return [observed_streamflow_cms()] + self.estreams.dynamic_features
 
     @property
     def static_features(self) -> List[str]:
@@ -512,11 +476,13 @@ class _EStreams(_RainfallRunoff):
 
     @property
     def _area_name(self) -> str:
-        return 'area'
+        # area_official is the area given by data provides but it contains nans
+        # supposing that estreams people's method is better/updated one
+        return catchment_area()
 
     @property
     def _q_name(self) -> str:
-        return "obs_q_cms"
+        return observed_streamflow_cms()
 
     @property
     def start(self) -> pd.Timestamp:
@@ -533,7 +499,6 @@ class _EStreams(_RainfallRunoff):
             st=None,
             en=None,
             as_dataframe=False,
-            as_ts=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -541,14 +506,14 @@ class _EStreams(_RainfallRunoff):
 
         daily_q = None
 
-        if 'obs_q_cms' in features:
+        if observed_streamflow_cms() in features:
             daily_q = self.get_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
                 daily_q = daily_q.loc[st:en, stations]
 
-            features.remove('obs_q_cms')
+            features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
             return daily_q
@@ -562,7 +527,7 @@ class _EStreams(_RainfallRunoff):
                 data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
 
                 # first create a new dimension in daily_q named dynamic_features
-                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
                 # -1 because the data in .nc files hysets starts with 0
@@ -583,7 +548,6 @@ class _EStreams(_RainfallRunoff):
             static_features: Union[str, list] = 'all',
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity > 1:
@@ -607,6 +571,21 @@ class _EStreams(_RainfallRunoff):
         """
         returns features of multiple stations
 
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
+
         Examples
         --------
         >>> from aqua_fetch import Arcticnet
@@ -615,10 +594,11 @@ class _EStreams(_RainfallRunoff):
         >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations(), 'stations')
+        static, dynamic = None, None
 
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -627,21 +607,17 @@ class _EStreams(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
+
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -650,7 +626,7 @@ class _EStreams(_RainfallRunoff):
             raise ValueError(f"""
             static features are {static_features} and dynamic features are also {dynamic_features}""")
 
-        return to_return
+        return static, dynamic
 
     def fetch_static_features(
             self,
@@ -658,7 +634,6 @@ class _EStreams(_RainfallRunoff):
             static_features: Union[str, List[str]] = "all",
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -672,7 +647,6 @@ class _EStreams(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -697,7 +671,7 @@ class _EStreams(_RainfallRunoff):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, static_features, st, en, as_ts)
+        return self._fetch_static_features(stations, static_features, st, en)
 
 
 START_YEAR = 2012
@@ -714,7 +688,7 @@ class Finland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 2012-01-01 to 2023-06-30.
     """
     def __init__(
@@ -727,16 +701,6 @@ class Finland(_EStreams):
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
     @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-
-        }
-
-    @property
     def country_name(self)->str:
         return 'FI'
 
@@ -745,7 +709,7 @@ class Finland(_EStreams):
         return pd.Timestamp('2012-01-01')
 
     def stations(self)->List[str]:
-        """returns the basin_id of the stations"""
+        """returns the `basin_id` of the stations"""
         return self._stations
 
     def gauge_id_basin_id_map(self)->dict:
@@ -763,7 +727,7 @@ class Finland(_EStreams):
     def get_q(self, as_dataframe:bool=True, overwrite:bool=False):
         """
         downloads (if not already downloaded) and returns the daily streamflow data of Finland.
-        either as pandas dataframe or as xarray dataset.
+        either as :obj:`pandas.DataFrame` or as xarray dataset.
         """
         fpath = os.path.join(self.path, 'daily_q.csv')
 
@@ -838,10 +802,10 @@ class Finland(_EStreams):
 
         if self.verbosity: print("Downloading 2012-2023 year data")
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or max(get_cpus()-2, 1)
 
         if self.verbosity:
-            print(f"downloading daily data for {len(self.stations())} stations from {2012} to {2023}")
+            print(f"downloading daily data for {len(self.stations())} stations from {2012} to {2023} with {cpus} cpus")
 
         if cpus == 1:
             all_data = self.download_data_seq()
@@ -903,7 +867,8 @@ class Finland(_EStreams):
         # takes around 1 hour to download all the data
         failures = 0
         dfs = []
-        for idx, bsn_id in enumerate(self.stations()):
+        stations = self.stations()
+        for idx, bsn_id in enumerate(stations):
 
             gauge_id = self.basin_id_gauge_id_map()[bsn_id]
 
@@ -941,7 +906,7 @@ class Finland(_EStreams):
             if len(stn_dfs) > 0:
                 stn_df = pd.concat(stn_dfs, axis=0)
                 if self.verbosity:
-                    print(f"{idx}: for {bsn_id} {stn_df.shape} {len(stn_dfs)}")
+                    print(f"{idx}/{len(stations)}: for {bsn_id} {stn_df.shape} {len(stn_dfs)}")
 
                 dfs.append(stn_df[bsn_id].astype('float32'))
 
@@ -993,7 +958,7 @@ class Ireland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1004,16 +969,6 @@ class Ireland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope(''),
-                'lon': gauge_longitude(),
-
-        }
 
     @property
     def country_name(self)->str:
@@ -1040,12 +995,15 @@ class Ireland(_EStreams):
         return stn in self.epa_stations
 
     def stations(self)->List[str]:
+        """The `basin_id` EStreams dataset is used as station names"""
         return self._stations
     
     def gauge_id_basin_id_map(self)->dict:
-        # guage_id '18118'
-        # basin_id 'IEEP0281'
-        # '18118' -> 'IEEP0281'
+        """
+        A dictionary whose keys are gauge_id and values are basin_id. 
+        Supposing guage_id is '18118' and basin_id is 'IEEP0281'
+        then '18118' -> 'IEEP0281'
+        """
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
 
     def basin_id_gauge_id_map(self)->dict:
@@ -1060,13 +1018,13 @@ class Ireland(_EStreams):
             overwrite:bool=False, 
             ):
         fname = 'daily_q' if self.timestep in ["D", 'daily'] else 'hourly_q'
-        ext = '.nc' if self.to_netcdf else '.csv'
+        ext = '.csv'
     
         fpath = os.path.join(self.path, fname + ext)
 
         if not os.path.exists(fpath) or overwrite:
 
-            cpus = self.processes or min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
             if cpus > 1:
                 epa_df = self.download_epa_data_parallel(cpus=cpus)
@@ -1133,7 +1091,7 @@ class Ireland(_EStreams):
 
             print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
 
-            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep, verbosity=self.verbosity-1)
+            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep)
 
             epa_dfs.append(df) 
 
@@ -1149,7 +1107,7 @@ class Ireland(_EStreams):
     def download_epa_data_parallel(self, cpus=None):
 
         if cpus is None:
-            cpus = min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
         folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
@@ -1385,7 +1343,7 @@ class Italy(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1398,16 +1356,6 @@ class Italy(_EStreams):
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
         self._stations = self.ispra_stations()
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope(''),
-                'lon': gauge_longitude(),
-
-        }
 
     @property
     def country_name(self)->str:
@@ -1523,8 +1471,8 @@ class Poland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
-    data is available from 1992-01-01 to 2020-06-31.
+    the number of staic features are 214 and dynamic features are 10 and the
+    data is available from 1951-01-01 to 2023-06-30.
     """
     def __init__(
             self, 
@@ -1534,16 +1482,6 @@ class Poland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-
-        }
 
     @property
     def country_name(self)->str:
@@ -1612,7 +1550,7 @@ class Poland(_EStreams):
                 years.append(yr)
                 months.append(month)
 
-        cpus = self.processes or get_cpus()-2
+        cpus = self.processes or max(get_cpus()-2, 1)
 
         if self.verbosity:
             print(f"Downloading zip files using {cpus} cpus")
@@ -1635,6 +1573,8 @@ class Poland(_EStreams):
             print(f"Data for 2023 has shape: {data23.shape}")
     
         data = pd.concat([data, data23], axis=0)
+        if self.verbosity>1:
+            print(f"Data after 2023 has shape: {data.shape}")
         data.sort_index(inplace=True)
 
         data.index.name = 'time'
@@ -1659,11 +1599,11 @@ def download_single_file(year, month:str):
                         names=['stn_id', 'year', 'day', 'q_cms', 'month'],
                         usecols=[0, 3, 5, 7, 9],
                         # sometimes casting month to int fails
-                        dtype={'stn_id': str, 'year': 'int', 'day': 'int', 'q_cms': np.float32, #'month': 'int'
+                        # also don't cast q_cms to float32 since it makes 99999.999 to 100000.0
+                        dtype={'stn_id': str, 'year': 'int', 'day': 'int', #'q_cms': np.float32, #'month': 'int'
                                },
                         #parse_dates={'date': ['year', 'month', 'day']},
                         #index_col='date',
-                        na_values=[99999.999]
                         )
     except HTTPError:
         raise Exception(f"Failed to download {url}")
@@ -1737,7 +1677,7 @@ class Portugal(_EStreams):
     features and catchment boundaries for the 280 catchments are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of staic features are 214 and dynamic features are 10 and the
     data is available from 1972-01-01 to 2022-12-31 .
     """
     def __init__(
@@ -1751,15 +1691,6 @@ class Portugal(_EStreams):
 
         fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
-
-    @property
-    def static_map(self) -> Dict[str, str]:
-        return {
-                'area': catchment_area(),
-                'lat': gauge_latitude(),
-                'slope_sawicz': slope('no_unit'),
-                'lon': gauge_longitude(),
-        }
 
     @property
     def country_name(self)->str:
@@ -1855,7 +1786,7 @@ class Portugal(_EStreams):
 
             if self.verbosity>1: print(f"Downloading q data at {self.path}")
 
-            cpus = self.processes or min(get_cpus() - 2, 16)
+            cpus = self.processes or max(get_cpus() - 2, 1)
 
             if cpus > 1:
                 q_df = self.download_q_data_parallel(cpus=cpus)

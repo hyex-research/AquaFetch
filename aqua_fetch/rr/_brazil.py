@@ -1,3 +1,6 @@
+
+__all__ = ['CAMELS_BR', 'CABra']
+
 import os
 import glob
 import concurrent.futures as cf
@@ -7,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes, get_cpus
+from ..utils import check_attributes, get_cpus, download, unzip
 from ._map import (
     min_air_temp,
     max_air_temp,
@@ -52,7 +55,7 @@ class CAMELS_BR(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_BR
     >>> dataset = CAMELS_BR()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (14245, 12)
@@ -61,37 +64,53 @@ class CAMELS_BR(_RainfallRunoff):
     >>> len(stns)
     593
     # we can get data of 10% catchments as below
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (170940, 59)
     # the data is multi-index with ``time`` and ``dynamic_features`` as indices
     >>> data.index.names == ['time', 'dynamic_features']
      True
     # get data by station id
-    >>> df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
     >>> df.shape
     (14245, 12)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['precipitation_cpc', 'evapotransp_mgb', 'temperature_mean', 'streamflow_m3s']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs']).unstack()
     >>> df.shape
     (14245, 4)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (170940, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 67), (170940, 1))
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
+    urls = {
+        '01_CAMELS_BR_attributes.zip': 'https://zenodo.org/records/3964745/files/',
+        '02_CAMELS_BR_streamflow_m3s.zip': 'https://zenodo.org/records/3964745/files/',
+        '03_CAMELS_BR_streamflow_mm_selected_catchments.zip': 'https://zenodo.org/records/3964745/files/',
+        '04_CAMELS_BR_streamflow_simulated.zip': 'https://zenodo.org/records/3964745/files/',
+        '05_CAMELS_BR_precipitation_chirps.zip': 'https://zenodo.org/records/3964745/files/',
+        '06_CAMELS_BR_precipitation_mswep.zip': 'https://zenodo.org/records/3964745/files/',
+        '07_CAMELS_BR_precipitation_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '08_CAMELS_BR_evapotransp_gleam.zip': 'https://zenodo.org/records/3964745/files/',
+        '09_CAMELS_BR_evapotransp_mgb.zip': 'https://zenodo.org/records/3964745/files/',
+        '10_CAMELS_BR_potential_evapotransp_gleam.zip': 'https://zenodo.org/records/3964745/files/',
+        '11_CAMELS_BR_temperature_min_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '12_CAMELS_BR_temperature_mean_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '13_CAMELS_BR_temperature_max_cpc.zip': 'https://zenodo.org/records/3964745/files/',
+        '14_CAMELS_BR_catchment_boundaries.zip': 'https://zenodo.org/records/3964745/files/',
+        '15_CAMELS_BR_gauges_location_shapefile.zip': 'https://zenodo.org/records/3964745/files/'
+    }
 
     folders = {'streamflow_m3s_raw': '02_CAMELS_BR_streamflow_m3s',
                'streamflow_mm': '03_CAMELS_BR_streamflow_mm_selected_catchments',
@@ -120,7 +139,18 @@ class CAMELS_BR(_RainfallRunoff):
         """
         super().__init__(path=path, name="CAMELS_BR", verbosity=verbosity, **kwargs)
 
-        self._download()
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        for fname, url in self.urls.items():
+            fpath = os.path.join(self.path, fname)
+            if not os.path.exists(fpath) or (os.path.exists(fpath) and self.overwrite):
+                if self.verbosity:
+                    print(f"Downloading {fname} from {url + fname} at {fpath}")
+                download(url + fname, self.path, verbosity=self.verbosity)
+                unzip(self.path, verbosity=self.verbosity)
+            elif self.verbosity>1:
+                print(f"{fpath} already exists")
 
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
         self._maybe_to_netcdf('camels_dyn_br')
@@ -162,13 +192,10 @@ class CAMELS_BR(_RainfallRunoff):
     @property
     def dyn_generators(self):
         return {
-            # new column to be created : (old column, function to be applied)
-            observed_streamflow_cms(): (observed_streamflow_mmd(), self.func1),
+            # new column to be created : function to be applied, inputs
+            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
+            #mean_air_temp(): (self.mean_temp, (min_air_temp(), max_air_temp())),
         }
-
-    def func1(self, x):
-        # convert cms to mmd
-        return x / 86400
 
     @property
     def _all_dirs(self):
@@ -194,7 +221,7 @@ class CAMELS_BR(_RainfallRunoff):
     @property
     def dynamic_features(self) -> List[str]:
         features = list(CAMELS_BR.folders.keys())
-        features.remove('simulated_streamflow_m3s')
+        features.remove('simulated_streamflow_m3s')  # todo: why we need to remove this?
         features.remove('streamflow_m3s_raw')
         return [self.dyn_map.get(feature, feature) for feature in features] + list(self.dyn_generators.keys())
 
@@ -220,7 +247,7 @@ class CAMELS_BR(_RainfallRunoff):
             df = pd.read_csv(static_fpath, index_col='gauge_id', nrows=1)
             cols = list(df.columns)
 
-        return cols
+        return [self.static_map.get(feat, feat) for feat in cols]
 
     @property
     def start(self):
@@ -247,12 +274,14 @@ class CAMELS_BR(_RainfallRunoff):
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
+        # todo: better avoid remove this method since parent class has it
+
         stations = check_attributes(stations, self.stations())
-        q = self.fetch_stations_features(stations,
+        _, q = self.fetch_stations_features(stations,
                                          dynamic_features=observed_streamflow_mmd(),
                                          as_dataframe=True)
         q.index = q.index.get_level_values(0)
@@ -266,7 +295,7 @@ class CAMELS_BR(_RainfallRunoff):
             source: str = "gsim",
     ) -> pd.Series:
         """
-        Returns area (Km2) of all catchments as pandas series
+        Returns area (Km2) of all catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -279,7 +308,7 @@ class CAMELS_BR(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -295,7 +324,7 @@ class CAMELS_BR(_RainfallRunoff):
             'gsim': 'area_gsim',
             'ana': 'area_ana'
         }
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         fpath = os.path.join(self.path, '01_CAMELS_BR_attributes',
                              '01_CAMELS_BR_attributes',
@@ -304,7 +333,7 @@ class CAMELS_BR(_RainfallRunoff):
         df.index = df['gauge_id'].astype(str)
         s = df[SRC_MAP[source]]
 
-        s.name = 'area'
+        s.name = 'area_km2'
         return s.loc[stations]
 
     def stn_coords(
@@ -312,7 +341,7 @@ class CAMELS_BR(_RainfallRunoff):
             stations: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
-        returns coordinates of stations as DataFrame
+        returns coordinates of stations as :obj:`pandas.DataFrame`
         with ``long`` and ``lat`` as columns.
 
         Parameters
@@ -323,8 +352,8 @@ class CAMELS_BR(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -342,7 +371,7 @@ class CAMELS_BR(_RainfallRunoff):
         df.index = df['gauge_id'].astype(str)
         df = df[['gauge_lat', 'gauge_lon']]
         df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
 
         return df.loc[stations, :]
 
@@ -366,7 +395,7 @@ class CAMELS_BR(_RainfallRunoff):
 
     def fetch_raw_streamflow(
             self,
-            station_id: str = None
+            stations: str = None
     ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
@@ -380,20 +409,20 @@ class CAMELS_BR(_RainfallRunoff):
 
         """
 
-        if station_id is None:
-            station_id = self.all_stations('streamflow_m3s_raw')
+        if stations is None:
+            stations = self.all_stations('streamflow_m3s_raw')
 
-        if not isinstance(station_id, list):
-            station_id = [station_id]
+        if not isinstance(stations, list):
+            stations = [stations]
 
         raw_q = []
-        for stn in station_id:
+        for stn in stations:
             self._read_dynamic_feature('streamflow_m3s_raw', stn)
         return pd.concat(raw_q, axis=1)
 
     def fetch_simulated_streamflow(
             self,
-            station_id: str = None
+            stations: str = None
     ) -> pd.DataFrame:
         """
         returns raw streamflow data for one or more stations.
@@ -407,18 +436,18 @@ class CAMELS_BR(_RainfallRunoff):
 
         """
 
-        if station_id is None:
-            station_id = self.all_stations('simulated_streamflow_m3s')
+        if stations is None:
+            stations = self.all_stations('simulated_streamflow_m3s')
 
-        if not isinstance(station_id, list):
-            station_id = [station_id]
+        if not isinstance(stations, list):
+            stations = [stations]
 
         raw_q = []
-        for stn in station_id:
+        for stn in stations:
             self._read_dynamic_feature('simulated_streamflow_m3s', stn)
         return pd.concat(raw_q, axis=1)
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             attributes: Union[str, list] = 'all',
@@ -449,9 +478,9 @@ class CAMELS_BR(_RainfallRunoff):
         dyn = {}
 
         if cpus == 1:
-            for idx, stn_id in enumerate(stations):
+            for idx, station in enumerate(stations):
                 # making one separate dataframe for one station
-                dyn[stn_id] = self.get_dynamic_features(stn_id, features).loc[st:en]
+                dyn[station] = self.get_dynamic_features(station, features).loc[st:en]
 
                 if idx % 20 == 0:
                     print(f"completed {idx} stations")
@@ -464,37 +493,44 @@ class CAMELS_BR(_RainfallRunoff):
             with cf.ProcessPoolExecutor(cpus) as executor:
                 results = executor.map(self.get_dynamic_features, stations, features)
 
-            for stn_id, stn_df in zip(stations, results):
-                dyn[stn_id] = stn_df.loc[st:en]
+            for station, stn_df in zip(stations, results):
+                dyn[station] = stn_df.loc[st:en]
 
             if self.verbosity > 1:
                 print(f"completed fetching data for {len(stations)} stations")
 
         return dyn
 
-    def get_dynamic_features(self, stn_id, features, st=None, en=None):
+    def get_dynamic_features(self, station, features, st=None, en=None):
         feature_dfs = []
         for feature, path in self.folders.items():
             if feature in ['simulated_streamflow_m3s', 'streamflow_m3s_raw']:
                 continue
-            feature_df = self._read_dynamic_feature(path, feature=feature, stn_id=stn_id, st=st, en=en)
+            feature_df = self._read_dynamic_feature(path, feature=feature, station=station, st=st, en=en)
             feature_dfs.append(feature_df)
 
         stn_df = pd.concat(feature_dfs, axis=1)
 
-        for new_col, (old_col, func) in self.dyn_generators.items():
-            if old_col in stn_df.columns:
-                stn_df[new_col] = func(stn_df[old_col])
+        for new_col, (func, old_col) in self.dyn_generators.items():
+            if isinstance(old_col, str):
+                if old_col in stn_df.columns:
+                    # name of Series to func should be same as station id
+                    stn_df[new_col] = func(pd.Series(stn_df[old_col], name=station))
+            else:
+                assert isinstance(old_col, tuple)
+                if all([col in stn_df.columns for col in old_col]):
+                    # feed all old_cols to the function
+                    stn_df[new_col] = func(*[pd.Series(stn_df[col], name=station) for col in old_col])
 
         stn_df.columns.name = 'dynamic_features'
         stn_df.index.name = 'time'
         return stn_df
 
-    def _read_dynamic_feature(self, folder, feature, stn_id, st=None, en=None):
+    def _read_dynamic_feature(self, folder, feature, station, st=None, en=None):
         path = os.path.join(self.path, f'{folder}{SEP}{folder}')
         # supposing that the filename starts with stn_id and has .txt extension.
-        fname = [f for f in os.listdir(path) if f.startswith(str(stn_id)) and f.endswith('.txt')]
-        assert len(fname) == 1, f"{len(fname)} {stn_id} in {folder} for {feature}"
+        fname = [f for f in os.listdir(path) if f.startswith(str(station)) and f.endswith('.txt')]
+        assert len(fname) == 1, f"{len(fname)} {station} in {folder} for {feature}"
         fname = fname[0]
         if os.path.exists(os.path.join(path, fname)):
             df = pd.read_csv(os.path.join(path, fname), sep=' ')
@@ -510,34 +546,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         return df.astype(np.float32)
 
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, List[str]] = "all",
-            static_features: Union[str, List[str]] = "all"
-    ) -> pd.DataFrame:
-        """
-        fetches static feature/features of one or mroe stations
-
-        Parameters
-        ----------
-            stn_id : int/list
-                station id whose attribute to fetch.
-            static_features : str/list
-                name of attribute to fetch. Default is None, which will return all the
-                attributes for a particular station of the specified category.
-        Example
-        -------
-        >>> dataset = Camels()
-        >>> df = dataset.fetch_static_features('11500000', 'climate')
-        # read all static features of all stations
-        >>> data = dataset.fetch_static_features(dataset.stations(), dataset.static_features)
-        >>> data.shape
-        (597, 67)
-        """
-
-        station = check_attributes(stn_id, self.stations(), 'stations')
-
-        attributes = check_attributes(static_features, self.static_features, 'static_features')
+    def _static_data(self)->pd.DataFrame:
 
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
@@ -553,14 +562,16 @@ class CAMELS_BR(_RainfallRunoff):
 
         static_df.index = static_df.index.astype(str)
 
-        return pd.DataFrame(static_df.loc[station][attributes])
+        static_df.rename(columns = self.static_map, inplace=True)
+
+        return static_df
 
 
 class CABra(_RainfallRunoff):
     """
     Reads and fetches CABra dataset which is catchment attribute dataset
     following the work of `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_
-    This dataset consists of 97 static and 12 dynamic features of 735 Brazilian
+    This dataset consists of 87 static and 13 dynamic features of 735 Brazilian
     catchments. The temporal extent is from 1980 to 2020. The dyanmic features
     consist of daily hydro-meteorological time series
 
@@ -568,43 +579,43 @@ class CABra(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CABra
     >>> dataset = CABra()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (131472, 73)  # 73 represents number of stations
     >>> data.index.names == ['time', 'dynamic_features']
     True
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
-    (10956, 12)
+    (10956, 13)
     # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
     735
     # get data by station id
-    >>> df = dataset.fetch(stations='92', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='92', as_dataframe=True).unstack()
     >>> df.shape
-    (10956, 12)
+    (10956, 13)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['p_ens', 'tmax_ens', 'pet_pm', 'rh_ens', 'Streamflow']).unstack()
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs']).unstack()
     >>> df.shape
     (10956, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (131472, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
-    ((1, 97), (131472, 1))
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
+    ((1, 87), (131472, 1))
 
     """
+
     url = 'https://zenodo.org/record/7612350'
 
     def __init__(self,
@@ -711,6 +722,15 @@ class CABra(_RainfallRunoff):
         }
 
     @property
+    def dyn_generators(self):
+        return {
+# new column to be created : function to be applied, inputs
+mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_specifier(self.met_src), max_air_temp_with_specifier(self.met_src))),
+#mean_air_temp_with_specifier('era5'): (self.mean_temp, (min_air_temp_with_specifier('era5'), max_air_temp_with_specifier('era5'))),
+#mean_air_temp_with_specifier('ref'): (self.mean_temp, (min_air_temp_with_specifier('ref'), max_air_temp_with_specifier('ref'))),
+        }
+
+    @property
     def q_path(self):
         return os.path.join(self.path, "CABra_streamflow_daily_series",
                             "CABra_daily_streamflow")
@@ -725,7 +745,7 @@ class CABra(_RainfallRunoff):
 
     def __dynamic_features(self) -> List[str]:
         stn = self.stations()[0]
-        df = pd.concat([self._read_q_from_csv(stn), self._read_meteo_from_csv(stn)], axis=1)
+        df = pd.concat([self._read_q_from_csv(stn), self._read_meteo_from_csv(stn, self.met_src)], axis=1)
         cols = df.columns.to_list()
         cols = [col for col in cols if col not in ['Year', 'Month', 'Day']]
         return cols
@@ -736,7 +756,7 @@ class CABra(_RainfallRunoff):
         return self._static_features
 
     def __static_features(self) -> List[str]:
-        return pd.concat(
+        df = pd.concat(
             [
                 self.climate_attrs(),
                 self.general_attrs(),
@@ -746,7 +766,13 @@ class CABra(_RainfallRunoff):
                 self.lc_attrs(),
                 self.soil_attrs(),
                 self.q_attrs(),
-                self.topology_attrs()], axis=1).columns.to_list()
+                self.topology_attrs()], axis=1)
+        
+        # drop duplicate columns from df which might have come due to concatenation
+        df = df.loc[:, ~df.columns.duplicated()]
+
+        df.rename(columns = self.static_map, inplace=True)
+        return df.columns.to_list()
 
     def stations(self) -> List[str]:
         return self.add_attrs().index.astype(str).to_list()
@@ -758,76 +784,6 @@ class CABra(_RainfallRunoff):
     @property
     def end(self) -> pd.Timestamp:
         return pd.Timestamp("2010-09-30")
-
-    def q_mmd(
-            self,
-            stations: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        returns streamflow in the units of milimeter per day. It is obtained
-        by dividing ``Streamflow`` time series by area
-
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is ``all``, which will return
-            area of all stations
-
-        Returns
-        --------
-        pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
-            are catchment/station ids.
-
-        """
-        stations = check_attributes(stations, self.stations())
-        q = self.fetch_stations_features(stations,
-                                         dynamic_features=observed_streamflow_cms(),
-                                         as_dataframe=True)
-        q.index = q.index.get_level_values(0)
-        area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # cms to m/day
-        return q * 1e3  # to mm/day
-
-    @property
-    def _area_name(self) -> str:
-        return 'catch_area'
-
-    def stn_coords(
-            self,
-            stations: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        returns coordinates of stations as DataFrame
-        with ``long`` and ``lat`` as columns.
-
-        Parameters
-        ----------
-        stations :
-            name/names of stations. If not given, coordinates
-            of all stations will be returned.
-
-        Returns
-        -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
-            The length of dataframe will be equal to number of stations
-            wholse coordinates are to be fetched.
-
-        Examples
-        --------
-        >>> dataset = CABra()
-        >>> dataset.stn_coords() # returns coordinates of all stations
-        >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 912101A
-        >>> dataset.stn_coords(['92', '142'])  # returns coordinates of two stations
-
-        """
-        df = self.general_attrs()
-        df.index = df.index.astype(str)
-        df = df[['latitude', 'longitude']]
-        df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations())
-        return df.loc[stations, :]
 
     def add_attrs(self) -> pd.DataFrame:
         """
@@ -1122,8 +1078,8 @@ class CABra(_RainfallRunoff):
         gen_attrs.index = gen_attrs.pop('CABra_ID')
         return gen_attrs
 
-    def _read_q_from_csv(self, stn_id: str) -> pd.DataFrame:
-        q_fpath = os.path.join(self.q_path, f"CABra_{stn_id}_streamflow.txt")
+    def _read_q_from_csv(self, station: str) -> pd.DataFrame:
+        q_fpath = os.path.join(self.q_path, f"CABra_{station}_streamflow.txt")
 
         df = pd.read_csv(q_fpath, sep='\t',
                          header=8,
@@ -1140,7 +1096,7 @@ class CABra(_RainfallRunoff):
 
     def _read_meteo_from_csv(
             self,
-            stn_id: str,
+            station: str,
             source="ens") -> pd.DataFrame:
 
         meteo_path = os.path.join(self.path,
@@ -1149,23 +1105,23 @@ class CABra(_RainfallRunoff):
                                   source
                                   )
         meteo_fpath = os.path.join(meteo_path,
-                                   f"CABra_{stn_id}_climate_{source.upper()}.txt")
+                                   f"CABra_{station}_climate_{source.upper()}.txt")
 
         dtypes = {"Year": int,
                   "Month": int,
                   "Day": int,
-                  "p_ens": np.float32,
-                  "tmin_ens": np.float32,
-                  "tmax_ens": np.float32,
-                  "rh_ens": np.float32,
-                  "wnd_ens": np.float32,
-                  "srad_ens": np.float32,
-                  "et_ens": np.float32,
+                  f"p_{source}": np.float32,
+                  f"tmin_{source}": np.float32,
+                  f"tmax_{source}": np.float32,
+                  f"rh_{source}": np.float32,
+                  f"wnd_{source}": np.float32,
+                  f"srad_{source}": np.float32,
+                  f"et_{source}": np.float32,
                   "pet_pm": np.float32,
                   "pet_pt": np.float32,
                   "pet_hg": np.float32}
 
-        if source == "ref" and stn_id in [
+        if source == "ref" and station in [
             '1', '2', '3', '4', '5', '6', '7', '8', '9',
             '15', '17', '18', '19', '27', '28', '34', '526',
             '564', '567', '569'
@@ -1179,60 +1135,20 @@ class CABra(_RainfallRunoff):
                              header=12)
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        for new_col, (func, old_col) in self.dyn_generators.items():
+            if isinstance(old_col, str):
+                if old_col in df.columns:
+                    # name of Series to func should be same as station id
+                    df[new_col] = func(pd.Series(df[old_col], name=station))
+            else:
+                assert isinstance(old_col, tuple)
+                if all([col in df.columns for col in old_col]):
+                    # feed all old_cols to the function
+                    df[new_col] = func(*[pd.Series(df[col], name=station) for col in old_col])
         return df
 
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, List[str]] = 'all',
-            static_features: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a pandas dataframe of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import CABra
-        >>> dataset = CABra()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            735
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (735, 97)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('92')
-        >>> static_data.shape
-           (1, 97)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['gauge_lat', 'area'])
-        >>> static_data.shape
-           (735, 2)
-        >>> data = dataset.fetch_static_features('92', static_features=['gauge_lat', 'area'])
-        >>> data.shape
-           (1, 2)
-
-        """
-
-        stations = check_attributes(stn_id, self.stations())
-        features = check_attributes(static_features, self.static_features, 'static_features')
-
+    def _static_data(self)->pd.DataFrame:
         df = pd.concat([self.climate_attrs(),
                         self.general_attrs(),
                         self.geology_attrs(),
@@ -1246,9 +1162,12 @@ class CABra(_RainfallRunoff):
         df.index = df.index.astype(str)
         # drop duplicate columns
         df = df.loc[:, ~df.columns.duplicated()].copy()
-        return df.loc[stations, features]
 
-    def _read_dynamic_from_csv(
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
+
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -1266,7 +1185,7 @@ class CABra(_RainfallRunoff):
         if self.verbosity>2:
             print("getting streamflow data")
 
-        qs = [self._read_q_from_csv(stn_id=stn_id) for stn_id in stations]
+        qs = [self._read_q_from_csv(station=station) for station in stations]
         q_idx = pd.to_datetime(
             qs[0]['Year'].astype(str) + '-' + qs[0]['Month'].astype(str) + '-' + qs[0]['Day'].astype(str))
 
@@ -1274,13 +1193,16 @@ class CABra(_RainfallRunoff):
             print("getting meteo data")
 
         meteos = [
-            self._read_meteo_from_csv(stn_id=stn_id, source=self.met_src) for stn_id in stations]
+            self._read_meteo_from_csv(station=station, source=self.met_src) for station in stations]
         # 10 because first 10 stations don't have data for "ref" source
         met_idx = pd.to_datetime(
             meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
                 str))
 
         met_cols = [col for col in meteos[0].columns if col not in ['Year', 'Month', 'Day']]
+
+        if self.verbosity>2:
+            print("putting data in dictionary")
 
         dyn = {}
 

@@ -32,7 +32,7 @@ extra_requires = [
 
 # for reading data
 'netCDF4',
-'xarray',
+'xarray<2025.1.0',  # xarray 2025.1.1 is causing to_netcdf error
 
 # todo : following libraries are required by read_html
 #lxml for reading html
@@ -46,7 +46,7 @@ setup(
 
     name='aqua_fetch',
 
-    version = "1.0.0rc1",
+    version = "1.0.0rc2",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,

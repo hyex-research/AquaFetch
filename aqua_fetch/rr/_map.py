@@ -123,6 +123,11 @@ def mean_daily_evaporation()->str:
     """catchment daily averaged evaporation (observations) mm/day"""
     return "evap_mm"
 
+
+def mean_daily_evaporation_with_specifier(specifier:str)->str:
+    """catchment daily averaged evaporation (observations) mm/day"""
+    return f"evap_mm_{specifier}"
+
 # %%
 # wind speed
 
@@ -185,7 +190,7 @@ def v_component_of_wind_with_specifier(specifier:str)->str:
 # %% relative humidity
 
 def mean_rel_hum()->str:
-    # in percentage
+    # mean relative humidity in percentage
     return "rh_%"
 
 
@@ -221,14 +226,25 @@ def min_air_pressure()->str:
 
 
 # %% solar radiation
+# The term 'solar' and 'shortwave' refers to the same thing, similarly
+# 'longwave' and 'thermal' refers to the same thing.
+
+def net_solar_radiation()->str:
+    """
+    Net solar (shorwave) radiation is the difference between the incoming (shortwave) and 
+    outgoing solar (shotwave) radiation
+    """
+    return "solradnet_wm2"
+
 
 def solar_radiation()->str:
     """
+    Since the the word 'solar' is used, it is assumed that it is shortwave radiation.
+    It is also customary to refer this term for shorwave downward radiation
     # todo: is it mean or total?
     also know as
     shortwave radiation
     downard shortwave radiation
-    net solar radiation
     """
     return "solrad_wm2"
 
@@ -259,16 +275,28 @@ def min_solar_radiation()->str:
     downard shortwave radiation
     net solar radiation
     """
-    return "solrad_wm2_max"
+    return "solrad_wm2_min"
 
 
 def downward_longwave_radiation()->str:
+    """
+    Downward longwave radiation is usually/always thermal radiation
+    downloard longwave radiation
+    downward thermal radiation
+    """
     return "lwdownrad_wm2"
 
 
 def download_longwave_radiation_with_specifier(specifier:str)->str:
     return f"lwdownrad_wm2_{specifier}"
 
+
+def net_longwave_radiation()->str:
+    """
+    Net longwave (thermal) radiation is the difference between the incoming and 
+    outgoing longwave radiation
+    """
+    return "lwnetrad_wm2"
 
 # %%
 # thermal radiation
@@ -285,7 +313,10 @@ def min_themal_radiation()->str:
 
 
 # %% 
-# snow water equivalent depth
+# snow water equivalent, depth, density
+
+def snow_depth()->str:
+    return "snowdepth_m"
 
 def snow_water_equivalent()->str:
     # is it total or mean?
@@ -304,6 +335,20 @@ def max_snow_water_equivalent()->str:
 def min_snow_water_equivalent()->str:
     return "swe_mm_min"
 
+
+def snowfall()->str:
+    """total snowfall mm per units of time"""
+    return "snowfall_mm"
+
+
+def snowmelt()->str:
+    """total snowmelt mm per units of time"""
+    return "snowmelt_mm"
+
+
+def snow_density()->str:
+    """Average daily snow density in kg m-3"""
+    return "snowdensity_kgm3"
 
 # %%
 
@@ -384,7 +429,7 @@ def mean_vapor_pressure()->str:
 
 
 def mean_vapor_pressure_with_specifier(specifier)->str:
-    return f"{specifier}_vp_hpa"
+    return f"vp_hpa_{specifier}"
 
 
 # %%
@@ -392,6 +437,12 @@ def mean_vapor_pressure_with_specifier(specifier)->str:
 
 def sunshine_duration()->str:
     return "ssd_hr"
+
+# %%
+# cloud cover
+
+def cloud_cover()->str:
+    return "cloudcover"
 
 # %%
 # ****STATIC FEATURES****
@@ -407,3 +458,68 @@ def gauge_longitude()->str:
 
 def slope(unit)->str:
     return f"slope_{unit}"
+
+
+def gauge_elevation_meters()->str:
+    """elevation of the gauge station in meters"""
+    return "elev_gauge_m"
+
+
+def catchment_elevation_meters()->str:
+    """mean elevation of the catchment in meters"""
+    return "elev_catch_m"
+
+
+def min_catchment_elevation_meters()->str:
+    """minimum elevation of the catchment in meters"""
+    return "elev_catch_min_m"
+
+
+def max_catchment_elevation_meters()->str:
+    """maximum elevation of the catchment in meters"""
+    return "elev_catch_max_m"
+
+
+def urban_fraction()->str:
+    """Fraction of urban area in the catchment"""
+    return "urban_frac"
+
+
+def forest_fraction()->str:
+    """Fraction of forest area in the catchment"""
+    return "forest_frac"
+
+
+def grass_fraction()->str:
+    """Fraction of grass area in the
+    catchment"""
+    return "grass_frac"
+
+
+def impervious_fraction()->str:
+    """Fraction of impervious area in the catchment"""
+    return "imperv_frac"
+
+
+def aridity_index()->str:
+    return "aridity"
+
+
+def gauge_density()->str:
+    return "gauge_density"
+
+
+def baseflow_index()->str:
+    return "bfi"
+
+
+def catchment_centroid_latitude()->str:
+    return "lat_catch"
+
+
+def catchment_centroid_longitude()->str:
+    return "long_catch"
+
+
+def elong_ratio()->str:
+    return "elong_ratio"

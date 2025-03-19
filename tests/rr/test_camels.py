@@ -1,6 +1,6 @@
 
 import os
-import site   # so that water_datasets directory is in path
+import site   # so that aqua_fetch directory is in path
 import logging
 import unittest
 
@@ -29,11 +29,7 @@ if __name__ == "__main__":
 
 logger = logging.getLogger(__name__)
 
-from utils import (
-    test_dataset, 
-    test_dynamic_data,
-    test_attributes
-    )
+from utils import test_dataset
 
 
 class TestCamels(unittest.TestCase):
@@ -45,10 +41,10 @@ class TestCamels(unittest.TestCase):
 
     def test_aus(self):
         ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS_AUS_V1'), version=1)
-        test_dataset(ds_aus, 222, 23376, 166, 26)
+        test_dataset(ds_aus, 222, 23376, 166, 28)
 
-        ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2)
-        test_dataset(ds_aus, 561, 26388, 187, 26)
+        ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2, verbosity=4)
+        test_dataset(ds_aus, 561, 26388, 187, 28)
         return
 
     def test_hype(self):
@@ -63,7 +59,7 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_us(self):
-        ds_us = CAMELS_US(path=os.path.join(gscad_path, 'CAMELS'))
+        ds_us = CAMELS_US(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
@@ -81,9 +77,9 @@ class TestCamels(unittest.TestCase):
 
             if stn not in ['35616.txt']:
 
-                stn_id = stn.split('.')[0]
+                station = stn.split('.')[0]
 
-                df = dataset._read_meteo_from_csv(stn_id)
+                df = dataset._read_meteo_from_csv(station)
 
                 assert df.shape == (11413, 9)
 
@@ -91,20 +87,19 @@ class TestCamels(unittest.TestCase):
                     logger.info(idx)
         return
 
-
     def test_waterbenchiowa(self):
 
         dataset = WaterBenchIowa(path=gscad_path)
 
-        data = dataset.fetch(static_features=None)
+        _, data = dataset.fetch(static_features=None)
         assert len(data) == 125
         for k, v in data.items():
             assert v.shape == (61344, 3)
 
-        data = dataset.fetch(5, as_dataframe=True)
+        _, data = dataset.fetch(5, as_dataframe=True)
         assert data.shape == (184032, 5)
 
-        data = dataset.fetch(5, static_features="all", as_dataframe=True)
+        _, data = dataset.fetch(5, static_features="all", as_dataframe=True)
         assert data['static'].shape == (5, 7)
         data = dataset.fetch_dynamic_features('644', as_dataframe=True)
         assert data.unstack().shape == (61344, 3)

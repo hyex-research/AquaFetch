@@ -1,13 +1,14 @@
+
 import os
 import concurrent.futures as cf
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple, Callable, Any
 
 import pandas as pd
 
 from .utils import _RainfallRunoff
 from ..utils import get_cpus
 from ..utils import check_st_en
-from ..utils import check_attributes, download, _unzip
+from ..utils import check_attributes, download, unzip
 
 from .._backend import netCDF4, xarray as xr
 
@@ -62,9 +63,9 @@ class GRDCCaravan(_RainfallRunoff):
 
     Examples
     --------
-    >>> from water_datasets import GRDCCaravan
+    >>> from aqua_fetch import GRDCCaravan
     >>> dataset = GRDCCaravan()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
        (26801, 39)
@@ -73,33 +74,32 @@ class GRDCCaravan(_RainfallRunoff):
     >>> len(stns)
        5357
     get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (1045239, 535)
     The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     get data by station id
-    >>> df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True).unstack()
     >>> df.shape
          (26800, 39)
     get names of available dynamic features
     >>> dataset.dynamic_features
     get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'streamflow']).unstack()
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs']).unstack()
     >>> data.shape
         (26800, 4)
     get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
         (1045239, 10)
-    when we get both static and dynamic data, the returned data is a dictionary
-    with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
         ((1, 211), (1045200, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -136,13 +136,18 @@ class GRDCCaravan(_RainfallRunoff):
 
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
+        if not os.path.exists(self.path):
+            if self.verbosity>1:
+                print(f"Creating directory {self.path}")
+            os.makedirs(self.path)
+
         for _file, url in self.url.items():
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
                 if self.verbosity > 0:
                     print(f"Downloading {_file} from {url + _file}")
                 download(url + _file, outdir=self.path, fname=_file, )
-                _unzip(self.path)
+                unzip(self.path)
             elif self.verbosity > 0:
                 print(f"{_file} at {self.path} already exists")
 
@@ -154,7 +159,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         # so that we dont have to read the files again and again
         self._stations = self.other_attributes().index.to_list()
-        self._static_attributes = self.static_data().columns.tolist()
+        self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
 
         self.dyn_fname = ''
@@ -170,11 +175,17 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def dyn_map(self):
         return {
-            'streamflow': observed_streamflow_cms(),
+            'streamflow': observed_streamflow_mmd(),
             'temperature_2m_mean': mean_air_temp_with_specifier('2m'),
             'temperature_2m_min': min_air_temp_with_specifier('2m'),
             'temperature_2m_max': max_air_temp_with_specifier('2m'),
             'total_precipitation_sum': total_precipitation(),
+        }
+
+    @property
+    def dyn_generator(self)->Dict[str, Tuple[Callable, Any]]:
+        return {
+            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
         }
 
     @property
@@ -214,24 +225,12 @@ class GRDCCaravan(_RainfallRunoff):
         return self._stations
 
     @property
-    def _coords_name(self) -> List[str]:
-        return ['gauge_lat', 'gauge_lon']
-
-    @property
-    def _area_name(self) -> str:
-        return 'area'
-
-    @property
     def start(self):
         return pd.Timestamp("19500102")
 
     @property
     def end(self):
         return pd.Timestamp("20230519")
-
-    @property
-    def _q_name(self) -> str:
-        return observed_streamflow_cms()
 
     def other_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_other_grdc.csv'), index_col='gauge_id')
@@ -242,23 +241,26 @@ class GRDCCaravan(_RainfallRunoff):
     def caravan_attributes(self) -> pd.DataFrame:
         return pd.read_csv(os.path.join(self.attrs_path, 'attributes_caravan_grdc.csv'), index_col='gauge_id')
 
-    def static_data(self) -> pd.DataFrame:
-        return pd.concat([
+    def _static_data(self) -> pd.DataFrame:
+        df = pd.concat([
             self.other_attributes(),
             self.hydroatlas_attributes(),
             self.caravan_attributes(),
         ], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
 
     def fetch_station_features(
             self,
             station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Fetches features for one station.
 
@@ -270,10 +272,6 @@ class GRDCCaravan(_RainfallRunoff):
                 names of dynamic features/attributes to fetch
             static_features :
                 names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
             st : str,optional
                 starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
@@ -282,13 +280,14 @@ class GRDCCaravan(_RainfallRunoff):
 
         Returns
         -------
-        Dict
-            dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic features for a station/gauge_id
+        tuple
+            A tuple of static and dynamic features, both as :obj:`pandas.DataFrame`.
+            The dataframe of static features will be of single row while the dynamic
+            features will be of shape (time, dynamic features).
 
         Examples
         --------
-            >>> from water_datasets import GRDCCaravan
+            >>> from aqua_fetch import GRDCCaravan
             >>> dataset = GRDCCaravan()
             >>> dataset.fetch_station_features('912101A')
         """
@@ -312,58 +311,7 @@ class GRDCCaravan(_RainfallRunoff):
 
         return {'static': static, 'dynamic': df[dynamic_features]}
 
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, list] = "all",
-            static_features: Union[str, list] = "all"
-    ) -> pd.DataFrame:
-        """
-
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a pandas dataframe of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from water_datasets import GRDCCaravan
-        >>> dataset = GRDCCaravan()
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (1555, 111)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('DE110010')
-        >>> static_data.shape
-           (1, 111)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> static_data.shape
-           (1555, 3)
-        >>> data = dataset.fetch_static_features('DE110000', static_features=['p_mean', 'p_seasonality', 'frac_snow'])
-        >>> data.shape
-           (1, 3)
-        """
-        stations = check_attributes(stn_id, self.stations(), 'stations')
-
-        df = self.static_data()
-        features = check_attributes(static_features, df.columns.tolist(),
-                                    "static_features")
-        return df.loc[stations, features]
-
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -388,15 +336,19 @@ class GRDCCaravan(_RainfallRunoff):
 
         return dyn
 
-    def _read_dynamic_for_stn(self, stn_id) -> pd.DataFrame:
+    def _read_dynamic_for_stn(self, station) -> pd.DataFrame:
         if self.ftype == "netcdf":
-            fpath = os.path.join(self.ts_path, f'{stn_id}.nc')
+            fpath = os.path.join(self.ts_path, f'{station}.nc')
             df = xr.load_dataset(fpath).to_dataframe()
         else:
-            fpath = os.path.join(self.ts_path, f'{stn_id}.csv')
+            fpath = os.path.join(self.ts_path, f'{station}.csv')
             df = pd.read_csv(fpath, index_col='date', parse_dates=True)
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        for new_feature, (func, old_feature) in self.dyn_generator.items():
+            if new_feature not in df.columns:
+                df[new_feature] = func(pd.Series(df[old_feature], name=station))
 
         df.index.name = 'time'
         df.columns.name = 'dynamic_features'

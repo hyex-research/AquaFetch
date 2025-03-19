@@ -1,6 +1,6 @@
 
 import os
-import site   # so that water_quality directory is in path
+import site   # so that aqua_fetch directory is in path
 import logging
 
 # add the parent directory in the path
@@ -19,4 +19,4 @@ from aqua_fetch import GRDCCaravan
 from utils import test_dataset
 
 dataset = GRDCCaravan(path=gscad_path)
-test_dataset(dataset, 5357, 26801, 211, 39)
+test_dataset(dataset, 5357, 26801, 211, 40)

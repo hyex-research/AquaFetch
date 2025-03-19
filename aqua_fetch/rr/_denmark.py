@@ -11,6 +11,7 @@ from ._map import (
     mean_air_temp,
     total_potential_evapotranspiration_with_specifier,
     actual_evapotranspiration,
+    observed_streamflow_cms,
 )
 
 from ._map import (
@@ -32,20 +33,20 @@ class Caravan_DK(_RainfallRunoff):
 
     Please note that there is an updated version of this dataset following the works
     of `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ . This dataset
-    is associated with the :py:class:`water_datasets.CAMELS_DK` class which can be imported as follows:
+    is associated with the :py:class:`aqua_fetch.CAMELS_DK` class which can be imported as follows:
 
-    >>> from water_datasets import CAMELS_DK
+    >>> from aqua_fetch import CAMELS_DK
 
     Examples
     ---------
-    >>> from water_datasets import Caravan_DK
+    >>> from aqua_fetch import Caravan_DK
     >>> dataset = Caravan_DK()
-    >>> data = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
     >>> data.shape
     (569751, 30)  # 30 represents number of stations
     >>> data.index.names == ['time', 'dynamic_features']
     True
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
     (14609, 39)
@@ -54,27 +55,26 @@ class Caravan_DK(_RainfallRunoff):
     >>> len(stns)
     308
     # get data by station id
-    >>> df = dataset.fetch(stations='80001', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True).unstack()
     >>> df.shape
     (14609, 39)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> df = dataset.fetch(1, as_dataframe=True,
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
     ... dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
-    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'streamflow']).unstack()
+    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs']).unstack()
     >>> df.shape
     (14609, 5)
     # get names of available static features
     >>> dataset.static_features
     # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape
     (569751, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dynamic`` keys.
-    >>> data = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 211), (569751, 1))
     """
 
@@ -106,13 +106,13 @@ class Caravan_DK(_RainfallRunoff):
         self.path = path
         self._download(overwrite=overwrite)
 
-        self._static_features = self.__static_features()
+        self._static_features = self._static_data().columns.to_list()
         self._dynamic_features = self.__dynamic_features()
 
-        self.dyn_fname = os.path.join(self.path, 'camelsdk_dyn.nc')
+        self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
 
         if to_netcdf:
-            self._maybe_to_netcdf('camelsdk_dyn')
+            self._maybe_to_netcdf('caravandk_dyn')
 
         self.boundary_file = os.path.join(
             path,
@@ -127,13 +127,22 @@ class Caravan_DK(_RainfallRunoff):
 
         self._create_boundary_id_map(self.boundary_file, 3)
 
+    @staticmethod
+    def _get_map(sf_reader, id_index, name: str = '') -> Dict[str, int]:
+
+        catch_ids_map = {
+            str(rec[id_index]).split('_')[1]: idx for idx, rec in enumerate(sf_reader.iterRecords())
+        }
+
+        return catch_ids_map
+    
     @property
     def static_map(self) -> Dict[str, str]:
         return {
-                'catch_area': catchment_area(),
-                'catch_outlet_lat': gauge_latitude(),
+                'area': catchment_area(),
+                'gauge_lat': gauge_latitude(),
                 'slope_mean': slope('mkm-1'),
-                'catch_outlet_lon': gauge_longitude(),
+                'gauge_lon': gauge_longitude(),
         }
 
     @property
@@ -175,6 +184,9 @@ class Caravan_DK(_RainfallRunoff):
 
         df.rename(columns=self.dyn_map, inplace=True)
 
+        df.index.name = 'time'
+        df.columns.name = 'dynamic_features'
+
         return df
 
     @property
@@ -190,16 +202,6 @@ class Caravan_DK(_RainfallRunoff):
         """returns static features for Denmark catchments"""
         return self._static_features
 
-    def __static_features(self) -> List[str]:
-        caravan = pd.read_csv(self.caravan_attr_fpath)
-        _ = caravan.pop('gauge_id')
-        other = pd.read_csv(self.other_attr_fpath)
-        _ = other.pop('gauge_id')
-        atlas = pd.read_csv(self.hyd_atlas_fpath)
-        _ = atlas.pop('gauge_id')
-
-        return pd.concat([caravan, other, atlas], axis=1).columns.to_list()
-
     @property
     def start(self):  # start of data
         return pd.Timestamp('1981-01-02 00:00:00')
@@ -211,82 +213,8 @@ class Caravan_DK(_RainfallRunoff):
     @property
     def dyn_map(self) -> Dict[str, str]:
         return {
+            'streamflow': observed_streamflow_cms(),
         }
-
-    def q_mmd(
-            self,
-            stations: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        returns streamflow in the units of milimeter per day. This is obtained
-        by diving ``streamflow``/area
-
-        parameters
-        ----------
-        stations : str/list
-            name/names of stations. Default is ``all``, which will return
-            area of all stations
-
-        Returns
-        --------
-        pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
-            are catchment/station ids.
-
-        """
-        stations = check_attributes(stations, self.stations())
-        q = self.fetch_stations_features(stations,
-                                         dynamic_features='obs_q_cms',
-                                         as_dataframe=True)
-        q.index = q.index.get_level_values(0)
-        area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # cms to m/day
-        return q * 1e3  # to mm/day
-
-    def _area_name(self, stn: str) -> str:
-        return "area"
-
-    # def area(
-    #         self,
-    #         stations: Union[str, List[str]] = None
-    # ) ->pd.Series:
-    #     """
-    #     Returns area (Km2) of all catchments as pandas series
-
-    #     parameters
-    #     ----------
-    #     stations : str/list
-    #         name/names of stations. Default is None, which will return
-    #         area of all stations
-
-    #     Returns
-    #     --------
-    #     pd.Series
-    #         a pandas series whose indices are catchment ids and values
-    #         are areas of corresponding catchments.
-
-    #     Examples
-    #     ---------
-    #     >>> from water_quality import CAMELS_DK
-    #     >>> dataset = CAMELS_DK()
-    #     >>> dataset.area()  # returns area of all stations
-    #     >>> dataset.stn_coords('100010')  # returns area of station whose id is 912101A
-    #     >>> dataset.stn_coords(['100010', '210062'])  # returns area of two stations
-    #     """
-
-    #     stations = check_attributes(stations, self.stations())
-
-    #     df = pd.read_csv(self.other_attr_fpath,
-    #                      dtype={"gauge_id": str,
-    #                             'gauge_lat': float,
-    #                             'gauge_lon': float,
-    #                             'area': float,
-    #                             'gauge_name': str,
-    #                             'country': str
-    #                             })
-    #     df.index = [name.split('camelsdk_')[1] for name in df['gauge_id']]
-
-    #     return df.loc[stations, 'area']
 
     def stn_coords(
             self,
@@ -304,8 +232,8 @@ class Caravan_DK(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -333,7 +261,7 @@ class Caravan_DK(_RainfallRunoff):
 
         return df.loc[stations, :]
 
-    def _read_dynamic_from_csv(
+    def _read_dynamic(
             self,
             stations,
             dynamic_features,
@@ -344,62 +272,13 @@ class Caravan_DK(_RainfallRunoff):
         dyn = {stn: self._read_csv(stn)[features] for stn in stations}
 
         return dyn
-
-    def fetch_static_features(
-            self,
-            stn_id: Union[str, List[str]] = 'all',
-            features: Union[str, List[str]] = 'all'
-    ) -> pd.DataFrame:
-        """
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stn_id : str
-                name/id of station/stations of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a pandas dataframe of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from water_datasets import Caravan_DK
-        >>> dataset = Caravan_DK()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            308
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (308, 211)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('80001')
-        >>> static_data.shape
-           (1, 211)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['gauge_lat', 'area'])
-        >>> static_data.shape
-           (308, 2)
-        >>> data = dataset.fetch_static_features('80001', features=['gauge_lat', 'area'])
-        >>> data.shape
-           (1, 2)
-
-        """
-        stations = check_attributes(stn_id, self.stations())
-        features = check_attributes(features, self.static_features)
-
+    
+    def _static_data(self)->pd.DataFrame:
         df = pd.concat([self.hyd_atlas_attributes(),
                         self.other_static_attributes(),
                         self.caravan_static_attributes()], axis=1)
-        return df.loc[stations, features]
+        df.rename(columns=self.static_map, inplace=True)
+        return df
 
     @property
     def hyd_atlas_fpath(self):
@@ -414,7 +293,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 196)
+            a :obj:`pandas.DataFrame` of shape (308, 196)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.hyd_atlas_fpath)
@@ -427,7 +306,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 5)
+            a :obj:`pandas.DataFrame` of shape (308, 5)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.other_attr_fpath)
@@ -439,7 +318,7 @@ class Caravan_DK(_RainfallRunoff):
         """
         Returns
         --------
-            a pandas DataFrame of shape (308, 10)
+            a :obj:`pandas.DataFrame` of shape (308, 10)
         """
         stations = check_attributes(stations, self.stations())
         df = pd.read_csv(self.caravan_attr_fpath)

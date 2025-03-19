@@ -10,8 +10,8 @@ __all__ = [
 
 import os
 import time
-from typing import List, Union, Dict
 import concurrent.futures as cf
+from typing import List, Union, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -90,7 +90,7 @@ class GSHA(_RainfallRunoff):
     >>> dataset.end
     Timestamp('2022-12-31 00:00:00')
     >>> dataset.static_features
-    ['ele_mt_uav', 'slp_dg_uav', 'lat', 'long', 'area', 'agency', ...]
+    ['ele_mt_uav', 'slp_dg_uav', 'lat', 'long', 'area_km2', 'agency', ...]
     >>> len(dataset.dynamic_features)
     26
     >>> len(dataset.daily_dynamic_features)
@@ -269,13 +269,18 @@ class GSHA(_RainfallRunoff):
     def dynamic_features(self) -> List[str]:
         return self.daily_dynamic_features
 
-    def __static_features(self):
-        return pd.concat(
+    def __static_features(self)->List[str]:
+        df = pd.concat(
             [self.atlas('1001_arcticnet'),
-             self.uncertainty('1001_arcticnet')
+             self.uncertainty('1001_arcticnet'),
+             self.wsAll.copy(),
              ],
             axis=1
-        ).columns.tolist() + self.wsAll.columns.tolist()
+        ) #+ self.wsAll
+
+        df.rename(columns = self.static_map, inplace = True)
+
+        return df.columns.tolist()
 
     def agency_of_stn(self, stn: str) -> str:
         """find the agency to which a station belongs """
@@ -320,7 +325,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 2) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 2) where n is the number of stations
 
         Examples
         --------
@@ -344,7 +349,9 @@ class GSHA(_RainfallRunoff):
     def area(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.Series:
         """area of catchments"""
         stations = self._get_stations(stations, agency)
-        return self.wsAll.loc[stations, 'area']
+        s = self.wsAll.loc[stations, 'area']
+        s.name = 'area_km2'
+        return s
 
     def uncertainty(
             self,
@@ -365,7 +372,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 7) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 7) where n is the number of stations
         """
         stations = self._get_stations(stations, agency)
 
@@ -386,7 +393,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 24) where n is the number of stations
+            a :obj:`pandas.DataFrame` of shape (n, 24) where n is the number of stations
         """
         stations = self._get_stations(stations, agency)
 
@@ -412,7 +419,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 3) where n is the number of years
+            a :obj:`pandas.DataFrame` of shape (n, 3) where n is the number of years
         """
         return lc_variable_stn(self.path, stn)
 
@@ -423,15 +430,54 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Landcover variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = lc_vars_all_stns(self.path)
+        lc_vars = self.lc_vars_all_stns()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def lc_vars_all_stns(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'lc_variables.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading landcover variables for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                lc_variable_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            if self.verbosity: print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+        return ds
 
     def reservoir_variables_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -444,7 +490,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (42, 2) where 42 is the number of years
+            a :obj:`pandas.DataFrame` of shape (42, 2) where 42 is the number of years
         """
         return reservoir_vars_stn(self.path, stn)
 
@@ -455,15 +501,54 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Reservoir variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = reservoir_vars_all_stns(self.path)
+        lc_vars = self.reservoir_vars_all_stns()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def reservoir_vars_all_stns(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'reservoir_variables.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading reservoir variables for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                reservoir_vars_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
+
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            self.print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+        return ds
 
     def streamflow_indices_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -472,7 +557,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (n, 16) where n is the number of years
+            a :obj:`pandas.DataFrame` of shape (n, 16) where n is the number of years
         """
         return streamflow_indices_stn(self.path, stn)
 
@@ -483,19 +568,55 @@ class GSHA(_RainfallRunoff):
     ):
         """
         Landcover variables for one or more than one station either
-        as xr.Dataset or dictionary. The data has yearly timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has yearly timestep.
         """
         stations = self._get_stations(stations, agency)
 
-        lc_vars = streamflow_indices_all_stations(
-            self.path,
-            to_netcdf=self.to_netcdf,
-            verbosity=self.verbosity
-        )
+        lc_vars = self.streamflow_indices_all_stations()
         if isinstance(lc_vars, xr.Dataset):
             return lc_vars[stations]
         else:
             return {stn: lc_vars[stn] for stn in stations}
+
+    def streamflow_indices_all_stations(
+            self
+    ):
+        nc_path = os.path.join(self.path, 'streamflow_indices.nc')
+
+        if self.to_netcdf and os.path.exists(nc_path):
+            if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+            return xr.open_dataset(nc_path)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading streamflow indices for {len(stations)} stations using {cpus} cpus")
+        # takes ~20 seconds with 110 cpus
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                streamflow_indices_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+
+            ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
+            if self.verbosity: print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = {stn: df for stn, df in zip(stations, results)}
+
+        return ds
 
     def lai_stn(self, stn: str) -> pd.Series:
         """
@@ -506,27 +627,76 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.Series
-            a pandas Series of shape (14571,) where 14571 is the number of days
+            a :obj:`pandas.Series` of shape (14571,) where 14571 is the number of days
         """
         return lai_stn(self.path, stn)
 
-    def lai(
+    def fetch_lai(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
     ):
         """
         Leaf Area Index timeseries for one or more than one station either
-        as xr.Dataset or pandas DataFrame. The data has daily timestep.
+        as :obj:`xarray.Dataset` or :obj:`pandas.DataFrame`. The data has daily timestep.
         """
         stations = self._get_stations(stations, agency)
 
-        lai = lai_all_stns(
-            self.path,
-            to_netcdf=self.to_netcdf,
-            verbosity=self.verbosity
-        )
+        lai = self.lai_all_stns()
         return lai[stations]
+
+    def lai_all_stns(
+            self
+    ):
+        if self.to_netcdf:
+            nc_path = os.path.join(self.path, 'lai.nc')
+            if os.path.exists(nc_path):
+                if self.verbosity: print(f"Reading from pre-existing {nc_path}")
+                return xr.open_dataset(nc_path)
+        elif os.path.exists(os.path.join(self.path, 'lai.csv')):
+            if self.verbosity: print(f"Reading from pre-existing {self.path}")
+            return pd.read_csv(os.path.join(self.path, 'lai.csv'), index_col=0)
+
+        cpus = self.processes or max(get_cpus() - 2, 1)
+
+        start = time.time()
+
+        stations = self.stations()
+        paths = [self.path for _ in range(len(stations))]
+
+        if self.verbosity: print(f"Reading lai for {len(stations)} stations using {cpus} cpus")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+
+            results = executor.map(
+                lai_stn,
+                paths,
+                stations,
+            )
+
+        if self.verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
+
+        if self.to_netcdf:
+
+            encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
+
+            nc_path = os.path.join(self.path, 'lai.nc')
+            ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
+            print(f"Saving to {nc_path}")
+            ds.to_netcdf(nc_path, encoding=encoding)
+        else:
+            ds = pd.concat(results, axis=1)
+            csv_path = os.path.join(self.path, 'lai.csv')
+            if self.verbosity: print(f"Saving to {csv_path}")
+            ds.to_csv(csv_path, index=True)
+
+        return ds
+
+    def meteo_vars(self)->List[str]:
+        """
+        returns names of meteorological variables
+        """
+        return self.meteo_vars_stn('1001_arcticnet').columns.tolist()
 
     def meteo_vars_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -535,7 +705,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (16071, 19) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (16071, 19) where n is the number of days
         """
         path = os.path.join(
             self.path,
@@ -547,7 +717,7 @@ class GSHA(_RainfallRunoff):
     def meteo_vars_all_stns(self):
         """
         Meteorological variables from 1979-01-01 to 2022-12-31 for all stations either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         nc_path = os.path.join(self.path, 'meteo_vars.nc')
 
@@ -561,7 +731,7 @@ class GSHA(_RainfallRunoff):
             METEO_MAP[self.agency_of_stn(stn)],
             f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         start = time.time()
 
         if self.verbosity:
@@ -581,6 +751,8 @@ class GSHA(_RainfallRunoff):
 
             encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in meteo_vars.keys()}
 
+            if self.verbosity>1:
+                print(f"Creating xr.Dataset from {len(meteo_vars)} stations")
             ds = xr.Dataset(meteo_vars)
 
             if self.verbosity: print(f"Saving to {nc_path}")
@@ -591,14 +763,14 @@ class GSHA(_RainfallRunoff):
 
         return ds
 
-    def meteo_vars(
+    def fetch_meteo_vars(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
     ):
         """
         Meteorological variables from 1979-01-01 to 2022-12-31 for one or more than one station either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         if agency != "all" and stations != 'all':
             raise ValueError("Either provide agency or stations not both")
@@ -630,7 +802,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas DataFrame of shape (15706, 6) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (15706, 6) where n is the number of days
         """
         path = os.path.join(
             self.path,
@@ -643,7 +815,7 @@ class GSHA(_RainfallRunoff):
     def storage_vars_all_stns(self):
         """
         Water storage term variables from 1979-01-01 to 2021-12-31 for all stations either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         nc_path = os.path.join(self.path, 'storage.nc')
 
@@ -658,7 +830,7 @@ class GSHA(_RainfallRunoff):
             "Storage",
             f'{stn}.csv') for stn in self.stations()]
 
-        cpus = self.processes or get_cpus() - 2
+        cpus = self.processes or max(get_cpus() - 2, 1)
         start = time.time()
 
         if self.verbosity: print(f"Reading storage vars for {len(self.stations())} stations using {cpus} cpus")
@@ -688,14 +860,18 @@ class GSHA(_RainfallRunoff):
 
         return ds
 
-    def storage_vars(
+    def storage_vars(self)->List[str]:
+        """returns names of storage variables"""
+        return self.storage_vars_stn('1001_arcticnet').columns.tolist()
+
+    def fetch_storage_vars(
             self,
             stations: List[str] = "all",
             agency: List[str] = "all"
     ):
         """
         Water storage term variables from 1979-01-01 to 2021-12-31 for one or more than one station either
-        as xr.Dataset or dictionary. The data has daily timestep.
+        as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
         stations = self._get_stations(stations, agency)
 
@@ -726,7 +902,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (stations, features)
+            a :obj:`pandas.DataFrame` of shape (stations, features)
 
         Examples
         ---------
@@ -762,17 +938,21 @@ class GSHA(_RainfallRunoff):
 
         features = check_attributes(static_features, self.static_features, 'static_features')
 
-        return pd.concat([
+        df = pd.concat([
             self.atlas(stations),
             self.uncertainty(stations),
             self.wsAll.loc[stations, :]
         ],
             axis=1
-        ).loc[:, features]
+        )#.loc[:, features]
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df.loc[:, features]
 
     def fetch_stn_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
     ) -> pd.DataFrame:
         """
@@ -780,7 +960,7 @@ class GSHA(_RainfallRunoff):
 
         Parameters
         ----------
-            stn_id : str
+            station : str
                 name/id of station of which to extract the data
             features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
@@ -789,7 +969,7 @@ class GSHA(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (n, features) where n is the number of days
+            a :obj:`pandas.DataFrame` of shape (n, features) where n is the number of days
 
         Examples
         --------
@@ -803,9 +983,9 @@ class GSHA(_RainfallRunoff):
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         out = pd.concat(
-            [self.meteo_vars_stn(stn_id),
-             self.storage_vars_stn(stn_id),
-             self.lai_stn(stn_id).rename('lai')
+            [self.meteo_vars_stn(station),
+             self.storage_vars_stn(station),
+             self.lai_stn(station).rename('lai')
              ],
             axis=1
         ).loc[:, features]
@@ -820,8 +1000,9 @@ class GSHA(_RainfallRunoff):
             en=None,
             as_dataframe=False,
             agency: List[str] = "all",
-    ):
-        """Fetches all or selected dynamic features of one station.
+    )-> xr.Dataset:
+        """
+        Fetches all or selected dynamic features of one station.
 
         Parameters
         ----------
@@ -835,7 +1016,7 @@ class GSHA(_RainfallRunoff):
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
                 is xarray dataset
 
         Examples
@@ -845,7 +1026,7 @@ class GSHA(_RainfallRunoff):
             >>> camels.fetch_dynamic_features('1001_arcticnet', as_dataframe=True).unstack()
             >>> camels.dynamic_features
             >>> camels.fetch_dynamic_features('1001_arcticnet',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
+            ... features=['tmax_AWAP', 'vprp_AWAP', 'q_mmd_obs'],
             ... as_dataframe=True).unstack()
         """
 
@@ -864,22 +1045,25 @@ class GSHA(_RainfallRunoff):
         if as_dataframe:
             raise NotImplementedError("as_dataframe=True is not implemented yet")
 
-        meteo_vars = self.meteo_vars(stations)
-        storage_vars = self.storage_vars(stations)
-        # since lai does not have 'features' dimension, we need to add it
-        lai = self.lai(stations).expand_dims({'features': ['lai']})
+        # todo : we should read meteo, storage and lai only when they are required!
+        meteo_vars = self.fetch_meteo_vars(stations)
+        storage_vars = self.fetch_storage_vars(stations)
+        if 'lai' in features:
+            # since lai does not have 'features' dimension, we need to add it
+            lai = self.fetch_lai(stations).expand_dims({'features': ['lai']})
+            ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
+        else:
+            ds = xr.concat([meteo_vars, storage_vars], dim='features')
 
-        ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
         ds = ds.rename({'features': 'dynamic_features'})
-        return ds.sel(time=slice(st, en))
+        return ds.sel(time=slice(st, en), dynamic_features=features)
 
     def _meteo_vars_stn(self, fpath) -> pd.DataFrame:
 
         if not os.path.exists(fpath):
             raise FileNotFoundError(f"{fpath} not found")
 
-        df = pd.read_csv(fpath, index_col=0,
-                         )
+        df = pd.read_csv(fpath, index_col=0)
 
         df.index = pd.to_datetime(df.index)
 
@@ -892,7 +1076,7 @@ class GSHA(_RainfallRunoff):
             if col in df.columns:
                 df[col] = df[col].apply(func)
 
-        return df
+        return df.astype(self.fp)
 
     def _storage_vars_stn(self, fpath) -> pd.DataFrame:
 
@@ -966,18 +1150,6 @@ class _GSHA(_RainfallRunoff):
     def static_features(self) -> List[str]:
         return self.gsha.static_features
 
-    @property
-    def _coords_name(self) -> List[str]:
-        return ['lat', 'long']
-
-    @property
-    def _area_name(self) -> str:
-        return 'area'
-
-    @property
-    def _q_name(self) -> str:
-        return observed_streamflow_cms()
-
     def stations(self) -> List[str]:
         return self._stations
 
@@ -1008,6 +1180,10 @@ class _GSHA(_RainfallRunoff):
         >>> from aqua_fetch import Japan
         >>> dataset = Japan()
         >>> dataset.get_boundary(dataset.stations()[0])
+        ... # for Arcticnet
+        >>> from aqua_fetch import Arcticnet
+        >>> dataset = Arcticnet()
+        >>> dataset.get_boundary('1001')
         """
 
         if shapefile is None:
@@ -1035,7 +1211,6 @@ class _GSHA(_RainfallRunoff):
             st=None,
             en=None,
             as_dataframe=False,
-            as_ts=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -1085,7 +1260,6 @@ class _GSHA(_RainfallRunoff):
             static_features: Union[str, list] = 'all',
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity > 1:
@@ -1105,7 +1279,7 @@ class _GSHA(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         returns features of multiple stations
 
@@ -1115,12 +1289,28 @@ class _GSHA(_RainfallRunoff):
         >>> dataset = Arcticnet()
         >>> stations = dataset.stations()
         >>> features = dataset.fetch_stations_features(stations)
+
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, staticfeatures).
+            The index of static features is the station/gauge ids while the columns 
+            are the static features. Dynamic features are returned as either
+            xarray Dataset or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the xarray module is installed or not.
+            If dynamic features are xarray Dataset, then it consists of `data_vars`
+            equal to the number of stations and `time` adn `dynamic_features` as
+            dimensions. If dynamic features are returned as pandas DataFrame, then
+            the first index is `time` and the second index is `dynamic_features`.
         """
         stations = check_attributes(stations, self.stations(), 'stations')
 
+        static, dynamic = None, None
+
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -1129,21 +1319,17 @@ class _GSHA(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
+
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -1152,7 +1338,7 @@ class _GSHA(_RainfallRunoff):
             raise ValueError(f"""
             static features are {static_features} and dynamic features are also {dynamic_features}""")
 
-        return to_return
+        return static, dynamic
 
     def fetch_static_features(
             self,
@@ -1160,7 +1346,6 @@ class _GSHA(_RainfallRunoff):
             static_features: Union[str, List[str]] = "all",
             st=None,
             en=None,
-            as_ts=False
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -1174,7 +1359,6 @@ class _GSHA(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -1199,51 +1383,7 @@ class _GSHA(_RainfallRunoff):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, static_features, st, en, as_ts)
-
-
-def streamflow_indices_all_stations(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'streamflow_indices.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or get_cpus() - 2
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading streamflow indices for {len(stations)} stations using {cpus} cpus")
-    # takes ~20 seconds with 110 cpus
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            streamflow_indices_stn,
-            paths,
-            stations,
-        )
-
-    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
-
-        ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
-        if verbosity: print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-
-    return ds
+        return self._fetch_static_features(stations, static_features, st, en)
 
 
 def streamflow_indices_stn(
@@ -1252,12 +1392,12 @@ def streamflow_indices_stn(
 ) -> pd.DataFrame:
     fpath = os.path.join(
         ds_path,
-        "StreamflowIndices",
+        "StreamflowIndices_yearly",
         "StreamflowIndices",
         f'{stn}.csv')
 
     if not os.path.exists(fpath):
-        raise FileNotFoundError(f"{ds_path} for station {stn} not found")
+        raise FileNotFoundError(f"{fpath} not found")
 
     df = pd.read_csv(
         fpath, index_col=0,
@@ -1309,49 +1449,6 @@ def lc_variable_stn(ds_path, stn: str) -> pd.DataFrame:
     return df
 
 
-def lc_vars_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'lc_variables.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or get_cpus() - 2
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading landcover variables for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            lc_variable_stn,
-            paths,
-            stations,
-        )
-
-    print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
-
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-    return ds
-
-
 def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
     fpath = os.path.join(
         ds_path,
@@ -1372,49 +1469,6 @@ def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
     df.columns.name = 'reservoir_variables'
 
     return df
-
-
-def reservoir_vars_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    nc_path = os.path.join(ds_path, 'reservoir_variables.nc')
-
-    if to_netcdf and os.path.exists(nc_path):
-        if verbosity: print(f"Reading from pre-existing {nc_path}")
-        return xr.open_dataset(nc_path)
-
-    cpus = cpus or get_cpus() - 2
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading reservoir variables for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            reservoir_vars_stn,
-            paths,
-            stations,
-        )
-
-    print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
-
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = {stn: df for stn, df in zip(stations, results)}
-    return ds
 
 
 def lai_stn(ds_path, stn: str) -> pd.Series:
@@ -1438,60 +1492,9 @@ def lai_stn(ds_path, stn: str) -> pd.Series:
     return df[stn]
 
 
-def lai_all_stns(
-        ds_path: Union[str, os.PathLike],
-        cpus: int = None,
-        to_netcdf: bool = True,
-        verbosity: int = 1
-):
-    if to_netcdf:
-        nc_path = os.path.join(ds_path, 'lai.nc')
-        if os.path.exists(nc_path):
-            if verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
-    elif os.path.exists(os.path.join(ds_path, 'lai.csv')):
-        if verbosity: print(f"Reading from pre-existing {ds_path}")
-        return pd.read_csv(os.path.join(ds_path, 'lai.csv'), index_col=0)
-
-    cpus = cpus or get_cpus() - 2
-
-    start = time.time()
-
-    stations = GSHA(os.path.dirname(ds_path)).stations()
-    paths = [ds_path for _ in range(len(stations))]
-
-    if verbosity: print(f"Reading lai for {len(stations)} stations using {cpus} cpus")
-
-    with cf.ProcessPoolExecutor(cpus) as executor:
-
-        results = executor.map(
-            lai_stn,
-            paths,
-            stations,
-        )
-
-    if verbosity: print(f"Time taken: {time.time() - start:.2f} seconds")
-
-    if to_netcdf:
-
-        encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
-
-        nc_path = os.path.join(ds_path, 'lai.nc')
-        ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-        print(f"Saving to {nc_path}")
-        ds.to_netcdf(nc_path, encoding=encoding)
-    else:
-        ds = pd.concat(results, axis=1)
-        csv_path = os.path.join(ds_path, 'lai.csv')
-        if verbosity: print(f"Saving to {csv_path}")
-        ds.to_csv(csv_path, index=True)
-
-    return ds
-
-
 # the dates for data to be downloaded 
 START_YEAR = 1979
-END_YEAR = 2023
+END_YEAR = 2024
 
 
 class Japan(_GSHA):
@@ -1630,7 +1633,7 @@ def download_daily_data(
         path:Union[str, os.PathLike], 
         verbosity:int=1,
         cpus:int=None
-        ):
+        )->pd.DataFrame:
     """downloads daily data for all stations"""
     csv_path = os.path.join(path, 'daily_q.csv')
 
@@ -1645,36 +1648,70 @@ def download_daily_data(
     stations_ = [item for sublist in stations_ for item in sublist]
     years_ = list(years) * len(stations)
 
-    cpus = cpus or get_cpus()-2
+    cpus = cpus or max(get_cpus() - 2, 1)
 
     if verbosity:
         print(f"downloading daily data for {len(stations)} stations from {years[0]} to {years[-1]}")
-    
+
     if verbosity>1:
         print(f"Total function calls: {len(stations_)} with {cpus} cpus")
 
+    # It takes ~ 100 seconds to download data for a single station for all years (1979-2024) with 1 cpu
+
     start = time.time()
-    with cf.ProcessPoolExecutor(cpus) as executor:
-        results = executor.map(download_daily_stn_yr, stations_, years_)
+
+    if cpus == 1:
+        all_data = []
+        for idx, stn in enumerate(stations):
+            stn_data = []
+            for yr in years:
+                stn_yr_data = download_daily_stn_yr(stn, yr)
+                stn_data.append(stn_yr_data)
+            
+            stn_data = pd.concat(stn_data, axis=0)
+            stn_data.name = stn
+            all_data.append(stn_data)
+        
+            if verbosity==1 and idx % 1000 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==2 and idx % 500 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==3 and idx % 100 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity==4 and idx % 10 == 0:
+                print(f"Data for {idx+1} stations downloaded")
+            elif verbosity>4:
+                print(f"Data for {idx+1} stations downloaded")
+
+    else:
+        with cf.ProcessPoolExecutor(cpus) as executor:
+            results = executor.map(download_daily_stn_yr, stations_, years_)
     
+        all_data = []
+        for idx, stn in enumerate(stations):
+            stn_data = []
+            for yr in years:
+                stn_yr_data = next(results)
+                stn_data.append(stn_yr_data)
+            
+            if verbosity==1 and idx % 1000 == 0:
+                print(f"{idx} stations downloaded")
+            elif verbosity==2 and idx % 500 == 0:
+                print(f"{idx} stations downloaded")
+            elif verbosity>2 and idx % 100 == 0:
+                print(f"{idx} stations downloaded")
+            
+            stn_data = pd.concat(stn_data, axis=0)
+            stn_data.name = stn
+
+            if verbosity>2:
+                print(f"total number of years: {yr} for {stn} with shape {stn_data.shape}")
+
+            all_data.append(stn_data)
+
     if verbosity:
         print(f"total time taken to download data: {time.time() - start}")
 
-    all_data = []
-    for stn in stations:
-        stn_data = []
-        for yr in years:
-            stn_yr_data = next(results)
-            stn_data.append(stn_yr_data)
-        
-        stn_data = pd.concat(stn_data, axis=0)
-        stn_data.name = stn
-
-        if verbosity>2:
-            print(f"total number of years: {yr} for {stn} with shape {stn_data.shape}")
-
-        all_data.append(stn_data)
-    
     if verbosity>2:
         print(f"total number of stations: {len(all_data)} each with shape {all_data[0].shape}")
     
@@ -1685,7 +1722,7 @@ def download_daily_data(
     if verbosity:
         print(f"saving daily data to {csv_path} with shape {all_data.shape}")
     all_data.to_csv(csv_path)
-    return
+    return all_data
 
 
 def download_hourly_stn_day(
@@ -1773,7 +1810,9 @@ class Arcticnet(_GSHA):
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
     the number of staic features are 35 and dynamic features are 27 and the
-    data is available from 1979-01-01 to 2003-12-31.
+    data is available from 1979-01-01 to 2003-12-31 although the observed
+    streamflow (q_cms_obs) for some stations is available as earlier as from
+    1913-01-01.
     """
 
     def __init__(
@@ -2004,7 +2043,7 @@ class Spain(_GSHA):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (39721, 1447)
+            a :obj:`pandas.DataFrame` of shape (39721, 1447)
         """
 
         fpath = os.path.join(self.path, 'daily_q.csv')
@@ -2171,8 +2210,8 @@ class Thailand(_GSHA):
 
             yr_dfs.append(df)
 
-            stn_id = file.split('RID')[1].split('_m3s')[0]
-            stn_ids.append(stn_id)
+            station = file.split('RID')[1].split('_m3s')[0]
+            stn_ids.append(station)
 
         df = pd.concat(yr_dfs, axis=1)
         df.columns = stn_ids

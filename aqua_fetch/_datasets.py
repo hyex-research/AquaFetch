@@ -14,6 +14,8 @@
 # https://doi.pangaea.de/10.1594/PANGAEA.924561 Air temp Tiangin china
 
 
+# https://zenodo.org/records/14450214
+
 # https://zenodo.org/record/3712407#.YExYDtyRWUk
 # https://zenodo.org/record/3844201#.YExYi9yRWUk
 # https://zenodo.org/record/1471322#.YExYftyRWUk
@@ -195,7 +197,7 @@ import os
 import glob
 import random
 import warnings
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 import pandas as pd
@@ -204,7 +206,7 @@ from ._backend import netCDF4, xarray as xr
 
 from .download_pangaea import PanDataSet
 from .utils import maybe_download, download_and_unzip, unzip_all_in_dir, download
-from .utils import check_attributes, check_st_en
+from .utils import check_attributes
 
 
 SEP = os.sep
@@ -414,7 +416,7 @@ class Weisssee(Datasets):
         """
         Examples
         --------
-            >>> from water_quality import Weisssee
+            >>> from aqua_fetch import Weisssee
             >>> dataset = Weisssee()
             >>> data = dataset.fetch()
         """
@@ -575,7 +577,7 @@ class WeatherJena(Datasets):
 
         Examples
         --------
-        >>> from water_quality import WeatherJena
+        >>> from aqua_fetch import WeatherJena
         >>> dataset = WeatherJena()
         >>> data = dataset.fetch()
         >>> data.sum()
@@ -659,7 +661,7 @@ class WeatherJena(Datasets):
         return
 
     @property
-    def dynamic_features(self)->list:
+    def dynamic_features(self)->List[str]:
         """returns names of features available"""
         return self.fetch().columns.tolist()
 
@@ -669,7 +671,7 @@ class WeatherJena(Datasets):
             en: Union[str, int, pd.DatetimeIndex] = None
     ) -> pd.DataFrame:
         """
-        Fetches the time series data between given period as pandas dataframe.
+        Fetches the time series data between given period as :obj:`pandas.DataFrame`.
 
         Parameters
         ----------
@@ -683,11 +685,11 @@ class WeatherJena(Datasets):
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe of shape (972111, 21)
+            a :obj:`pandas.DataFrame` of shape (972111, 21)
 
         Examples
         --------
-            >>> from water_quality import WeatherJena
+            >>> from aqua_fetch import WeatherJena
             >>> dataset = WeatherJena()
             >>> data = dataset.fetch()
             >>> data.shape
@@ -741,7 +743,7 @@ class SWECanada(Datasets):
 
     Examples
     --------
-        >>> from water_quality import SWECanada
+        >>> from aqua_fetch import SWECanada
         >>> swe = SWECanada()
         ... # get names of all available stations
         >>> stns = swe.stations()
@@ -779,7 +781,7 @@ class SWECanada(Datasets):
 
         self._download()
 
-    def stations(self) -> list:
+    def stations(self) -> List[str]:
         nc = netCDF4.Dataset(os.path.join(self.path, 'CanSWE-CanEEN_1928-2023_v6.nc'))
         s = nc['station_id'][:]
         return s.tolist()
@@ -794,7 +796,7 @@ class SWECanada(Datasets):
 
     def fetch(
             self,
-            station_id: Union[None, str, float, int, list] = None,
+            stations: Union[None, str, float, int, list] = None,
             features: Union[None, str, list] = None,
             q_flags: Union[None, str, list] = None,
             st=None,
@@ -805,7 +807,7 @@ class SWECanada(Datasets):
 
         Parameters
         ----------
-            station_id :
+            stations :
                 station/stations to be retrieved. In None, then data
                 from all stations will be returned.
             features :
@@ -837,22 +839,22 @@ class SWECanada(Datasets):
         """
         # todo, q_flags not working
 
-        if station_id is None:
-            station_id = self.stations()
-        elif isinstance(station_id, str):
-            station_id = [station_id]
-        elif isinstance(station_id, list):
+        if stations is None:
+            stations = self.stations()
+        elif isinstance(stations, str):
+            stations = [stations]
+        elif isinstance(stations, list):
             pass
-        elif isinstance(station_id, int):
-            station_id = random.sample(self.stations(), station_id)
-        elif isinstance(station_id, float):
-            num_stations = int(len(self.stations()) * station_id)
-            station_id = random.sample(self.stations(), num_stations)
+        elif isinstance(stations, int):
+            stations = random.sample(self.stations(), stations)
+        elif isinstance(stations, float):
+            num_stations = int(len(self.stations()) * stations)
+            stations = random.sample(self.stations(), num_stations)
 
         stns = self.stations()
         stn_id_dict = {k: v for k, v in zip(stns, np.arange(len(stns)))}
         stn_id_dict_inv = {v: k for k, v in stn_id_dict.items()}
-        stn_ids = [stn_id_dict[i] for i in station_id]
+        stn_ids = [stn_id_dict[i] for i in stations]
 
         features = check_attributes(features, self.features)
         qflags = []
@@ -951,11 +953,11 @@ def gw_punjab(
     Returns
     -------
     pd.DataFrame
-        a pandas DataFrame with datetime index
+        a :obj:`pandas.DataFrame` with datetime index
 
     Examples
     ---------
-    >>> from water_quality import gw_punjab
+    >>> from aqua_fetch import gw_punjab
     >>> full_data = gw_punjab()
     find out the earliest observation
     >>> print(full_data.sort_index().head(1))

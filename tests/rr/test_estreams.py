@@ -1,13 +1,17 @@
 
 import os
 import site
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import logging
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_estreams.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# ignore all warnings
+import warnings
+warnings.filterwarnings("ignore")
 
 import pandas as pd
 
@@ -33,7 +37,7 @@ gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 ds = EStreams(path=gscad_path, verbosity=3)
 
-assert ds.md.shape == (15047, 24), ds.md.shape
+assert ds.md.shape == (17130, 29), ds.md.shape
 
 assert len(ds.countries) == 39, len(ds.agencies)
 
@@ -70,9 +74,9 @@ def test_area_():
 
 def test_fetch_static_features():
     out = ds.fetch_static_features(countries='IE')
-    assert out.shape == (464, 208), out.shape
+    assert out.shape == (464, 214), out.shape
 
-    test_fetch_static_feature(ds, 'IEEP0281', 15047, 208)
+    test_fetch_static_feature(ds, 'IEEP0281', 17130, 214)
     return
 
 
@@ -130,11 +134,13 @@ ds.gauge_id_basin_id_map()['20002'] == 'IEOP0126'
 test_dataset(ds, 
              num_stations=464, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
 
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+df.count().sum() >= 3303345
 
 
 ds = Finland(path=gscad_path, processes=1, 
@@ -143,20 +149,21 @@ ds = Finland(path=gscad_path, processes=1,
 test_dataset(ds, 
              num_stations=669, 
              dyn_data_len=4199, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               st="20200101",
               en="20201231"
               )
-
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+df.count().sum() >= 814277
 
 ds = Italy(path=gscad_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=294, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
@@ -168,11 +175,17 @@ ds = Poland(path=gscad_path, verbosity=3)
 test_dataset(ds, 
              num_stations=1287, 
              dyn_data_len=26844, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
 
+_, df = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
+assert df.count().sum() >= 16319627
+
+q = ds.get_q()
+
+assert q.shape[1]>1287
 
 ds = Portugal(path=gscad_path, verbosity=3)
 
@@ -188,8 +201,7 @@ nan_cols = q.columns[q.isna().all()]
 test_dataset(ds, 
              num_stations=280, 
              dyn_data_len=18628, 
-             num_static_attrs=208,
+             num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,
               )
-

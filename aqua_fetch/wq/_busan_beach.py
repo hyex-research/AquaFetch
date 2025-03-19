@@ -60,7 +60,7 @@ def busan_beach(
     Returns
     -------
     pd.DataFrame
-        a pandas dataframe with inputs and target and indexed
+        a :obj:`pandas.DataFrame` with inputs and target and indexed
         with pandas.DateTimeIndex
 
     Examples

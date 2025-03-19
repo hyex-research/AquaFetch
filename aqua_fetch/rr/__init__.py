@@ -53,6 +53,7 @@ from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand
 from .mtropics import MtropicsVietnam
+from ._misc import DraixBleone
 
 
 DATASETS = {
@@ -94,66 +95,7 @@ DATASETS = {
     'Portugal': Portugal,
 }
 
-"""
-    .. list-table:: Naming Convention for dynamic features
-       :widths: 20 30
-       :header-rows: 1
 
-       * - Feature Name
-         - Description
-       * - obs_q_cms
-         - observed streamflow in cms
-       * - obs_q_mmd
-         - observed streamflow in mm/day
-       * - pcp_mm
-         - precipitation in mm
-       * - max_temp_C
-         - maximum air temperature in degree celcius
-       * - min_temp_C
-         - minimum air temperature in degree celcius
-       * - mean_temp_C
-         - mean temperature in degree celcius
-       * - method_pet_mm
-         - potential evapotranspiration in mm
-       * - et_mm
-         - evapotranspiration in mm
-       * - rh_%
-         - relative humidity in percentage
-       * - min_rh_%
-         - minimum relative humidity
-       * - max_rh_%
-         - maximum relative humidity
-       * - swe_mm
-         - snow water equivalent
-       * - solrad_wm2
-         - solar radiation watt per meter square
-       * - windspeed_ms
-         - wind speed in meter per second
-       * - sim_q_cms
-         - simulated streamflow in cms
-       * - dwn_lw_rad_wm2
-         - downward long wave radiation in watt per meter square
-       * - dwn_sw_rad_wm2
-         - downward short wave radiation in watt per meter square
-       * - airpres_hpa
-         - Mean air pressure at sea level in hectopascal
-
-
-    .. list-table:: Naming Convention for static features
-       :widths: 20 30
-       :header-rows: 1
-
-       * - Feature Name
-         - Description
-       * - guage_lat
-         - Latitude of the guage station
-       * - guage_long
-         - Longitude of the guage station
-       * - area_km2
-         - catchment area in km2
-       * - mean_elev
-         - mean elevation in meters
-"""
 class RainfallRunoff(object):
     """
     This  class provides access to all the rainfall-runoff
@@ -162,9 +104,9 @@ class RainfallRunoff(object):
 
     Examples
     --------
-    >>> from water_datasets import RainfallRunoff
+    >>> from aqua_fetch import RainfallRunoff
     >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.columns = df.columns.get_level_values('dynamic_features')
     >>> df.shape
@@ -174,33 +116,32 @@ class RainfallRunoff(object):
     >>> len(stns)
        222
     ... # get data of 10 % of stations as dataframe
-    >>> df = dataset.fetch(0.1, as_dataframe=True)
+    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (550784, 22)
     ... # The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
     >>> df.shape
         (21184, 26)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
     >>> data.shape
        (21184, 4)
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> df = dataset.fetch(10, as_dataframe=True)
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (21184, 260)
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
+    # If we want to get both static and dynamic data 
+    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.shape
     ((1, 166), (550784, 1))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -274,20 +215,20 @@ class RainfallRunoff(object):
             from this path. If provided and the path/dataset does not exist,
             then the data will be downloaded at this path. If not provided,
             then the data will be downloaded in the default path which is
-            ``.../water-datasts/data/``.
+            ``.../aqua_fetch/data/``.
         overwrite : bool
             If the data is already downloaded then you can set it to True,
             to make a fresh download.
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarray.
+            require netcdf5 package as well as :obj:`xarray`.
         verbosity : int
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`water_quality.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`water_quality.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
+            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
+            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
         """
 
         if dataset not in DATASETS:
@@ -328,7 +269,7 @@ class RainfallRunoff(object):
     def path(self) -> str:
         """
         returns path where the data is stored. The default path is
-        ~../water_quality/data
+        ~../aqua_fetch/data
         """
         return self.dataset.path
 
@@ -339,7 +280,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.static_features
         """
@@ -352,7 +293,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.dynamic_features
         """
@@ -368,24 +309,26 @@ class RainfallRunoff(object):
         Parameters
         ----------
             stations : str
-                name/id of station of which to extract the data
-            features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
+                name/id of station of which to extract the data . For names of stations
+                see :meth:`stations` .
+            static_features : list/str, optional (default="all")
+                The name/names of static features to fetch. By default, all available
+                static features are returned. For names of static features, see
+                :meth:`static_features` .
 
         Returns
         -------
         pd.DataFrame
-            a pandas dataframe
+            a pandas :obj:`pandas.DataFrame`
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> camels = RainfallRunoff('CAMELS_AUS')
-            >>> camels.fetch_static_features('224214A')
-            >>> camels.static_features
-            >>> camels.fetch_static_features('224214A',
-            ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
+        >>> from aqua_fetch import RainfallRunoff
+        >>> camels = RainfallRunoff('CAMELS_AUS')
+        >>> camels.fetch_static_features('224214A')
+        >>> camels.static_features
+        >>> camels.fetch_static_features('224214A',
+        ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         """
 
         return self.dataset.fetch_static_features(stations, static_features)
@@ -395,23 +338,23 @@ class RainfallRunoff(object):
             stations: Union[str, List[str]] = "all"
     ) -> pd.Series:
         """
-        Returns area (Km2) of all/selected catchments as pandas series
+        Returns area (Km2) of all/selected catchments as :obj:`pandas.Series`
 
         parameters
         ----------
         stations : str/list (default=``all``)
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            area of all stations. For names of stations, see :meth:`stations`.
 
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
         ---------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_CH')
         >>> dataset.area()  # returns area of all stations
         >>> dataset.area('2004')  # returns area of station whose id is 2004
@@ -419,15 +362,16 @@ class RainfallRunoff(object):
         """
         return self.dataset.area(stations)
 
-    def fetch(self,
-              stations: Union[str, List[str], int, float] = "all",
-              dynamic_features: Union[List[str], str, None] = 'all',
-              static_features: Union[str, List[str], None] = None,
-              st: Union[None, str] = None,
-              en: Union[None, str] = None,
-              as_dataframe: bool = False,
-              **kwargs  # todo, where do these keyword args go?
-              ) -> Union[dict, pd.DataFrame]:
+    def fetch(
+            self,
+            stations: Union[str, List[str], int, float] = "all",
+            dynamic_features: Union[List[str], str, None] = 'all',
+            static_features: Union[str, List[str], None] = None,
+            st: Union[None, str] = None,
+            en: Union[None, str] = None,
+            as_dataframe: bool = False,
+            **kwargs  # todo, where do these keyword args go?
+            ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Fetches the features of one or more stations.
 
@@ -436,25 +380,28 @@ class RainfallRunoff(object):
         stations :
             It can have following values:
 
-                - int : number of (randomly selected) stations to fetch
-                - float : fraction of (randomly selected) stations to fetch
-                - str : name/id of station to fetch. However, if ``all`` is
-                  provided, then all stations will be fetched.
-                - list : list of names/ids of stations to fetch
+                - :obj:`int` : number of (randomly selected) stations to fetch
+                - :obj:`float` : fraction of (randomly selected) stations to fetch
+                - :obj:`str` : name/id of station to fetch. However, if ``all`` is
+                  provided, then all stations will be fetched. For names of stations,
+                  see :meth:`stations`.
+                - :obj:`list` : list of names/ids of stations to fetch
         dynamic_features : (default=``all``)
             It can have following values:
 
-                - str : name of dynamic feature to fetch. If ``all`` is
-                  provided, then all dynamic features will be fetched.
-                - list : list of dynamic features to fetch.
-                - None : No dynamic feature will be fetched.
+                - :obj:`str` : name of dynamic feature to fetch. If ``all`` is
+                  provided, then all dynamic features will be fetched. For names
+                  of dynamic features, see :meth:`dynamic_features`.
+                - :obj:`list` : list of dynamic features to fetch.
+                - None : No dynamic feature will be fetched. The second returned value will be None.
         static_features : (default=None)
             It can have following values:
 
-                - str : name of static feature to fetch. If ``all`` is
-                  provided, then all static features will be fetched.
-                - list : list of static features to fetch.
-                - None : No static feature will be fetched.
+                - :obj:`str` : name of static feature to fetch. If ``all`` is
+                  provided, then all static features will be fetched. For names
+                  of static features, see :meth:`static_features`.
+                - :obj:`list` : list of static features to fetch.
+                - None : No static feature will be fetched. The first returned value will be None.
         st :
             starting date of data to be returned. If None, the data will be
             returned from where it is available.
@@ -462,38 +409,48 @@ class RainfallRunoff(object):
             end date of data to be returned. If None, then the data will be
             returned till the date data is available.
         as_dataframe :
-            whether to return dynamic attributes as pandas
-            dataframe or as xarray dataset.
+            whether to return dynamic attributes as :obj:`pandas.DataFrame`
+            or as :obj:`xarray.Dataset`. if :obj:`xarray` library is not
+            installed, then this parameter will be ignored and the data will
+            be returned as :obj:`pandas.DataFrame`.
         kwargs :
             keyword arguments
 
-        returns
+        Returns
         -------
-            If both static  and dynamic features are obtained then it returns a
-            dictionary whose keys are station/gauge_ids and values are the
-            attributes and dataframes.
-            Otherwise either dynamic or static features are returned.
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> # get data of 10% of stations
-        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        >>> _, df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
         ...  # fetch data of 5 (randomly selected) stations
-        >>> five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
+        >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
         ... # fetch data of 3 selected stations
-        >>> three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        >>> _, three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
         ... # fetch data of a single stations
-        >>> single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
+        >>> _, single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
-        >>> data = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
-        >>> data['dynamic']
+        >>> static, dyanmic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
+        >>> dynamic
         ... # get only selected dynamic features
-        >>> sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        >>> _, sel_dyn_features = dataset.fetch(stations='318076',
+        ...     dynamic_features=['q_cms_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
-        >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
+        >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         return self.dataset.fetch(stations, dynamic_features, static_features, st, en, as_dataframe, **kwargs)
@@ -507,128 +464,143 @@ class RainfallRunoff(object):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         Reads attributes of more than one stations.
 
         parameters
         ----------
         stations :
-            list of stations for which data is to be fetched.
+            name/ids of stations for which data is to be fetched. For names
+            of stations, see :meth:`stations`.
         dynamic_features :
-            list of dynamic features to be fetched.
-                if 'all', then all dynamic features will be fetched.
+            list of dynamic features to be fetched. For names of dynamic features,
+            see :meth:`dynamic_features`. if ``all``, then all dynamic features 
+            will be fetched. If None, then no dynamic attribute will be fetched 
+            and the second returned value will be None.
         static_features :
             list of static features to be fetched.
             If `all`, then all static features will be fetched. If None,
-            then no static attribute will be fetched.
+            then no static attribute will be fetched. For names of static features,
+            see :meth:`static_features`.
         st :
             start of data to be fetched.
         en :
             end of data to be fetched.
-        as_dataframe : whether to return the data as pandas dataframe. default
-                is xr.Dataset object
+        as_dataframe : whether to return the data as :obj:`pandas.DataFrame`. default
+                is :obj:`xarray.Dataset` object
         kwargs dict:
             additional keyword arguments
 
         Returns
         -------
-        pd.DataFrame or xr.Dataset or dict
-            Dynamic and static features of one or multiple stations. Dynamic features
-            are by default returned as xr.Dataset unless `as_dataframe` is True or xarray is not installed, in
-            such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
-            it consists of `data_vars` equal to number of stations and for each
-            station, the `DataArray` is of dimensions (time, dynamic_features).
-            where `time` is defined by `st` and `en` i.e. length of `DataArray`.
-            In case, when the returned object is pandas DataFrame, the first index
-            is `time` and second index is `dyanamic_features`. Static attributes
-            are always returned as pandas DataFrame and have following shape
-            `(stations, static_features). If `dynamic_features` is None,
-            then they are not returned and the returned value only consists of
-            static features. Same holds true for `static_features`.
-            If both are not None, then the returned type is a dictionary with
-            `static` and `dynamic` keys.
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, static features).
+            The index of static features' DataFrame is the station/gauge ids while the columns 
+            are names of the static features. Dynamic features are returned either as
+            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the :obj:`xarray` library is installed or not.
+            If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
+            equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
+            and `time` and `dynamic_features` as dimensions and coordinates. If 
+            dynamic features are returned as :obj:`pandas.DataFrame`, then
+            the first index is `time` and the second index is `dynamic_features`.
 
         Raises
         ------
-        ValueError, if both ``dynamic_features`` and ``static_features`` are None
+        ValueError
+            if both ``dynamic_features`` and ``static_features`` are None
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> dataset = RainfallRunoff('CAMELS_AUS')
-            ... # find out station ids
-            >>> dataset.stations()
-            ... # get data of selected stations
-            >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-            ...  as_dataframe=True)
+        >>> from aqua_fetch import RainfallRunoff
+        >>> dataset = RainfallRunoff('CAMELS_AUS')
+        ... # find out station ids
+        >>> dataset.stations()
+        ... # get data of selected stations
+        >>> static, dynamic = dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
+        ...  as_dataframe=True)
         """
-        return self.dataset.fetch_stations_features(stations, dynamic_features, static_features, st, en, as_dataframe,
-                                                    **kwargs)
+        return self.dataset.fetch_stations_features(
+            stations, 
+            dynamic_features, 
+            static_features, 
+            st, 
+            en, 
+            as_dataframe,
+            **kwargs)
 
     def fetch_dynamic_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features='all',
             st=None,
             en=None,
             as_dataframe=False
-    ):
-        """Fetches all or selected dynamic attributes of one station.
+    )->Union[pd.DataFrame, "Dataset"]:
+        """
+        Fetches all or selected dynamic attributes of one station.
 
         Parameters
         ----------
-            stn_id : str
-                name/id of station of which to extract the data
-            features : list/str, optional (default="all")
+            station : str
+                name/id of station of which to extract the data. For names of stations
+                see :meth:`stations`
+            dynamic_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
-                dynamic features are returned.
+                dynamic features are returned. For names of dynamic features, see
+                :meth:`dynamic_features`
             st : Optional (default=None)
                 start time from where to fetch the data.
             en : Optional (default=None)
                 end time untill where to fetch the data
             as_dataframe : bool, optional (default=False)
-                if true, the returned data is pandas DataFrame otherwise it
-                is xarray dataset
+                if true, the returned data is :obj:`pandas.DataFrame` otherwise it
+                is :obj:`xarray.Dataset`
+        
+        Returns
+        -------
+        pd.DataFrame or xr.Dataset
+            a :obj:`pandas.DataFrame` or :obj:`xarray.Dataset` depending upon the value of
+            `as_dataframe` and whether :obj:`xarray` is installed or not.
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> camels = RainfallRunoff('CAMELS_AUS')
-            >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('224214A',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'streamflow_mmd'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import RainfallRunoff
+        >>> camels = RainfallRunoff('CAMELS_AUS')
+        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.dynamic_features
+        >>> camels.fetch_dynamic_features('224214A',
+        ... features=['airtemp_C_silo_max', 'vp_hpa_silo', 'q_cms_obs'],
+        ... as_dataframe=True).unstack()
         """
         return self.dataset.fetch_dynamic_features(
-            stn_id, dynamic_features, st, en, as_dataframe)
+            station, dynamic_features, st, en, as_dataframe)
 
     def fetch_station_features(
             self,
-            stn_id: str,
+            station: str,
             dynamic_features: Union[str, list, None] = 'all',
             static_features: Union[str, list, None] = None,
-            as_ts: bool = False,
             st: Union[str, None] = None,
             en: Union[str, None] = None,
             **kwargs
-    ) -> pd.DataFrame:
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Fetches features for one station.
+        Fetches static and dynamic features for one station.
 
         Parameters
         -----------
-            station :
+            station : str
                 station id/gauge id for which the data is to be fetched.
+                For names of stations, see :meth:`stations`
             dynamic_features : str/list, optional
-                names of dynamic features/attributes to fetch
+                names of dynamic features/attributes to fetch. For names of dynamic
+                features, check the output of :meth:`dynamic_features`
             static_features :
-                names of static features/attributes to be fetches
-            as_ts : bool
-                whether static features are to be converted into a time
-                series or not. If yes then the returned time series will be of
-                same length as that of dynamic attribtues.
+                names of static features/attributes to be fetches. For names of
+                static features, check the output of :meth:`static_features`
             st : str,optional
                 starting point from which the data to be fetched. By default,
                 the data will be fetched from where it is available.
@@ -637,18 +609,22 @@ class RainfallRunoff(object):
 
         Returns
         -------
-        pd.DataFrame
-            dataframe if as_ts is True else it returns a dictionary of static and
-            dynamic features for a station/gauge_id
+        tuple
+            A tuple of static and dynamic features, both as :obj:`pandas.DataFrame`.
+            The dataframe of static features will be of single row while the dynamic
+            features will be of shape (time, dynamic features).
 
         Examples
         --------
-            >>> from water_datasets import RainfallRunoff
-            >>> dataset = RainfallRunoff('CAMELS_AUS')
-            >>> dataset.fetch_station_features('912101A')
+        >>> from aqua_fetch import RainfallRunoff
+        >>> dataset = RainfallRunoff('CAMELS_AUS')
+        >>> static, dynamic = dataset.fetch_station_features('912101A')
+        >>> static.shape
+
+        >>> dynamic.shape
 
         """
-        return self.dataset.fetch_station_features(stn_id, dynamic_features, static_features, as_ts, st, en, **kwargs)
+        return self.dataset.fetch_station_features(station, dynamic_features, static_features, st, en, **kwargs)
 
     def plot_stations(
             self,
@@ -664,7 +640,8 @@ class RainfallRunoff(object):
         Parameters
         ----------
         stations :
-            name/names of stations. If not given, all stations will be plotted
+            name/names of stations. If not given, all stations will be plotted.
+            For names of stations, see :meth:`stations`.
         marker :
             marker to use.
         ax : plt.Axes
@@ -679,7 +656,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.plot_stations()
         >>> dataset.plot_stations(['1', '2', '3'])
@@ -703,12 +680,12 @@ class RainfallRunoff(object):
         ----------
         stations : str/list
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            area of all stations. For names of stations, see :meth:`stations`.
 
         Returns
         --------
         pd.DataFrame
-            a pandas DataFrame whose indices are time-steps and columns
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
         """
@@ -719,31 +696,32 @@ class RainfallRunoff(object):
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
-        returns coordinates of stations as DataFrame
+        returns coordinates of stations as :obj:`pandas.DataFrame`
         with ``long`` and ``lat`` as columns.
 
         Parameters
         ----------
         stations :
             name/names of stations. If not given, coordinates
-            of all stations will be returned.
+            of all stations will be returned. For names of stations,
+            see :meth:`stations`.
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_CH')
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
         >>> dataset.stn_coords(['2004', '6004'])  # returns coordinates of two stations
 
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.stn_coords() # returns coordinates of all stations
         >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
@@ -754,7 +732,7 @@ class RainfallRunoff(object):
 
     def get_boundary(
             self,
-            stn_id: str,
+            station: str,
             as_type: str = 'numpy'
     ):
         """
@@ -762,22 +740,22 @@ class RainfallRunoff(object):
 
         Parameters
         ----------
-        stn_id : str
-            name/id of catchment
+        station : str
+            name/id of catchment. For names of catchments, see :meth:`stations`.
         as_type : str
             'numpy' or 'geopandas'
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_SE')
         >>> dataset.get_boundary(dataset.stations()[0])
         """
-        return self.dataset.get_boundary(stn_id, as_type)
+        return self.dataset.get_boundary(station, as_type)
 
     def plot_catchment(
             self,
-            stn_id: str,
+            station: str,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -787,6 +765,8 @@ class RainfallRunoff(object):
 
         Parameters
         ----------
+        station : str
+            name/id of station. For names of stations, see :meth:`stations`
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -799,7 +779,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.plot_catchment()
         >>> dataset.plot_catchment(marker='o', ms=0.3)
@@ -808,15 +788,16 @@ class RainfallRunoff(object):
         >>> plt.show()
 
         """
-        return self.dataset.plot_catchment(stn_id, ax, show, **kwargs)
+        return self.dataset.plot_catchment(station, ax, show, **kwargs)
 
     def stations(self) -> List[str]:
         """
-        returns names of all stations
+        returns names/ids of all stations. This can be either gauge id or basin id.
+        Every catchment has a unique name/id which can be used to fetch its data.
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.stations()
         """
@@ -829,7 +810,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.start()
         """
@@ -842,7 +823,7 @@ class RainfallRunoff(object):
 
         Examples
         --------
-        >>> from water_datasets import RainfallRunoff
+        >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> dataset.end()
         """

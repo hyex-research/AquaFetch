@@ -2,7 +2,7 @@
 =========================================
 Summary of wastewater treatment datasets
 =========================================
-This file describes summary of datasets available in water_datasets package
+This file describes summary of datasets available in aqua_fetch package
 for wastewater treatment. The datasets are divided into following categories:
 
 1. Adsorption

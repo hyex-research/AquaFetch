@@ -104,6 +104,10 @@ def download(
 
     if fname:
         filename = fname
+    
+    if filename is None:
+        filename = 'temp'
+        warnings.warn(f"saving file from {url} as {filename}")
 
     fpath = outdir + os.sep + filename
 
@@ -228,7 +232,7 @@ def check_st_en(
         st:Union[int, str, pd.DatetimeIndex]=None,
         en:Union[int, str, pd.DatetimeIndex]=None
 )->pd.DataFrame:
-    """slices the dataframe based upon st and en"""
+    """slices the :obj:`pandas.DataFrame` based upon st and en"""
     if isinstance(st, int):
         if en is None:
             en = len(df)
@@ -296,7 +300,7 @@ def maybe_download(
                                include=include, 
                                verbosity=verbosity,
                                **kwargs)
-        elif files_to_check:
+        elif files_to_check:  # todo: not checking which files are present or not
             download_and_unzip(path, 
                                url=url,
                                files_to_check=files_to_check,
@@ -355,7 +359,7 @@ def download_and_unzip(
                                  **kwargs)
         else:
             download(url, path, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
     elif isinstance(url, list):
         if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
@@ -370,7 +374,7 @@ def download_and_unzip(
                                      **kwargs)
             else:
                 download(url, path, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
     elif isinstance(url, dict):
         if verbosity>0: print(f"downloading {len(url)} files to {path}")
 
@@ -383,11 +387,13 @@ def download_and_unzip(
                                      include=include,
                                      files_to_check=files_to_check,
                                      **kwargs)
+            elif 'drive.google' in url:
+                download_from_google_drive(url, path, fname, verbosity=verbosity)   
             else:
                 if include is not None or files_to_check is not None:
                     raise ValueError("include and files_to_check are available only for zenodo")
                 download(url, path, fname, verbosity=verbosity)
-        _unzip(path, verbosity=verbosity)
+        unzip(path, verbosity=verbosity)
 
     else:
         raise ValueError(f"Invalid url: {path}, {url}")
@@ -395,7 +401,37 @@ def download_and_unzip(
     return
 
 
-def _unzip(
+def download_from_google_drive(url, path, fname, verbosity=1):
+
+    def get_confirm_token(response):
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                return value
+        return None
+
+    URL = "https://drive.google.com/uc?export=download"
+    # get the file id from url which exists between d/ and /view
+    file_id = url.split('/')[-2]
+    session = requests.Session()
+
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = {'id': id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    destination = os.path.join(path, fname)
+    CHUNK_SIZE = 32768  # The size of each chunk to write (you can adjust this)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+    return
+
+
+def unzip(
         path:Union[str, os.PathLike], 
         overwrite:bool=False, 
         verbosity=1
@@ -511,7 +547,7 @@ def ohe_column(df:pd.DataFrame, col_name:str)->tuple:
 
 
 def le_column(df:pd.DataFrame, col_name:str)->tuple:
-    """label encode a column in dataframe"""
+    """label encode a column in dat:obj:`pandas.DataFrame`aframe"""
     encoder = LabelEncoder()
     index = df.columns.to_list().index(col_name)
     encoded = encoder.fit_transform(df[col_name])
@@ -898,7 +934,7 @@ def get_version_info()->dict:
     versions = {
         'numpy': np.__version__,
         'pandas': pd.__version__,
-        'water_quality': __version__,
+        'aqua_fetch': __version__,
         'python': sys.version,
         'os': os.name
     }

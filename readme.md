@@ -2,6 +2,7 @@
 [![Documentation Status](https://readthedocs.org/projects/aquafetch/badge/?version=latest)](https://aquafetch.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/aqua-fetch.svg)](https://badge.fury.io/py/aqua-fetch)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aqua-fetch)](https://pypi.org/project/aqua-fetch/)
+[![status](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387/status.svg)](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387)
 
 <p float="left">
   <img src="/docs/source/imgs/logo.png"/>
@@ -51,7 +52,7 @@ and the catchment boundary. The following example demonstrates how to fetch data
 ```python
 from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
-df = dataset.fetch(stations=1, as_dataframe=True)
+_, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
@@ -61,21 +62,21 @@ stns = dataset.stations()
 len(stns)
    222
 # get data of 10 % of stations as dataframe
-df = dataset.fetch(0.1, as_dataframe=True)
+_, df = dataset.fetch(0.1, as_dataframe=True)
 df.shape
    (550784, 22)
 # The returned dataframe is a multi-indexed data
 df.index.names == ['time', 'dynamic_features']
     True
 # get data by station id
-df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+_, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
 df.shape
     (21184, 26)
 # get names of available dynamic features
 dataset.dynamic_features
 # get only selected dynamic features
-data = dataset.fetch(1, as_dataframe=True,
-...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+_, data = dataset.fetch(1, as_dataframe=True,
+...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
 data.shape
    (21184, 4)
 # get names of available static features
@@ -84,10 +85,9 @@ dataset.static_features
 df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe
    (21184, 260)
-# when we get both static and dynamic data, the returned data is a dictionary
-# with ``static`` and ``dyanic`` keys.
-data = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-data['static'].shape, data['dynamic'].shape
+# If we get both static and dynamic data
+static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+static.shape, dynamic.shape
 ((1, 166), (550784, 1))
 coords = dataset.stn_coords() # returns coordinates of all stations
 coords.shape
@@ -145,7 +145,7 @@ mg_data_ohe.shape
 | Name           | Num. of daily stations | Num. of hourly stations | Num. of dynamic features | Num. of static features | Temporal Coverage | Spatial Coverage                            | Ref.                                                                                                        |
 |----------------|------------------------|-------------------------|--------------------------|-------------------------|-------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|
 | Arcticnet      | 106                    |                         | 27                       | 35                      | 1979 - 2003       | Arctic (Russia)                             | [R-Arcticnet](https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html)                                   |
-| CAMELS_AUS     | 222, 561               |                         | 26                       | 166, 187                | 1900 - 2018       | Australia                                   | [Flower et al., 2021](https://doi.org/10.5194/essd-13-3847-2021)                                            |
+| CAMELS_AUS     | 222, 561               |                         | 28                       | 166, 187                | 1900 - 2018       | Australia                                   | [Flower et al., 2021](https://doi.org/10.5194/essd-13-3847-2021)                                            |
 | CAMELS_GB      | 671                    |                         | 10                       | 145                     | 1970 - 2015       | Britain                                     | [Coxon et al., 2020](https://doi.org/10.5194/essd-12-2459-2020)                                             |
 | CAMELS_BR      | 897                    |                         | 10                       | 67                      | 1920 - 2019       | Brazil                                      | [Chagas et al., 2020](https://doi.org/10.5194/essd-12-2075-2020)                                            |
 | CAMELS_US      | 671                    |                         | 8                        | 59                      | 1980 - 2014       | USA                                         | [Newman et al., 2014](https://gdex.ucar.edu/dataset/camels.html)                                            |
@@ -157,13 +157,13 @@ mg_data_ohe.shape
 | Caravan_DK     | 308                    |                         | 38                       | 211                     | 1981 - 2020       | Denmark                                     | [Koch, J. (2022)](https://doi.org/10.5281/zenodo.7962379)                                                   |
 | LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
 | LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
-| HYSETS         | 14425                  |                         | 5                        | 28                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |
+| HYSETS         | 14425                  |                         | 20                       | 30                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |
 | GRDCCaravan    | 5357                   |                         | 39                       | 211                     | 1950 - 2023       | Global                                      | [Faerber et al., 2023](https://zenodo.org/records/10074416)                                                 |
 | Bull           | 484                    |                         | 55                       | 214                     | 1990 - 2020       | Spain                                       | [Aparicio et al., 2024](https://doi.org/10.1038/s41597-024-03594-5)                                         |
 | WaterBenchIowa | 125                    |                         | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
 | CCAM           | 102                    |                         | 16                       | 124                     | 1990 - 2020       | China                                       | [Hao et al., 2021](https://doi.org/10.5194/essd-13-5591-2021)                                               |
 | RRLuleaSweden  | 1                      |                         | 2                        | 0                       | 2016 - 2019       | Lulea (Sweden)                              | [Broekhuizen et al., 2020](https://doi.org/10.5194/hess-24-869-2020)                                        |
-| CABra          | 735                    |                         | 12                       | 97                      | 1980 - 2010       | Brazil                                      | [Almagro et al., 2021](https://doi.org/10.5194/hess-25-3105-2021)                                           |
+| CABra          | 735                    |                         | 13                       | 87                      | 1980 - 2010       | Brazil                                      | [Almagro et al., 2021](https://doi.org/10.5194/hess-25-3105-2021)                                           |
 | HYPE           | 561                    |                         | 9                        | 3                       | 1985 - 2019       | Costa Rica                                  | [Arciniega-Esparza and Birkel, 2020](https://zenodo.org/records/4029572)                                    |
 | Ireland        | 464                    |                         | 27                       | 35                      | 1992 - 2020       | Ireland                                     | [EPA Ireland](https://epawebapp.epa.ie)                                                                     |
 | Spain          | 889                    |                         | 27                       | 35                      | 1979 - 2020       | Spain                                       | [ceh-flumen64](https://ceh-flumen64.cedex.es)                                                               |
@@ -177,6 +177,7 @@ mg_data_ohe.shape
 | Portugal       | 280                    |                         | 27                       | 35                      | 1992 - 2020       | Portugal                                    | [SNIRH Portugal](https://snirh.apambiente.pt)                                                               |
 | Italy          | 294                    |                         | 27                       | 35                      | 1992 - 2020       | Italy                                       | [Nascimento et al., 2024](http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient) |
 | CAMELS_FR      | 654                    |                         | 22                       | 344                     | 1970 - 2021       | France                                      | [Delaigue et al., 2024](https://essd.copernicus.org/preprints/essd-2024-415/)                               |
+| NPCTRCatchments| -                      | 7                       | 8                        | 14                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
 
 ## Summary of Water Quality Datasets
 

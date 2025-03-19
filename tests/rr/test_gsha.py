@@ -1,7 +1,7 @@
 
 import os
 import site
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import logging
@@ -47,6 +47,7 @@ def test_atlas():
 
     return
 
+
 def test_uncertainty():
     
     assert ds.uncertainty().shape == (21568, 7), ds.uncertainty().shape
@@ -56,6 +57,7 @@ def test_uncertainty():
     assert ds.uncertainty(stations='1001_arcticnet').shape == (1, 7), ds.uncertainty(stations='1001_arcticnet').shape
 
     return
+
 
 def test_area_():
 
@@ -67,6 +69,7 @@ def test_area_():
 
     return
 
+
 def test_coords_():
 
     test_coords(ds)
@@ -76,6 +79,7 @@ def test_coords_():
     assert ds.stn_coords(stations='1001_arcticnet').shape == (1, 2), ds.stn_coords(stations='1001_arcticnet').shape
 
     return
+
 
 def test_lc_vars():
 
@@ -96,6 +100,7 @@ def test_lc_vars():
         assert out['1001_arcticnet'].shape[1] == 3
     
     return
+
 
 def test_streamflow_indices():
     ds1 = GSHA(path=gscad_path, to_netcdf=False, verbosity=3)
@@ -265,14 +270,13 @@ ds = Arcticnet(path=gscad_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=106, 
-             dyn_data_len=16071, 
+             dyn_data_len=9131, 
              num_static_attrs=35,
               num_dyn_attrs=27,
               test_df=False,
               st="1992-01-01",
               en="1992-12-31",
               )
-
 
 
 ds = Spain(path=gscad_path, verbosity=3)

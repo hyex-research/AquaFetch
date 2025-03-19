@@ -4,7 +4,7 @@ import re
 import time
 import requests
 from io import StringIO
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 from requests.exceptions import JSONDecodeError
 from concurrent.futures import ProcessPoolExecutor
 
@@ -18,6 +18,10 @@ from ..utils import check_attributes
 from ._hysets import HYSETS
 
 from ._map import (
+    observed_streamflow_cms,
+)
+
+from ._map import (
     catchment_area,
     gauge_latitude,
     gauge_longitude,
@@ -25,9 +29,9 @@ from ._map import (
     )
 
 DAILY_START = "1820-01-01"
-DAILY_END = "2024-05-30"
+DAILY_END = "2024-12-31"
 HOURLY_START = "1910-01-01"
-HOURLY_END = "2024-05-30"
+HOURLY_END = "2024-12-31"
 
 
 class USGS(_RainfallRunoff):
@@ -65,9 +69,11 @@ class USGS(_RainfallRunoff):
         super().__init__(path, verbosity=verbosity, **kwargs)
 
         if hysets_path is None:
-            hysets_path = os.path.join(os.path.dirname(self.path), 'HYSETS')
-            if os.path.exists(hysets_path):
-                self.hysets_path = hysets_path
+            hysets_path = os.path.dirname(self.path)
+            # if os.path.exists(hysets_path):
+            #     self.hysets_path = hysets_path
+            if self.verbosity:
+                print(f"hysets_path is {hysets_path}")
 
         self.hysets = HYSETS(path = hysets_path, verbosity=verbosity)
         self.hysets_path = self.hysets.path
@@ -85,7 +91,6 @@ class USGS(_RainfallRunoff):
             'Centroid_Lat_deg_N': gauge_latitude(),
             'Slope_deg': slope('degrees'),
             'Centroid_Lon_deg_E': gauge_longitude(),
-
         }
 
     @property
@@ -94,11 +99,11 @@ class USGS(_RainfallRunoff):
 
     @property
     def end(self)->str:
-        return "20181231"
+        return "20231231"
 
     @property
     def dynamic_features(self)->List[str]:
-        return ['obs_q_cms'] + self.hysets.dynamic_features[1:]
+        return self.hysets.dynamic_features
 
     def stations(self)->List[str]:
         return self._stations
@@ -109,7 +114,7 @@ class USGS(_RainfallRunoff):
 
     @property
     def _q_name(self)->str:
-        return 'obs_q_cms'
+        return observed_streamflow_cms()
 
     def get_boundary(
             self,
@@ -154,7 +159,7 @@ class USGS(_RainfallRunoff):
             stations: Union[str, List[str]] = 'all',
     ) ->pd.Series:
         """
-        Returns area_gov (Km2) of all catchments as pandas series
+        Returns area_gov (Km2) of all catchments as :obj:`pandas.Series`
 
         parameters
         ----------
@@ -165,7 +170,7 @@ class USGS(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -180,7 +185,7 @@ class USGS(_RainfallRunoff):
 
         area = self.metadata['drain_area_va']
 
-        area.name = 'area'
+        area.name = 'area_km2'
         return area.loc[stations]
 
     def fetch_static_features(
@@ -188,8 +193,7 @@ class USGS(_RainfallRunoff):
             stations: Union[str, List[str]] = "all",
             static_features:Union[str, List[str]] = "all",
             st=None,
-            en=None,
-            as_ts=False
+            en=None
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -203,7 +207,6 @@ class USGS(_RainfallRunoff):
                 static features are returned.
             st :
             en :
-            as_ts :
 
         Examples
         ---------
@@ -224,14 +227,14 @@ class USGS(_RainfallRunoff):
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'Elevation_m'])
         >>> static_data.shape
            (12004, 2)
         """
         stations = check_attributes(stations, self.stations())
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]        
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en, as_ts)
+        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en)
         static_feats.set_index('Official_ID', inplace=True)
         return static_feats
 
@@ -251,8 +254,8 @@ class USGS(_RainfallRunoff):
 
         Returns
         -------
-        coords :
-            pandas DataFrame with ``long`` and ``lat`` columns.
+        pd.DataFrame
+            :obj:`pandas.DataFrame` with ``long`` and ``lat`` columns.
             The length of dataframe will be equal to number of stations
             wholse coordinates are to be fetched.
 
@@ -277,7 +280,7 @@ class USGS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
         """
         returns features of multiple stations
 
@@ -289,11 +292,13 @@ class USGS(_RainfallRunoff):
         >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations(), 'stations')
-        #stations = [int(stn) for stn in stations]
+        static, dynamic = None, None
+
+        # todo : reading data for 500 stations is taking ~ 10 minutes which is not sustainable
 
         if dynamic_features is not None:
 
-            dyn = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -302,21 +307,16 @@ class USGS(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                to_return = {}
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
                                                      st=st,
                                                      en=en,
                                                      **kwargs
                                                      )
-                to_return['static'] = static
-                to_return['dynamic'] = dyn
-            else:
-                to_return = dyn
 
         elif static_features is not None:
             # we want only static
-            to_return = self._fetch_static_features(
+            static = self._fetch_static_features(
                 station=stations,
                 static_features=static_features,
                 **kwargs
@@ -324,7 +324,7 @@ class USGS(_RainfallRunoff):
         else:
             raise ValueError(f"static features are {static_features} and dynamic features are {dynamic_features}")
 
-        return to_return
+        return static, dynamic
 
     def _fetch_dynamic_features(
             self,
@@ -332,8 +332,7 @@ class USGS(_RainfallRunoff):
             dynamic_features = 'all',
             st=None,
             en=None,
-            as_dataframe=False,
-            as_ts=False
+            as_dataframe=False
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
@@ -341,7 +340,7 @@ class USGS(_RainfallRunoff):
 
         daily_q = None
 
-        if 'obs_q_cms' in features:
+        if observed_streamflow_cms() in features:
             # todo:  we are reading all file even for one station
             daily_q = self._q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
@@ -349,25 +348,28 @@ class USGS(_RainfallRunoff):
             else:
                 daily_q = daily_q.loc[st:en, stations]
             
-            features.remove('obs_q_cms')
+            features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
             return daily_q
 
-        stations_ = [int(self.hysets.OfficialID_WatershedID_map[stn]) for stn in stations]
+        karte = self.hysets.OfficialID_WatershedID_map
+        stations_ = [int(karte[stn]) for stn in stations]
         data = self.hysets._fetch_dynamic_features(stations_, features, st, en, as_dataframe)
 
         if daily_q is not None:
             if isinstance(daily_q, xr.Dataset):
                 assert isinstance(data, xr.Dataset), "xarray dataset not supported"
-                data = data.rename({int(k)-1:v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations})
+                # todo : why shoule we not subtract 1
+                karte = {str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations}
+                data = data.rename(karte)
 
                 # first create a new dimension in daily_q named dynamic_features
-                daily_q = daily_q.expand_dims({'dynamic_features': ['obs_q_cms']})
+                daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features')
             else:
                 # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={int(k)-1:v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
+                data.rename(columns={str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
                 assert isinstance(data.index, pd.MultiIndex)
                 # data is multiindex dataframe but daily_q is not
                 # first make daily_q multiindex
@@ -384,8 +386,7 @@ class USGS(_RainfallRunoff):
             station="all",
             static_features: Union[str, list] = 'all',
             st=None,
-            en=None,
-            as_ts=False
+            en=None
     )->pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity>1:
@@ -393,7 +394,7 @@ class USGS(_RainfallRunoff):
         stations = check_attributes(station, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en, as_ts).copy()
+        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en).copy()
         static_feats = static_feats.set_index('Official_ID')
         return static_feats
 
@@ -448,13 +449,14 @@ class USGS(_RainfallRunoff):
             cpus:int = None,
             ):
 
-        df = pd.read_csv(os.path.join(self.hysets_path, "HYSETS_watershed_properties.txt"),
-                 sep=";")
+        df = pd.read_csv(
+            os.path.join(self.hysets_path, "HYSETS_watershed_properties.txt"),
+            sep=",")
 
         sites = df.loc[df['Source']=='USGS']['Official_ID']
 
         if cpus is None:
-            cpus = get_cpus() - 2
+            cpus = max(get_cpus() - 2, 1)
         
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -493,7 +495,7 @@ def maybe_make_and_get_metadata(
         cpus:int=None
         )->pd.DataFrame:
 
-    cpus = get_cpus()-2 if cpus is None else cpus
+    cpus = max(get_cpus()-2, 1) if cpus is None else cpus
 
     fpath = os.path.join(path, 'metadata.csv')
     if os.path.exists(fpath):
@@ -710,7 +712,7 @@ def _read_json(json):
 def download_daily_q_nwis(
         site:str = '14105700', 
         start = '1820-01-01', 
-        end='2024-05-30'
+        end='2024-12-31'
         )->pd.DataFrame:
 
     response = requests.get(
@@ -747,7 +749,7 @@ def download_daily_record(
 
     site_data = download_daily_q_nwis(site, 
                     start="1820-01-01",  # DAILY_START
-                    end="2024-05-30",    # DAILY_END
+                    end="2024-12-31",    # DAILY_END
                     )
     if f'00060_Mean' in site_data.columns:
         # get data for stations which have A in 00060_Mean_cd column
@@ -771,12 +773,12 @@ def download_daily_record(
     elif len(site_data) == 0:
         # return empty series
         site_data = pd.Series(name=f"{site}__empty",
-                              index = pd.date_range(start="2024-01-01", end="2024-05-30", freq='D')
+                              index = pd.date_range(start="2024-01-01", end="2024-12-31", freq='D')
                               )
     else:
         #print(f"Site: {site} has {site_data.columns}")
         site_data = pd.Series(name=f"{site}__empty",
-                            index = pd.date_range(start="2024-01-01", end="2024-05-30", freq='D')
+                            index = pd.date_range(start="2024-01-01", end="2024-12-31", freq='D')
                             )
     
     site_data.name = site

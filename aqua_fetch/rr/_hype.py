@@ -114,11 +114,11 @@ class HYPE(_RainfallRunoff):
     def static_features(self):
         return []
 
-    def _read_dynamic_from_csv(self,
-                               stations: list,
-                               features: Union[str, list] = 'all',
-                               st=None,
-                               en=None,
+    def _read_dynamic(self,
+                      stations: list,
+                      features: Union[str, list] = 'all',
+                      st=None,
+                      en=None,
                                ):
 
         dynamic_features = check_attributes(features, self.dynamic_features)
@@ -159,16 +159,16 @@ class HYPE(_RainfallRunoff):
     def _mmd_feature_name(self) ->str:
         return 'Streamflow_mm'
 
-    def fetch_static_features(self, stn_id, static_features=None):
+    def fetch_static_features(self, station, static_features=None):
         """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 
     def area(
             self,
-            stations: Union[str, List[str]] = None
+            stations: Union[str, List[str]] = "all"
     ) ->pd.Series:
         """
-        Returns area (Km2) of all catchments as pandas series
+        Returns area (Km2) of all catchments as :obj:`pandas.Series`
 
 
         parameters
@@ -180,7 +180,7 @@ class HYPE(_RainfallRunoff):
         Returns
         --------
         pd.Series
-            a pandas series whose indices are catchment ids and values
+            a :obj:`pandas.Series` whose indices are catchment ids and values
             are areas of corresponding catchments.
 
         Examples
@@ -209,14 +209,14 @@ class HYPE(_RainfallRunoff):
 
         s = pd.Series(
             np.array(areas),
-            name="area",
+            name="area_km2",
             index=indices)
 
         return s.loc[stations]
 
     def stn_coords(
             self,
-            stations:Union[str, List[str]] = None
+            stations:Union[str, List[str]] = "all"
     ) ->pd.DataFrame:
         """
         returns coordinates of stations as DataFrame
@@ -236,7 +236,7 @@ class HYPE(_RainfallRunoff):
         >>> dataset.stn_coords(['2', '605'])  # returns coordinates of two stations
         """
 
-        stations = check_attributes(stations, self.stations())
+        stations = check_attributes(stations, self.stations(), 'stations')
         fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
 
         with open(fpath, 'r') as fp:
