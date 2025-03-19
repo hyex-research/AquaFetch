@@ -1472,7 +1472,7 @@ class Poland(_EStreams):
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of staic features are 214 and dynamic features are 10 and the
-    data is available from 1992-01-01 to 2020-06-31.
+    data is available from 1951-01-01 to 2023-06-30.
     """
     def __init__(
             self, 
@@ -1599,7 +1599,8 @@ def download_single_file(year, month:str):
                         names=['stn_id', 'year', 'day', 'q_cms', 'month'],
                         usecols=[0, 3, 5, 7, 9],
                         # sometimes casting month to int fails
-                        dtype={'stn_id': str, 'year': 'int', 'day': 'int', 'q_cms': np.float32, #'month': 'int'
+                        # also don't cast q_cms to float32 since it makes 99999.999 to 100000.0
+                        dtype={'stn_id': str, 'year': 'int', 'day': 'int', #'q_cms': np.float32, #'month': 'int'
                                },
                         #parse_dates={'date': ['year', 'month', 'day']},
                         #index_col='date',

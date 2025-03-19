@@ -3060,3 +3060,10 @@ class CAMELS_FR(_RainfallRunoff):
         dyn = {stn: self._read_dyn_stn(stn)[features] for stn in stations}
 
         return dyn
+
+
+class CAMELS_SPAT(_RainfallRunoff):
+    """
+    Dataset of 1426 catchments from North America (USA and Canada) following the works of
+    `Knoben et al., 2025 <https://doi.org/10.5194/egusphere-2025-893>`_.
+    """
