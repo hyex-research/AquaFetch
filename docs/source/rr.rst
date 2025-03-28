@@ -44,10 +44,10 @@ a feature not available in CAMELS-GB (`Coxon et al., 2020 <https://doi.org/10.51
 is optional since it initiaties the download of GSHA and EStreams datasets which can 
 be time-consuming and may not always be necessary.
 
-Certain datasets in our package feature overlapping stations from the same region. 
-For example, both the Bull and Spain datasets both cover Spain. 
+Certain datasets in this package feature overlapping stations from the same region. 
+For example, both the ``Bull`` and ``Spain`` datasets cover Spain. 
 However, the Bull dataset was introduced by by `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_ , 
-whereas the Spain dataset was introduced in our work. The Spain dataset contains 
+whereas the Spain dataset was introduced in this work. The Spain dataset contains 
 more stations, totaling 889, while the Bull dataset includes 484 stations.
 Similarly, both the CABra (`Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_) and CAMELS_BR (`Chagas et al., 2020 <https://doi.org/10.5194/essd-12-2075-2020>`_) datasets 
 cover Brazil and have been published in peer-reviewed journals. However, they differ 
@@ -56,7 +56,7 @@ Denmark is covered by two datasets, Caravan_DK (`Koch 2022 <https://doi.org/10.5
 which differ in temporal coverage and the number of static and dynamic features. 
 The HYSETS dataset (`Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_) covers Mexico, the US, and Canada. However, 
 we identified issues with the observed streamflow data for the US in HYSETS. As a 
-result, we introduced the USGS class, which focuses specifically on the US region. 
+result, we introduced the ``USGS`` dataset, which focuses specifically on the US region. 
 The catchment boundaries, static features, and meteorological data for USGS, however, 
 are still obtained from HYSETS.
 
