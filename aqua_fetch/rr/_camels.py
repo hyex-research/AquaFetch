@@ -96,7 +96,7 @@ class CAMELS_US(_RainfallRunoff):
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['prcp(mm/day)', 'srad(W/m2)', 'tmax(C)', 'tmin(C)', 'Flow']).unstack()
+    ... dynamic_features=['pcp_mm', 'solrad_wm2', 'airtemp_C_max', 'airtemp_C_min', 'q_cms_obs']).unstack()
     >>> df.shape
     (12784, 5)
     # get names of available static features
@@ -112,8 +112,21 @@ class CAMELS_US(_RainfallRunoff):
 
     """
     DATASETS = ['CAMELS_US']
-    url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
-    catchment_attr_url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/camels_attributes_v2.0.zip"
+
+    url = {
+        'camels_attributes_v2.0.pdf': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_attributes_v2.0.xlsx': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_clim.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_geol.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_hydro.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_name.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_soil.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_topo.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_vege.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'readme.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'basin_timeseries_v1p2_metForcing_obsFlow.zip': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'basin_set_full_res.zip': 'https://gdex.ucar.edu/dataset/camels/file/',
+    }
 
     folders = {'basin_mean_daymet': f'basin_mean_forcing{SEP}daymet',
                'basin_mean_maurer': f'basin_mean_forcing{SEP}maurer',
@@ -157,20 +170,37 @@ class CAMELS_US(_RainfallRunoff):
 
         super().__init__(path=path, name="CAMELS_US", **kwargs)
 
-        self.path = path
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
-        if os.path.exists(self.path):
-            if self.verbosity: print(f"dataset is already downloaded at {self.path}")
-        else:
-            download(self.url, os.path.join(self.camels_dir, f'CAMELS_US{SEP}CAMELS_US.zip'))
-            download(self.catchment_attr_url, os.path.join(self.camels_dir, f"CAMELS_US{SEP}catchment_attrs.zip"))
-            unzip(self.path)
+        for fname, url in self.url.items():
 
-        self.attr_dir = os.path.join(self.path, f'catchment_attrs{SEP}camels_attributes_v2.0')
-        self.dataset_dir = os.path.join(self.path, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
+            fpath = os.path.join(self.path, fname)
+            furl = f"{url}{fname}"
+
+            if not os.path.exists(fpath) or self.overwrite:
+
+                if self.verbosity:
+                    print(f"downloading {fname} from {url}")
+
+                download(furl, self.path, fname, verbosity=self.verbosity)
+
+                unzip(self.path, verbosity=self.verbosity)
+
+        self.dataset_dir = os.path.join(
+            self.path, 
+            f'basin_timeseries_v1p2_metForcing_obsFlow{SEP}basin_dataset_public_v1p2')
 
         self._static_features = self._static_data().columns.tolist()
         self._maybe_to_netcdf('camels_us_dyn')
+
+        self.boundary_file = os.path.join(
+            self.path,
+            "basin_set_full_res",
+            "HCDN_nhru_final_671.shp"
+        )
+            
+        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -292,19 +322,22 @@ class CAMELS_US(_RainfallRunoff):
     def _static_data(self)->pd.DataFrame:
         static_fpath = os.path.join(self.path, 'static_features.csv')
         if not os.path.exists(static_fpath):
-            files = glob.glob(f"{os.path.join(self.path, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
-            static_df = pd.DataFrame()
+            files = glob.glob(f"{self.path}/*.txt")
+
+            static_dfs = []
             for f in files:
-                # index should be read as string
-                idx = pd.read_csv(f, sep=';', usecols=['gauge_id'], dtype=str)
-                _df = pd.read_csv(f, sep=';', index_col='gauge_id')
-                _df.index = idx['gauge_id']
-                static_df = pd.concat([static_df, _df], axis=1)
+                if not f.endswith('readme.txt'):
+                    if self.verbosity>2:
+                        print(f"reading {f}")
+                    # index should be read as string
+
+                    _df = pd.read_csv(f, sep=';', index_col='gauge_id', dtype={'gauge_id': str})
+
+                    static_dfs.append(_df)
+            static_df = pd.concat(static_dfs, axis=1)
             static_df.to_csv(static_fpath, index_label='gauge_id')
         else:  # index should be read as string bcs it has 0s at the start
-            idx = pd.read_csv(static_fpath, usecols=['gauge_id'], dtype=str)
-            static_df = pd.read_csv(static_fpath, index_col='gauge_id')
-            static_df.index = idx['gauge_id']
+            static_df = pd.read_csv(static_fpath, index_col='gauge_id', dtype={'gauge_id': str})
 
         static_df.index = static_df.index.astype(str)
 
