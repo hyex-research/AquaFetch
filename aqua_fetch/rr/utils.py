@@ -33,8 +33,8 @@ class _RainfallRunoff(Datasets):
     This is the parent class for invidual rainfall-runoff datasets like CAMELS-GB etc.
     This class is not meant to be for direct use. It is inherited by the child classes
     which are specific to a dataset like CAMELS-GB, CAMELS-AUS etc.
-    This class first downloads the CAMELS dataset if it is not already downloaded.
-    Then the selected features for a selected id are fetched and provided to the
+    This class first downloads the dataset if it is not already downloaded.
+    Then the selected features for a selected catchment/station are fetched and provided to the
     user using the method `fetch`.
 
     Attributes

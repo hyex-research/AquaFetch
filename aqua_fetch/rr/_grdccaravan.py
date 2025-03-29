@@ -321,8 +321,12 @@ class GRDCCaravan(_RainfallRunoff):
         dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
         stations = check_attributes(stations, self.stations())
 
-        if len(stations) > 10:
-            cpus = self.processes or min(get_cpus(), 64)
+        cpus = self.processes or min(get_cpus(), 64)
+
+        if len(stations) > 10 and cpus>1:
+            
+            if self.verbosity > 0:
+                print(f"Using {cpus} cpus to read dynamic features for {len(stations)} stations")
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
                     self._read_dynamic_for_stn,
@@ -330,9 +334,14 @@ class GRDCCaravan(_RainfallRunoff):
                 )
             dyn = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         else:
-            dyn = {
-                stn: self._read_dynamic_for_stn(stn).loc[st: en, dynamic_features] for stn in stations
-            }
+            if self.verbosity > 0:
+                print(f"Using single cpu to read dynamic features for {len(stations)} stations")
+            dyn = {}
+            for idx, stn in enumerate(stations):
+                dyn[stn] = self._read_dynamic_for_stn(stn).loc[st: en, dynamic_features]
+
+                if self.verbosity>0 and idx % 100 == 0:
+                    print(f"Read data for {idx} stations")
 
         return dyn
 
