@@ -56,45 +56,45 @@ _, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.get_level_values('dynamic_features')
 df.shape
-   (21184, 26)
+   (26388, 28)
 # get name of all stations as list
 stns = dataset.stations()
 len(stns)
-   222
+   561
 # get data of 10 % of stations as dataframe
 _, df = dataset.fetch(0.1, as_dataframe=True)
 df.shape
-   (550784, 22)
+   (550784, 28)
 # The returned dataframe is a multi-indexed data
 df.index.names == ['time', 'dynamic_features']
     True
 # get data by station id
-_, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+_, df = dataset.fetch(stations='912101A', as_dataframe=True).unstack()
 df.shape
-    (21184, 26)
+    (26388, 28)
 # get names of available dynamic features
 dataset.dynamic_features
 # get only selected dynamic features
 _, data = dataset.fetch(1, as_dataframe=True,
 ...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
 data.shape
-   (21184, 4)
+   (26388, 4)
 # get names of available static features
 dataset.static_features
 # get data of 10 random stations
 df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe
-   (21184, 260)
+   (26388, 280)
 # If we get both static and dynamic data
-static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-static.shape, dynamic.shape
-((1, 166), (550784, 1))
+static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
+static.shape, dynamic.unstack().shape
+((1, 187), (26388, 28))
 coords = dataset.stn_coords() # returns coordinates of all stations
 coords.shape
-    (472, 2)
-dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
-    18.3861 80.3917
-dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+    (561, 2)
+dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+    -18.643612	139.253052
+dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
 ```
 
 The datasets related to surface water quality are available using functional or objected-oriented API
@@ -205,10 +205,10 @@ mg_data_ohe.shape
 |-------------------|------------|--------------------------------|-------------|----------------------------------------------------------------------------|
 | Adsorption        | 26         | Emerg. Contaminants            | 3,757       | [Jaffari et al., 2023](https://doi.org/10.1016/j.cej.2023.143073)          |
 | Adsorption        | 15         | Cr                             | 219         | [Ishtiaq et al., 2024](https://doi.org/10.1016/j.jece.2024.112238)         |
-| Adsorption        | 30         | heavy metals                   | 1,518       | [Jaffari et al., 2023 ](https://doi.org/10.1016/j.jhazmat.2023.132773)     |
+| Adsorption        | 30         | (Cr(VI), Co(II), Sr(II), Ba(II), I, and Fe ) | 1,518  | [Jaffari et al., 2023 ](https://doi.org/10.1016/j.jhazmat.2023.132773)     |
 | Adsorption        | 30         | po4                            | 5,014       | [Iftikhar et al., 2024](https://doi.org/10.1016/j.chemosphere.2024.144031) |
 | Adsorption        | 12         | Industrial Dye                 | 1,514       | [Iftikhar et al., 2023](https://doi.org/10.1016/j.seppur.2023.124891)      |
-| Adsorption        | 17         | Heavy metals                   | 689         | [Shen et al., 2023](https://doi.org/10.1016/j.jhazmat.2024.133442)         |
+| Adsorption        | 17         | Cu, Zn, Pb, Cd, Ni, and As     | 689         | [Shen et al., 2023](https://doi.org/10.1016/j.jhazmat.2024.133442)         |
 | Adsorption        | 8          | P                              | 504         | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
 | Adsorption        | 8          | N                              | 211         | [Leng et al., 2024](https://doi.org/10.1016/j.jwpe.2024.104896)            |
 | Adsorption        | 13         | As                             | 1,605       | [Huang et al., 2024](https://doi.org/10.1016/j.watres.2024.122815)         |
@@ -220,5 +220,5 @@ mg_data_ohe.shape
 | Photocatalysis    | 7          | TiO2                           | 446         | [Jiang et al., 2020](https://doi.org/10.1016/j.envres.2020.109697)         |
 | Photocatalysis    | 8          | multiple                       | 457         | [Jiang et al., 2020](https://doi.org/10.3390/catal11091107)                |
 | membrane          | 18         | micropollutants                | 1,906       | [Jeong et al., 2021](https://doi.org/10.1021/acs.est.1c04041)              |
-| membrane          | 18         | heavy metals                   | 1,586       | [Jeong et al., 2023](https://doi.org/10.1021/acs.est.2c08384)              |
+| membrane          | 18         | salts                          | 1,586       | [Jeong et al., 2023](https://doi.org/10.1021/acs.est.2c08384)              |
 | sonolysis         | 6          | Cyanobacteria                  | 314         | [Jaffari et al., 2024](https://doi.org/10.1016/j.jhazmat.2024.133762)      |

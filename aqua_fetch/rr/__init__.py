@@ -110,45 +110,57 @@ class RainfallRunoff(object):
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.columns = df.columns.get_level_values('dynamic_features')
     >>> df.shape
-       (21184, 26)
+       (26388, 28)
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       222
+       561
     ... # get data of 10 % of stations as dataframe
     >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
-       (550784, 22)
+       (738864, 56)
     ... # The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True)
+    >>> _, df = dataset.fetch(stations='912101A', as_dataframe=True)
     >>> df.unstack().shape
-        (21184, 26)
+        (26388, 28)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
     ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs'])
     >>> data.unstack().shape
-       (21184, 4)
+       (26388, 4)
     ... # get names of available static features
     >>> dataset.static_features
+    ... # get all static features of all stations
+    >>> df = dataset.fetch_static_features()
+    >>> df.shape
+         (561, 187)
+    ... # get area of a single station
+    >>> area = dataset.area('912101A')
+    >>> type(area), area.shape
+        (pandas.core.series.Series, (1,))
     ... # get data of 10 random stations
     >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
-       (21184, 260)
+       (26388, 280)
     # If we want to get both static and dynamic data 
-    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 166), (550784, 1))
+    >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 187), (26388, 28))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (472, 2)
-    >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
-        18.3861	80.3917
-    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+        (561, 2)
+    >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+       -18.643612	139.253052
+    >>> dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
+    ... # get boundary of the catchment
+    >>> boundary = dataset.get_boundary('912101A')
+    >>> b.shape
+    >>> (20086, 2)
 
     See :ref:`sphx_glr_auto_examples_camels_australia.py` for more comprehensive usage example.
 
