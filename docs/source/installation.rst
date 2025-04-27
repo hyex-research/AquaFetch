@@ -39,7 +39,7 @@ The latest code however (possibly with less bugs and more features) can be insta
 
 To install the latest branch (`dev`) with all requirements use ``all`` keyword
 ::
-    python -m pip install "AquaFetch[all] @ git+https://github.com/hyex-research/AquaFetch.git@dev"
+    python -m pip install "aqua-fetch[all] @ git+https://github.com/hyex-research/AquaFetch.git@dev"
 
 This will install `xarray <https://docs.xarray.dev/en/stable/>`_, `netCDF4 <https://github.com/Unidata/netcdf4-python>`_, 
 `easy_mpl <https://easy-mpl.readthedocs.io/>`_

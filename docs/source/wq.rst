@@ -67,31 +67,31 @@ List of datasets
      - `Boithias et al., 2022 <https://essd.copernicus.org/articles/14/2883/2022/>`_
    * - CamelsChem
      - :py:class:`aqua_fetch.CamelsChem`
-     - 18
+     - 28
      - 1980 - 2018
      - Continental USA
      - `Sterle et al., 2024 <https://doi.org/10.5194/hess-28-611-2024>`_
    * - Global River Methane
      - :py:class:`aqua_fetch.GRiMeDB`
-     - 18
-     - 
+     - 1
+     - 1973 - 2021
      - Global
      - `Stanley et al., 2024 <https://doi.org/10.5194/essd-15-2879-2023>`_
    * - Sylt Roads
      - :py:class:`aqua_fetch.SyltRoads`
-     - 18
+     - 15
      - 1973 - 2019
      - Red Sea (Arctic)
      - `Rick et al., 2023 <https://doi.org/10.5194/essd-15-1037-2023>`_
    * - San Francisco Bay
      - :py:class:`aqua_fetch.SanFranciscoBay`
      - 18
-     - 1973 - 2019
+     - 1969 - 2015
      - San Francisco (USA)
      - `Schraga et al., 2017 <https://doi.org/10.1038/sdata.2017.98>`_
    * - Buzzards Bay
      - :py:class:`aqua_fetch.BuzzardsBay`
-     - 18
+     - 16
      - 1992 - 2018
      - Buzzards Bay (USA)
      - `Jakuba et al., <https://doi.org/10.1038/s41597-021-00856-4>`_

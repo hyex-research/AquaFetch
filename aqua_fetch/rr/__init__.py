@@ -123,15 +123,15 @@ class RainfallRunoff(object):
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True)
+    >>> df.unstack().shape
         (21184, 26)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
-    >>> data.shape
+    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs'])
+    >>> data.unstack().shape
        (21184, 4)
     ... # get names of available static features
     >>> dataset.static_features
