@@ -1000,7 +1000,7 @@ class GSHA(_RainfallRunoff):
             en=None,
             as_dataframe=False,
             agency: List[str] = "all",
-    )-> xr.Dataset:
+    )-> "Dataset":
         """
         Fetches all or selected dynamic features of one station.
 
