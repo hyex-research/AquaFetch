@@ -3100,3 +3100,11 @@ class CAMELS_SPAT(_RainfallRunoff):
     Dataset of 1426 catchments from North America (USA and Canada) following the works of
     `Knoben et al., 2025 <https://doi.org/10.5194/egusphere-2025-893>`_.
     """
+    stn_name = 'USA_14141500'
+    time_step = 'obs-hourly'  # or obs_daily
+    scale = 'macro-scale' # or headwater or meso-scale
+    data_type = 'observations'  # or 
+    url = {
+        f'https://www.frdr-dfdr.ca/repo/files/1/published/publication_1211/submitted_data/{data_type}/{scale}/{time_step}/{stn_name}_hourly_flow_observations.nc',
+
+        }

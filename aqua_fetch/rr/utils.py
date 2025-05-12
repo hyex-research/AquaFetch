@@ -878,7 +878,7 @@ class _RainfallRunoff(Datasets):
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
-    ) -> plt.Axes:
+    ):
         """
         plots catchment boundaries
 
