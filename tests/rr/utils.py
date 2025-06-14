@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from aqua_fetch._backend import xarray as xr
 
-import matplotlib.pyplot as plt
+from aqua_fetch._backend import plt
 
 logger = logging.getLogger(__name__)
 
