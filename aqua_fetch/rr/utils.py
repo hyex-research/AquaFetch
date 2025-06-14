@@ -531,6 +531,13 @@ class _RainfallRunoff(Datasets):
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
         ... dynamic_features=['streamflow_mmd', 'tmax_AWAP'], static_features=['elev_mean'])
         """
+
+        if xr is None:
+            if not as_dataframe:
+                warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
@@ -933,10 +940,19 @@ class _RainfallRunoff(Datasets):
 
 def _handle_dynamic(dyn, as_dataframe: bool):
     if as_dataframe and isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
-        # if the dyn is a dictionary of key, DataFames, we will return a MultiIndex
-        # dataframe instead of a dictionary
-        dyn = xr.Dataset(dyn).to_dataframe(['time',
-                                            'dynamic_features'])  # todo wiered that we have to first convert to xr.Dataset and then to DataFrame
+        # if the dyn is a dictionary of station, DataFames pairs, and each DataFrame's index is 'time'
+        # 'columns' are 'dynamic_features', we will return a MultiIndex
+        # dataframe instead of a dictionary whose first index is time and second index is dynamic_feature
+        # Step 1: Convert each DataFrame to long format (melt)
+        long_dfs = []
+        for station, df in dyn.items():
+            long_df = df.reset_index().melt(id_vars='time', var_name='dynamic_feature', value_name='value')
+            long_df['station'] = station
+            long_dfs.append(long_df)
+        # Step 2: Concatenate all long DataFrames into one
+        combined_df = pd.concat(long_dfs)
+        # Step 3: Pivot to get desired format: rows = (time, dynamic_feature), columns = stations
+        dyn = combined_df.pivot(index=['time', 'dynamic_feature'], columns='station', values='value')
     elif isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
         # dyn is a dictionary of key, DataFames and we have to return xr Dataset
         # dyn = pd.concat(dyn, axis=0, keys=dyn.keys())
