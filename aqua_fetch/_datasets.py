@@ -974,10 +974,10 @@ def gw_punjab(
     if not os.path.exists(ds_dir):
         os.makedirs(ds_dir)
 
-    fname = os.path.join(ds_dir, "gw_punjab.xlsx")
-    if not os.path.exists(fname):
-        print(f"downloading {fname}")
-        download(f, fname)
+    fpath = os.path.join(ds_dir, "gw_punjab.xlsx")
+    if not os.path.exists(fpath):
+        print(f"downloading {fpath}")
+        download(f, os.path.dirname(fpath), fname="gw_punjab.xlsx")
 
     assert data_type in ("full", "LTS")
 
@@ -986,7 +986,7 @@ def gw_punjab(
     else:
         sheet_name = "LTS"
 
-    df = pd.read_excel(fname, sheet_name=sheet_name)
+    df = pd.read_excel(fpath, sheet_name=sheet_name)
 
     if sheet_name == "LTS":
         df.iloc[5571, 3] = '01/10/1887'
