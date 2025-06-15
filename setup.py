@@ -46,7 +46,7 @@ setup(
 
     name='aqua_fetch',
 
-    version = "1.0.0rc2",
+    version = "1.0.0rc3",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
@@ -55,7 +55,7 @@ setup(
     url='https://github.com/hyex-research/AquaFetch',
 
     author='Ather Abbas',
-    author_email='ather_abbas786@yahoo.com',
+    author_email='ather.abbas.cheema@gmail.com',
 
     package_data={'aqua_fetch': ['data/portugal_stn_codes.csv']},
     include_package_data=True,
