@@ -134,7 +134,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water.datasets import Quadica
+            >>> from aqua_fetch import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.wrtds_monthly()
 

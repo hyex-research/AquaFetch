@@ -131,11 +131,11 @@ data.shape
 (3757, 27)
 
 from aqua_fetch import mg_degradation
-mg_data, catalyst_encoder, anion_encoder = mg_degradation()
+mg_data, encoders = mg_degradation()
 mg_data.shape
 (1200, 12)
 # the default encoding is None, but if we want to use one hot encoder
-mg_data_ohe, cat_enc, an_enc = mg_degradation(encoding="ohe")
+mg_data_ohe, encoders = mg_degradation(encoding="ohe")
 mg_data_ohe.shape
 (1200, 31)
 ```
