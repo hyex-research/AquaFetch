@@ -262,6 +262,17 @@ class RainfallRunoff(object):
     def __len__(self):
         return len(self.stations())
 
+    def __getattr__(self, item):
+        """
+        Although we are using most attributes of the underlying dataset class,
+        by directly accessing them, but there still can be some dataset specific
+        attributes that are not directly accessed. In that case, we can use this
+        method to access those attributes.
+        """
+        if hasattr(self.dataset, item):
+            return getattr(self.dataset, item)
+        raise AttributeError(f"{item} not found in {self.name} dataset")
+
     def num_dynamic(self) -> int:
         """number of dynamic features associated with the dataset"""
         return len(self.dynamic_features)
