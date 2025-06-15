@@ -109,11 +109,12 @@ class WaterBenchIowa(_RainfallRunoff):
         >>> dataset = WaterBenchIowa()
         >>> data = dataset.fetch_station_attributes('666')
         """
+        st, en = self._check_length(st, en)
         check_attributes(dynamic_features, self.dynamic_features)
         fname = os.path.join(self.ts_path, f"{station}_data.csv")
         df = pd.read_csv(fname)
         df.index = pd.to_datetime(df.pop('datetime'))
-
+        df = df.loc[st:en]
         return df
 
     def fetch_static_features(

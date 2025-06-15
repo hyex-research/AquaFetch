@@ -265,6 +265,10 @@ class CAMELS_US(_RainfallRunoff):
             st=None,
             en=None,
     ):
+
+        st, en = self._check_length(st, en)
+        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+
         dyn = {}
         for station in stations:
 
@@ -311,11 +315,13 @@ class CAMELS_US(_RainfallRunoff):
             stn_df.index.name = 'time'
             stn_df.rename(columns=self.dyn_map, inplace=True)
 
+            stn_df = stn_df.loc[st:en]
+
             for col, fact in self.dyn_factors.items():
                 if col in stn_df.columns:
                     stn_df[col] *= fact
 
-            dyn[station] = stn_df
+            dyn[station] = stn_df.loc[:, dynamic_features]
 
         return dyn
 
@@ -535,6 +541,8 @@ class CAMELS_GB(_RainfallRunoff):
             en=None,
     ):
         """Fetches dynamic attribute/features of one or more station."""
+        st, en = self._check_length(st, en)
+        features = check_attributes(features, self.dynamic_features, 'dynamic_features')
         dyn = {}
         for station in stations:
             # making one separate dataframe for one station
@@ -550,7 +558,7 @@ class CAMELS_GB(_RainfallRunoff):
             df.columns.name = 'dynamic_features'
             df.index.name = 'time'
 
-            dyn[station] = df
+            dyn[station] = df.loc[st:en, features]
 
         return dyn
 
@@ -592,8 +600,8 @@ class CAMELS_AUS(_RainfallRunoff):
     >>> dataset = CAMELS_AUS()
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.shape
-       (21184, 28)
+    >>> df.shape   # if you are using version 1 then the shape will be (21184, 28)
+       (26388, 28)
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -606,24 +614,24 @@ class CAMELS_AUS(_RainfallRunoff):
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
-    >>> df.shape
-        (21184, 28)
+    >>> df = dataset.fetch(stations='912101A', as_dataframe=True)[1].unstack()
+    >>> df.shape    # if you are using version 1 then the shape will be (21184, 28)
+        (26388, 28)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'et_morton_actual_SILO', 'q_cms_obs']).unstack()
-    >>> data.shape
-       (21184, 4)
+    >>> data = dataset.fetch(1, as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'et_morton_actual_SILO', 'q_cms_obs'])[1].unstack()
+    >>> data.shape    # if you are using version 1 then the shape will be (21184, 4)
+       (26388, 4)
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
-       (21184, 260)
+       (26388, 260)
     # If we get both static and dynamic data
-    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic.shape
     >>> ((1, 166), (550784, 1))
     """
@@ -890,7 +898,16 @@ class CAMELS_AUS(_RainfallRunoff):
 
         return static_df
 
-    def _read_dynamic(self, stations, dynamic_features, **kwargs):
+    def _read_dynamic(
+            self, 
+            stations, 
+            dynamic_features, 
+            st=None,
+            en=None,
+            ):
+
+        st, en = self._check_length(st, en)
+        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         dyn_attrs = {}
         dyn = {}
@@ -931,7 +948,7 @@ class CAMELS_AUS(_RainfallRunoff):
 
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
-            dyn[stn] = stn_df.loc[:, dynamic_features]
+            dyn[stn] = stn_df.loc[st:en, dynamic_features]
 
         return dyn
 
@@ -1180,6 +1197,7 @@ class CAMELS_CL(_RainfallRunoff):
 
         dyn = {}
         st, en = self._check_length(st, en)
+        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         assert all(stn in self.stations() for stn in stations)
 
@@ -1205,7 +1223,7 @@ class CAMELS_CL(_RainfallRunoff):
             stn_df.rename(columns=self.dyn_map, inplace=True)
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
-            dyn[stn] = stn_df[st:en]
+            dyn[stn] = stn_df.loc[st:en, dynamic_features]
 
         return dyn
 
@@ -1656,12 +1674,12 @@ class CAMELS_CH(_RainfallRunoff):
         """
         reads dynamic data of one or more catchments
         """
-
+        st, en = self._check_length(st, en)
         attributes = check_attributes(dynamic_features, self.dynamic_features)
         stations = check_attributes(stations, self.stations())
 
         dyn = {
-            stn: self._read_dynamic_for_stn(stn).loc["19810101": "20201231", attributes] for stn in stations
+            stn: self._read_dynamic_for_stn(stn).loc[st: en, attributes] for stn in stations
         }
         return dyn
 
@@ -2004,7 +2022,7 @@ class CAMELS_SE(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_SE
     >>> dataset = CAMELS_SE()
-    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> _, df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.shape
        (21915, 4)
@@ -2545,9 +2563,11 @@ class CAMELS_DK(_RainfallRunoff):
             dynamic_features,
             st=None,
             en=None) -> dict:
+
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features)
 
-        dyn = {stn: self._read_csv(stn)[features] for stn in stations}
+        dyn = {stn: self._read_csv(stn).loc[st:en, features] for stn in stations}
 
         return dyn
 
@@ -2846,10 +2866,11 @@ class CAMELS_IND(_RainfallRunoff):
             st=None,
             en=None) -> dict:
 
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         stations = check_attributes(stations, self.stations(), 'stations')
 
-        dyn = {stn: self._read_dyn_csv(stn)[features] for stn in stations}
+        dyn = {stn: self._read_dyn_csv(stn).loc[st:en, features] for stn in stations}
 
         return dyn
 

@@ -234,9 +234,9 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> camels = CAMELS_AUS()
-        >>> camels.fetch_static_features('224214A')
+        >>> camels.fetch_static_features('912101A')
         >>> camels.static_features
-        >>> camels.fetch_static_features('224214A',
+        >>> camels.fetch_static_features('912101A',
         ... static_features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         for CAMELS_FR
         >>> from aqua_fetch import CAMELS_FR
@@ -421,7 +421,7 @@ class _RainfallRunoff(Datasets):
         >>> dynamic
         ... # get only selected dynamic features
         >>> sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        ...     dynamic_features=['q_mmd_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
@@ -529,7 +529,7 @@ class _RainfallRunoff(Datasets):
         ...  as_dataframe=True)
         ... # get both dynamic and static features of selected stations
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-        ... dynamic_features=['streamflow_mmd', 'tmax_AWAP'], static_features=['elev_mean'])
+        ... dynamic_features=['q_mmd_obs', 'airtemp_C_mean_silo'], static_features=['elev_mean'])
         """
 
         if xr is None:
@@ -613,9 +613,9 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> camels = CAMELS_AUS()
-        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
-        >>> camels.fetch_dynamic_features('224214A',
+        >>> camels.fetch_dynamic_features('912101A',
         ... features=['airtemp_C_awap_max', 'vp_hpa_awap', 'q_cms_obs'],
         ... as_dataframe=True).unstack()
         """

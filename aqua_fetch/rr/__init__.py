@@ -348,9 +348,9 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
-        >>> camels.fetch_static_features('224214A')
+        >>> camels.fetch_static_features('912101A')
         >>> camels.static_features
-        >>> camels.fetch_static_features('224214A',
+        >>> camels.fetch_static_features('912101A',
         ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         """
 
@@ -592,9 +592,9 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
-        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
-        >>> camels.fetch_dynamic_features('224214A',
+        >>> camels.fetch_dynamic_features('912101A',
         ... features=['airtemp_C_silo_max', 'vp_hpa_silo', 'q_cms_obs'],
         ... as_dataframe=True).unstack()
         """

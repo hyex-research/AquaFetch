@@ -468,10 +468,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         features = check_attributes(attributes, self.dynamic_features, 'dynamic_features')
 
-        if st is None:
-            st = self.start
-        if en is None:
-            en = self.end
+        st, en = self._check_length(st, en)
 
         cpus = self.processes or min(get_cpus(), 64)
 
@@ -1175,6 +1172,7 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
             en=None
     ) -> dict:
 
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         if self.verbosity>1:
@@ -1194,6 +1192,8 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
 
         meteos = [
             self._read_meteo_from_csv(station=station, source=self.met_src) for station in stations]
+        # todo : this will be correct only if we are getting data for all stations
+        # but what if we want to get data for some random stations?
         # 10 because first 10 stations don't have data for "ref" source
         met_idx = pd.to_datetime(
             meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
@@ -1220,6 +1220,6 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
 
-            dyn[stn] = stn_df
+            dyn[stn] = stn_df.loc[st:en]
 
         return dyn

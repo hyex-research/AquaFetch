@@ -267,9 +267,11 @@ class Caravan_DK(_RainfallRunoff):
             dynamic_features,
             st=None,
             en=None) -> dict:
+        
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features)
 
-        dyn = {stn: self._read_csv(stn)[features] for stn in stations}
+        dyn = {stn: self._read_csv(stn).loc[st:en, features] for stn in stations}
 
         return dyn
     
