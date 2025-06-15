@@ -26,14 +26,14 @@ ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data')
 h_q = ds.read_hourly_q()
 
 for k,v in h_q.items():
-    assert k in ds.stations
+    assert k in ds.stations()
     assert isinstance(v, pd.DataFrame)
     assert isinstance(v.index, pd.DatetimeIndex)
 
 sh_q = ds.read_5min_q()
 
 for k,v in sh_q.items():
-    assert k in ds.stations
+    assert k in ds.stations()
     assert isinstance(v, pd.DataFrame)
     assert isinstance(v.index, pd.DatetimeIndex)
 
@@ -48,6 +48,13 @@ winddir = ds.read_wind_dir()
 
 pcp = ds.get_pcp()
 
+static = ds.fetch_static_features('626')
+assert static.shape == (1, 14)
+
+static = ds.fetch_static_features('626',
+                              static_features=['area_km2', 'elev_catch_m', 'slope_%'])
+
+assert static.shape == (1, 3)
 
 ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data', timestep='5min')
 

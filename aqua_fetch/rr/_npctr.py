@@ -603,17 +603,18 @@ class NPCTRCatchments(_RainfallRunoff):
 
         Examples
         --------
-        >>> from aqua_fetch import CAMELS_AUS
-        >>> camels = CAMELS_AUS()
-        >>> camels.fetch_static_features('224214A')
-        >>> camels.static_features
-        >>> camels.fetch_static_features('224214A',
+        >>> from aqua_fetch import NPCTRCatchments
+        >>> dataset = NPCTRCatchments()
+        >>> dataset.fetch_static_features('626')
+        >>> dataset.static_features
+        >>> dataset.fetch_static_features('626',
         ... static_features=['area_km2', 'elev_catch_m', 'slope_%'])
         """
 
         stations = check_attributes(stations, self.stations(), 'stations')
         static_features = check_attributes(static_features, self.static_features, 'static_features')
         df =  self._get_static().loc[stations, static_features]
+        return df
 
 
 def _verify_timestep(timestep):

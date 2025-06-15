@@ -974,11 +974,15 @@ class GSHA(_RainfallRunoff):
         Examples
         --------
         >>> from aqua_fetch import GSHA
-        >>> camels = GSHA()
-        >>> camels.fetch_stn_dynamic_features('1001_arcticnet').unstack()
-        >>> camels.dynamic_features
-        >>> camels.fetch_stn_dynamic_features('1001_arcticnet',
-        ... features=['tmax_AWAP', 'vprp_AWAP']).unstack()
+        >>> dataset = GSHA()
+        >>> data = dataset.fetch_stn_dynamic_features('1001_arcticnet')
+        >>> data.shape
+        (16071, 26)
+        >>> dataset.dynamic_features
+        >>> data = dataset.fetch_stn_dynamic_features('1001_arcticnet',
+        ... dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
+        >>> data.shape
+        (16071, 2)
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
@@ -1021,15 +1025,18 @@ class GSHA(_RainfallRunoff):
 
         Examples
         --------
-            >>> from aqua_fetch import GSHA
-            >>> camels = GSHA()
-            >>> camels.fetch_dynamic_features('1001_arcticnet', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('1001_arcticnet',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'q_mmd_obs'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import GSHA
+        >>> dataset = GSHA()
+        >>> data = dataset.fetch_dynamic_features('1001_arcticnet', as_dataframe=True)
+        >>> data.shape
+        (16071, 26)
+        >>> dataset.dynamic_features
+        >>> stns = ['1001_arcticnet', '10062_arcticnet']
+        >>> data = dataset.fetch_dynamic_features(stns,
+        ... dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
         """
 
+        # todo : extremely slow even for two stations
         stations = self._get_stations(stations, agency)
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
@@ -1043,7 +1050,7 @@ class GSHA(_RainfallRunoff):
                 return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features))})
 
         if as_dataframe:
-            raise NotImplementedError("as_dataframe=True is not implemented yet")
+            raise NotImplementedError("as_dataframe=True is not implemented yet for multiple stations")
 
         # todo : we should read meteo, storage and lai only when they are required!
         meteo_vars = self.fetch_meteo_vars(stations)
