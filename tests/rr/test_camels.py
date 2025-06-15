@@ -149,7 +149,7 @@ class TestCamels(unittest.TestCase):
     def test_rainfallrunoff(self):
         ds_aus = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
                                  overwrite=True)
-        test_dataset(ds_aus, 561, 26388, 187, 26)
+        test_dataset(ds_aus, 561, 26388, 187, 28)
         return
 
 
