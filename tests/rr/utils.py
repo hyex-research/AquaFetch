@@ -202,10 +202,10 @@ def test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_le
 
     station = random.choice(dataset.stations())
 
-    static, dynamic = dataset.fetch_station_features(station)
+    static, dynamic = dataset.fetch_station_features(station, static_features='all')
 
     assert static.shape == (1, num_static_attrs), f"shape is {static.shape}"
-    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.data_vars)}"
+    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.columns)}"
     assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
 
     # test for single static feature
@@ -358,34 +358,40 @@ def test_st_en_with_static_and_dynamic(
     return
 
 
-def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
-                 test_df=True, yearly_steps=366,
+def test_dataset(dataset, 
+                 num_stations, 
+                 dyn_data_len, 
+                 num_static_attrs, 
+                 num_dyn_attrs,
+                 test_df=True, 
+                 yearly_steps=366,
                  raise_len_error=True,
-                 st="20040101", en="20041231",
+                 st="20040101", 
+                 en="20041231",
                  has_q: bool = True,
                  ):
     
-    # if netCDF4 is not None:
-    #     # check that dynamic attribues from all data can be retrieved.
-    #     test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
-    # if test_df:
-    #     test_dynamic_data(dataset, 'all', num_stations, dyn_data_len, as_dataframe=True)
+    if netCDF4 is not None:
+        # check that dynamic attribues from all data can be retrieved.
+        test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
+    if test_df:
+        test_dynamic_data(dataset, 'all', num_stations, dyn_data_len, as_dataframe=True)
 
-    # if netCDF4 is not None:
-    #     # check that dynamic data of 10% of stations can be retrieved
-    #     test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
-    #                   raise_len_error=raise_len_error)
-    # if test_df:
-    #     test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len, True,
-    #                       raise_len_error=raise_len_error)
+    if netCDF4 is not None:
+        # check that dynamic data of 10% of stations can be retrieved
+        test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
+                      raise_len_error=raise_len_error)
+    if test_df:
+        test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len, True,
+                          raise_len_error=raise_len_error)
 
-    # test_static_data(dataset, 'all', num_stations)  # check that static data of all stations can be retrieved
+    test_static_data(dataset, 'all', num_stations)  # check that static data of all stations can be retrieved
 
-    # test_static_data(dataset, 0.1,
-    #                  int(num_stations * 0.1))  # check that static data of 10% of stations can be retrieved
+    test_static_data(dataset, 0.1,
+                     int(num_stations * 0.1))  # check that static data of 10% of stations can be retrieved
 
-    # if netCDF4 is not None:
-    #     test_all_data(dataset, 3, dyn_data_len, raise_len_error=raise_len_error)
+    if netCDF4 is not None:
+        test_all_data(dataset, 3, dyn_data_len, raise_len_error=raise_len_error)
 
     if test_df:
         test_all_data(dataset, 3, dyn_data_len, True, raise_len_error=raise_len_error)
@@ -420,7 +426,7 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset, as_dataframe=test_df)
 
-    # test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_data_len)
+    test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_data_len)
 
     test_coords(dataset)
 

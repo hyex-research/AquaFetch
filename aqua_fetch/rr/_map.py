@@ -5,6 +5,8 @@
 # aggregation_type = min, max, mean, total, sum etc.
 # height = height of the measurement like 2m/10m etc.
 
+# TODO : differentiate between catchment averaged and temporal averaged features, the word 'mean' is ambiguous
+
 # ****** Dynmaic Features *******
 
 # %% streamflow
@@ -451,17 +453,21 @@ def catchment_area()->str:
     return "area_km2"
 
 def gauge_latitude()->str:
+    """in units of WGS84 (degrees)"""
     return "lat"
 
 def gauge_longitude()->str:
+    """in units of WGS84 (degrees)"""
     return "long"
 
+
 def slope(unit)->str:
+    """Average slope of the catchment"""
     return f"slope_{unit}"
 
 
 def gauge_elevation_meters()->str:
-    """elevation of the gauge station in meters"""
+    """elevation of the gauge station in meters (m a.s.l)"""
     return "elev_gauge_m"
 
 

@@ -48,6 +48,7 @@ from ._estreams import Poland
 from ._estreams import Italy
 from ._camels import CAMELS_FR
 from ._estreams import Portugal
+from ._camels import CAMELS_NZ
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
@@ -93,6 +94,7 @@ DATASETS = {
     'Italy': Italy,
     'CAMELS_FR': CAMELS_FR,
     'Portugal': Portugal,
+    'CAMELS_NZ': CAMELS_NZ,
 }
 
 
@@ -199,6 +201,7 @@ class RainfallRunoff(object):
             - ``CAMELS_FR``
             - ``CAMELS_GB``
             - ``CAMELS_IND``
+            - ``CAMELS_NZ``
             - ``CAMELS_SE``
             - ``CAMELS_US``
             - ``EStreams``
@@ -240,7 +243,7 @@ class RainfallRunoff(object):
         kwargs :
             additional keyword arguments for the underlying dataset class
             For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
+            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`
         """
 
         if dataset not in DATASETS:

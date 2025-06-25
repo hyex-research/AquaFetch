@@ -106,7 +106,8 @@ class _RainfallRunoff(Datasets):
 
         if netCDF4 is None:
             if to_netcdf:
-                warnings.warn("netCDF4 module is not installed. Please install it to save data in netcdf format")
+                msg = "netCDF4 module is not installed. Please install it to save data in netcdf format"
+                warnings.warn(msg, UserWarning)
             to_netcdf = False
         self.to_netcdf = to_netcdf
 
@@ -206,8 +207,13 @@ class _RainfallRunoff(Datasets):
     def stations(self) -> List[str]:
         raise NotImplementedError("The base class must implement this method")
 
-    def _read_dynamic(self, stations, dynamic_features, st=None,
-                               en=None) -> dict:
+    def _read_dynamic(
+            self, 
+            stations, 
+            dynamic_features, 
+            st=None,
+            en=None
+            ) -> Dict[str, pd.DataFrame]:
         raise NotImplementedError
 
     def fetch_static_features(
@@ -464,6 +470,10 @@ class _RainfallRunoff(Datasets):
                 _, data = self.fetch(static_features=None)
 
                 data.to_netcdf(self.dyn_fname)
+            else:
+                if self.verbosity:
+                    print(f"dynamic data already exists in {self.dyn_fname}. "
+                          f"To overwrite, set `overwrite=True`")
         return
 
     def fetch_stations_features(
@@ -678,6 +688,9 @@ class _RainfallRunoff(Datasets):
         if dynamic_features:
             dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st,
                                                   en=en, **kwargs)
+            
+            if xr is not None and isinstance(dynamic, xr.Dataset):
+                dynamic = dynamic[station].to_pandas()
 
             if static_features is not None:
                 static = self.fetch_static_features(station, static_features)

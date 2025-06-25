@@ -81,15 +81,15 @@ class GRDCCaravan(_RainfallRunoff):
     >>> df.index.names == ['time', 'dynamic_features']
         True
     get data by station id
-    >>> _, df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True)
+    >>> df.unstack().shape
          (26800, 39)
     get names of available dynamic features
     >>> dataset.dynamic_features
     get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs']).unstack()
-    >>> data.shape
+    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs'])
+    >>> data.unstack().shape
         (26800, 4)
     get names of available static features
     >>> dataset.static_features
@@ -99,8 +99,8 @@ class GRDCCaravan(_RainfallRunoff):
         (1045239, 10)
     If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-        ((1, 211), (1045200, 1))
+    >>> static.shape, dynamic.unstack().shape
+        ((1, 211), (26800, 39))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (5357, 2)

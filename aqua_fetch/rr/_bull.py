@@ -102,15 +102,15 @@ class Bull(_RainfallRunoff):
     >>> len(stns)
     484
     # get data by station id
-    >>> df = dataset.fetch(stations='BULL_9007', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> df = dataset.fetch(stations='BULL_9007', as_dataframe=True)
+    >>> df.unstack().shape
     (25932, 55)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms'])
+    >>> df.unstack().shape
     (25932, 4)
     # get names of available static features
     >>> dataset.static_features
@@ -120,8 +120,8 @@ class Bull(_RainfallRunoff):
     (166166, 10)  # remember this is multi-indexed DataFrame
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 214), (1426260, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 214), (25932, 55))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (484, 2)

@@ -55,16 +55,16 @@ class Caravan_DK(_RainfallRunoff):
     >>> len(stns)
     308
     # get data by station id
-    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True)
+    >>> df.unstack().shape
     (14609, 39)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
     ... dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
-    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs'])
+    >>> df.unstack().shape
     (14609, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -74,8 +74,8 @@ class Caravan_DK(_RainfallRunoff):
     (569751, 10)  # remember this is multi-indexed DataFrame
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 211), (569751, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 211), (14609, 39))
     """
 
     url = "https://zenodo.org/record/7962379"

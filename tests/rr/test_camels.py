@@ -20,6 +20,7 @@ from aqua_fetch import CAMELS_SE
 from aqua_fetch import CAMELS_IND
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
+from aqua_fetch.rr._camels import CAMELS_NZ
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -150,6 +151,13 @@ class TestCamels(unittest.TestCase):
         ds_aus = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
                                  overwrite=True)
         test_dataset(ds_aus, 561, 26388, 187, 28)
+        return
+
+    def test_camels_nz(self):
+        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 369, 460928, 39, 5, 
+                     yearly_steps=8760  # this number might not be correct
+                     )
         return
 
 

@@ -69,15 +69,15 @@ df.shape
 df.index.names == ['time', 'dynamic_features']
     True
 # get data by station id
-_, df = dataset.fetch(stations='912101A', as_dataframe=True).unstack()
-df.shape
+_, df = dataset.fetch(stations='912101A', as_dataframe=True)
+df.unstack().shape
     (26388, 28)
 # get names of available dynamic features
 dataset.dynamic_features
 # get only selected dynamic features
 _, data = dataset.fetch(1, as_dataframe=True,
-...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
-data.shape
+...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs'])
+data.unstack().shape
    (26388, 4)
 # get names of available static features
 dataset.static_features
@@ -155,6 +155,7 @@ mg_data_ohe.shape
 | CAMELS_DE      | 1555                   |                         | 21                       | 111                     | 1951 - 2020       | Germany                                     | [Loritz et al., 2024](https://essd.copernicus.org/preprints/essd-2024-318)                                  |
 | CAMELS_SE      | 50                     |                         | 4                        | 76                      | 1961 - 2020       | Sweden                                      | [Teutschbein et al., 2024](https://doi.org/10.1002/gdj3.239)                                                |
 | Caravan_DK     | 308                    |                         | 38                       | 211                     | 1981 - 2020       | Denmark                                     | [Koch, J. (2022)](https://doi.org/10.5281/zenodo.7962379)                                                   |
+| Caravan_NZ     | 369                    | 369                     | 5                        | 39                      | 1972 - 2024       | New Zealand                                 | [Bushra, et al., 2025](https://doi.org/10.5194/essd-2025-244)                                                   |
 | LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
 | LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
 | HYSETS         | 14425                  |                         | 20                       | 30                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |

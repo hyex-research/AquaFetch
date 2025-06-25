@@ -72,14 +72,15 @@ class CCAM(_RainfallRunoff):
     >>> len(stns)
     102
     # get data by station id
-    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True)
+    >>> df.unstack().shape
     (8035, 16)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pre', 'tem_mean', 'evp', 'rhu', 'q']).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(1, as_dataframe=True, 
+      ... dynamic_features=['pcp_mm', 'airtemp_C_mean', 'evap_mm', 'rh_%', 'q_cms_obs'])
+    >>> df.unstack().shape
     (8035, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -89,8 +90,8 @@ class CCAM(_RainfallRunoff):
     (128560, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
-    ((1, 124), (128560, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 124), (8035, 16))
 
     """
     url = "https://zenodo.org/record/5729444"

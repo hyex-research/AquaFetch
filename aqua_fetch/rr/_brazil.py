@@ -71,15 +71,15 @@ class CAMELS_BR(_RainfallRunoff):
     >>> data.index.names == ['time', 'dynamic_features']
      True
     # get data by station id
-    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True)
+    >>> df.unstack().shape
     (14245, 12)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> df.unstack().shape
     (14245, 4)
     # get names of available static features
     >>> dataset.static_features
@@ -89,8 +89,8 @@ class CAMELS_BR(_RainfallRunoff):
     (170940, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 67), (170940, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 67), (14245, 12))
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
@@ -590,15 +590,15 @@ class CABra(_RainfallRunoff):
     >>> len(stns)
     735
     # get data by station id
-    >>> _, df = dataset.fetch(stations='92', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='92', as_dataframe=True)
+    >>> df.unstack().shape
     (10956, 13)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs'])
+    >>> df.unstack().shape
     (10956, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -608,8 +608,8 @@ class CABra(_RainfallRunoff):
     (131472, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 87), (131472, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 87), (10956, 13))
 
     """
 
