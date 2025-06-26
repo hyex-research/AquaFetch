@@ -116,6 +116,10 @@ class _RainfallRunoff(Datasets):
         return {}
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        return {}
+    
+    @property
     def dyn_factors(self) -> Dict[str, float]:
         return {}
 

@@ -364,7 +364,8 @@ def groundwater_percentages()->str:
 
 # %%
 # soil moisture layer
-# todo : is it same as soil water layer?
+# todo : is it same as soil water layer? 
+# in section 2.6 of CAMELS-LUX documentation, it is mentioned that
 
 def soil_moisture_layer1()->str:
     """ m3/m3"""
@@ -452,6 +453,12 @@ def cloud_cover()->str:
 def catchment_area()->str:
     return "area_km2"
 
+
+def catchment_perimeter()->str:
+    """Catchment perimeter in kilometers"""
+    return "perimeter_km"
+
+
 def gauge_latitude()->str:
     """in units of WGS84 (degrees)"""
     return "lat"
@@ -500,6 +507,13 @@ def grass_fraction()->str:
     """Fraction of grass area in the
     catchment"""
     return "grass_frac"
+
+
+def crop_fraction()->str:
+    """Fraction of cropland area in the catchment
+    in CAMELS-LUX it is named as 'agricultural_land'
+    """
+    return "crop_frac"
 
 
 def impervious_fraction()->str:

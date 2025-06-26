@@ -184,6 +184,15 @@ List of datasets
      - 1980 - 2020
      - Republic of India
      - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
+   * - ``CAMELS_LUX``
+     - :py:class:`aqua_fetch.rr.CAMELS_LUX`
+     - 56
+     - 56
+     - 25
+     - 61
+     - 2004 - 2021
+     - Luxumbourg
+     - `Nijzink et al., 2025 <https://doi.org/10.5194/essd-2024-482>`_
    * - ``CAMELS_NZ``
      - :py:class:`aqua_fetch.rr.CAMELS_NZ`
      - 
@@ -523,6 +532,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_NZ
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_LUX
    :members:
    :show-inheritance:
 

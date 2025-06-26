@@ -49,6 +49,7 @@ from ._estreams import Italy
 from ._camels import CAMELS_FR
 from ._estreams import Portugal
 from ._camels import CAMELS_NZ
+from ._camels import CAMELS_LUX
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
@@ -95,6 +96,7 @@ DATASETS = {
     'CAMELS_FR': CAMELS_FR,
     'Portugal': Portugal,
     'CAMELS_NZ': CAMELS_NZ,
+    'CAMELS_LUX': CAMELS_LUX,
 }
 
 
@@ -201,6 +203,7 @@ class RainfallRunoff(object):
             - ``CAMELS_FR``
             - ``CAMELS_GB``
             - ``CAMELS_IND``
+            - ``CAMELS_LUX``
             - ``CAMELS_NZ``
             - ``CAMELS_SE``
             - ``CAMELS_US``
