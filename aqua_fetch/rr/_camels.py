@@ -2800,7 +2800,7 @@ class CAMELS_FR(_RainfallRunoff):
     654
     # get data by station id
     >>> _, df = dataset.fetch(stations='J421191001', as_dataframe=True)
-    >>> df.shape
+    >>> df.unstack().shape
     (18993, 22)
     # get names of available dynamic features
     >>> dataset.dynamic_features
@@ -3097,7 +3097,7 @@ class CAMELS_NZ(_RainfallRunoff):
     369
     # get data by station id
     >>> _, df = dataset.fetch(stations='74321', as_dataframe=True)
-    >>> df.shape
+    >>> df.unstack().shape
     (460928, 5)
     # get names of available dynamic features
     >>> dataset.dynamic_features
@@ -3423,7 +3423,7 @@ class CAMELS_COL(_RainfallRunoff):
     347
     # get data by station id
     >>> _, df = dataset.fetch(stations='35067040', as_dataframe=True)
-    >>> df.shape
+    >>> df.unstack().shape
     (15340, 6)
     # get names of available dynamic features
     >>> dataset.dynamic_features
@@ -3655,8 +3655,65 @@ class CAMELS_SK(_RainfallRunoff):
     """
     Dataset of 178 catchments from South Korea following the work of 
     `Kim et al., 2025 <https://doi.org/10.5281/zenodo.15073263>`_.
-    The dataset consists of 239 static catchment features and 17 dynamic features.
+    The dataset consists of 215 static catchment features and 17 dynamic features.
     The dynamic features span from 20000101 to 20191231 with hourly timestep.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import CAMELS_SK
+    >>> dataset = CAMELS_SK()
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (2980440, 17)   # 17 represents number of stations
+    Since data is a multi-index dataframe, we can get data of one station as below
+    >>> data['2013615'].unstack().shape
+    (175320, 13)
+    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
+    >>> _, data = dataset.fetch(0.1)
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 175320, 'dynamic_features': 17})
+    >>> len(data.data_vars)
+        17
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (175320, 17)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    178
+    # get data by station id
+    >>> _, df = dataset.fetch(stations='2013615', as_dataframe=True)
+    >>> df.unstack().shape
+    (175320, 17)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['total_precipitation', 'snow_depth', 'air_temp_obs', 'potential_evaporation', 'q_cms_obs'])
+    >>> df.unstack().shape
+    (175320, 17)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (155225, 10)  # remember this is multi-indexed DataFrame
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='2013615', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 215), (175320, 17))
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (178, 2)
+    >>> dataset.stn_coords('2013615')  # returns coordinates of station whose id is 2013615
+        35.880798	128.173096
+    >>> dataset.stn_coords(['2013615', '2017620'])  # returns coordinates of two stations
+    2013615	35.880798	128.173096
+    2017620	35.527500	128.359207
+    
     """
 
     url = "https://zenodo.org/records/15073264"
@@ -3808,7 +3865,7 @@ class CAMELS_LUX(_RainfallRunoff):
     The dataset consists of 61 static catchment features and 25 dynamic features.
     The dynamic features span from 20040101 to 20211231 with daily, hourly, and 15-minute timesteps.
     The data is downloaded from `Zenodo <https://zenodo.org/records/14910359>`_.
-    
+
     Examples
     ---------
     >>> from aqua_fetch import CAMELS_LUX
@@ -3837,7 +3894,7 @@ class CAMELS_LUX(_RainfallRunoff):
     56
     # get data by station id
     >>> _, df = dataset.fetch(stations='ID_02', as_dataframe=True)
-    >>> df.shape
+    >>> df.unstack().shape
     (6209, 25)
     # get names of available dynamic features
     >>> dataset.dynamic_features

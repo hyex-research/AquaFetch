@@ -115,14 +115,18 @@ class _RainfallRunoff(Datasets):
 
     @property
     def dyn_map(self) -> Dict[str, str]:
+        """A dictionary that maps dynamic features to their names in the dataset."""
         return {}
 
     @property
     def static_map(self) -> Dict[str, str]:
+        """A dictionary that maps static features to their names in the dataset."""
         return {}
 
     @property
     def static_factors(self) -> Dict[str, str]:
+        """A dictionary that maps static features to the factors with they needs
+        to be multiplied to get the actual value"""
         return {}
         
     @property
@@ -215,7 +219,14 @@ class _RainfallRunoff(Datasets):
         return catch_ids_map
 
     def stations(self) -> List[str]:
-        raise NotImplementedError("The base class must implement this method")
+        """
+        Names of stations/catchment ids/ gauge ids or whatever that would
+        be used to index each station in the dataset. Since this is a method
+        is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+        """
+        return self._static_data().index.tolist()
 
     def _read_dynamic(
             self, 
@@ -267,7 +278,23 @@ class _RainfallRunoff(Datasets):
         return dyn
 
     def _read_stn_dyn(self, stn: str) -> pd.DataFrame:
-        """reads dynamic data of one station"""
+        """
+        reads dynamic data of one station
+
+        parameters
+        ----------
+            stn : str
+                name/id of the station for which to read the dynamic data. This
+                must be one of the station names returned by
+                :meth:`stations`.
+        Returns
+        -------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` with index as time and columns as dynamic features.
+            The index is a :obj:`pandas.DatetimeIndex` and the columns are the names of
+            dynamic features.
+    
+        """
         raise NotImplementedError(f"Must be implemented in the child class")
 
     def fetch_static_features(
@@ -329,7 +356,17 @@ class _RainfallRunoff(Datasets):
         return df.loc[stations, features]
 
     def _static_data(self) -> pd.DataFrame:
-        """returns all static data as DataFrame"""
+        """returns all static data as DataFrame. The index of the DataFrame
+        is the station ids and the columns are the static features.
+        This method must be implemented in the child class.
+
+        Returns
+        -------
+        pd.DataFrame
+        a :obj:`pandas.DataFrame` with index as station ids and columns as static features.
+        The index is a :obj:`pandas.Index` and the columns are the names of
+        static features.
+        """
         raise NotImplementedError(f"Must be implemented in the child class")
 
     @property
@@ -342,8 +379,40 @@ class _RainfallRunoff(Datasets):
         return pd.Timestamp.today().strftime("%Y-%m-%d")
 
     @property
-    def dynamic_features(self) -> list:
-        raise NotImplementedError
+    def static_features(self) -> List[str]:
+        """
+        Returns a list of static features that are available in the dataset.
+        Since this is a method is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+
+        Returns
+        -------
+        List[str]
+            a list of static features that are available in the dataset.
+            The names of the features are the same as the names used in the
+            dataset. The names can be used to fetch the data using
+            :meth:`fetch_static_features`.
+        """
+        return self._static_data().columns.tolist()
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        """
+        Returns a list of dynamic features that are available in the dataset.
+        Since this is a method is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+
+        Returns
+        -------
+        List[str]
+            a list of dynamic features that are available in the dataset.
+            The names of the features are the same as the names used in the
+            dataset. The names can be used to fetch the data using
+            :meth:`fetch_dynamic_features`.
+        """
+        return self._read_stn_dyn(self.stations()[0]).columns.tolist()
 
     @property
     def _area_name(self) -> str:

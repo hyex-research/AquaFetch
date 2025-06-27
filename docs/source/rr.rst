@@ -64,7 +64,7 @@ are still obtained from HYSETS.
 List of datasets
 ================
 .. list-table:: Stations per Source
-   :widths: 10 15 10 10 10 10 10 10 30
+   :widths: 8 13 7 7 10 10 10 10 30
    :header-rows: 1
 
    * - Source Name
@@ -521,13 +521,6 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr.Caravan_DK
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-
 .. autoclass:: aqua_fetch.rr.CAMELS_FR
    :members:
    :show-inheritance:
@@ -549,7 +542,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr.CAMELS_SE
+.. autoclass:: aqua_fetch.rr.CAMELS_LUX
    :members:
    :show-inheritance:
 
@@ -563,7 +556,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr.CAMELS_LUX
+.. autoclass:: aqua_fetch.rr.CAMELS_SE
    :members:
    :show-inheritance:
 
@@ -578,6 +571,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_US
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.Caravan_DK
    :members:
    :show-inheritance:
 
