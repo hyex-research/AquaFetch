@@ -30,15 +30,15 @@ Consider that you want to add a new rainfall-runoff dataset named ``NewDataSourc
 - implement the following methods. The signature of these methods/attributes must be same as the parent class.
 
     - ``__init__``  -> within this method, the logic to download the data must be implemented. The data must be downloaded within `path`
-    - ``_read_dynamic`` -> must return a dictionary with keys as station ids and values as pandas DataFrame with columns as names of dynamic_features and datetime index
+    - ``_read_stn_dyn`` -> must return a time series /dynamic/hydrometeorological data for a single station as a pandas DataFrame with columns as names of dynamic_features and index as time
     - ``_read_static``  -> must return a pandas DataFrame with columns as names of static_features and index as station ids
-    - ``end``  -> must return the end date of the dataset
-    - ``start`` -> must return the start date of the dataset
     - ``dynamic_features`` -> must return a list of dynamic features that are available in the dataset
     - ``static_features`` -> must return a list of static features that are available in the dataset
     - ``stations`` -> must return a list of station ids that are available in the dataset
 - The implementation/creation of following methods/attributes is optional but recommended
 
+    - ``end``  -> return the end date of the dataset
+    - ``start`` -> return the start date of the dataset
     - ``stn_coords``
     - ``q_mmd``
     - ``boundary_file``  -> the path to the boundary file for the dataset.

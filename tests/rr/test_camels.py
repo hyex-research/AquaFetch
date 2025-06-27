@@ -21,7 +21,9 @@ from aqua_fetch import CAMELS_IND
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
 from aqua_fetch import CAMELS_NZ
-from aqua_fetch.rr._camels import CAMELS_LUX
+from aqua_fetch import CAMELS_LUX
+from aqua_fetch import CAMELS_COL
+from aqua_fetch.rr._camels import CAMELS_SK
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -170,6 +172,18 @@ class TestCamels(unittest.TestCase):
             dataset = CAMELS_LUX(path=os.path.join(gscad_path, 'CAMELS'),
                                  timestep=ts)
             test_dataset(dataset, 56, num_vals, 61, 25, st="20120101", en="20121231", yearly_steps=yearly_steps)
+        return
+
+    def test_camels_col(self):
+        dataset = CAMELS_COL(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 347, 15340, 255, 6)
+        return
+
+    def test_camels_sk(self):
+        dataset = CAMELS_SK(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 178, 175320, 215, 17,
+                     st="20120101", en="20121231", 
+                     yearly_steps=8761)
         return
 
 

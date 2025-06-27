@@ -139,6 +139,15 @@ List of datasets
      - 1913 - 2018
      - Chile
      - `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_
+   * - ``CAMELS_COL``
+     - :py:class:`aqua_fetch.rr.CAMELS_COL`
+     - 347
+     - 
+     - 6
+     - 255
+     - 1981 - 2022
+     - Columbia
+     - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
      - 1555
@@ -211,6 +220,15 @@ List of datasets
      - 1961 - 2020
      - Sweden
      - `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_
+   * - ``CAMELS_SK``
+     - :py:class:`aqua_fetch.rr.CAMELS_SK`
+     - 
+     - 178
+     - 17
+     - 215
+     - 2000 - 2019
+     - South Korea
+     - `Kim et al., 2025 <https://doi.org/10.5281/zenodo.15073263>`_
    * - ``CAMELS_US``
      - :py:class:`aqua_fetch.rr.CAMELS_US`
      - 671
@@ -482,6 +500,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.CAMELS_COL
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.CAMELS_DE
    :members:
    :show-inheritance:
@@ -539,6 +564,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_LUX
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_SK
    :members:
    :show-inheritance:
 

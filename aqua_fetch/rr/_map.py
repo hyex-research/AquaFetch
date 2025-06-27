@@ -454,6 +454,11 @@ def catchment_area()->str:
     return "area_km2"
 
 
+def catchment_area_with_specifier(specifier:str)->str:
+    """catchment area in square kilometers"""
+    return f"area_km2_{specifier}"
+
+
 def catchment_perimeter()->str:
     """Catchment perimeter in kilometers"""
     return "perimeter_km"

@@ -1,6 +1,8 @@
 import os
+import time
 import random
 import warnings
+import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
 
 import numpy as np
@@ -10,7 +12,7 @@ from .._datasets import Datasets
 from .._backend import netCDF4
 from .._backend import shapefile
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
-from ..utils import check_attributes
+from ..utils import check_attributes, get_cpus
 
 from ._map import (
     catchment_area,
@@ -118,7 +120,11 @@ class _RainfallRunoff(Datasets):
     @property
     def static_map(self) -> Dict[str, str]:
         return {}
-    
+
+    @property
+    def static_factors(self) -> Dict[str, str]:
+        return {}
+        
     @property
     def dyn_factors(self) -> Dict[str, float]:
         return {}
@@ -215,10 +221,54 @@ class _RainfallRunoff(Datasets):
             self, 
             stations, 
             dynamic_features, 
-            st=None,
-            en=None
+            st:Union[str, pd.Timestamp] = None, 
+            en:Union[str, pd.Timestamp] = None
             ) -> Dict[str, pd.DataFrame]:
-        raise NotImplementedError
+        
+        st, en = self._check_length(st, en)
+        dyn_feats = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        cpus = self.processes or min(get_cpus(), 16)
+        start = time.time()
+
+        if cpus == 1:
+            dyn = {}
+            for idx, stn in enumerate(stations):
+            
+                stn_df = self._read_stn_dyn(stn).loc[st:en]
+                
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+
+                dyn[stn] = stn_df
+
+                if self.verbosity and idx % 100 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+                elif self.verbosity>1 and idx % 50 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+                elif self.verbosity>2 and idx % 10 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+        else:
+            with cf.ProcessPoolExecutor(cpus) as executor:
+                results = executor.map(self._read_stn_dyn, stations)
+            
+            dyn = {}
+            for stn, stn_df in zip(stations, results):
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+
+                dyn[stn] = stn_df.loc[st:en]
+
+        total = time.time() -  start
+        if self.verbosity:
+            print(f"Read {len(dyn)} stations for {len(dyn_feats)} in {total:.2f} seconds with {cpus} cpus.")
+    
+        return dyn
+
+    def _read_stn_dyn(self, stn: str) -> pd.DataFrame:
+        """reads dynamic data of one station"""
+        raise NotImplementedError(f"Must be implemented in the child class")
 
     def fetch_static_features(
             self,
@@ -283,12 +333,13 @@ class _RainfallRunoff(Datasets):
         raise NotImplementedError(f"Must be implemented in the child class")
 
     @property
-    def start(self):  # start of data
-        raise NotImplementedError
+    def start(self) -> pd.Timestamp:  # start of data
+        return pd.Timestamp("1800-01-01")
 
     @property
-    def end(self):  # end of data
-        raise NotImplementedError
+    def end(self) -> pd.Timestamp:  
+        """end of data"""
+        return pd.Timestamp.today().strftime("%Y-%m-%d")
 
     @property
     def dynamic_features(self) -> list:

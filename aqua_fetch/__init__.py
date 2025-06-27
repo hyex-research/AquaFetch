@@ -43,6 +43,8 @@ from .rr import Portugal
 from .rr import Caravan_DK
 from .rr import CAMELS_NZ
 from .rr import CAMELS_LUX
+from .rr import CAMELS_COL
+from .rr import CAMELS_SK
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -171,6 +173,8 @@ ALL_DATASETS = [
     GRDCCaravan.__class__.__name__,
     CAMELS_NZ.__class__.__name__,
     CAMELS_LUX.__class__.__name__,
+    CAMELS_COL.__class__.__name__,
+    CAMELS_SK.__class__.__name__,
 
     Quadica.__class__.__name__,
     GRQA.__class__.__name__,
