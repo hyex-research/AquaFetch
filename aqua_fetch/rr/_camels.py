@@ -3446,10 +3446,10 @@ class CAMELS_COL(_RainfallRunoff):
     >>> coords.shape
         (347, 2)
     >>> dataset.stn_coords('35067040')  # returns coordinates of station whose id is 35067040
-        -45.945599	170.101486
+        4.746433	-73.587807
     >>> dataset.stn_coords(['35067040', '21187030'])  # returns coordinates of two stations
-    35067040	-45.945599	170.101486
-    21187030	-34.918594	173.170761
+    35067040	4.746433	-73.587807
+    21187030	4.203826	-75.092720
 
     """
     url = "https://zenodo.org/records/15554735"
@@ -3471,6 +3471,10 @@ class CAMELS_COL(_RainfallRunoff):
             self._maybe_to_netcdf(f'camels_lux_dyn')
         
         self._create_boundary_id_map(self.boundary_file, 0)
+
+    @property
+    def bbox(self) -> Dict[str, float]:
+        return dict(llcrnrlon=-80, llcrnrlat=-5, urcrnrlon=-65, urcrnrlat=12)
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -3647,6 +3651,11 @@ class CAMELS_COL(_RainfallRunoff):
         for col, fac in  self.static_factors.items():
             if col in static_data.columns:
                 static_data[col] *= fac
+
+        # convert latitude and longitude from EPSG:3395 to EPSG:4326
+        R = 6378137.0   # Earth's radius in meters for EPSG:3395
+        static_data[gauge_longitude()] = np.degrees(static_data[gauge_longitude()] / R)
+        static_data[gauge_latitude()] = np.degrees(2 * np.arctan(np.exp(static_data[gauge_latitude()] / R)) - np.pi / 2)
 
         return static_data    
 

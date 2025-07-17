@@ -23,7 +23,7 @@ provides several methods to access static features, dynamic features, or catchme
 boundaries. Although the raw data files for each dataset may come in different formats, 
 the methods to access these features through the :py:class:`aqua_fetch.rr.RainfallRunoff` class remain the same. 
 Individual classes for each dataset are also available and may offer more control to 
-users over specific datasets. However, for most cases, the use of the :py:class:`aqua_fetch.rr.RainfallRunoff` 
+users over specific datasets. However, for most cases, the use of the :py:class:`aqua_fetch.rr.RainfallRunoff`
 class will suffice.
 
 The naming and units of dynamic features in each dataset may vary. However, we have 
@@ -45,7 +45,7 @@ is optional since it initiaties the download of GSHA and EStreams datasets which
 be time-consuming and may not always be necessary.
 
 Certain datasets in this package feature overlapping stations from the same region. 
-For example, both the ``Bull`` and ``Spain`` datasets cover Spain. 
+For example, both the :py:class:`aqua_fetch.Bull` and ``Spain`` datasets cover Spain. 
 However, the Bull dataset was introduced by by `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_ , 
 whereas the Spain dataset was introduced in this work. The Spain dataset contains 
 more stations, totaling 889, while the Bull dataset includes 484 stations.
