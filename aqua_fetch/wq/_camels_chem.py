@@ -99,7 +99,7 @@ class CamelsChem(Datasets):
         df = pd.read_csv(fname, index_col='gauge_id', dtype={'gauge_id': str})
         df.pop('Unnamed: 0')
         return df
-    
+
     def stn_coords(self)->pd.DataFrame:
         """
         Returns the coordinates of all the stations in the dataset in wgs84
@@ -304,3 +304,207 @@ def get_cols(parameters:List[str], all_cols:List[str])->List[str]:
                 cols.append(col)
     
     return cols
+
+
+class Camels_Ch_Chem(Datasets):
+    """
+    Water quality data for Switzerland following the work of `Nascimento et al., 2025 <https://eartharxiv.org/repository/view/9046/>`_
+    The dataset is downloaded from `zenodo <https://zenodo.org/records/16158375>`_ .
+    It contains over 40 water quality parameters  for 115 Swiss catchments from 1980-01-01 - 2020-12-31.
+    """
+
+    url = "https://zenodo.org/records/16158375"
+
+    def __init__(self, path=None, **kwargs):
+        super().__init__(path=path, **kwargs)
+        self._download()
+
+        self._stations = self.metadata().index.tolist()
+
+    def stations(self)->List[str]:
+        """
+        returns the list of stations in the dataset
+        """
+        return self._stations
+
+    @property
+    def gauge_md_file(self)->os.PathLike:
+        """
+        returns the gauge metadata file
+        """
+        return os.path.join(self.path, 
+                            'camels-ch-chem', 
+                            'gauges_metadata', 
+                            'camels_ch_chem_gauges_metadata.csv')
+    
+    @property
+    def catch_avg_data_path(self)->os.PathLike:
+        """
+        returns the path to the catchment average data
+        """
+        return os.path.join(self.path, 
+                            'camels-ch-chem', 
+                            'catchment_aggregated_data')
+    
+    def metadata(self)->pd.DataFrame:
+        """
+        reads the metadata file
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        return pd.read_csv(self.gauge_md_file, 
+                           index_col='gauge_id', 
+                           dtype={'gauge_id': str})
+
+    def stn_coords(self)->pd.DataFrame:
+        """
+        Returns the coordinates of all the stations in the dataset in wgs84
+        projection.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe with columns 'lat', 'long'
+        """
+        coords =  self.metadata()[['gauge_lat', 'gauge_lon']]
+        coords.columns = ['lat', 'long']
+        return coords
+
+    def fetch_catch_avg(
+            self,
+            stations: Union[str, List[str]] = "all",
+    )->Dict[str, pd.DataFrame]:
+        """
+        fetches the catchment average data for the given stations
+
+        Parameters
+        ----------
+        stations: Union[str, List[str]]
+            list of stations to fetch data for
+
+        Returns
+        -------
+        Dict[str, pd.DataFrame]
+            dictionary of dataframes for each station
+        
+        Examples
+        --------
+        >>> ds = Camels_Ch_Chem(path='/path/to/data')
+        >>> data = ds.fetch_catch_avg(stations=['2009', '2011'])
+        >>> print(data['2009'].shape)  # (209, 32)
+        >>> print(data['2011'].shape)  # (209, 32)
+        """
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        data = {}
+        for stn in stations:
+
+            stn_df = []
+
+            for cat, key in {'agricultural_data': 'swisscrops', 
+                        'atmospheric_deposition': 'atmdepo', 
+                        'landcover_data': 'landcover', 
+                        'livestock_data': 'livestock',
+                        'rain_water_isotopes': 'rainisotopes'
+                        }.items():
+
+                fpath = os.path.join(self.catch_avg_data_path, cat, f'camels_ch_chem_{key}_{stn}.csv')
+            
+                if not os.path.exists(fpath):
+                    cat_df = pd.DataFrame()
+                else:
+                    cat_df = pd.read_csv(fpath, index_col=0)
+                    cat_df.index = pd.to_datetime(cat_df.index)
+            
+                stn_df.append(cat_df)
+            
+            if len(stn_df) > 0:
+                stn_df = pd.concat(stn_df, axis=1)
+            else:
+                stn_df = pd.DataFrame()
+            
+            data[stn] = stn_df
+
+        return data
+
+    def fetch_wq_ts(
+            self, 
+            stations: Union[str, List[str]] = "all",
+            timestep: str = 'D'
+            )->Dict[str, pd.DataFrame]:
+        """
+        fetches the water quality time series data for the given station(s).
+        This data consists of 'temp_sensor', 'ph_sensor', 'ec_sensor' and 'O2C_sensor' 
+        parameters for the given station(s).
+
+        Parameters
+        ----------
+        stn: Union[str, List[str]]
+            station or list of stations to fetch data for
+        timestep: str
+            the timestep of the data, default is 'D' for daily data.
+            Other option is ``H`` for hourly.
+        
+        Returns
+        -------
+        Dict[str, pd.DataFrame]
+            dictionary of dataframes for each station
+        
+        Examples
+        --------
+        >>> ds = Camels_Ch_Chem(path='/path/to/data')
+        >>> data = ds.fetch_wq_ts('2009')['2009']
+        >>> print(data.shape)  # (14610, 4)
+        """
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        subfolder = 'hourly' if timestep == 'H' else 'daily'
+
+        data = {}
+        for stn in stations:
+            fpath = os.path.join(self.path, 
+                                'camels-ch-chem', 
+                                'stream_water_chemistry',
+                                'timeseries',
+                                subfolder,
+                                f'camels_ch_chem_{subfolder}_{stn}.csv')
+            
+            if not os.path.exists(fpath):
+                stn_df = pd.DataFrame()
+            else:
+                stn_df = pd.read_csv(fpath, index_col=0)
+                stn_df.index = pd.to_datetime(stn_df.index)
+            
+            data[stn] = stn_df
+
+        return data
+
+    def fetch_isotope(
+            self, 
+            stations: Union[str, List[str]] = "all",
+            category: str = "isot"
+            )->Dict[str, pd.DataFrame]:
+
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        data = {}
+        for stn in stations:
+            fpath = os.path.join(self.path, 
+                                'camels-ch-chem', 
+                                'stream_water_isotopes',
+                                category,
+                                f'camels_ch_chem_{category}_{stn}.csv')
+            
+            if not os.path.exists(fpath):
+                stn_df = pd.DataFrame()
+            else:
+                stn_df = pd.read_csv(fpath)
+                stn_df['date_start'] = pd.to_datetime(stn_df['date_start'])
+                stn_df['date_end'] = pd.to_datetime(stn_df['date_end'])
+
+            data[stn] = stn_df
+
+        return data
+    

@@ -665,6 +665,7 @@ class RainfallRunoff(object):
             self,
             stations: List[str] = 'all',
             marker='.',
+            color:str=None,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -679,6 +680,8 @@ class RainfallRunoff(object):
             For names of stations, see :meth:`stations`.
         marker :
             marker to use.
+        color : str, optional
+            name of static feature to use as color.             
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -699,9 +702,15 @@ class RainfallRunoff(object):
         >>> ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
         >>> ax.set_title("Stations")
         >>> plt.show()
+        using area as color
+        >>> ds.plot_stations(color='area_km2')
 
         """
-        return self.dataset.plot_stations(stations, marker, ax, show, **kwargs)
+        return self.dataset.plot_stations(
+            stations, 
+            marker=marker,
+            color=color,
+            ax=ax, show=show, **kwargs)
 
     def q_mmd(
             self,

@@ -85,7 +85,6 @@ from .wq import RC4USCoast
 from .wq import DoceRiver
 from .wq import SeluneRiver
 from .wq import busan_beach
-from .wq import RiverChemSiberia
 from .wq import SyltRoads
 from .wq import ecoli_mekong_laos
 from .wq import ecoli_houay_pano
@@ -97,6 +96,7 @@ from .wq import GRiMeDB
 from .wq import BuzzardsBay
 from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
+from .wq import Camels_Ch_Chem
 
 # *** Miscellaneous ***
 
@@ -183,7 +183,6 @@ ALL_DATASETS = [
     DoceRiver.__class__.__name__,
     SeluneRiver.__class__.__name__,
     busan_beach.__name__,
-    RiverChemSiberia.__class__.__name__,
     SyltRoads.__class__.__name__,
     ecoli_mekong_laos.__name__,
     ecoli_houay_pano.__name__,
@@ -195,6 +194,7 @@ ALL_DATASETS = [
     BuzzardsBay.__class__.__name__,
     WhiteClayCreek.__class__.__name__,
     RiverChemSiberia.__class__.__name__,
+    Camels_Ch_Chem.__class__.__name__,
     
     ec_removal_biochar.__name__,
     cr_removal.__name__,

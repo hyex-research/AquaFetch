@@ -71,6 +71,12 @@ List of datasets
      - 1980 - 2018
      - Continental USA
      - `Sterle et al., 2024 <https://doi.org/10.5194/hess-28-611-2024>`_
+   * - Camels_Ch_Chem
+     - :py:class:`aqua_fetch.Camels_Ch_Chem`
+     - 40
+     - 1980 - 2020
+     - Swtizerland
+     - `Nascimento et al., 2025 <https://eartharxiv.org/repository/view/9046/>`_
    * - Global River Methane
      - :py:class:`aqua_fetch.GRiMeDB`
      - 1
@@ -146,6 +152,13 @@ Functions and Classes
 
 
 .. autoclass:: aqua_fetch.CamelsChem
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.Camels_Ch_Chem
    :members:
    :show-inheritance:
 
