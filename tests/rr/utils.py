@@ -57,6 +57,9 @@ def test_plot_stations(dataset):
     ax.set_title("Stations")
     assert isinstance(ax, plt.Axes)
     plt.close()
+
+    dataset.plot_stations(color='area_km2', show=False)
+    plt.close()
     return
 
 

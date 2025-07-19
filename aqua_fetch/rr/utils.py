@@ -828,6 +828,7 @@ class _RainfallRunoff(Datasets):
             self,
             stations: List[str] = 'all',
             marker='.',
+            color:str=None,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -841,6 +842,8 @@ class _RainfallRunoff(Datasets):
             name/names of stations. If not given, all stations will be plotted
         marker :
             marker to use.
+        color : str, optional
+            name of static feature to use as color. 
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -861,13 +864,55 @@ class _RainfallRunoff(Datasets):
         >>> ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
         >>> ax.set_title("Stations")
         >>> plt.show()
+        using area as color
+        >>> ds.plot_stations(color='area_km2')
 
         """
+        from easy_mpl.utils import add_cbar, map_array_to_cmap
+
         xy = self.stn_coords(stations)
 
-        ax = easy_mpl.plot(xy.loc[:, 'long'].values,
+        _kws = dict(
+            ax_kws=dict(xlabel="Longitude",
+            ylabel="Latitude",
+            title=f"{self.name} Stations (n={len(xy)})",
+        ))
+
+        _kws.update(kwargs)
+
+        if color is not None:
+            assert color in self.static_features, f"color {color} is not in static features {self.static_features}"
+            c = self.fetch_static_features(stations, color)
+
+            ul = c[color].quantile([0.99]).item()
+
+            if self.verbosity > 0:
+                print(f"Setting upper limit to {ul} for color scale")
+
+            c[c>ul] = ul
+
+            colorbar = _kws.pop('colorbar', True)
+            _kws['cmap'] = _kws.get('cmap', 'viridis')
+
+            ax, _= easy_mpl.scatter(
+                xy.loc[:, 'long'].values,
+                    xy.loc[:, 'lat'].values,
+                    ax=ax,
+                    c=c.values.reshape(-1,),
+                    show=False, 
+                    **_kws)
+            
+            if colorbar:
+                c, mapper = map_array_to_cmap(c.values.reshape(-1,), _kws['cmap'])
+                add_cbar(ax, mappable=mapper, pad=0.3,
+                     border=False,
+                     title=color, title_kws=dict(fontsize=12))
+        else:
+            ax = easy_mpl.plot(xy.loc[:, 'long'].values,
                            xy.loc[:, 'lat'].values,
-                           marker, ax=ax, show=False, **kwargs)
+                           marker, ax=ax, 
+                           show=False, 
+                           **_kws)
 
         if show:
             plt.show()
