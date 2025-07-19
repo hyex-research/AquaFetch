@@ -2823,10 +2823,10 @@ class CAMELS_FR(_RainfallRunoff):
     >>> coords.shape
         (654, 2)
     >>> dataset.stn_coords('J421191001')  # returns coordinates of station whose id is J421191001
-        -4.063848	48.006298
+        48.006298   -4.063848	
     >>> dataset.stn_coords(['J421191001', 'U104401001'])  # returns coordinates of two stations
-    J421191001	-4.063848	48.006298
-    U104401001	-34.918594	173.170761
+    J421191001	48.006298    -4.063848
+    U104401001	173.170761   -34.918594	
     """
     url = {
         "ADDITIONAL_LICENSES.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343463",
@@ -2867,11 +2867,11 @@ class CAMELS_FR(_RainfallRunoff):
                 'hyd_slope_fdc': slope(''),
                 # 'sit_latitude', 'sit_longitude', todo : what is difference between site and guage lat/lon?
                 # gauge latitude/longitude in WGS84 (Hydroportail coordinates)
-                'sta_x_w84': gauge_latitude(),
-                'sta_y_w84': gauge_longitude(),
+                'sta_x_w84': gauge_longitude(),
+                'sta_y_w84': gauge_latitude(),
                 # todo: should we use sta_x_w84_snap and sta_y_w84_snap which are 
                 # gauge longitude in WGS84 (INRAE's own estimation, snapped on thorical river network)
-                'sit_area_hydro': catchment_area(),
+                'sit_area_topo': catchment_area(),
         }
 
     @property
