@@ -103,7 +103,11 @@ coords
 
 # %%
 
-dataset.plot_stations()
+dataset.plot_stations(color='area_km2')
+
+# %%
+
+dataset.plot_catchment(dataset.area().sort_values(ascending=False).index[0], show_outlet=True)
 
 # %%
 

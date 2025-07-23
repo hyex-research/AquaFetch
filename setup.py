@@ -28,7 +28,7 @@ extra_requires = [
 # maybe manually download the wheel file and install
 # shapely, # for spatial processing in mtropics
 'pyshp',
-# fiona, # processing of shapefiles in mtropics
+"fiona<=1.10.1", # processing of shapefiles in mtropics
 
 # for reading data
 'netCDF4',

@@ -777,7 +777,6 @@ class RainfallRunoff(object):
     def get_boundary(
             self,
             station: str,
-            as_type: str = 'numpy'
     ):
         """
         returns boundary of a catchment in a required format
@@ -786,8 +785,6 @@ class RainfallRunoff(object):
         ----------
         station : str
             name/id of catchment. For names of catchments, see :meth:`stations`.
-        as_type : str
-            'numpy' or 'geopandas'
 
         Examples
         --------
@@ -795,11 +792,12 @@ class RainfallRunoff(object):
         >>> dataset = RainfallRunoff('CAMELS_SE')
         >>> dataset.get_boundary(dataset.stations()[0])
         """
-        return self.dataset.get_boundary(station, as_type)
+        return self.dataset.get_boundary(station)
 
     def plot_catchment(
             self,
             station: str,
+            show_outlet:bool = False,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -811,6 +809,8 @@ class RainfallRunoff(object):
         ----------
         station : str
             name/id of station. For names of stations, see :meth:`stations`
+        show_outlet : bool, optional (default=False)
+            if True, then outlet of the catchment will be plotted as a red dot
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -832,12 +832,18 @@ class RainfallRunoff(object):
         >>> plt.show()
 
         """
-        return self.dataset.plot_catchment(station, ax, show, **kwargs)
+        return self.dataset.plot_catchment(
+            station,
+            show_outlet=show_outlet,
+            ax=ax, 
+            show=show,
+            **kwargs)
 
     def stations(self) -> List[str]:
         """
-        returns names/ids of all stations. This can be either gauge id or basin id.
-        Every catchment has a unique name/id which can be used to fetch its data.
+        Names/ids of stations/catchment/basins/gauges or whatever that would
+        be used to index each catchment in the dataset. Every catchment has a 
+        unique name/id which can be used to fetch its data.
 
         Examples
         --------

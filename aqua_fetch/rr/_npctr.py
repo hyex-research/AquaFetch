@@ -117,15 +117,11 @@ class NPCTRCatchments(_RainfallRunoff):
 
         self.timestep = _verify_timestep(timestep)
 
-        self.boundary_file = os.path.join(
-            self.path, 
-            "Focal_watersheds_lidar_derived",
-            "focal_watersheds_lidar_derived.shp"
-            )
-        
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         self._static_features = self._get_static().columns.tolist()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, "Focal_watersheds_lidar_derived", "focal_watersheds_lidar_derived.shp")
 
     def stations(self)->List[str]:
         return ["626", "693", "703", "708", "819", "844", "1015"]

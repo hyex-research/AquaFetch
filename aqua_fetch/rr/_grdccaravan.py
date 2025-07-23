@@ -151,18 +151,19 @@ class GRDCCaravan(_RainfallRunoff):
             elif self.verbosity > 0:
                 print(f"{_file} at {self.path} already exists")
 
-        self.boundary_file = os.path.join(
-            self.shapefiles_path,
-            'grdc_basin_shapes.shp'
-        )
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         # so that we dont have to read the files again and again
         self._stations = self.other_attributes().index.to_list()
         self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
 
         self.dyn_fname = ''
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.shapefiles_path,
+            'grdc_basin_shapes.shp'
+        )
 
     @property
     def static_map(self) -> Dict[str, str]:

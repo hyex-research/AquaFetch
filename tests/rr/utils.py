@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from aqua_fetch._backend import xarray as xr
 
-from aqua_fetch._backend import plt, netCDF4, shapefile
+from aqua_fetch._backend import plt, netCDF4, fiona
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,25 @@ def test_plot_stations(dataset):
     return
 
 
+def test_plot_catchment(dataset):
+    logger.info(f"testing plot_catchment for {dataset.name}")
+
+    stations = dataset.stations()
+    ax = dataset.plot_catchment(stations[0], show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    ax = dataset.plot_catchment(stations[0], marker='o', ms=0.3, show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    stations = dataset.stations()
+    ax = dataset.plot_catchment(stations[0], show_outlet=True, show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    return
+
 def test_area(dataset):
     logger.info(f"testing area for {dataset.name}")
 
@@ -100,9 +119,14 @@ def test_q_mmd(dataset):
 def test_boundary(dataset):
     logger.info(f"testing get_boundary for {dataset.name}")
 
-    boundary = dataset.get_boundary(dataset.stations()[0])
+    rings = dataset.get_boundary(dataset.stations()[0])
 
-    assert isinstance(boundary, np.ndarray)
+    assert isinstance(rings, list)
+
+    for ring in rings:
+        assert isinstance(ring, np.ndarray), f"Expected np.ndarray, got {type(ring)}"
+        assert ring.ndim == 2, f"Expected 2D array, got {ring.ndim}D array"
+        assert ring.shape[1] == 2, f"Expected shape (n, 2), got {ring.shape}"
 
     return
 
@@ -441,8 +465,10 @@ def test_dataset(dataset,
     if has_q:
         test_q_mmd(dataset)
 
-    if shapefile is not None:
+    if fiona is not None:
         test_boundary(dataset)
+
+        test_plot_catchment(dataset)
 
     logger.info(f"** Finished testing {dataset.name} **")
 

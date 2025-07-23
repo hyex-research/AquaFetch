@@ -153,11 +153,11 @@ class Bull(_RainfallRunoff):
         self._dynamic_features = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
         self._static_features = list(set(self._static_data().columns.tolist()))
 
-        self.boundary_file = os.path.join(self.shapefiles_path, "BULL_basin_shapes.shp")
-
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         self.dyn_fname = ''
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.shapefiles_path, "BULL_basin_shapes.shp")
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -278,6 +278,7 @@ class Bull(_RainfallRunoff):
             with py7zr.SevenZipFile(fpath, mode='r') as z:
                 z.extractall(path = self.path)
                 print(f'Extracted {file}')
+        return
 
     def caravan_attributes(self) -> pd.DataFrame:
         """a dataframe of shape (484, 10)"""

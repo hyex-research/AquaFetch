@@ -18,6 +18,7 @@ from aqua_fetch import WaterBenchIowa
 from aqua_fetch import CAMELS_DE
 from aqua_fetch import CAMELS_SE
 from aqua_fetch import CAMELS_IND
+from aqua_fetch import CAMELS_FR
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
 from aqua_fetch import CAMELS_NZ
@@ -148,6 +149,17 @@ class TestCamels(unittest.TestCase):
 
         dataset = CAMELS_IND(path=os.path.join(gscad_path, 'CAMELS'))
         test_dataset(dataset, 472, 14976, 210, 20)
+        return
+
+    def test_fr(self):
+        ds = CAMELS_FR(gscad_path, verbosity=4)
+        test_dataset(
+            ds,
+            num_stations=654,
+            dyn_data_len=18993,
+            num_static_attrs=344,
+            num_dyn_attrs=22,
+        )
         return
 
     def test_rainfallrunoff(self):

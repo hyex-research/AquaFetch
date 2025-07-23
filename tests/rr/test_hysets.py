@@ -27,7 +27,8 @@ from utils import (
     test_area,
     test_q_mmd,
     test_boundary,
-    test_fetch_dynamic_multiple_stations
+    test_fetch_dynamic_multiple_stations,
+    test_plot_catchment,
 )
 
 
@@ -71,3 +72,5 @@ test_area(hy)
 test_q_mmd(hy)
 
 test_boundary(hy)
+
+test_plot_catchment(hy)

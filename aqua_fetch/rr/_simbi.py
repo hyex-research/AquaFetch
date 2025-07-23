@@ -67,11 +67,19 @@ class Simbi(_RainfallRunoff):
         self._static_features = self.static_data().columns.tolist()
         self._dynamic_features = list(self.dyn_map.values())
 
-        self.boundary_file = os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')
+        #self.boundary_file = os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')
 
-        self._create_boundary_id_map(self.boundary_file, 1)
+        self._create_boundary_id_map()
 
         self.dyn_fname = ''
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')
+
+    @property
+    def boundary_id_map(self) -> str:
+        return "S__URGE"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -191,8 +199,8 @@ class Simbi(_RainfallRunoff):
         """
         Returns names/IDs of 24 stations with boundary data.
         """
-        return [stn.split('-')[1] for stn in self.bndry_id_map.keys()]
-    
+        return list(self.bndry_id_map.keys())
+
     def static_data_stations(self)->List[str]:
         """
         Returns names/IDs of 24 stations with static data.

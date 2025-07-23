@@ -12,7 +12,7 @@ except (ModuleNotFoundError, ImportError):
     pass
 
 from .utils import _RainfallRunoff
-from .._backend import shapefile, xarray as xr
+from .._backend import xarray as xr
 from ..utils import check_attributes, download, unzip
 
 from ._map import (
@@ -269,10 +269,20 @@ class HYSETS(_RainfallRunoff):
 
         self._stations = self.__stations()
 
-        self.boundary_file = os.path.join(self.path,  
-                                          "HYSETS_watershed_boundaries", 
-                                          "HYSETS_watershed_boundaries_20200730.shp")
-        self._create_boundary_id_map(self.boundary_file, 2)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path,  
+                            "HYSETS_watershed_boundaries", 
+                            "HYSETS_watershed_boundaries_20200730.shp")
+
+    @property
+    def boundary_id_map(self)->str:
+        """
+        Name of the attribute in the boundary (.shp/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.        
+        """
+        return "OfficialID"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -385,44 +395,6 @@ class HYSETS(_RainfallRunoff):
     @property
     def end(self)->str:
         return "20231231"
-
-    def get_boundary(
-            self,
-            catchment_id: str,
-            as_type: str = 'numpy'
-    ):
-        """
-        returns boundary of a catchment in a required format
-
-        Parameters
-        ----------
-        catchment_id : str
-            name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
-        
-        Examples
-        --------
-        >>> from aqua_fetch import HYSETS
-        >>> dataset = HYSETS()
-        >>> dataset.get_boundary(dataset.stations()[0])
-        """
-
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
-
-        from shapefile import Reader
-
-        bndry_sf = Reader(self.boundary_file)
-        bndry_shp = bndry_sf.shape(self.bndry_id_map[self.WatershedID_OfficialID_map[catchment_id]])
-
-        bndry_sf.close()
-
-        xyz = np.array(bndry_shp.points)
-
-        xyz = self.transform_coords(xyz)
-
-        return xyz
 
     # def q_mmd(
     #         self,
@@ -710,7 +682,6 @@ class HYSETS(_RainfallRunoff):
 
         static_df.rename(columns=self.static_map, inplace=True)
         return static_df
-
 
     def transform(
             self,

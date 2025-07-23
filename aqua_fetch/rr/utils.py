@@ -10,7 +10,7 @@ import pandas as pd
 
 from .._datasets import Datasets
 from .._backend import netCDF4
-from .._backend import shapefile
+from .._backend import fiona
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
 from ..utils import check_attributes, get_cpus
 
@@ -133,6 +133,16 @@ class _RainfallRunoff(Datasets):
     def dyn_factors(self) -> Dict[str, float]:
         return {}
 
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        if not given, then the first attribute in the boundary file will be used.
+        """
+        return None
+
     def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
         """converts discharge from mmd to cms"""
         area_m2 = self.area(q_mmd.name) * 1e6
@@ -150,81 +160,58 @@ class _RainfallRunoff(Datasets):
         assert len(tmin) == len(tmax), f"length of tmin {len(tmin)} and tmax {len(tmax)} must be same"
         return (tmin + tmax)/2
 
-    def _create_boundary_id_map(self, boundary_file, id_idx_in_bndry_shape):
+    def _create_boundary_id_map(self):
 
-        if boundary_file is None:
-            return
+        if fiona is None:
+            raise ModuleNotFoundError("fiona module is not installed. Please install it to use boundary file")
 
-        if shapefile is None:
-            warnings.warn("shapefile module is not installed. Please install it to use boundary file")
-            return
+        # Dictionary to hold {CatchID: geometry}
+        self.bndry_id_map = {}
 
-        from shapefile import Reader
+        assert os.path.exists(self.boundary_file), \
+            f"Boundary file {self.boundary_file} does not exist."
 
-        if self.verbosity > 1:
-            print(f"loading boundary file {boundary_file}")
+        with fiona.open(self.boundary_file, "r") as src:
 
-        assert os.path.exists(boundary_file), f"{boundary_file} does not exist"
-        bndry_sf = Reader(boundary_file)
+            boundary_id_map = self.boundary_id_map
+            if boundary_id_map is None:
+                schema = src.schema
+                properties = schema['properties']
+                boundary_id_map = list(properties.keys())[0]  # use the first property as default
+                if self.verbosity:
+                    print(f"Using attribute '{boundary_id_map}' as default for boundary ID mapping.")
+            
+            for feature in src:
 
-        # shapefile of chille contains spanish characters which can not be
-        # decoded with utf-8
-        if os.path.basename(bndry_sf.shapeName) in [
-            'catchments_camels_cl_v1_3',
-            'catchments_camels_cl_v1.3',
-            "WKMSBSN",
-            'estreams_catchments',
-            'CAMELS_DE_catchments',
-        ]:
-            bndry_sf.encoding = 'ISO-8859-1'
+                if self.name in ['CAMELS_CH', 'CAMELS_IND', 'CABra']:
+                    # from '2004.0' -> '2004' for CAMELS_CH
+                    # from '03001' -> '3001' for CAMELS_IND
+                    catch_id = str(int(feature["properties"][boundary_id_map]))
+                elif self.name == 'CAMELS_LUX':
+                    idx = int(feature["properties"][boundary_id_map])
+                    if idx < 10:
+                        catch_id = f"ID_{str(idx).zfill(2)}"
+                    else:
+                        catch_id = f"ID_{idx}"
+                elif self.name == 'Simbi':
+                    catch_id = feature['properties'][boundary_id_map]
+                    catch_id = catch_id.split('-')[1]
+                else:
+                    # since we are treating catchment/station id as string
+                    catch_id = str(feature["properties"][boundary_id_map])
+                geometry = feature["geometry"]
 
-        if self.verbosity > 2:
-            print(f"loaded boundary file {boundary_file}")
+                self.bndry_id_map[catch_id] = geometry
 
-        self.bndry_id_map = self._get_map(bndry_sf,
-                                          id_index=id_idx_in_bndry_shape,
-                                          name="bndry_shape")
-        
-        if self.verbosity>2:
-            print(f"created boundary id map of length {len(self.bndry_id_map)}")
-
-        bndry_sf.close()
-        return
-
-    @staticmethod
-    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
-
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        if os.path.basename(sf_reader.shapeName) in ["CAMELS_CH_catchments"]:
-            catch_ids_map = {
-                str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-            }
-        else:
-            catch_ids_map = {
-                str(rec[id_index]): idx for idx, rec in enumerate(sf_reader.iterRecords())
-            }
-
-        return catch_ids_map
+        return self.bndry_id_map
 
     def stations(self) -> List[str]:
         """
-        Names of stations/catchment ids/ gauge ids or whatever that would
-        be used to index each station in the dataset. Since this is a method
-        is called multiple times, it is better to cache the result
+        Names/ids of stations/catchment/gauges or whatever that would
+        be used to index each station in the dataset. Since this is a method,
+        it is called multiple times, it is better to cache the result
         and return the cached result instead of reading the data again and again
-        or the user implementing this method in the child class in a more efficient way.
+        The user is recommended to implement this method in the child class in a more efficient way.
         """
         return self._static_data().index.tolist()
 
@@ -883,8 +870,8 @@ class _RainfallRunoff(Datasets):
         if color is not None:
             assert color in self.static_features, f"color {color} is not in static features {self.static_features}"
             c = self.fetch_static_features(stations, color)
-
-            ul = c[color].quantile([0.99]).item()
+            c = c.astype('float32')
+            ul = round(c[color].quantile([0.99]).item(), 2)
 
             if self.verbosity > 0:
                 print(f"Setting upper limit to {ul} for color scale")
@@ -1026,8 +1013,7 @@ class _RainfallRunoff(Datasets):
     def get_boundary(
             self,
             catchment_id: str,
-            as_type: str = 'numpy'
-    ):
+    )-> List[np.ndarray]:
         """
         returns boundary of a catchment in a required format
 
@@ -1045,25 +1031,67 @@ class _RainfallRunoff(Datasets):
         >>> dataset.get_boundary(dataset.stations()[0])
         """
 
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
+        assert isinstance(catchment_id, str), f"catchment_id must be string but is of type {type(catchment_id)}"
 
-        from shapefile import Reader
+        # todo : when we repeatedly call get_boundary, we should not create the 
+        # boundary_id_map for all catchments again
+        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
+            bndry_id_map = self.gsha._create_boundary_id_map()
+        # elif self.name in ['HYSETS']:
+        #     bndry_id_map = self._create_boundary_id_map()
+        elif self.name in ['USGS']:
+            bndry_id_map = self.hysets._create_boundary_id_map()            
+        else:
+            bndry_id_map = self._create_boundary_id_map()
 
-        bndry_sf = Reader(self.boundary_file)
-        bndry_shp = bndry_sf.shape(self.bndry_id_map[catchment_id])
+        def make_polygon_2d(polygon):
+            """
+            converts a 3D polygon to 2D polygon by removing the z coordinate
+            """
+            if polygon.ndim == 3:
+                assert polygon.shape[0] == 1, "Only one polygon is expected for a catchment"
+                polygon = polygon[0]
+            
+            if polygon.shape[1] == 3:
+                # if the polygon has 3 coordinates, then we will remove the z coordinate
+                assert polygon[:, -1].sum() == 0, "Z coordinate is not zero for the polygon"
+                polygon = polygon[:, :-1]
 
-        bndry_sf.close()
+            return polygon
 
-        xyz = np.array(bndry_shp.points)
+        if self.name in ['HYSETS']:
+            catchment_id = self.WatershedID_OfficialID_map[catchment_id]
+        # elif self.name == 'USGS':
+        #     catchment_id = self.hysets.OfficialID_WatershedID_map[catchment_id]
+        elif self.name == 'Thailand':
+            catchment_id = catchment_id.replace('.', '_')
+        
+        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
+            catchment_id = f"{catchment_id}_{self.agency_name}"
 
-        xyz = self.transform_coords(xyz)
+        rings = []
+        geometry = bndry_id_map[catchment_id]
+        if geometry.type == 'MultiPolygon' or len(geometry.coordinates) > 1:
+            for polygon in geometry.coordinates:
+                if len(polygon) == 1:
+                    polygon = np.array(polygon)
+                    rings.append(make_polygon_2d(polygon))
+                else:
+                    for p in polygon:  # for GRDC_1159100, # there are multiple polygons
+                        p = np.array(p)
+                        rings.append(make_polygon_2d(p))
+        else:
+            polygon = np.array(geometry.coordinates)
+            rings.append(make_polygon_2d(polygon))
 
-        return xyz
+        rings = self.transform_coords(rings)
+
+        return rings
 
     def plot_catchment(
             self,
             catchment_id: str,
+            show_outlet:bool = False,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -1073,6 +1101,10 @@ class _RainfallRunoff(Datasets):
 
         Parameters
         ----------
+        catchment_id : str
+            name/id of catchment to plot
+        show_outlet : bool, optional (default=False)
+            if True, then outlet of the catchment will be plotted as a red dot
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -1087,33 +1119,33 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
-        >>> dataset.plot_catchment()
-        >>> dataset.plot_catchment(marker='o', ms=0.3)
-        >>> ax = dataset.plot_catchment(marker='o', ms=0.3, show=False)
-        >>> ax.set_title("Catchment Boundaries")
+        >>> dataset.plot_catchment('912101A')
+        >>> dataset.plot_catchment('912101A', marker='o', ms=0.3)
+        >>> ax = dataset.plot_catchment('912101A', marker='o', ms=0.3, show=False)
+        >>> ax.set_title("Catchment Boundary")
         >>> plt.show()
+        # show the outlet as well
+        >>> CAMELS_AUS.plot_catchment('912101A', show_outlet=True)
 
         """
-        catchment = self.get_boundary(catchment_id)
+        rings = self.get_boundary(catchment_id)
 
-        if isinstance(catchment, np.ndarray):
-            if catchment.ndim == 2:
-                ax = easy_mpl.plot(catchment[:, 0], catchment[:, 1],
-                                   show=False, ax=ax, **kwargs)
-            else:
-                raise NotImplementedError
-        # elif isinstance(catchment, geojson.geometry.Polygon):
-        #     coords = catchment['coordinates']
-        #     x = [i for i, j in coords[0]]
-        #     y = [j for i, j in coords[0]]
-        #     ax = plot(x, y, show=False, ax=ax, **kwargs)
-        # elif isinstance(catchment, SPolygon):
-        #     x, y = catchment.exterior.xy
-        #     ax = plot(x, y, show=False, ax=ax, **kwargs)
-        # elif isinstance(catchment, SMultiPolygon):
-        #     raise NotImplementedError
-        else:
-            raise NotImplementedError
+        _kws = dict(
+            ax_kws=dict(xlabel="Longitude", ylabel="Latitude")
+        )
+
+        _kws.update(kwargs)
+
+        for ring in rings:
+            ax = easy_mpl.plot(ring[:, 0], ring[:, 1],
+                                show=False, ax=ax, **_kws)
+        
+        if show_outlet:
+            coords = self.stn_coords(catchment_id)
+            ax.scatter(coords['long'], coords['lat'], marker='o', 
+                       color='red', 
+                       s=10, 
+                       label='Outlet')
 
         if show:
             plt.show()

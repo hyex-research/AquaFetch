@@ -16,7 +16,7 @@ from typing import List, Union, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from .._backend import xarray as xr, shapefile
+from .._backend import xarray as xr
 
 from ..utils import get_cpus
 from ..utils import check_attributes
@@ -149,13 +149,18 @@ class GSHA(_RainfallRunoff):
         wsAll.index = wsAll.pop('station_id')
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
 
-        self.boundary_file = os.path.join(self.path, "boundaries.shp")
-        self._create_boundary_id_map(self.boundary_file, 7)
-
         self._daily_dynamic_features = self.__daily_dynamic_features()
         self._yearly_dynamic_features = self.__yearly_dynamic_features()
 
         self._static_features = self.__static_features()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, "boundaries.shp")
+
+    @property
+    def boundary_id_map(self) -> str:
+        return "ID"
 
     @property
     def agencies(self) -> List[str]:
@@ -1138,8 +1143,11 @@ class _GSHA(_RainfallRunoff):
 
         self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)
 
-        self.boundary_file = self.gsha.boundary_file
         self._stations = self.__stations()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return self.gsha.boundary_file
 
     @property
     def start(self) -> pd.Timestamp:
@@ -1166,50 +1174,6 @@ class _GSHA(_RainfallRunoff):
         by GSHA.
         """
         return [stn.split('_')[0] for stn in self.gsha.agency_stations(self.agency_name)]
-
-    def get_boundary(
-            self,
-            catchment_id: str,
-            as_type: str = 'numpy'
-    ):
-        """
-        returns boundary of a catchment in a required format
-
-        Parameters
-        ----------
-        catchment_id : str
-            name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
-
-        Examples
-        --------
-        >>> from aqua_fetch import Japan
-        >>> dataset = Japan()
-        >>> dataset.get_boundary(dataset.stations()[0])
-        ... # for Arcticnet
-        >>> from aqua_fetch import Arcticnet
-        >>> dataset = Arcticnet()
-        >>> dataset.get_boundary('1001')
-        """
-
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
-
-        from shapefile import Reader
-
-        bndry_sf = Reader(self.boundary_file)
-        if self.agency_name == 'RID':
-            catchment_id = catchment_id.replace('.', '_')
-        bndry_shp = bndry_sf.shape(self.gsha.bndry_id_map[f"{catchment_id}_{self.agency_name}"])
-
-        bndry_sf.close()
-
-        xyz = np.array(bndry_shp.points)
-
-        xyz = self.transform_coords(xyz)
-
-        return xyz
 
     def _fetch_dynamic_features(
             self,

@@ -82,7 +82,10 @@ class USGS(_RainfallRunoff):
         self.metadata = maybe_make_and_get_metadata(self.path, self.stations())
 
         self._static_features = self.__static_features()
-        self.boundary_file = self.hysets.boundary_file
+    
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return self.hysets.boundary_file
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -116,44 +119,6 @@ class USGS(_RainfallRunoff):
     def _q_name(self)->str:
         return observed_streamflow_cms()
 
-    def get_boundary(
-            self,
-            catchment_id: str,
-            as_type: str = 'numpy'
-    ):
-        """
-        returns boundary of a catchment in a required format
-
-        Parameters
-        ----------
-        catchment_id : str
-            name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
-        
-        Examples
-        --------
-        >>> from aqua_fetch import USGS
-        >>> dataset = USGS()
-        >>> dataset.get_boundary(dataset.stations()[0])
-        """
-
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
-
-        from shapefile import Reader
-
-        bndry_sf = Reader(self.boundary_file)
-        bndry_shp = bndry_sf.shape(self.hysets.bndry_id_map[catchment_id])
-
-        bndry_sf.close()
-
-        xyz = np.array(bndry_shp.points)
-
-        xyz = self.transform_coords(xyz)
-
-        return xyz
-    
     def area(
             self,
             stations: Union[str, List[str]] = 'all',
@@ -231,6 +196,10 @@ class USGS(_RainfallRunoff):
         >>> static_data.shape
            (12004, 2)
         """
+        if isinstance(static_features, str) and static_features != 'all':
+            # we want Official_ID because that will be used as index later on
+            static_features = [static_features, 'Official_ID']
+        
         stations = check_attributes(stations, self.stations())
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [int(map_[stn]) for stn in stations]        

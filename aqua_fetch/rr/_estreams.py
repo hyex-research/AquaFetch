@@ -84,9 +84,11 @@ class EStreams(_RainfallRunoff):
         self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
         self._static_features = self._static_data().columns.tolist()
 
-        self.boundary_file = os.path.join(self.path2,
-                                          "shapefiles", "estreams_catchments.shp")
-        self._create_boundary_id_map(self.boundary_file, 0)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path2,
+                            "shapefiles", 
+                            "estreams_catchments.shp")
 
     @property
     def path2(self):

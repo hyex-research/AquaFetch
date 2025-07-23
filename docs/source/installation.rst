@@ -14,7 +14,8 @@ choose to install all of them as well.
     pip install aqua-fetch[all]
 
 This will install `xarray <https://docs.xarray.dev/en/stable/>`_, `shapely <https://shapely.readthedocs.io/en/stable/>`_, 
-`pyshp <https://github.com/GeospatialPython/pyshp>`_ and `easy_mpl <https://easy-mpl.readthedocs.io/>`_ libraries. The xarray 
+`pyshp <https://github.com/GeospatialPython/pyshp>`_, `fiona <https://fiona.readthedocs.io/en/stable/>_` 
+and `easy_mpl <https://easy-mpl.readthedocs.io/>`_ libraries. The xarray 
 library is used to save the data in netCDF4 format for faster I/O operations. 
 shapely and shapefile libraries are used to process shapefiles while easy_mpl is used for plotting purpose.
 

@@ -207,13 +207,13 @@ class CAMELS_US(_RainfallRunoff):
         self._static_features = self._static_data().columns.tolist()
         self._maybe_to_netcdf('camels_us_dyn')
 
-        self.boundary_file = os.path.join(
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
             self.path,
             "basin_set_full_res",
             "HCDN_nhru_final_671.shp"
         )
-            
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -442,16 +442,16 @@ class CAMELS_GB(_RainfallRunoff):
 
         self._maybe_to_netcdf('camels_gb_dyn')
 
-        self.boundary_file = os.path.join(
+        if not os.path.exists(self.boundary_file):
+            unzip(self.data_path)
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
             self.data_path,
             "CAMELS_GB_catchment_boundaries",
             "CAMELS_GB_catchment_boundaries.shp"
         )
-
-        if not os.path.exists(self.boundary_file):
-            unzip(self.data_path)
-
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -755,14 +755,15 @@ class CAMELS_AUS(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf('camels_aus_dyn')
 
-        self.boundary_file = os.path.join(
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
             self.path,
             "02_location_boundary_area",
             "02_location_boundary_area",
             "shp",
             "CAMELS_AUS_Boundaries_adopted.shp" if self.version == 1 else "CAMELS_AUS_v2_Boundaries_adopted.shp"
         )
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1039,15 +1040,14 @@ class CAMELS_CL(_RainfallRunoff):
         self.dyn_fname = os.path.join(self.path, 'camels_cl_dyn.nc')
         self._maybe_to_netcdf('camels_cl_dyn')
 
-        self.boundary_file = os.path.join(
-            path,
-            "CAMELS_CL",
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
             "CAMELScl_catchment_boundaries",
             "CAMELScl_catchment_boundaries",
             "catchments_camels_cl_v1.3.shp"
         )
-
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1303,15 +1303,15 @@ class CAMELS_CH(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf('camels_ch_dyn')
 
-        self.boundary_file = os.path.join(
-            path,
-            'CAMELS_CH',
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
             'camels_ch',
             'camels_ch',
             'catchment_delineations',
             'CAMELS_CH_catchments.shp'
         )
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1759,10 +1759,13 @@ class CAMELS_DE(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf('camels_de_dyn')
 
-        self.boundary_file = os.path.join(path, "CAMELS_DE", "camels_de",
-                                          "CAMELS_DE_catchment_boundaries",
-                                          "catchments", "CAMELS_DE_catchments.shp")
-        self._create_boundary_id_map(self.boundary_file, 0)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path,
+                            "camels_de",
+                            "CAMELS_DE_catchment_boundaries",
+                            "catchments", 
+                            "CAMELS_DE_catchments.shp")
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -2033,13 +2036,6 @@ class CAMELS_SE(_RainfallRunoff):
             else:
                 if self.verbosity > 0: print(f"{_file} at {self.path} already exists")
 
-        self.boundary_file = os.path.join(self.path,
-                                          'catchment_GIS_shapefiles',
-                                          'catchment_GIS_shapefiles',
-                                          'Sweden_catchments_50_boundaries_WGS84.shp')
-
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         self._static_features = list(set(self._static_data().columns.tolist()))
         self._stations = self.physical_properties().index.to_list()
         self._dynamic_features = self._read_stn_dyn(self.stations()[0], nrows=2).columns.tolist()
@@ -2050,6 +2046,13 @@ class CAMELS_SE(_RainfallRunoff):
 
         if to_netcdf:
             self._maybe_to_netcdf('camels_se_dyn')
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path,
+                            'catchment_GIS_shapefiles',
+                            'catchment_GIS_shapefiles',
+                            'Sweden_catchments_50_boundaries_WGS84.shp')
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -2184,7 +2187,7 @@ class CAMELS_DK(_RainfallRunoff):
     dataset . This dataset was presented
     by `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_ and is
     available at `dataverse <https://dataverse.geus.dk/dataset.xhtml?persistentId=doi:10.22008/FK2/AZXSYP>`_ .
-    This dataset consists of 119 static and 13 dynamic features from 3330 danish catchments.
+    This dataset consists of 119 static and 13 dynamic features from 3330 Danish catchments.
     The dynamic (time series) features span from 1989-01-02 to 2023-12-31 with daily timestep.
     However, the streamflow observations are available for only 304 catchments.
 
@@ -2305,11 +2308,12 @@ class CAMELS_DK(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf('camels_dk_dyn')
 
-        self.boundary_file = os.path.join(
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
             self.path,
             "CAMELS_DK_304_gauging_catchment_boundaries.shp"
         )
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -2583,13 +2587,14 @@ class CAMELS_IND(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf('camels_ind_dyn')
 
-        self.boundary_file = os.path.join(
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
             self.path,
             "shapefiles_catchment",
             "Merged",
             "all_catchments.shp"
         )
-        self._create_boundary_id_map(self.boundary_file, 0)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -2656,27 +2661,6 @@ class CAMELS_IND(_RainfallRunoff):
     @property
     def end(self) -> pd.Timestamp:  # end of data
         return pd.Timestamp('2020-12-31')
-
-    def _get_map(self, sf_reader, id_index=None, name: str = '') -> dict:
-
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        catch_ids_map = {
-            str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
-
-        return catch_ids_map
 
     def stn_forcing_path(self, stn: str) -> os.PathLike:
         return os.path.join(
@@ -2854,12 +2838,13 @@ class CAMELS_FR(_RainfallRunoff):
         if self.to_netcdf:
             self._maybe_to_netcdf('camels_fr_dyn')
 
-        # todo : must be read using fiona/geopandas
-        self.boudary_file = os.path.join(
+    @property
+    def boundary_file(self) -> os.PathLike:        
+        return os.path.join(
             self.path, 
             'CAMELS_FR_geography', 
             'CAMELS_FR_geography', 
-            'catchment_boundaries.gpkg')
+            'CAMELS_FR_catchment_boundaries.gpkg')
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -3152,8 +3137,6 @@ class CAMELS_NZ(_RainfallRunoff):
         if self.to_netcdf:
             self._maybe_to_netcdf('camels_nz_dyn')
 
-        #self._create_boundary_id_map(self.boundary_file, 0)
-
     @property
     def boundary_id_index(self) -> int:
         """
@@ -3162,7 +3145,7 @@ class CAMELS_NZ(_RainfallRunoff):
         return 0
 
     @property
-    def boundary_file(self):
+    def boundary_file(self)-> os.PathLike:
         return os.path.join(
             self.shapefile_path,
             "catnz_SpatialJoin.shp"
@@ -3470,8 +3453,6 @@ class CAMELS_COL(_RainfallRunoff):
         if self.to_netcdf:
             self._maybe_to_netcdf(f'camels_lux_dyn')
         
-        self._create_boundary_id_map(self.boundary_file, 0)
-
     @property
     def bbox(self) -> Dict[str, float]:
         return dict(llcrnrlon=-80, llcrnrlat=-5, urcrnrlon=-65, urcrnrlat=12)
@@ -3954,8 +3935,6 @@ class CAMELS_LUX(_RainfallRunoff):
         if self.to_netcdf:
             self._maybe_to_netcdf(f'camels_lux_dyn_{self.timestep}')
 
-        self._create_boundary_id_map(self.boundary_file, 0)
-
     @property
     def static_features(self) -> List[str]:
         return self._static_data().columns.to_list()
@@ -4059,33 +4038,6 @@ class CAMELS_LUX(_RainfallRunoff):
     @property
     def subhourly_ts_path(self) -> os.PathLike:
         return os.path.join(self.ts_path, "15Min")
-
-    def _get_map(self, sf_reader, id_index=None, name: str = '') -> dict:
-        """overriding because we need to put ID_ at the start of keys"""
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        catch_ids_map = {}
-        for idx, rec in enumerate(sf_reader.iterRecords()):
-            
-            if idx < 10:
-                key = f"ID_{str(rec[id_index]).zfill(2)}"
-            else:
-                key = f"ID_{rec[id_index]}"
-        
-            catch_ids_map[key] = idx + 1
-
-        return catch_ids_map
 
     def _static_data(self) -> pd.DataFrame:
         """

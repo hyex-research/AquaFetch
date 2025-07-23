@@ -25,7 +25,8 @@ from utils import (
     test_boundary, 
     test_plot_stations,
     test_fetch_static_feature,
-    test_fetch_dynamic_features
+    test_fetch_dynamic_features,
+    test_plot_catchment,
     )
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -249,6 +250,8 @@ test_fetch_static_features()
 test_fetch_dynamic_features_()
 
 test_stn_dynamic_features()
+
+test_plot_catchment(ds)
 
 print('All tests passed!')
 

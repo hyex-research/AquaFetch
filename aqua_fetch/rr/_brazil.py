@@ -155,14 +155,23 @@ class CAMELS_BR(_RainfallRunoff):
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
         self._maybe_to_netcdf('camels_dyn_br')
 
-        self.boundary_file = os.path.join(
-            path,
-            "CAMELS_BR",
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
             "14_CAMELS_BR_catchment_boundaries",
             "14_CAMELS_BR_catchment_boundaries",
             "camels_br_catchments.shp"
         )
-        self._create_boundary_id_map(self.boundary_file, 3)
+
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        """
+        return "gauge_id"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -656,9 +665,19 @@ class CABra(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf(f'cabra_{met_src}_dyn')
 
-        self.boundary_file = os.path.join(self.path, "CABra_boundaries", "CABra_boundaries.shp")
-        self._create_boundary_id_map(self.boundary_file, 2)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, "CABra_boundaries", "CABra_boundaries.shp")
 
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        """
+        return "ID_CABra"
+    
     @property
     def static_map(self) -> Dict[str, str]:
         return {
