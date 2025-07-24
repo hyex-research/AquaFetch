@@ -166,6 +166,15 @@ List of datasets
      - 1989 - 2023
      - Denmark
      - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
+   * - ``CAMELS_FI``
+     - :py:class:`aqua_fetch.rr.CAMELS_FI`
+     - 320
+     - 
+     - 16
+     - 111
+     - 1963 - 2023
+     - Finland
+     - `Seppä et al., 2024 <https://doi.org/10.5281/zenodo.16257216>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -515,6 +524,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_DK
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_FI
    :members:
    :show-inheritance:
 

@@ -7,7 +7,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .._backend import shapefile
+from .._backend import fiona
 from ..utils import check_attributes
 from .utils import _RainfallRunoff
 from ._map import(
@@ -163,22 +163,22 @@ class NPCTRCatchments(_RainfallRunoff):
         from `Table A1 of paper <https://essd.copernicus.org/articles/14/4231/2022/essd-14-4231-2022.html#&gid=1&pid=1>`_
         """
         stations = {
-            "RefStn": {gauge_latitude: 51.6520, gauge_longitude(): -128.1287},
-            "SSN626": {gauge_latitude: 51.6408, gauge_longitude(): -128.1219},
-            "WSN626": {gauge_latitude: 51.6262, gauge_longitude(): -128.1018},
-            "SSN693": {gauge_latitude: 51.6442, gauge_longitude(): -127.9978},
-            "WSN693_703": {gauge_latitude: 51.6106, gauge_longitude(): -127.9871},
-            "SSN703": {gauge_latitude: 51.6166, gauge_longitude(): -128.0257},
-            "WSN703": {gauge_latitude: 51.6433, gauge_longitude(): -128.0228},
-            "WSN703_708": {gauge_latitude: 51.6222, gauge_longitude(): -128.0507},
-            "SSN708": {gauge_latitude: 51.6486, gauge_longitude(): -128.0684},
-            "SSN819": {gauge_latitude: 51.6619, gauge_longitude(): -128.0419},
-            "WSN819_1015": {gauge_latitude: 51.6827, gauge_longitude(): -128.0433},
-            "SSN844": {gauge_latitude: 51.6608, gauge_longitude(): -128.0025},
-            "WSN844": {gauge_latitude: 51.6614, gauge_longitude(): -127.9975},
-            "SSN1015": {gauge_latitude: 51.6906, gauge_longitude(): -128.0653},
-            "East Buxton": {gauge_latitude: 51.5899, gauge_longitude(): -128.9752},
-            "Hecate": {gauge_latitude: 51.6826, gauge_longitude():-128.0228}
+            "RefStn": {gauge_latitude(): 51.6520, gauge_longitude(): -128.1287},
+            "SSN626": {gauge_latitude(): 51.6408, gauge_longitude(): -128.1219},
+            "WSN626": {gauge_latitude(): 51.6262, gauge_longitude(): -128.1018},
+            "SSN693": {gauge_latitude(): 51.6442, gauge_longitude(): -127.9978},
+            "WSN693_703": {gauge_latitude(): 51.6106, gauge_longitude(): -127.9871},
+            "SSN703": {gauge_latitude(): 51.6166, gauge_longitude(): -128.0257},
+            "WSN703": {gauge_latitude(): 51.6433, gauge_longitude(): -128.0228},
+            "WSN703_708": {gauge_latitude(): 51.6222, gauge_longitude(): -128.0507},
+            "SSN708": {gauge_latitude(): 51.6486, gauge_longitude(): -128.0684},
+            "SSN819": {gauge_latitude(): 51.6619, gauge_longitude(): -128.0419},
+            "WSN819_1015": {gauge_latitude(): 51.6827, gauge_longitude(): -128.0433},
+            "SSN844": {gauge_latitude(): 51.6608, gauge_longitude(): -128.0025},
+            "WSN844": {gauge_latitude(): 51.6614, gauge_longitude(): -127.9975},
+            "SSN1015": {gauge_latitude(): 51.6906, gauge_longitude(): -128.0653},
+            "East Buxton": {gauge_latitude(): 51.5899, gauge_longitude(): -128.9752},
+            "Hecate": {gauge_latitude(): 51.6826, gauge_longitude():-128.0228}
         }
 
         return pd.DataFrame(stations).T
@@ -538,20 +538,20 @@ class NPCTRCatchments(_RainfallRunoff):
         return
 
     def _get_static(self)->pd.DataFrame:
-        sf = shapefile.Reader(self.boundary_file)
 
-        # get all records
-        ss = []
-        for rec in sf.records():
-            s = pd.Series(rec.as_dict())
-            ss.append(s)
+        with fiona.open(self.boundary_file) as src:
 
-        static = pd.concat(ss, axis=1).transpose().set_index('WTS_ID_A')
+            properties = []
+            for feature in src:
+                prop = feature['properties']
 
-        sf.close()
+                prop_s = pd.Series({k:v for k,v in prop.items()}, name=prop['WTS_ID_A'])
+
+                properties.append(prop_s)
+            static = pd.DataFrame(properties)
 
         # drop WTS_ID_F column
-        static.drop(columns='WTS_ID_F', inplace=True)
+        static.drop(columns=['WTS_ID_F', 'WTS_ID_A'], inplace=True)
 
         static.rename(columns={
             'Wts_area': catchment_area(),

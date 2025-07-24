@@ -6,7 +6,7 @@
 # height = height of the measurement like 2m/10m etc.
 
 # TODO : differentiate between catchment averaged and temporal averaged features, the word 'mean' is ambiguous
-
+# for example mean air temperature can mean catchment averaged or temporal averaged
 # ****** Dynmaic Features *******
 
 # %% streamflow
@@ -498,9 +498,19 @@ def max_catchment_elevation_meters()->str:
     return "elev_catch_max_m"
 
 
+def med_catchment_elevation_meters()->str:
+    """median elevation of the catchment in meters"""
+    return "elev_catch_max_m"
+
+
 def urban_fraction()->str:
     """Fraction of urban area in the catchment"""
     return "urban_frac"
+
+
+def urban_fraction_with_specifier(specifier:str)->str:
+    """Fraction of urban area in the catchment with a specifier such as year"""
+    return f"urban_frac_{specifier}"
 
 
 def forest_fraction()->str:
@@ -508,17 +518,33 @@ def forest_fraction()->str:
     return "forest_frac"
 
 
+def forest_fraction_with_specifier(specifier:str)->str:
+    """Fraction of forest area in the catchment with a specifier such as year"""
+    return f"forest_frac_{specifier}"
+
+
 def grass_fraction()->str:
-    """Fraction of grass area in the
-    catchment"""
+    """Fraction of grass area in the catchment"""
     return "grass_frac"
 
 
+def grass_fraction_with_specifier(specifier:str)->str:
+    """Fraction of grass area in the catchment with a specifier such as year.
+    """
+    return f"grass_frac_{specifier}"
+
+
 def crop_fraction()->str:
-    """Fraction of cropland area in the catchment
-    in CAMELS-LUX it is named as 'agricultural_land'
+    """Fraction of cropland area in the catchment.
+    In CAMELS-LUX it is named as 'agricultural_land'
     """
     return "crop_frac"
+
+def crop_fraction_with_specifier(specifier:str)->str:
+    """Fraction of cropland area in the catchment with a specifier such as year.
+    In CAMELS-LUX it is named as 'agricultural_land'
+    """
+    return f"crop_frac_{specifier}"
 
 
 def impervious_fraction()->str:
@@ -527,6 +553,8 @@ def impervious_fraction()->str:
 
 
 def aridity_index()->str:
+    """the ratio of mean daily & ERA5-Land potential 
+    evapotranspiration to mean daily precipitation"""
     return "aridity"
 
 
@@ -548,3 +576,28 @@ def catchment_centroid_longitude()->str:
 
 def elong_ratio()->str:
     return "elong_ratio"
+
+
+def silt_percentage() -> str:
+    """Percentage of silt dominated soils of total area in %"""
+    return "silt_perc"
+
+
+def clay_percentage() -> str:
+    """Percentage of clay dominated soils of total area in %"""
+    return "clay_perc"
+
+
+def soil_depth() -> str:
+    """Mean soil depth to bedrock in meters"""
+    return "soil_depth_m"
+
+
+def population_density() -> str:
+    """Population density in people per square kilometer"""
+    return "pop_density_km2"
+
+
+def population_density_with_specifier(specifier: str) -> str:
+    """Population density in people per square kilometer with a specifier such as year"""
+    return f"pop_density_{specifier}_km2"

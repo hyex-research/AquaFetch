@@ -196,6 +196,9 @@ class _RainfallRunoff(Datasets):
                 elif self.name == 'Simbi':
                     catch_id = feature['properties'][boundary_id_map]
                     catch_id = catch_id.split('-')[1]
+                elif self.name == 'Caravan_DK':
+                    catch_id = str(feature["properties"][boundary_id_map])
+                    catch_id = str(catch_id).split('_')[1]
                 else:
                     # since we are treating catchment/station id as string
                     catch_id = str(feature["properties"][boundary_id_map])
@@ -573,6 +576,12 @@ class _RainfallRunoff(Datasets):
         )
 
     def _maybe_to_netcdf(self, fname: str):
+
+        # todo : we should save the dynamic data with default names of dynamic features
+        # and then convert them to the standard names using the dyn_map
+        # otherwise everytime we change dyn_map, we will have to convert the data again
+        # and more importantly, all the users who used a previous version of the dataset
+        # will have to download the data again, which is not good
         self.dyn_fname = os.path.join(self.path, f'{fname}.nc')
         if self.to_netcdf:
             if not os.path.exists(self.dyn_fname) or self.overwrite:
@@ -1031,6 +1040,9 @@ class _RainfallRunoff(Datasets):
         >>> dataset.get_boundary(dataset.stations()[0])
         """
 
+        # todo : by default it should return fiona Geometry
+        # we can do the conversion to numpy when plotting
+
         assert isinstance(catchment_id, str), f"catchment_id must be string but is of type {type(catchment_id)}"
 
         # todo : when we repeatedly call get_boundary, we should not create the 
@@ -1071,7 +1083,7 @@ class _RainfallRunoff(Datasets):
 
         rings = []
         geometry = bndry_id_map[catchment_id]
-        if geometry.type == 'MultiPolygon' or len(geometry.coordinates) > 1:
+        if geometry.type == 'MultiPolygon':
             for polygon in geometry.coordinates:
                 if len(polygon) == 1:
                     polygon = np.array(polygon)
@@ -1081,8 +1093,13 @@ class _RainfallRunoff(Datasets):
                         p = np.array(p)
                         rings.append(make_polygon_2d(p))
         else:
-            polygon = np.array(geometry.coordinates)
-            rings.append(make_polygon_2d(polygon))
+            if len(geometry.coordinates) > 1:
+                for polygon in geometry.coordinates:
+                    polygon = np.array(polygon)
+                    rings.append(make_polygon_2d(polygon))
+            else:
+                polygon = np.array(geometry.coordinates)
+                rings.append(make_polygon_2d(polygon))
 
         rings = self.transform_coords(rings)
 

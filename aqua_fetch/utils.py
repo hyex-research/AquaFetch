@@ -1003,6 +1003,47 @@ def get_cpus()->int:
         return len(os.sched_getaffinity(0))
 
 
+def merge_shapefiles_fiona(shp_files, output_path):
+    """
+    merges shapefiles into one shapefile using fiona
+    """
+
+    if os.path.exists(output_path):
+        return
+
+    import fiona
+
+    # Read schema and CRS from the first shapefile
+    with fiona.open(shp_files[0], 'r') as first:
+        schema = first.schema
+        crs = first.crs
+        geom_type = first.schema['geometry']
+
+    # Define schema with one string property: the shapefile name
+    schema = {
+        'geometry': geom_type,
+        'properties': {'gauge_id': 'str'}
+    }
+
+    # Write merged output
+    with fiona.open(output_path, 'w', driver='ESRI Shapefile', crs=crs, schema=schema) as output:
+        for shp in shp_files:
+            
+            base_name = os.path.splitext(os.path.basename(shp))[0]
+
+            with fiona.open(shp, 'r') as src:
+                for feature in src:
+                    new_feature = {
+                        'geometry': feature['geometry'],
+                        'properties': {'gauge_id': base_name}
+                    }
+                    output.write(new_feature)
+    
+    print(f"Merged {len(shp_files)} shapefiles into {output_path}")
+
+    return
+
+
 def _merge_shapefiles(shapefiles,
                       out_shapefile,
                       add_new_field:bool = False,

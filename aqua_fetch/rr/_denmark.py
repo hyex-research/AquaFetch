@@ -111,12 +111,14 @@ class Caravan_DK(_RainfallRunoff):
 
         self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
 
-        if to_netcdf:
-            self._maybe_to_netcdf('caravandk_dyn')
+        #if to_netcdf:
+        self._maybe_to_netcdf('caravandk_dyn')
 
-        self.boundary_file = os.path.join(
-            path,
-            "Caravan_DK",
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
+            #"Caravan_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
@@ -125,16 +127,10 @@ class Caravan_DK(_RainfallRunoff):
             "camelsdk_basin_shapes.shp"
         )
 
-        self._create_boundary_id_map(self.boundary_file, 3)
+    @property
+    def boundary_id_map(self) -> str:
+        return "gauge_id"
 
-    @staticmethod
-    def _get_map(sf_reader, id_index, name: str = '') -> Dict[str, int]:
-
-        catch_ids_map = {
-            str(rec[id_index]).split('_')[1]: idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
-
-        return catch_ids_map
     
     @property
     def static_map(self) -> Dict[str, str]:

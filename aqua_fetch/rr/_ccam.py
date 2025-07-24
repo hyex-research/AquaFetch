@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._backend import shapefile
+from .._backend import fiona
 from .._backend import xarray as xr
-from ..utils import merge_shapefiles
+from ..utils import merge_shapefiles_fiona
 from ..utils import check_attributes, dateandtime_now
 
 from ._map import (
@@ -133,16 +133,22 @@ class CCAM(_RainfallRunoff):
                                 "7_HydroMLYR",
                                 "0_basin_boundary")
 
-        self.boundary_file = os.path.join(shp_path, 'boundaries.shp')
         files = [file for file in os.listdir(shp_path) if file.endswith('.shp')]
         shp_files = [os.path.join(shp_path, shp_file) for shp_file in files]
         boundaries = os.path.join(shp_path, "boundaries")
 
-        if shapefile is not None:
-            merge_shapefiles(shp_files, boundaries, add_new_field=True,
-                                ignore_previous_fields=True, verbosity=self.verbosity)
+        if fiona is not None:
+            merge_shapefiles_fiona(shp_files, boundaries)
 
-            self._create_boundary_id_map(self.boundary_file, 2)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path, 
+            "7_HydroMLYR", 
+            "7_HydroMLYR", 
+            "0_basin_boundary",
+            "boundaries",
+            "boundaries.shp")
 
     @property
     def static_map(self) -> Dict[str, str]:

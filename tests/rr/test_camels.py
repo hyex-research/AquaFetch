@@ -24,7 +24,8 @@ from aqua_fetch import RRLuleaSweden
 from aqua_fetch import CAMELS_NZ
 from aqua_fetch import CAMELS_LUX
 from aqua_fetch import CAMELS_COL
-from aqua_fetch.rr._camels import CAMELS_SK
+from aqua_fetch import CAMELS_SK
+from aqua_fetch.rr import CAMELS_FI
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -196,6 +197,13 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 178, 175320, 215, 17,
                      st="20120101", en="20121231", 
                      yearly_steps=8761)
+        return
+
+    def test_camels_fi(self):
+
+        dataset = CAMELS_FI(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+        test_dataset(dataset, 320, 23010, 106, 16)
+
         return
 
 

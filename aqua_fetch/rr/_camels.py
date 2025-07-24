@@ -3,6 +3,7 @@ import json
 import glob
 import time
 import shutil
+import zipfile
 import warnings
 import concurrent.futures as cf
 from typing import Union, List, Dict
@@ -52,6 +53,8 @@ from ._map import (
     soil_moisture_layer4,
     mean_dewpoint_temperature_at_2m,
     catchment_area_with_specifier,
+    snow_water_equivalent_with_specifier,
+    snow_depth,
 )
 
 from ._map import (
@@ -62,9 +65,16 @@ from ._map import (
     gauge_elevation_meters,
     catchment_elevation_meters,
     urban_fraction,
+    urban_fraction_with_specifier,
     grass_fraction,
+    grass_fraction_with_specifier,
     crop_fraction,
+    crop_fraction_with_specifier,
     catchment_perimeter,
+    aridity_index,
+    med_catchment_elevation_meters,
+    soil_depth,
+    population_density,
     )
 
 # directory separator
@@ -3932,8 +3942,8 @@ class CAMELS_LUX(_RainfallRunoff):
         
         self._download(overwrite=overwrite)
 
-        if self.to_netcdf:
-            self._maybe_to_netcdf(f'camels_lux_dyn_{self.timestep}')
+        # if self.to_netcdf:
+        self._maybe_to_netcdf(f'camels_lux_dyn_{self.timestep}')
 
     @property
     def static_features(self) -> List[str]:
@@ -4124,3 +4134,264 @@ class CAMELS_ES(_RainfallRunoff):
     """
     """
     url = "https://zenodo.org/records/15040948"
+
+
+class CAMELS_FI(_RainfallRunoff):
+    """
+    Dataset of 320 Finnish catchments with 16 dynamic features and 106 static features.
+    The dynamic features span from 19610101 to 20231231 with daily timestep.
+    The data is downloaded from `Zenodo <https://zenodo.org/records/16257216>`_.
+
+    
+    Examples
+    ---------
+    >>> from aqua_fetch import CAMELS_FI
+    >>> dataset = CAMELS_FI()
+    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
+    >>> data.shape
+    (368160, 32)   # 32 represents number of stations
+    Since data is a multi-index dataframe, we can get data of one station as below
+    >>> data['1156'].unstack().shape
+    (23010, 16)
+    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
+    >>> _, data = dataset.fetch(0.1)
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 23010, 'dynamic_features': 16})
+    >>> len(data.data_vars)
+        32
+    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
+    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> df.shape
+    (23010, 16)
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    320
+    # get data by station id
+    >>> _, df = dataset.fetch(stations='1156', as_dataframe=True)
+    >>> df.unstack().shape
+    (23010, 16)
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, df = dataset.fetch(1, as_dataframe=True,
+    ... dynamic_features=['pcp_mm', 'snowdepth_m', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    >>> df.unstack().shape
+    (23010, 5)
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, df = dataset.fetch(10, as_dataframe=True)
+    >>> df.shape
+    (368160, 10)  # remember this is multi-indexed DataFrame
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='1156', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 106), (23010, 16))
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (320, 2)
+    >>> dataset.stn_coords('1156')  # returns coordinates of station whose id is 1156
+        62.253101	24.444099
+    >>> dataset.stn_coords(['1156', '1116'])  # returns coordinates of two stations
+    1156	62.253101	24.444099
+    1116	60.385201	22.355301
+    """
+
+    url = "https://zenodo.org/records/16257216"
+
+    def __init__(self,
+                 path=None,
+                 overwrite=False,
+                 to_netcdf: bool = True,
+                 **kwargs):
+
+        super(CAMELS_FI, self).__init__(
+            path=path, 
+            to_netcdf=to_netcdf, 
+            **kwargs)
+        
+        self._download(overwrite=overwrite)
+
+        self._unzip_boundaries()
+
+        self._maybe_to_netcdf(f'camels_fi_dyn')
+
+    @property
+    def data_path(self) -> os.PathLike:
+        return os.path.join(self.path, 
+                            "CAMELS-FI", 
+                            "CAMELS-FI",
+                            "data")
+    
+    @property
+    def boundary_path(self) -> os.PathLike:
+        return os.path.join(self.data_path, "CAMELS_FI_catchment_boundaries")
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.boundary_path,
+            "CAMELS_FI_catchment_boundaries.shp"
+        )
+    
+    @property
+    def ts_path(self) -> os.PathLike:
+        return os.path.join(
+            self.data_path,
+            "timeseries",
+        )
+
+    def stations(self) -> List[str]:
+        return [
+            fname.split('.')[0].split('_')[4] for fname in os.listdir(self.ts_path) if fname.endswith('.csv')
+            ]
+
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        """
+        dynamic features map for CAMELS-FI catchments
+        """
+        return {
+            'discharge_vol': observed_streamflow_cms(),
+            'discharge_spec': observed_streamflow_mmd(),
+            'precipitation': total_precipitation(),
+            'pet': total_potential_evapotranspiration(),
+            'temperature_min': min_air_temp(),
+            'temperature_mean': mean_air_temp(),
+            'temperature_max': max_air_temp(),
+            'humidity_rel': mean_rel_hum(),
+            'snow_depth': snow_depth(),  # change from cm to m
+            'swe': snow_water_equivalent_with_specifier('era5'),
+            'swe_cci3-1': snow_water_equivalent_with_specifier('cci3-1'),
+        }
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+            'gauge_lat': gauge_latitude(),
+            'gauge_lon': gauge_longitude(),
+            'area': catchment_area(),   
+            'slope': slope('percent'),
+            #'slope_fdc': catchment_elevation_meters(),
+            'aridity': aridity_index(),
+            'grass_perc_2000': grass_fraction_with_specifier('2000'),
+            'urban_perc_2000': urban_fraction_with_specifier('2000'),
+            'crop_perc_2000': crop_fraction_with_specifier('2000'),
+            'grass_perc_2006': grass_fraction_with_specifier('2006'),
+            'urban_perc_2006': urban_fraction_with_specifier('2006'),
+            'crop_perc_2006': crop_fraction_with_specifier('2006'),
+            'grass_perc_2012': grass_fraction_with_specifier('2012'),
+            'urban_perc_2012': urban_fraction_with_specifier('2012'),
+            'crop_perc_2012': crop_fraction_with_specifier('2012'),
+            'grass_perc_2018': grass_fraction_with_specifier('2018'),
+            'urban_perc_2018': urban_fraction_with_specifier('2018'),
+            'crop_perc_2018': crop_fraction_with_specifier('2018'), 
+            'elev_gauge': gauge_elevation_meters(),
+            'elev_50': med_catchment_elevation_meters(),
+            'soil_depth': soil_depth(),
+            'dens_inhabitants': population_density(),
+        }
+
+    @property
+    def static_factors(self) -> Dict[str, float]:
+        """
+        static factors for CAMELS-LUX catchments
+        """
+        return {
+            grass_fraction_with_specifier('2000'): 0.01,
+            urban_fraction_with_specifier('2000'): 0.01,
+            crop_fraction_with_specifier('2000'): 0.01,
+            grass_fraction_with_specifier('2006'): 0.01,
+            urban_fraction_with_specifier('2006'): 0.01,
+            crop_fraction_with_specifier('2006'): 0.01,
+            grass_fraction_with_specifier('2012'): 0.01,
+            urban_fraction_with_specifier('2012'): 0.01,
+            crop_fraction_with_specifier('2012'): 0.01,
+            grass_fraction_with_specifier('2018'): 0.01,
+            urban_fraction_with_specifier('2018'): 0.01,
+            crop_fraction_with_specifier('2018'): 0.01,
+        }
+
+    @property
+    def start(self) -> pd.Timestamp:
+        """
+        start of data
+        """
+        return pd.Timestamp('1961-01-01')
+    
+    @property
+    def end(self) -> pd.Timestamp:
+        """
+        end of data
+        """
+        return pd.Timestamp('2023-12-31')
+
+    def _static_data(self) -> pd.DataFrame:
+        """
+        static attributes of catchments
+
+        Returns
+        -------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (320, 106)
+        """
+
+        csv_files = glob.glob(os.path.join(self.data_path, '*.csv'))
+
+        dfs = []
+        for csv_file in csv_files:
+
+            df = pd.read_csv(
+                csv_file, 
+                index_col=0, 
+                dtype={0: str}
+            )
+
+            df.index = df.index.astype(str)
+
+            dfs.append(df)
+        
+        static_data = pd.concat(dfs, axis=1)
+
+        static_data.rename(columns=self.static_map, inplace=True)
+
+        # static_factors should be called after renaming the columns
+        for col, fac in  self.static_factors.items():
+            if col in static_data.columns:
+                static_data[col] *= fac
+        
+        return static_data
+
+    def _read_stn_dyn(self, stn:str, nrows=None)->pd.DataFrame:
+        """
+        reads dynamic data for a given station
+        """
+
+        fpath = os.path.join(
+            self.ts_path, 
+            f"CAMELS_FI_hydromet_timeseries_{stn}_19610101-20231231.csv")
+        
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True, nrows=nrows)
+
+        df.index = pd.to_datetime(df.index)
+        if df.index.has_duplicates:
+            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+          
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        return df
+    
+    def _unzip_boundaries(self):
+        if not os.path.exists(self.boundary_path):
+            zip_file = os.path.join(self.data_path, "CAMELS_FI_catchment_boundaries.zip")
+            if os.path.exists(zip_file):
+                if self.verbosity:
+                    print(f"Unzipping boundary file {os.path.basename(zip_file)} to {self.data_path}")
+                with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                    zip_ref.extractall(self.boundary_path)
+            else:
+                raise FileNotFoundError(f"Boundary file {zip_file} not found.")
+        return

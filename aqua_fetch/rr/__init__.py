@@ -52,6 +52,7 @@ from ._camels import CAMELS_NZ
 from ._camels import CAMELS_LUX
 from ._camels import CAMELS_COL
 from ._camels import CAMELS_SK
+from ._camels import CAMELS_FI
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
@@ -101,6 +102,7 @@ DATASETS = {
     'CAMELS_LUX': CAMELS_LUX,
     'CAMELS_COL': CAMELS_COL,
     'CAMELS_SK': CAMELS_SK,
+    'CAMELS_FI': CAMELS_FI,
 }
 
 
@@ -205,6 +207,7 @@ class RainfallRunoff(object):
             - ``CAMELS_DE``
             - ``CAMELS_DK0``
             - ``CAMELS_DK``
+            - ``CAMELS_FI``
             - ``CAMELS_FR``
             - ``CAMELS_GB``
             - ``CAMELS_IND``

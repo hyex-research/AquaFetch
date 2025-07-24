@@ -45,6 +45,7 @@ from .rr import CAMELS_NZ
 from .rr import CAMELS_LUX
 from .rr import CAMELS_COL
 from .rr import CAMELS_SK
+from .rr import CAMELS_FI
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -175,6 +176,7 @@ ALL_DATASETS = [
     CAMELS_LUX.__class__.__name__,
     CAMELS_COL.__class__.__name__,
     CAMELS_SK.__class__.__name__,
+    CAMELS_FI.__class__.__name__,
 
     Quadica.__class__.__name__,
     GRQA.__class__.__name__,
