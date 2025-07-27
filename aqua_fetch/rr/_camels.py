@@ -3734,6 +3734,16 @@ class CAMELS_SK(_RainfallRunoff):
 
         if self.to_netcdf:
             self._maybe_to_netcdf(f'camels_sk_dyn_{self.timestep}')
+        
+        self._unzip_7z_files()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
+            "shp",
+            "KFM_bas.shp"
+        )
 
     @property
     def start(self) -> pd.Timestamp:
@@ -3795,6 +3805,21 @@ class CAMELS_SK(_RainfallRunoff):
             # 'wind_sp_obs': mean_windspeed(),
             'streamflow': observed_streamflow_cms(),
         }
+
+    def _unzip_7z_files(self):
+        # The attributes file is .7z file
+        try:
+            import py7zr
+        except (ModuleNotFoundError, ImportError):
+            raise ImportError('py7zr is required to extract the .7z files. Please install it using `pip install py7zr`')
+
+        if not os.path.exists(self.boundary_file):
+
+            fpath = os.path.join(self.path, 'shp.7z')
+            with py7zr.SevenZipFile(fpath, mode='r') as z:
+                z.extractall(path = self.path)
+                print(f'Extracted {fpath}')
+        return
 
     def _read_stn_dyn(self, stn:str, nrows=None)->pd.DataFrame:
         """

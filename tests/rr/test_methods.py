@@ -54,6 +54,7 @@ from aqua_fetch import Finland
 from aqua_fetch import Italy
 from aqua_fetch import Poland
 from aqua_fetch import Portugal
+from aqua_fetch import Slovenia
 from aqua_fetch import GRDCCaravan
 from aqua_fetch import LamaHCE
 from aqua_fetch import LamaHIce
@@ -105,6 +106,7 @@ DATASETS = {
 "Italy": Italy(path=gscad_path, verbosity=0),
 "Poland": Poland(path=gscad_path, verbosity=0),
 "Portugal": Portugal(path=gscad_path, verbosity=0),
+"Slovenia": Slovenia(path=gscad_path, verbosity=0),
 "GRDCCaravan": GRDCCaravan(path=gscad_path, verbosity=0),
 "LamaHCE_tu": LamaHCE(timestep='D', data_type="total_upstrm", path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=0),
 "LamaHCE_ia": LamaHCE(timestep='D', data_type="intermediate_all", path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=0),
@@ -126,7 +128,7 @@ def test_get_boundary():
     for ds_name, ds in DATASETS.items():
 
         if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 'CAMELS_NZ',
-                       'CAMELS_SK']:
+                       ]:
             test_boundary(ds)
     return
 
@@ -137,7 +139,7 @@ def test_plot_catchment_method():
 
         if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 
                            'CAMELS_NZ',
-                       'CAMELS_SK']:
+                       ]:
             test_plot_catchment(ds)
     return
 

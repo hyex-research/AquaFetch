@@ -7,12 +7,15 @@ __all__ = [
     "Italy", 
     "Poland",
     "Portugal",
+    "Slovenia"
     ]
 
 import os
 import time
 import warnings
+import urllib.parse
 from io import StringIO
+from datetime import datetime
 import concurrent.futures as cf
 from urllib.error import HTTPError
 from typing import Union, List, Dict
@@ -54,6 +57,8 @@ from ._map import (
     observed_streamflow_cms,
     )
 
+
+# todo : a lot of methods in subclasses of _EStreams are redundant
 
 class EStreams(_RainfallRunoff):
     """
@@ -494,6 +499,27 @@ class _EStreams(_RainfallRunoff):
     def end(self) -> pd.Timestamp:
         return pd.Timestamp('2023-06-30')
 
+    def stations(self) -> List[str]:
+        """
+        Returns a list of all station names. Note that the `basin_id` column is 
+        used as the station name.
+        """
+        return self._stations
+    
+    def gauge_id_basin_id_map(self)->dict:
+        """
+        For example for Portugal, it is
+        guage_id : '03J/02H'
+        basin_id 'PT000001'
+        '03J/02H' -> 'PT000001'
+
+        for Slovenia, it is
+        gauge id : 1060
+        basin_id : SI000001
+        '1060' -> 'SI000001'
+        """
+        return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
+
     def _fetch_dynamic_features(
             self,
             stations: list,
@@ -686,11 +712,11 @@ class Finland(_EStreams):
     Data of 669 catchments of Finland. 
     The observed streamflow data is downloaded from 
     https://wwwi3.ymparisto.fi .
-    The meteorological data, static catchment 
+    The meteorological data, stattic catchment 
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 214 and dynamic features are 10 and the
+    the number of static features are 214 and dynamic features are 10 and the
     data is available from 2012-01-01 to 2023-06-30.
     """
     def __init__(
@@ -960,7 +986,7 @@ class Ireland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 214 and dynamic features are 10 and the
+    the number of static features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1345,7 +1371,7 @@ class Italy(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 214 and dynamic features are 10 and the
+    the number of static features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
     """
     def __init__(
@@ -1473,7 +1499,7 @@ class Poland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of staic features are 214 and dynamic features are 10 and the
+    the number of static features are 214 and dynamic features are 10 and the
     data is available from 1951-01-01 to 2023-06-30.
     """
     def __init__(
@@ -1679,7 +1705,7 @@ class Portugal(_EStreams):
     features and catchment boundaries for the 280 catchments are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of staic features are 214 and dynamic features are 10 and the
+    the number of static features are 214 and dynamic features are 10 and the
     data is available from 1972-01-01 to 2022-12-31 .
     """
     def __init__(
@@ -1835,3 +1861,204 @@ def download_stn_data(gauge_code:int)->pd.Series:
         s = pd.Series(name=str(gauge_code))
     
     return s
+
+
+class Slovenia(_EStreams):
+    """
+    Data of 117 catchments of Portugal.
+    The observed streamflow data is downloaded from https://vode.arso.gov.si .
+    The meteorological data, static catchment 
+    features and catchment boundaries for the 117 catchments are
+    taken from :py:class:`aqua_fetch.EStreams` follwoing the works
+    of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
+    the number of static features are 214 and dynamic features are 10 and the
+    data is available from 1950-01-01 to 2023-12-31 .    
+    """
+    def __init__(
+            self, 
+            path:Union[str, os.PathLike] = None,
+            estreams_path:Union[str, os.PathLike] = None,
+            verbosity:int=1,
+            **kwargs):
+
+        super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+    @property
+    def end(self) -> pd.Timestamp:
+        return pd.Timestamp('2023-12-31')
+
+    @property
+    def country_name(self) -> str:
+        return 'SI'
+
+    def get_q(
+            self, 
+            as_dataframe:bool=True,
+            ):
+        """
+        returns the streamflow data of Portugal as xarray.Dataset or pandas.DataFrame
+
+        Returns
+        -------
+        xarray.Dataset or pandas.DataFrame. If as_dataframe is True, returns pandas.DataFrame
+        with columns as station codes and index as time. If as_dataframe is False, returns
+        xarray.Dataset with station codes as variables and time as dimension.
+        """
+        fname = 'daily_q.csv' 
+
+        fpath = os.path.join(self.path, fname)
+
+        if not os.path.exists(fpath) or self.overwrite:
+
+            if self.verbosity>1: print(f"Downloading q data at {self.path}")
+
+            q_df = download_slovenia_q(self.md, outpath=fpath, 
+                                       cpus=self.processes or min(get_cpus() - 2, 16))
+        else:
+            if self.verbosity: print(f"Reading q data from pre-existing file {fpath}")
+            q_df = pd.read_csv(fpath, index_col=0)
+            q_df.index = pd.to_datetime(q_df.index)
+       
+        q_df.index.name = 'time'
+
+        # because stations are identified by basin_id
+        q_df = q_df.rename(columns=self.gauge_id_basin_id_map())
+
+        if as_dataframe:
+            return q_df
+        return xr.Dataset({stn: xr.DataArray(q_df.loc[:, stn]) for stn in q_df.columns})
+
+
+def download_slovenia_q(
+        metadata:pd.DataFrame,
+        outpath:Union[str, os.PathLike],
+        cpus = 1
+        ) -> pd.DataFrame:
+    """
+    Downloads streamflow data for Slovenia stations.
+
+    Parameters
+    ----------
+    metadata : pd.DataFrame
+        DataFrame containing metadata for the stations.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the downloaded streamflow data.
+    """
+
+    # todo : we should parallelize stations-years combined
+
+    cpus = cpus or min(get_cpus() - 2, 8)
+    if cpus > 1:
+        print(f"Download operation will be parallelized using {cpus} CPUs")
+
+    dirname = os.path.dirname(outpath)
+
+    # get current year
+    current_year = datetime.now().year
+
+    q_dfs = []
+    wl_dfs = []
+    wt_dfs = []
+
+    for i in range(len(metadata)):
+
+        row = metadata.iloc[i]
+
+        gauge_id = row['gauge_id']
+        gauge_name = row['gauge_name']
+
+        # math.isnan(start) or math.isnan(end):
+        st_yr = 1950
+        en_yr = current_year + 1
+
+        stn_dfs = []
+
+        if cpus > 1:
+        # Download all year combinations in parallel
+            with cf.ProcessPoolExecutor(cpus) as executor:
+                results = executor.map(download_slovenia_stn, [row]*len(range(st_yr, en_yr)), range(st_yr, en_yr))
+
+            for yr_df in results:
+                stn_dfs.append(yr_df)
+
+        else:
+            for year in range(st_yr, en_yr):
+
+                yr_df = download_slovenia_stn(row, year)
+
+                stn_dfs.append(yr_df)
+
+                print(f"downloaded data for {i}/{len(metadata)}: {gauge_id} - {gauge_name} for year {year}")
+
+        stn_df = pd.concat(stn_dfs)
+
+        stn_df.rename(columns={
+            'pretok (m3/s)': 'q_cms_obs',
+            'vodostaj (cm)': 'water_level_cm',
+            'temp. vode (°C)': 'water_temp_celsius',
+            'vsebnost suspendiranega materiala (g/m3)': 'suspended_solids_g_per_m3',
+        }, inplace=True)
+
+        q_dfs.append(stn_df['q_cms_obs'].rename(gauge_id))
+
+        wl_dfs.append(stn_df['water_level_cm'].rename(gauge_id))
+
+        wt_dfs.append(stn_df['water_temp_celsius'].rename(gauge_id))
+        
+        if cpus:
+            print(f"Downloaded data for {i+1}/{len(metadata)}: {gauge_id} - {gauge_name}")
+
+    q_df = pd.concat(q_dfs, axis=1)
+    wl_df = pd.concat(wl_dfs, axis=1)
+    wt_df = pd.concat(wt_dfs, axis=1)
+
+    q_df.to_csv(outpath, index=True, index_label='date')
+    wl_df.to_csv(os.path.join(dirname, 'daily_wl.csv'), index=True, index_label='date')
+    wt_df.to_csv(os.path.join(dirname, 'daily_wt.csv'), index=True, index_label='date')
+
+    return q_df
+
+
+def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
+
+    #row, year = input_data
+
+    gauge_id = row['gauge_id']
+    river = row['river']
+
+    url = f"https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok={river}&p_postaja={gauge_id}&p_leto={year}&b_arhiv=Prika%C5%BEi&p_export=txt"
+
+    encoded_url = urllib.parse.quote(url, safe=':/?=&')
+
+    yr_df = pd.read_csv(encoded_url, encoding='utf-8', sep=';', index_col=0, parse_dates=True)
+
+    yr_df.index = pd.to_datetime(yr_df.index, format='%d.%m.%Y')
+
+    if 'pretok (m3/s)' not in yr_df.columns:
+        yr_df['pretok (m3/s)'] = np.nan
+
+    if 'vodostaj (cm)' not in yr_df.columns:
+        yr_df['vodostaj (cm)'] = np.nan
+
+    if 'temp. vode (°C)' not in yr_df.columns:
+        yr_df['temp. vode (°C)'] = np.nan
+
+    # Handle comma decimal separator before converting to float
+    for col in yr_df.columns:
+        if yr_df[col].dtype == 'object':  # Only process string/object columns
+            yr_df[col] = yr_df[col].astype(str).str.replace(',', '.', regex=False)
+            # Replace 'nan' strings back to actual NaN
+            yr_df[col] = yr_df[col].replace('nan', np.nan)
+
+    try:
+        yr_df = yr_df.astype('float32')
+    except ValueError as e:
+        print(gauge_id, year)
+        raise e
+    
+    return yr_df
+
+

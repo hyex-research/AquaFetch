@@ -1474,7 +1474,7 @@ class Japan(_GSHA):
     `river.go.jp website <http://www1.river.go.jp>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2022-12-31.
     """
 
@@ -1780,7 +1780,7 @@ class Arcticnet(_GSHA):
     `r-arcticnet project <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2003-12-31 although the observed
     streamflow (q_cms_obs) for some stations is available as earlier as from
     1913-01-01.
@@ -1939,7 +1939,7 @@ class Spain(_GSHA):
     `ceh-es <https://ceh-flumen64.cedex.es>`_ website.
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2020-09-30.
     """
 
@@ -2064,7 +2064,7 @@ class Thailand(_GSHA):
     `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1980-01-01 to 1999-12-31.
     """
     url = {

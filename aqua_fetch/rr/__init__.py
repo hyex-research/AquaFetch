@@ -53,6 +53,7 @@ from ._camels import CAMELS_LUX
 from ._camels import CAMELS_COL
 from ._camels import CAMELS_SK
 from ._camels import CAMELS_FI
+from ._estreams import Slovenia
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
@@ -103,6 +104,7 @@ DATASETS = {
     'CAMELS_COL': CAMELS_COL,
     'CAMELS_SK': CAMELS_SK,
     'CAMELS_FI': CAMELS_FI,
+    'Slovenia': Slovenia,
 }
 
 
@@ -231,6 +233,7 @@ class RainfallRunoff(object):
             - ``Portugal``
             - ``RRLuleaSweden``
             - ``Simbi``
+            - ``Slovenia``
             - ``Spain``
             - ``Thailand``
             - ``USGS``

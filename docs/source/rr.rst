@@ -381,7 +381,16 @@ List of datasets
      - 35
      - 1979 - 2020
      - Spain
-     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_     
+     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_
+   * - ``Slovenia``
+     - :py:class:`aqua_fetch.rr.Slovenia`
+     - 117
+     -
+     - 3
+     - 10
+     - 1950 - 2023
+     - Slovenia
+     - `vode.arso.gov.si <https://vode.arso.gov.si>`_     
    * - ``Simbi``
      - :py:class:`aqua_fetch.rr.Simbi`
      - 24
@@ -390,7 +399,7 @@ List of datasets
      - 232
      - 1920 - 1940
      - Haiti
-     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_   
+     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
    * - ``Thailand``
      - :py:class:`aqua_fetch.rr.Thailand`
      - 73
@@ -692,6 +701,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.Simbi
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.Slovenia
    :members:
    :show-inheritance:
 
