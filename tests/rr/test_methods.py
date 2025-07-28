@@ -59,6 +59,7 @@ from aqua_fetch import GRDCCaravan
 from aqua_fetch import LamaHCE
 from aqua_fetch import LamaHIce
 
+from utils import test_stations
 from utils import test_boundary
 from utils import test_plot_catchment
 
@@ -144,6 +145,27 @@ def test_plot_catchment_method():
     return
 
 
+def test_stations_method():
+
+    numbers = {
+        'Estreams': 17130,
+        'Ireland': 464,
+        'Finland': 669,
+        'Italy': 294,
+        'Poland': 1287,
+        'Portugal': 280,
+        'Slovenia': 117
+    }
+
+    for ds_name, num_stn in numbers.items():
+
+        if ds_name not in []:
+            test_stations(DATASETS[ds_name], num_stn)
+    return
+
+
 test_get_boundary()
 
 test_plot_catchment_method()
+
+test_stations_method()

@@ -718,6 +718,48 @@ class Finland(_EStreams):
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of static features are 214 and dynamic features are 10 and the
     data is available from 2012-01-01 to 2023-06-30.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Finland
+    >>> dataset = Finland()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 4199, 'dynamic_features': 10})
+    >>> len(data.data_vars)  # number of stations for which data has been fetched
+        66
+    >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    669
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='FI000001')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    >>> len(data.data_vars)
+    10
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='FI000001', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (669, 2)
+    >>> dataset.stn_coords('FI000001')  # returns coordinates of station whose id is FI000001
+        64.226288	27.736528
+    >>> dataset.stn_coords(['FI000001', 'FI000002'])  # returns coordinates of two stations
+    FI000001	64.226288	27.736528
+    FI000002	64.226288	27.736528
     """
     def __init__(
             self, 
@@ -735,10 +777,6 @@ class Finland(_EStreams):
     @property
     def start(self)->pd.Timestamp:
         return pd.Timestamp('2012-01-01')
-
-    def stations(self)->List[str]:
-        """returns the `basin_id` of the stations"""
-        return self._stations
 
     def gauge_id_basin_id_map(self)->dict:
         # guage_id '5902650'
@@ -988,6 +1026,48 @@ class Ireland(_EStreams):
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of static features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Ireland
+    >>> dataset = Ireland()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    >>> len(data.data_vars)  # number of stations for which data has been fetched
+        46
+    >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    464
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='IEEP0281')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    >>> len(data.data_vars)
+    10
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='IEEP0281', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (464, 2)
+    >>> dataset.stn_coords('IEEP0281')  # returns coordinates of station whose id is IEEP0281
+        52.217434	-8.494649
+    >>> dataset.stn_coords(['IEEP0281', 'IEEP0282'])  # returns coordinates of two stations
+    IEEP0281	52.217434	-8.494649
+    IEEP0282	54.284546	-6.921607
     """
     def __init__(
             self, 
@@ -1021,10 +1101,6 @@ class Ireland(_EStreams):
 
     def is_epa_station(self, stn)->bool:
         return stn in self.epa_stations
-
-    def stations(self)->List[str]:
-        """The `basin_id` EStreams dataset is used as station names"""
-        return self._stations
     
     def gauge_id_basin_id_map(self)->dict:
         """
@@ -1373,6 +1449,48 @@ class Italy(_EStreams):
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of static features are 214 and dynamic features are 10 and the
     data is available from 1992-01-01 to 2020-06-31.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Italy
+    >>> dataset = Italy()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    >>> len(data.data_vars)  # number of stations for which data has been fetched
+        29
+    >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    294
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='ITIS0001')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    >>> len(data.data_vars)
+    10
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='ITIS0001', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (294, 2)
+    >>> dataset.stn_coords('ITIS0001')  # returns coordinates of station whose id is ITIS0001
+        42.835835	13.919167
+    >>> dataset.stn_coords(['ITIS0001', 'ITIS0002'])  # returns coordinates of two stations
+    ITIS0001	42.835835	13.919167
+    ITIS0002	42.783890	13.905833
     """
     def __init__(
             self, 
@@ -1394,10 +1512,6 @@ class Italy(_EStreams):
         # basin_id 'ITIS0001'
         # 'hsl-abr:5010' -> 'ITIS0001'
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
-    
-    def stations(self)->List[str]:
-        """returns the basin_id of the stations"""
-        return self._stations
 
     def ispra_stations_gauge_ids(self)->List[str]:
         return self.md.loc[self.md['gauge_provider']=='IT_ISPRA']['gauge_id'].to_list()
@@ -1501,6 +1615,48 @@ class Poland(_EStreams):
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
     the number of static features are 214 and dynamic features are 10 and the
     data is available from 1951-01-01 to 2023-06-30.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Poland
+    >>> dataset = Poland()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    >>> len(data.data_vars)  # number of stations for which data has been fetched
+        128
+    >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    1287
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='PL000001')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    >>> len(data.data_vars)
+    10
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='PL000001', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (1287, 2)
+    >>> dataset.stn_coords('PL000001')  # returns coordinates of station whose id is PL000001
+        49.921848	18.327913
+    >>> dataset.stn_coords(['PL000001', 'PL000002'])  # returns coordinates of two stations
+    PL000001	49.921848	18.327913
+    PL000002	49.954769	18.326323
     """
     def __init__(
             self, 
@@ -1536,10 +1692,6 @@ class Poland(_EStreams):
     def csv_files_dir(self)->str:
         """path where csv (obtained after extracting zip files) files will be stored"""
         return os.path.join(self.path, 'csv_files')
-
-    def stations(self)->List[str]:
-        """returns the basin_id of the stations"""
-        return self._stations
 
     def get_q(self, as_dataframe:bool=True):
 
@@ -1706,7 +1858,49 @@ class Portugal(_EStreams):
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of static features are 214 and dynamic features are 10 and the
-    data is available from 1972-01-01 to 2022-12-31 .
+    data is available from 1972-01-01 to 2022-12-31.
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Portugal
+    >>> dataset = Portugal()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 18628, 'dynamic_features': 10})
+    >>> len(data.data_vars)  # number of stations for which data has been fetched
+        28
+    >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    280
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='PT000001')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    >>> len(data.data_vars)
+    10
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='PT000001', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (280, 2)
+    >>> dataset.stn_coords('PT000001')  # returns coordinates of station whose id is PT000001
+        41.794998	-7.969
+    >>> dataset.stn_coords(['PT000001', 'PT000002'])  # returns coordinates of two stations
+    PT000001	41.794998	-7.969
+    PT000002	39.679001	-8.437
     """
     def __init__(
             self, 
@@ -1737,9 +1931,6 @@ class Portugal(_EStreams):
         # basin_id 'PT000001'
         # '03J/02H' -> 'PT000001'
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
-
-    def stations(self)->List[str]:
-        return self._stations
     
     def download_q_data_seq(self):
         """downloads q data sequentially"""
@@ -1872,7 +2063,48 @@ class Slovenia(_EStreams):
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
     the number of static features are 214 and dynamic features are 10 and the
-    data is available from 1950-01-01 to 2023-12-31 .    
+    data is available from 1950-01-01 to 2023-12-31 .
+
+    Examples
+    ---------
+    >>> from aqua_fetch import Slovenia
+    >>> dataset = Slovenia()
+    >>> _, data = dataset.fetch(0.1)  # the returned data will be a xarray Dataset
+    >>> type(data)
+        xarray.core.dataset.Dataset
+    >>> data.dims
+    FrozenMappingWarningOnValuesAccess({'time': 27028, 'dynamic_features': 10})
+    >>> len(data.data_vars)
+        10
+    >>> _, df = dataset.fetch(stations=1)  # get data of only one random station
+    # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    117
+    # get data by station id
+    >>> _, data = dataset.fetch(stations='SI000090')
+    # get names of available dynamic features
+    >>> dataset.dynamic_features
+    # get only selected dynamic features
+    >>> _, data = dataset.fetch(1,
+    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    # get names of available static features
+    >>> dataset.static_features
+    # get data of 10 random stations
+    >>> _, data = dataset.fetch(10)
+    # If we want to get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='SI000090', static_features="all")
+    >>> static.shape, len(dynamic.data_vars)
+    ((1, 214), 1)
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (117, 2)
+    >>> dataset.stn_coords('SI000090')  # returns coordinates of station whose id is SI000090
+        45.865093	15.460184
+    >>> dataset.stn_coords(['SI000090', 'SI000002'])  # returns coordinates of two stations
+    SI000090	45.865093	15.460184
+    SI000002	46.648823	16.059244
+ 
     """
     def __init__(
             self, 

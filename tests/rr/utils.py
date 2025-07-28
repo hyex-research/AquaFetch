@@ -17,10 +17,10 @@ def test_stations(dataset, stations_len):
     stations = dataset.stations()
     assert len(stations) == stations_len, f'number of stations for {dataset.name} are {len(stations)}'
 
-    for stn in stations:
-        assert isinstance(stn, str)
+    # for stn in stations:
+    #     assert isinstance(stn, str)
 
-    assert all([isinstance(i, str) for i in stations])
+    assert all([isinstance(stn, str) for stn in stations])
     return
 
 
