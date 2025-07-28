@@ -28,3 +28,4 @@ scipy
 # shapely manually download the wheel file and install
 #pyshp
 #statsmodels
+fiona

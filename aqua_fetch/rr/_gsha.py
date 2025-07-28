@@ -1496,7 +1496,6 @@ class Japan(_GSHA):
                 'area': catchment_area(),
                 'lat': gauge_latitude(),
                 'long': gauge_longitude(),
-
         }
 
     @property

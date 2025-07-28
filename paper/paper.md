@@ -44,7 +44,7 @@ The Caravan initiative [@Caravan] stands out as a global platform for hydro-mete
 
 Ultimately, we hope this package will foster the development of benchmark datasets in hydrological and environmental sciences, enhancing the comparability and reproducibility of data-driven solutions for water resource management.
 
-![Locations of catchment gauge stations covered by each of the 34 rainfall-runoff datasets\label{fig1}](rr_stations.png)
+![Locations of catchment gauge stations covered by each of the 36 rainfall-runoff datasets\label{fig1}](rr_stations.png)
 
 # Implementation and Architecture
 The AquaFetch package is structured using both functional and Object-Oriented Programming (OOP) designs. The OOP design is employed for handling more complex datasets within the `rr` and `wq` submodules, while simpler datasets are managed through a functional interface. All datasets in `rr` submodule can be accessed via `RainfallRunoff` class thus offering a unified interface. The package's code is logically organized, with `rr`, `wq`, and `wwt` subdirectories present in both the source code (aqua_fetch) and tests directories. All public classes and functions are accessible from the parent directory, allowing for straightforward imports as shown below:

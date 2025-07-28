@@ -18,6 +18,13 @@ from ._map import (
     mean_dewpoint_temperature,
     )
 
+from ._map import (
+    gauge_elevation_meters,
+    gauge_latitude,
+    gauge_longitude,
+    catchment_area,
+)
+
 
 class DraixBleone(_RainfallRunoff):
     """
@@ -81,10 +88,14 @@ class DraixBleone(_RainfallRunoff):
 
         self._download()
 
+    @property
+    def boundary_file(self)-> os.PathLike:
+        return os.path.join(self.path, "Draix_Bleone_catchment_contours.shp")
+
     def stations(self)->List[str]:
         return ['BRU', 'LAV', 'MOU', 'ROU']
 
-    def _read_q_stn(self, stn:str):
+    def _read_stn_dyn(self, stn:str):
 
         fpath = os.path.join(self.path, f"DRAIXBLEONE_DRAIX_{stn}_DISCH.txt")
         stn_df = pd.read_csv(fpath, sep=';', index_col=0, parse_dates=False,
@@ -102,30 +113,19 @@ class DraixBleone(_RainfallRunoff):
 
         return stn_df
 
-    def _read_dynamic(self, stations, dynamic_features, st=None, en=None):
-        stations = check_attributes(stations, self.stations(), 'stations')
-
-        dyn = {}
-        for stn in stations:
-            
-            dyn[stn] = self._read_q_stn(stn)
-        return dyn
-
-    def _static_coords(self, stations = 'all'):
+    def _static_data(self):
         # from README.txt file
         coords = {'BRU': (965694, 6345789, 801, 1.07, 87), 
                   'LAV': (968818, 6343668, 850, 0.86, 32), 
                   'MOU': (968688, 6343610, 847, 0.086, 46), 
                   'ROU': (968828, 6343644, 852, 0.0013, 21)
                   }
-        coords = pd.DataFrame.from_dict(coords, orient='index', 
-                                        columns=['long', 'lat', 'altitude', 'area', 'veg_cover_%'])
+        coords = pd.DataFrame.from_dict(
+            coords, orient='index', 
+            columns=[gauge_longitude(), gauge_latitude(), gauge_elevation_meters(), 
+                     catchment_area(), 
+                     'veg_cover_%'])
         return coords
-    
-    def area(self, stations = 'all'):
-        area = {'BRU': 0.5, 'LAV': 0.5, 'MOU': 0.5, 'ROU': 0.5}
-        area = pd.DataFrame.from_dict(area, orient='index', columns=['area'])
-        return area
 
 
 class JialingRiverChina(_RainfallRunoff):
@@ -136,6 +136,14 @@ class JialingRiverChina(_RainfallRunoff):
     2010 to 2022. 
 
     The dataset is available at `github link <https://github.com/AtrCheema/CVTGR-model>`_.
+
+    Examples
+    --------
+    >>> from aqua_fetch.rr import JialingRiverChina
+    >>> dataset = JialingRiverChina()
+    >>> len(dataset.stations())
+    11
+    >>> df = dataset.fetch_dynamic_features(dataset.stations()[0], as_dataframe=True)
     """
     url = {
         'Beibei.csv': 'https://raw.githubusercontent.com/AtrCheema/CVTGR-model/refs/heads/main/Data/OriginalData/Beibei.csv',
@@ -154,7 +162,16 @@ class JialingRiverChina(_RainfallRunoff):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._download()    
+        self._download()
+
+        _dynamic_features = [
+            self._read_stn_dyn(stn).columns.tolist()
+            for stn in self.stations()
+        ]
+        # unpack the list of lists into a single list
+        self._dynamic_features = list(set([item for sublist in _dynamic_features for item in sublist]))
+
+        self.dyn_fname = ''
 
     @property
     def dyn_map(self):
@@ -170,7 +187,11 @@ class JialingRiverChina(_RainfallRunoff):
     def stations(self)->List[str]:
         return [f.split('.')[0] for f in os.listdir(self.path)]
     
-    def _read_dynamic_stn(self, stn:str):
+    @property
+    def dynamic_features(self) -> List[str]:
+        return self._dynamic_features
+
+    def _read_stn_dyn(self, stn:str):
 
         fpath = os.path.join(self.path, f"{stn}.csv")
         stn_df = pd.read_csv(fpath, index_col=0, parse_dates=True)
@@ -181,19 +202,6 @@ class JialingRiverChina(_RainfallRunoff):
         stn_df.index.name = 'time'
 
         return stn_df
-
-    def _read_dynamic(self, stations, dynamic_features, st=None, en=None):
-        
-        stations = check_attributes(stations, self.stations(), 'stations')
-
-        dyn = {}
-        for stn in stations:
-            
-            stn_df = self._read_dynamic_stn(stn)
-
-            dyn[stn] = stn_df
-        
-        return dyn
 
 
 class HeiheRiverChina:

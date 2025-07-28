@@ -79,7 +79,6 @@ class _RainfallRunoff(Datasets):
             self,
             path: str = None,
             timestep: str = "D",
-            id_idx_in_bndry_shape: int = None,
             to_netcdf: bool = True,
             overwrite: bool = False,
             verbosity: int = 1,
