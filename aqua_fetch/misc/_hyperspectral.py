@@ -1,16 +1,8 @@
 
 __all__ = ["SoilPhosphorus"]
 
-import os
-from typing import Union, List, Tuple
 
-import numpy as np
-import pandas as pd
-
-from ._backend import xarray as xr
-
-from ._datasets import Datasets
-from .utils import check_attributes, sanity_check, check_st_en
+from aqua_fetch._datasets import Datasets
 
 
 class SoilPhosphorus(Datasets):

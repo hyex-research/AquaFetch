@@ -103,34 +103,34 @@ from .wq import Oligotrend
 
 # *** Miscellaneous ***
 
-from ._datasets import Weisssee
-from ._datasets import WaterChemEcuador
-from ._datasets import WaterChemVictoriaLakes
-from ._datasets import WeatherJena
-from ._datasets import WQCantareira
-from ._datasets import WQJordan
-from ._datasets import FlowSamoylov
-from ._datasets import FlowSedDenmark
-from ._datasets import StreamTempSpain
-from ._datasets import RiverTempEroo
-from ._datasets import HoloceneTemp
-from ._datasets import FlowTetRiver
-from ._datasets import SedimentAmersee
-from ._datasets import HydrocarbonsGabes
-from ._datasets import HydroChemJava
-from ._datasets import PrecipBerlin
-from ._datasets import GeoChemMatane
-from ._datasets import WQJordan2
-from ._datasets import YamaguchiClimateJp
-from ._datasets import FlowBenin
-from ._datasets import HydrometricParana
-from ._datasets import RiverTempSpain
-from ._datasets import RiverIsotope
-from ._datasets import EtpPcpSamoylov
-from ._datasets import SWECanada
-from ._datasets import gw_punjab
-from ._datasets import RRAlpineCatchments
-from ._hyperspectral import SoilPhosphorus
+from .misc import Weisssee
+from .misc import WaterChemEcuador
+from .misc import WaterChemVictoriaLakes
+from .misc import WeatherJena
+from .misc import WQCantareira
+from .misc import WQJordan
+from .misc import FlowSamoylov
+from .misc import FlowSedDenmark
+from .misc import StreamTempSpain
+from .misc import RiverTempEroo
+from .misc import HoloceneTemp
+from .misc import FlowTetRiver
+from .misc import SedimentAmersee
+from .misc import HydrocarbonsGabes
+from .misc import HydroChemJava
+from .misc import PrecipBerlin
+from .misc import GeoChemMatane
+from .misc import WQJordan2
+from .misc import YamaguchiClimateJp
+from .misc import FlowBenin
+from .misc import HydrometricParana
+from .misc import RiverTempSpain
+from .misc import RiverIsotope
+from .misc import EtpPcpSamoylov
+from .misc import SWECanada
+from .misc import gw_punjab
+from .misc import RRAlpineCatchments
+from .misc import SoilPhosphorus
 
 
 ALL_DATASETS = [

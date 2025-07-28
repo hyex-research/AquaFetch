@@ -11,7 +11,7 @@ import pandas as pd
 from .._backend import shape, mapping, unary_union
 from .._backend import xarray as xr, fiona, shapefile
 
-from .._datasets import Datasets, maybe_download
+from .._datasets import Datasets
 
 from ..utils import check_attributes, check_st_en, find_records, Resampler
 
