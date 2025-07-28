@@ -1021,7 +1021,7 @@ class _RainfallRunoff(Datasets):
     def get_boundary(
             self,
             catchment_id: str,
-    )-> List[np.ndarray]:
+    ):
         """
         returns boundary of a catchment in a required format
 
@@ -1029,8 +1029,10 @@ class _RainfallRunoff(Datasets):
         ----------
         catchment_id : str
             name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
+
+        Returns
+        -------
+        geometry : fiona.Geometry
 
         Examples
         --------
@@ -1039,21 +1041,32 @@ class _RainfallRunoff(Datasets):
         >>> dataset.get_boundary(dataset.stations()[0])
         """
 
-        # todo : by default it should return fiona Geometry
-        # we can do the conversion to numpy when plotting
-
         assert isinstance(catchment_id, str), f"catchment_id must be string but is of type {type(catchment_id)}"
 
         # todo : when we repeatedly call get_boundary, we should not create the 
         # boundary_id_map for all catchments again
         if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
             bndry_id_map = self.gsha._create_boundary_id_map()
-        # elif self.name in ['HYSETS']:
-        #     bndry_id_map = self._create_boundary_id_map()
         elif self.name in ['USGS']:
             bndry_id_map = self.hysets._create_boundary_id_map()            
         else:
             bndry_id_map = self._create_boundary_id_map()
+
+        if self.name in ['HYSETS']:
+            catchment_id = self.WatershedID_OfficialID_map[catchment_id]
+        elif self.name == 'Thailand':
+            catchment_id = catchment_id.replace('.', '_')
+        
+        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
+            catchment_id = f"{catchment_id}_{self.agency_name}"
+
+        geometry = bndry_id_map[catchment_id]
+
+        geometry = self.transform_coords(geometry)
+
+        return geometry
+
+    def _make_boundary_2d(self, geometry)-> List[np.ndarray]:
 
         def make_polygon_2d(polygon):
             """
@@ -1070,18 +1083,7 @@ class _RainfallRunoff(Datasets):
 
             return polygon
 
-        if self.name in ['HYSETS']:
-            catchment_id = self.WatershedID_OfficialID_map[catchment_id]
-        # elif self.name == 'USGS':
-        #     catchment_id = self.hysets.OfficialID_WatershedID_map[catchment_id]
-        elif self.name == 'Thailand':
-            catchment_id = catchment_id.replace('.', '_')
-        
-        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
-            catchment_id = f"{catchment_id}_{self.agency_name}"
-
         rings = []
-        geometry = bndry_id_map[catchment_id]
         if geometry.type == 'MultiPolygon':
             for polygon in geometry.coordinates:
                 if len(polygon) == 1:
@@ -1099,9 +1101,6 @@ class _RainfallRunoff(Datasets):
             else:
                 polygon = np.array(geometry.coordinates)
                 rings.append(make_polygon_2d(polygon))
-
-        rings = self.transform_coords(rings)
-
         return rings
 
     def plot_catchment(
@@ -1144,7 +1143,9 @@ class _RainfallRunoff(Datasets):
         >>> CAMELS_AUS.plot_catchment('912101A', show_outlet=True)
 
         """
-        rings = self.get_boundary(catchment_id)
+        geometry = self.get_boundary(catchment_id)
+
+        rings = self._make_boundary_2d(geometry)
 
         _kws = dict(
             ax_kws=dict(xlabel="Longitude", ylabel="Latitude")

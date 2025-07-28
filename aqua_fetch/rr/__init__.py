@@ -786,12 +786,17 @@ class RainfallRunoff(object):
             station: str,
     ):
         """
-        returns boundary of a catchment in a required format
+        returns boundary of a catchment as fiona.Geometry object.
 
         Parameters
         ----------
         station : str
             name/id of catchment. For names of catchments, see :meth:`stations`.
+        
+        Returns
+        -------
+        fiona.Geometry
+            a fiona.Geometry object representing the boundary of the catchment.
 
         Examples
         --------

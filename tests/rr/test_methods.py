@@ -79,7 +79,7 @@ DATASETS = {
 'CAMELS_IND': CAMELS_IND(path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),
 'CAMELS_FR': CAMELS_FR(path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),
 'RainfallRunoff': RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),
-'RRLuleaSweden': RRLuleaSweden(path=os.path.join(gscad_path, 'RRLuleaSweden')),
+'RRLuleaSweden': RRLuleaSweden(path=os.path.join(gscad_path, 'RRLuleaSweden'), verbosity=0),
 'CAMELS_NZ': CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),
 'CAMELS_LUX': CAMELS_LUX(path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),
 'CAMELS_COL': CAMELS_COL(path=os.path.join(gscad_path, 'CAMELS'), verbosity=0),

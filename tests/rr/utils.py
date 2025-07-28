@@ -116,14 +116,9 @@ def test_q_mmd(dataset):
 def test_boundary(dataset):
     logger.info(f"testing get_boundary for {dataset.name}")
 
-    rings = dataset.get_boundary(dataset.stations()[0])
+    geometry = dataset.get_boundary(dataset.stations()[0])
 
-    assert isinstance(rings, list)
-
-    for ring in rings:
-        assert isinstance(ring, np.ndarray), f"Expected np.ndarray, got {type(ring)}"
-        assert ring.ndim == 2, f"Expected 2D array, got {ring.ndim}D array"
-        assert ring.shape[1] == 2, f"Expected shape (n, 2), got {ring.shape}"
+    assert isinstance(geometry, fiona.Geometry), f"Expected fiona.Geometry, got {type(geometry)}"
 
     return
 
