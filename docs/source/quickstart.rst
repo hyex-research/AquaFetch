@@ -19,47 +19,47 @@ however, the same interface can be used to access `all other datasets <https://a
     >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
     >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.columns = df.columns.get_level_values('dynamic_features')
+    >>> df.columns = df.columns.levels[1]
     >>> df.shape
-       (21184, 26)
+       (26388, 28)
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       222
+       561
     ... # get data of 10 % of stations as dataframe
     >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
-       (550784, 22)
+       (738864, 56)
     ... # The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
+    >>> df.index.names
+        ['time', 'dynamic_features']
     ... # get data by station id
-    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
+    >>> _, df = dataset.fetch(stations='912101A', as_dataframe=True).unstack()
     >>> df.shape
-        (21184, 26)
+        (26388, 28)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['tmax_AWAP', 'precipitation_AWAP', 'et_morton_actual_SILO', 'streamflow_MLd']).unstack()
+    ...  dynamic_features=['airtemp_C_mean_agcd', 'pcp_mm_agcd', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
     >>> data.shape
-       (21184, 4)
+       (26388, 4)
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
-       (21184, 260)
+       (26388, 280)
     # If we get both static and dynamic data
-    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
+    >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic.shape
-    ((1, 166), (550784, 1))
+    ((1, 187), (26388, 28))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (472, 2)
-    >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
+        (561, 2)
+    >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
         18.3861	80.3917
-    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+    >>> dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
 
 
 Water Quality Datasets

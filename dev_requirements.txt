@@ -7,3 +7,5 @@ easy_mpl
 openpyxl
 
 fiona<=1.10.1
+
+# Python >=3.6 and <= 3.12 required

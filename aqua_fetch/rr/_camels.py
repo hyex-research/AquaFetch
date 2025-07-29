@@ -899,6 +899,10 @@ class CAMELS_AUS(_RainfallRunoff):
             en=None,
             ):
 
+        # todo currently it reads the data for all stations even if we want
+        # only one station. This makes it quite slow when we want to get data for only
+        # one station
+
         st, en = self._check_length(st, en)
         dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 

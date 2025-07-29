@@ -54,7 +54,7 @@ from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
 _, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-df.columns = df.columns.get_level_values('dynamic_features')
+df.columns = df.columns.levels[1]
 df.shape
    (26388, 28)
 # get name of all stations as list
@@ -63,38 +63,40 @@ len(stns)
    561
 # get data of 10 % of stations as dataframe
 _, df = dataset.fetch(0.1, as_dataframe=True)
-df.shape
-   (550784, 28)
+df.shape  # (738864, 56)
+
 # The returned dataframe is a multi-indexed data
-df.index.names == ['time', 'dynamic_features']
-    True
+df.index.names   # ['time', 'dynamic_features'] 
+
 # get data by station id
 _, df = dataset.fetch(stations='912101A', as_dataframe=True)
-df.unstack().shape
-    (26388, 28)
+df.unstack().shape  # (26388, 28)
+
 # get names of available dynamic features
 dataset.dynamic_features
+
 # get only selected dynamic features
 _, data = dataset.fetch(1, as_dataframe=True,
-...  dynamic_features=['airtemp_C_mean_awap', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs'])
-data.unstack().shape
-   (26388, 4)
+...  dynamic_features=['airtemp_C_mean_agcd', 'pcp_mm_agcd', 'aet_mm_silo_morton', 'q_cms_obs'])
+data.unstack().shape  # (26388, 4)
+
 # get names of available static features
 dataset.static_features
+
 # get data of 10 random stations
 df = dataset.fetch(10, as_dataframe=True)
-df.shape  # remember this is a multiindexed dataframe
-   (26388, 280)
+df.shape  # remember this is a multiindexed dataframe  with shape (26388, 280)
 # If we get both static and dynamic data
 static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
-static.shape, dynamic.unstack().shape
-((1, 187), (26388, 28))
-coords = dataset.stn_coords() # returns coordinates of all stations
-coords.shape
-    (561, 2)
-dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
-    -18.643612	139.253052
-dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
+static.shape, dynamic.unstack().shape   # ((1, 187), (26388, 28))
+
+# get coordinates of all stations
+coords = dataset.stn_coords()
+coords.shape  #     (561, 2)
+# get coordinates of station whose id is 912101A
+dataset.stn_coords('912101A')       # -18.643612	139.253052
+# get coordinates of two stations
+dataset.stn_coords(['912101A', '912105A'])
 ```
 
 The datasets related to surface water quality are available using functional or objected-oriented API
@@ -104,16 +106,16 @@ quality related datasets. For complete name of Python functions and classes see 
 ```python
 from aqua_fetch import busan_beach
 dataframe = busan_beach()
-dataframe.shape
-(1446, 14)
+dataframe.shape  # (1446, 14)
+
 dataframe = busan_beach(target=['tetx_coppml', 'sul1_coppml'])
-dataframe.shape
-(1446, 15)
+dataframe.shape  # (1446, 15)
 
 from aqua_fetch import GRQA
-ds = GRQA(path="/mnt/datawaha/hyex/atr/data")
+ds = GRQA(path="/path/to/data")
 print(ds.parameters)
-len(ds.parameters)
+
+len(ds.parameters)    # 42
 country = "Pakistan"
 len(ds.fetch_parameter('TEMP', country=country))
 ```
@@ -124,20 +126,20 @@ to remove certain pollutants from wastewater. For complete list of functions, se
 ```python
 from aqua_fetch import ec_removal_biochar
 data, *_ = ec_removal_biochar()
-data.shape
-(3757, 27)
+data.shape  # -> (3757, 27)
+
 data, encoders = ec_removal_biochar(encoding="le")
-data.shape
-(3757, 27)
+data.shape  # -> (3757, 27)
+
 
 from aqua_fetch import mg_degradation
 mg_data, encoders = mg_degradation()
-mg_data.shape
-(1200, 12)
+mg_data.shape  # -> (1200, 12)
+
 # the default encoding is None, but if we want to use one hot encoder
 mg_data_ohe, encoders = mg_degradation(encoding="ohe")
-mg_data_ohe.shape
-(1200, 31)
+mg_data_ohe.shape  # -> (1200, 31)
+
 ```
 
 ## Summary of rainfall runoff Datasets
@@ -165,25 +167,25 @@ mg_data_ohe.shape
 | CAMELS_US      | 671                    |                         | 8                        | 59                      | 1980 - 2014       | USA                                         | [Newman et al., 2014](https://gdex.ucar.edu/dataset/camels.html)                                            |
 | Caravan_DK     | 308                    |                         | 38                       | 211                     | 1981 - 2020       | Denmark                                     | [Koch, J. (2022)](https://doi.org/10.5281/zenodo.7962379)                                                   |
 | CCAM           | 102                    |                         | 16                       | 124                     | 1990 - 2020       | China                                       | [Hao et al., 2021](https://doi.org/10.5194/essd-13-5591-2021)                                               |
-| LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
-| LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
-| HYSETS         | 14425                  |                         | 20                       | 30                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |
+| Finland        | 669                    |                         | 10                       | 214                     | 2012 - 2023       | Finland                                     | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [ymparisto.fi](https://wwwi3.ymparisto.fi) |
 | GRDCCaravan    | 5357                   |                         | 39                       | 211                     | 1950 - 2023       | Global                                      | [Faerber et al., 2023](https://zenodo.org/records/10074416)                                                 |
-| WaterBenchIowa | 125                    |                         | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
-| RRLuleaSweden  | 1                      |                         | 2                        | 0                       | 2016 - 2019       | Lulea (Sweden)                              | [Broekhuizen et al., 2020](https://doi.org/10.5194/hess-24-869-2020)                                        |
+| HYSETS         | 14425                  |                         | 20                       | 30                      | 1950 - 2018       | North America                               | [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)                                        |
 | HYPE           | 561                    |                         | 9                        | 3                       | 1985 - 2019       | Costa Rica                                  | [Arciniega-Esparza and Birkel, 2020](https://zenodo.org/records/4029572)                                    |
 | Ireland        | 464                    |                         | 10                       | 214                     | 1992 - 2020       | Ireland                                     | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [EPA Ireland](https://epawebapp.epa.ie)  |
+| Italy          | 294                    |                         | 10                       | 214                     | 1992 - 2020       | Italy                                       | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [hiscentral.isprambiente.gov.it](http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient) |
 | Japan          | 751                    | 696                     | 27                       | 35                      | 1979 - 2022       | Japan                                       | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [river.go.jp](http://www1.river.go.jp)  |
-| Thailand       | 73                     |                         | 27                       | 35                      | 1980 - 1999       | Thailand                                    | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [RID project](https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html) |
-| Finland        | 669                    |                         | 10                       | 214                     | 2012 - 2023       | Finland                                     | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [ymparisto.fi](https://wwwi3.ymparisto.fi) |
+| LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
+| LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
+| NPCTRCatchments| -                      | 7                       | 8                        | 14                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
 | Poland         | 1287                   |                         | 10                       | 214                     | 1992 - 2020       | Poland                                      | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [danepubliczne.imgw.pl](https://danepubliczne.imgw.pl) |
 | Portugal       | 280                    |                         | 10                       | 214                     | 1992 - 2020       | Portugal                                    | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [SNIRH Portugal](https://snirh.apambiente.pt) |
-| Italy          | 294                    |                         | 10                       | 214                     | 1992 - 2020       | Italy                                       | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [hiscentral.isprambiente.gov.it](http://www.hiscentral.isprambiente.gov.it/hiscentral/hydromap.aspx?map=obsclient) |
+| RRLuleaSweden  | 1                      |                         | 2                        | 0                       | 2016 - 2019       | Lulea (Sweden)                              | [Broekhuizen et al., 2020](https://doi.org/10.5194/hess-24-869-2020)                                        |
 | Simbi          | 70                     |                         | 3                        | 232                     | 1920 - 1940       | Haiti                                       | [Bathelemy et al., 2024](https://doi.org/10.23708/02POK6)                                                   |
 | Slovenia       | 117                    |                         | 3                        | 214                     | 1950 - 2023       | Slovenia                                    | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [vode.arso.gov.si](https://vode.arso.gov.si) |
 | Spain          | 889                    |                         | 27                       | 35                      | 1979 - 2020       | Spain                                       | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [ceh-flumen64](https://ceh-flumen64.cedex.es) |
+| Thailand       | 73                     |                         | 27                       | 35                      | 1980 - 1999       | Thailand                                    | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [RID project](https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html) |
 | USGS           | 12004                  | 1541                    | 5                        | 27                      | 1950 - 2018       | USA                                         | [USGS nwis](https://waterdata.usgs.gov/nwis)                                                                |
-| NPCTRCatchments| -                      | 7                       | 8                        | 14                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
+| WaterBenchIowa | 125                    |                         | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
 
 ## Summary of Water Quality Datasets
 
