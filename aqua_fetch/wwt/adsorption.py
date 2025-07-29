@@ -11,6 +11,7 @@ __all__ = [
     "As_recovery"
     ]
 
+import os
 from typing import Union, Tuple, Any, List, Dict
 
 import numpy as np
@@ -21,7 +22,8 @@ from ..utils import (
     LabelEncoder,
     OneHotEncoder,
     maybe_download_and_read_data,
-    encode_cols
+    encode_cols,
+    download_with_requests,
 )
 
 
@@ -922,25 +924,41 @@ def As_recovery(
     2
     """
     url = "https://ars.els-cdn.com/content/image/1-s2.0-S0043135424017147-mmc2.xlsx"
-    data = maybe_download_and_read_data(
-        url,
-        "As_recovery.csv",
-    )
+    # todo : there are different sheets in the excel file, we are using the first one only
+    path = os.path.join(os.path.dirname(__file__), "data")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    fpath = os.path.join(path, "As_recovery.xlsx")
+
+    if os.path.exists(fpath):
+        data = pd.read_excel(fpath)
+    else:
+        data = download_with_requests(url)
+
+    # ignore the first two columns
+    data = data.iloc[:, 2:]
+
+    first_row = data.iloc[0]
+    sec_row = data.iloc[1]
+    # combine each value in the first two rows
+    new_columns = [f"{str(first_row[col]).strip()} ({str(sec_row[col]).strip()})" for col in data.columns]
+    # set the new columns as the header
+    data.columns = new_columns
 
     columns = {
-        'Materialstype': 'material',
-        'Biochartype(Unmodifiedormodified)': 'biochar_modification',
-        'Biochartype': 'biochar_type',
-        'BETsurfacearea(m2/g)': 'BET_surface_area',
-        'Porevolume(cm3/g)': 'pore_volume',
-        'solutionpH(pHsol)': 'solution_pH',
-        'Reactortemperature': 'reactor_temperature',
-        'InitialAsconcentration(Total)mg/L': 'initial_As_concentration_mg_L',
-        'Adsorbentdosage(g/L)': 'adsorbent_dosage',
-        'Equilibrium/Reactiontime(h)': 'equilibrium_reaction_time_h',
-        'Pyrolysistemperature(◦C)': 'pyrolysis_temperature',
-        'As_mg/g': 'As_mg_g',
-        'As_type': 'As_type'
+        'Materialstype (M. type)': 'material',
+        'Biochartype(Unmodifiedormodified) (BioC. type)': 'biochar_modification',
+        'Biochartype (B. type)': 'biochar_type',
+        'BETsurfacearea(m2/g) (BET S. area)': 'BET_surface_area',
+        'Porevolume(cm3/g) (P. vol)': 'pore_volume',
+        'solutionpH(pHsol) (Sol. pH)': 'solution_pH',
+        'Reactortemperature (Rx. Temp)': 'reactor_temperature',
+        'InitialAsconcentration(Total)mg/L (Int. As conc. Total)': 'initial_As_concentration_mg_L',
+        'Adsorbentdosage(g/L) (Ad. dosage)': 'adsorbent_dosage',
+        'Equilibrium/Reactiontime(h) (Rx. time)': 'equilibrium_reaction_time_h',
+        'Pyrolysistemperature(◦C) (P. temp)': 'pyrolysis_temperature',
+        'As(III)/(mg/g) (nan)': 'As_mg_g',
+        #'As_type': 'As_type'
     }
 
     data.rename(columns=columns, inplace=True)

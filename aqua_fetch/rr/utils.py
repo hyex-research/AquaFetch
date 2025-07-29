@@ -1,6 +1,8 @@
 import os
+import time
 import random
 import warnings
+import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
 
 import numpy as np
@@ -8,9 +10,12 @@ import pandas as pd
 
 from .._datasets import Datasets
 from .._backend import netCDF4
-from .._backend import shapefile
+from .._backend import fiona
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
-from ..utils import check_attributes
+from ..utils import check_attributes, get_cpus
+from .._geom_utils import (
+    _make_boundary_2d
+)
 
 from ._map import (
     catchment_area,
@@ -77,7 +82,6 @@ class _RainfallRunoff(Datasets):
             self,
             path: str = None,
             timestep: str = "D",
-            id_idx_in_bndry_shape: int = None,
             to_netcdf: bool = True,
             overwrite: bool = False,
             verbosity: int = 1,
@@ -106,17 +110,40 @@ class _RainfallRunoff(Datasets):
 
         if netCDF4 is None:
             if to_netcdf:
-                warnings.warn("netCDF4 module is not installed. Please install it to save data in netcdf format")
+                msg = "netCDF4 module is not installed. Please install it to save data in netcdf format"
+                warnings.warn(msg, UserWarning)
             to_netcdf = False
         self.to_netcdf = to_netcdf
 
     @property
     def dyn_map(self) -> Dict[str, str]:
+        """A dictionary that maps dynamic features to their names in the dataset."""
         return {}
 
     @property
+    def static_map(self) -> Dict[str, str]:
+        """A dictionary that maps static features to their names in the dataset."""
+        return {}
+
+    @property
+    def static_factors(self) -> Dict[str, str]:
+        """A dictionary that maps static features to the factors with they needs
+        to be multiplied to get the actual value"""
+        return {}
+        
+    @property
     def dyn_factors(self) -> Dict[str, float]:
         return {}
+
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        if not given, then the first attribute in the boundary file will be used.
+        """
+        return None
 
     def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
         """converts discharge from mmd to cms"""
@@ -135,80 +162,132 @@ class _RainfallRunoff(Datasets):
         assert len(tmin) == len(tmax), f"length of tmin {len(tmin)} and tmax {len(tmax)} must be same"
         return (tmin + tmax)/2
 
-    def _create_boundary_id_map(self, boundary_file, id_idx_in_bndry_shape):
+    def _create_boundary_id_map(self):
 
-        if boundary_file is None:
-            return
+        if fiona is None:
+            raise ModuleNotFoundError("fiona module is not installed. Please install it to use boundary file")
 
-        if shapefile is None:
-            warnings.warn("shapefile module is not installed. Please install it to use boundary file")
-            return
+        # Dictionary to hold {CatchID: geometry}
+        self.bndry_id_map = {}
 
-        from shapefile import Reader
+        assert os.path.exists(self.boundary_file), \
+            f"Boundary file {self.boundary_file} does not exist."
 
-        if self.verbosity > 1:
-            print(f"loading boundary file {boundary_file}")
+        with fiona.open(self.boundary_file, "r") as src:
 
-        assert os.path.exists(boundary_file), f"{boundary_file} does not exist"
-        bndry_sf = Reader(boundary_file)
+            boundary_id_map = self.boundary_id_map
+            if boundary_id_map is None:
+                schema = src.schema
+                properties = schema['properties']
+                boundary_id_map = list(properties.keys())[0]  # use the first property as default
+                if self.verbosity:
+                    print(f"Using attribute '{boundary_id_map}' as default for boundary ID mapping.")
+            
+            for feature in src:
 
-        # shapefile of chille contains spanish characters which can not be
-        # decoded with utf-8
-        if os.path.basename(bndry_sf.shapeName) in [
-            'catchments_camels_cl_v1_3',
-            'catchments_camels_cl_v1.3',
-            "WKMSBSN",
-            'estreams_catchments',
-            'CAMELS_DE_catchments',
-        ]:
-            bndry_sf.encoding = 'ISO-8859-1'
+                if self.name in ['CAMELS_CH', 'CAMELS_IND', 'CABra']:
+                    # from '2004.0' -> '2004' for CAMELS_CH
+                    # from '03001' -> '3001' for CAMELS_IND
+                    catch_id = str(int(feature["properties"][boundary_id_map]))
+                elif self.name == 'CAMELS_LUX':
+                    idx = int(feature["properties"][boundary_id_map])
+                    if idx < 10:
+                        catch_id = f"ID_{str(idx).zfill(2)}"
+                    else:
+                        catch_id = f"ID_{idx}"
+                elif self.name == 'Simbi':
+                    catch_id = feature['properties'][boundary_id_map]
+                    catch_id = catch_id.split('-')[1]
+                elif self.name == 'Caravan_DK':
+                    catch_id = str(feature["properties"][boundary_id_map])
+                    catch_id = str(catch_id).split('_')[1]
+                else:
+                    # since we are treating catchment/station id as string
+                    catch_id = str(feature["properties"][boundary_id_map])
+                geometry = feature["geometry"]
 
-        if self.verbosity > 2:
-            print(f"loaded boundary file {boundary_file}")
+                self.bndry_id_map[catch_id] = geometry
 
-        self.bndry_id_map = self._get_map(bndry_sf,
-                                          id_index=id_idx_in_bndry_shape,
-                                          name="bndry_shape")
-        
-        if self.verbosity>2:
-            print(f"created boundary id map of length {len(self.bndry_id_map)}")
-
-        bndry_sf.close()
-        return
-
-    @staticmethod
-    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
-
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        if os.path.basename(sf_reader.shapeName) in ["CAMELS_CH_catchments"]:
-            catch_ids_map = {
-                str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-            }
-        else:
-            catch_ids_map = {
-                str(rec[id_index]): idx for idx, rec in enumerate(sf_reader.iterRecords())
-            }
-
-        return catch_ids_map
+        return self.bndry_id_map
 
     def stations(self) -> List[str]:
-        raise NotImplementedError("The base class must implement this method")
+        """
+        Names/ids of stations/catchment/gauges or whatever that would
+        be used to index each station in the dataset. Since this is a method,
+        it is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        The user is recommended to implement this method in the child class in a more efficient way.
+        """
+        return self._static_data().index.tolist()
 
-    def _read_dynamic(self, stations, dynamic_features, st=None,
-                               en=None) -> dict:
-        raise NotImplementedError
+    def _read_dynamic(
+            self, 
+            stations, 
+            dynamic_features, 
+            st:Union[str, pd.Timestamp] = None, 
+            en:Union[str, pd.Timestamp] = None
+            ) -> Dict[str, pd.DataFrame]:
+        
+        st, en = self._check_length(st, en)
+        dyn_feats = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = check_attributes(stations, self.stations(), 'stations')
+
+        cpus = self.processes or min(get_cpus(), 16)
+        start = time.time()
+
+        if cpus == 1:
+            dyn = {}
+            for idx, stn in enumerate(stations):
+            
+                stn_df = self._read_stn_dyn(stn).loc[st:en]
+                
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+
+                dyn[stn] = stn_df
+
+                if self.verbosity and idx % 100 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+                elif self.verbosity>1 and idx % 50 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+                elif self.verbosity>2 and idx % 10 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+        else:
+            with cf.ProcessPoolExecutor(cpus) as executor:
+                results = executor.map(self._read_stn_dyn, stations)
+            
+            dyn = {}
+            for stn, stn_df in zip(stations, results):
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+
+                dyn[stn] = stn_df.loc[st:en]
+
+        total = time.time() -  start
+        if self.verbosity:
+            print(f"Read {len(dyn)} stations for {len(dyn_feats)} in {total:.2f} seconds with {cpus} cpus.")
+    
+        return dyn
+
+    def _read_stn_dyn(self, stn: str) -> pd.DataFrame:
+        """
+        reads dynamic data of one station
+
+        parameters
+        ----------
+            stn : str
+                name/id of the station for which to read the dynamic data. This
+                must be one of the station names returned by
+                :meth:`stations`.
+        Returns
+        -------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` with index as time and columns as dynamic features.
+            The index is a :obj:`pandas.DatetimeIndex` and the columns are the names of
+            dynamic features.
+    
+        """
+        raise NotImplementedError(f"Must be implemented in the child class")
 
     def fetch_static_features(
             self,
@@ -234,9 +313,9 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> camels = CAMELS_AUS()
-        >>> camels.fetch_static_features('224214A')
+        >>> camels.fetch_static_features('912101A')
         >>> camels.static_features
-        >>> camels.fetch_static_features('224214A',
+        >>> camels.fetch_static_features('912101A',
         ... static_features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         for CAMELS_FR
         >>> from aqua_fetch import CAMELS_FR
@@ -269,20 +348,63 @@ class _RainfallRunoff(Datasets):
         return df.loc[stations, features]
 
     def _static_data(self) -> pd.DataFrame:
-        """returns all static data as DataFrame"""
+        """returns all static data as DataFrame. The index of the DataFrame
+        is the station ids and the columns are the static features.
+        This method must be implemented in the child class.
+
+        Returns
+        -------
+        pd.DataFrame
+        a :obj:`pandas.DataFrame` with index as station ids and columns as static features.
+        The index is a :obj:`pandas.Index` and the columns are the names of
+        static features.
+        """
         raise NotImplementedError(f"Must be implemented in the child class")
 
     @property
-    def start(self):  # start of data
-        raise NotImplementedError
+    def start(self) -> pd.Timestamp:  # start of data
+        return pd.Timestamp("1800-01-01")
 
     @property
-    def end(self):  # end of data
-        raise NotImplementedError
+    def end(self) -> pd.Timestamp:  
+        """end of data"""
+        return pd.Timestamp.today().strftime("%Y-%m-%d")
 
     @property
-    def dynamic_features(self) -> list:
-        raise NotImplementedError
+    def static_features(self) -> List[str]:
+        """
+        Returns a list of static features that are available in the dataset.
+        Since this is a method is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+
+        Returns
+        -------
+        List[str]
+            a list of static features that are available in the dataset.
+            The names of the features are the same as the names used in the
+            dataset. The names can be used to fetch the data using
+            :meth:`fetch_static_features`.
+        """
+        return self._static_data().columns.tolist()
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        """
+        Returns a list of dynamic features that are available in the dataset.
+        Since this is a method is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+
+        Returns
+        -------
+        List[str]
+            a list of dynamic features that are available in the dataset.
+            The names of the features are the same as the names used in the
+            dataset. The names can be used to fetch the data using
+            :meth:`fetch_dynamic_features`.
+        """
+        return self._read_stn_dyn(self.stations()[0]).columns.tolist()
 
     @property
     def _area_name(self) -> str:
@@ -421,7 +543,7 @@ class _RainfallRunoff(Datasets):
         >>> dynamic
         ... # get only selected dynamic features
         >>> sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        ...     dynamic_features=['q_mmd_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
@@ -456,6 +578,12 @@ class _RainfallRunoff(Datasets):
         )
 
     def _maybe_to_netcdf(self, fname: str):
+
+        # todo : we should save the dynamic data with default names of dynamic features
+        # and then convert them to the standard names using the dyn_map
+        # otherwise everytime we change dyn_map, we will have to convert the data again
+        # and more importantly, all the users who used a previous version of the dataset
+        # will have to download the data again, which is not good
         self.dyn_fname = os.path.join(self.path, f'{fname}.nc')
         if self.to_netcdf:
             if not os.path.exists(self.dyn_fname) or self.overwrite:
@@ -464,6 +592,10 @@ class _RainfallRunoff(Datasets):
                 _, data = self.fetch(static_features=None)
 
                 data.to_netcdf(self.dyn_fname)
+            else:
+                if self.verbosity:
+                    print(f"dynamic data already exists in {self.dyn_fname}. "
+                          f"To overwrite, set `overwrite=True`")
         return
 
     def fetch_stations_features(
@@ -529,8 +661,15 @@ class _RainfallRunoff(Datasets):
         ...  as_dataframe=True)
         ... # get both dynamic and static features of selected stations
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-        ... dynamic_features=['streamflow_mmd', 'tmax_AWAP'], static_features=['elev_mean'])
+        ... dynamic_features=['q_mmd_obs', 'airtemp_C_mean_silo'], static_features=['elev_mean'])
         """
+
+        if xr is None:
+            if not as_dataframe:
+                warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
@@ -606,9 +745,9 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> camels = CAMELS_AUS()
-        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
-        >>> camels.fetch_dynamic_features('224214A',
+        >>> camels.fetch_dynamic_features('912101A',
         ... features=['airtemp_C_awap_max', 'vp_hpa_awap', 'q_cms_obs'],
         ... as_dataframe=True).unstack()
         """
@@ -671,6 +810,9 @@ class _RainfallRunoff(Datasets):
         if dynamic_features:
             dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st,
                                                   en=en, **kwargs)
+            
+            if xr is not None and isinstance(dynamic, xr.Dataset):
+                dynamic = dynamic[station].to_pandas()
 
             if static_features is not None:
                 static = self.fetch_static_features(station, static_features)
@@ -684,6 +826,7 @@ class _RainfallRunoff(Datasets):
             self,
             stations: List[str] = 'all',
             marker='.',
+            color:str=None,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -697,6 +840,8 @@ class _RainfallRunoff(Datasets):
             name/names of stations. If not given, all stations will be plotted
         marker :
             marker to use.
+        color : str, optional
+            name of static feature to use as color. 
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -717,13 +862,55 @@ class _RainfallRunoff(Datasets):
         >>> ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
         >>> ax.set_title("Stations")
         >>> plt.show()
+        using area as color
+        >>> ds.plot_stations(color='area_km2')
 
         """
+        from easy_mpl.utils import add_cbar, map_array_to_cmap
+
         xy = self.stn_coords(stations)
 
-        ax = easy_mpl.plot(xy.loc[:, 'long'].values,
+        _kws = dict(
+            ax_kws=dict(xlabel="Longitude",
+            ylabel="Latitude",
+            title=f"{self.name} Stations (n={len(xy)})",
+        ))
+
+        _kws.update(kwargs)
+
+        if color is not None:
+            assert color in self.static_features, f"color {color} is not in static features {self.static_features}"
+            c = self.fetch_static_features(stations, color)
+            c = c.astype('float32')
+            ul = round(c[color].quantile([0.99]).item(), 2)
+
+            if self.verbosity > 0:
+                print(f"Setting upper limit to {ul} for color scale")
+
+            c[c>ul] = ul
+
+            colorbar = _kws.pop('colorbar', True)
+            _kws['cmap'] = _kws.get('cmap', 'viridis')
+
+            ax, _= easy_mpl.scatter(
+                xy.loc[:, 'long'].values,
+                    xy.loc[:, 'lat'].values,
+                    ax=ax,
+                    c=c.values.reshape(-1,),
+                    show=False, 
+                    **_kws)
+            
+            if colorbar:
+                c, mapper = map_array_to_cmap(c.values.reshape(-1,), _kws['cmap'])
+                add_cbar(ax, mappable=mapper, pad=0.3,
+                     border=False,
+                     title=color, title_kws=dict(fontsize=12))
+        else:
+            ax = easy_mpl.plot(xy.loc[:, 'long'].values,
                            xy.loc[:, 'lat'].values,
-                           marker, ax=ax, show=False, **kwargs)
+                           marker, ax=ax, 
+                           show=False, 
+                           **_kws)
 
         if show:
             plt.show()
@@ -837,7 +1024,6 @@ class _RainfallRunoff(Datasets):
     def get_boundary(
             self,
             catchment_id: str,
-            as_type: str = 'numpy'
     ):
         """
         returns boundary of a catchment in a required format
@@ -846,8 +1032,10 @@ class _RainfallRunoff(Datasets):
         ----------
         catchment_id : str
             name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
+
+        Returns
+        -------
+        geometry : fiona.Geometry
 
         Examples
         --------
@@ -856,34 +1044,48 @@ class _RainfallRunoff(Datasets):
         >>> dataset.get_boundary(dataset.stations()[0])
         """
 
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
+        assert isinstance(catchment_id, str), f"catchment_id must be string but is of type {type(catchment_id)}"
 
-        from shapefile import Reader
+        # todo : when we repeatedly call get_boundary, we should not create the 
+        # boundary_id_map for all catchments again
+        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
+            bndry_id_map = self.gsha._create_boundary_id_map()
+        elif self.name in ['USGS']:
+            bndry_id_map = self.hysets._create_boundary_id_map()            
+        else:
+            bndry_id_map = self._create_boundary_id_map()
 
-        bndry_sf = Reader(self.boundary_file)
-        bndry_shp = bndry_sf.shape(self.bndry_id_map[catchment_id])
+        if self.name in ['HYSETS']:
+            catchment_id = self.WatershedID_OfficialID_map[catchment_id]
+        elif self.name == 'Thailand':
+            catchment_id = catchment_id.replace('.', '_')
+        
+        if self.name in ['Thailand', 'Japan', 'Arcticnet', 'Spain']:
+            catchment_id = f"{catchment_id}_{self.agency_name}"
 
-        bndry_sf.close()
+        geometry = bndry_id_map[catchment_id]
 
-        xyz = np.array(bndry_shp.points)
+        geometry = self.transform_coords(geometry)
 
-        xyz = self.transform_coords(xyz)
-
-        return xyz
+        return geometry
 
     def plot_catchment(
             self,
             catchment_id: str,
+            show_outlet:bool = False,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
-    ) -> plt.Axes:
+    ):
         """
         plots catchment boundaries
 
         Parameters
         ----------
+        catchment_id : str
+            name/id of catchment to plot
+        show_outlet : bool, optional (default=False)
+            if True, then outlet of the catchment will be plotted as a red dot
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -898,33 +1100,35 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
-        >>> dataset.plot_catchment()
-        >>> dataset.plot_catchment(marker='o', ms=0.3)
-        >>> ax = dataset.plot_catchment(marker='o', ms=0.3, show=False)
-        >>> ax.set_title("Catchment Boundaries")
+        >>> dataset.plot_catchment('912101A')
+        >>> dataset.plot_catchment('912101A', marker='o', ms=0.3)
+        >>> ax = dataset.plot_catchment('912101A', marker='o', ms=0.3, show=False)
+        >>> ax.set_title("Catchment Boundary")
         >>> plt.show()
+        # show the outlet as well
+        >>> CAMELS_AUS.plot_catchment('912101A', show_outlet=True)
 
         """
-        catchment = self.get_boundary(catchment_id)
+        geometry = self.get_boundary(catchment_id)
 
-        if isinstance(catchment, np.ndarray):
-            if catchment.ndim == 2:
-                ax = easy_mpl.plot(catchment[:, 0], catchment[:, 1],
-                                   show=False, ax=ax, **kwargs)
-            else:
-                raise NotImplementedError
-        # elif isinstance(catchment, geojson.geometry.Polygon):
-        #     coords = catchment['coordinates']
-        #     x = [i for i, j in coords[0]]
-        #     y = [j for i, j in coords[0]]
-        #     ax = plot(x, y, show=False, ax=ax, **kwargs)
-        # elif isinstance(catchment, SPolygon):
-        #     x, y = catchment.exterior.xy
-        #     ax = plot(x, y, show=False, ax=ax, **kwargs)
-        # elif isinstance(catchment, SMultiPolygon):
-        #     raise NotImplementedError
-        else:
-            raise NotImplementedError
+        rings:List[np.ndarray] = _make_boundary_2d(geometry)
+
+        _kws = dict(
+            ax_kws=dict(xlabel="Longitude", ylabel="Latitude")
+        )
+
+        _kws.update(kwargs)
+
+        for ring in rings:
+            ax = easy_mpl.plot(ring[:, 0], ring[:, 1],
+                                show=False, ax=ax, **_kws)
+        
+        if show_outlet:
+            coords = self.stn_coords(catchment_id)
+            ax.scatter(coords['long'], coords['lat'], marker='o', 
+                       color='red', 
+                       s=10, 
+                       label='Outlet')
 
         if show:
             plt.show()
@@ -933,10 +1137,19 @@ class _RainfallRunoff(Datasets):
 
 def _handle_dynamic(dyn, as_dataframe: bool):
     if as_dataframe and isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
-        # if the dyn is a dictionary of key, DataFames, we will return a MultiIndex
-        # dataframe instead of a dictionary
-        dyn = xr.Dataset(dyn).to_dataframe(['time',
-                                            'dynamic_features'])  # todo wiered that we have to first convert to xr.Dataset and then to DataFrame
+        # if the dyn is a dictionary of station, DataFames pairs, and each DataFrame's index is 'time'
+        # 'columns' are 'dynamic_features', we will return a MultiIndex
+        # dataframe instead of a dictionary whose first index is time and second index is dynamic_feature
+        # Step 1: Convert each DataFrame to long format (melt)
+        long_dfs = []
+        for station, df in dyn.items():
+            long_df = df.reset_index().melt(id_vars='time', var_name='dynamic_feature', value_name='value')
+            long_df['station'] = station
+            long_dfs.append(long_df)
+        # Step 2: Concatenate all long DataFrames into one
+        combined_df = pd.concat(long_dfs)
+        # Step 3: Pivot to get desired format: rows = (time, dynamic_feature), columns = stations
+        dyn = combined_df.pivot(index=['time', 'dynamic_feature'], columns='station', values='value')
     elif isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
         # dyn is a dictionary of key, DataFames and we have to return xr Dataset
         # dyn = pd.concat(dyn, axis=0, keys=dyn.keys())

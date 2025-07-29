@@ -17,6 +17,9 @@ from utils import (
     test_attributes,
     test_area,
     test_coords,
+    test_boundary,
+    test_plot_catchment,
+    test_plot_stations,
     )
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -40,3 +43,9 @@ test_attributes(dataset, 232, 3, 24)
 test_area(dataset)
 
 test_coords(dataset)
+
+test_boundary(dataset)
+
+test_plot_catchment(dataset)
+
+test_plot_stations(dataset)

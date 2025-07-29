@@ -55,16 +55,16 @@ class Caravan_DK(_RainfallRunoff):
     >>> len(stns)
     308
     # get data by station id
-    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True)
+    >>> df.unstack().shape
     (14609, 39)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
     ... dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
-    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs'])
+    >>> df.unstack().shape
     (14609, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -74,8 +74,8 @@ class Caravan_DK(_RainfallRunoff):
     (569751, 10)  # remember this is multi-indexed DataFrame
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 211), (569751, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 211), (14609, 39))
     """
 
     url = "https://zenodo.org/record/7962379"
@@ -111,12 +111,14 @@ class Caravan_DK(_RainfallRunoff):
 
         self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
 
-        if to_netcdf:
-            self._maybe_to_netcdf('caravandk_dyn')
+        #if to_netcdf:
+        self._maybe_to_netcdf('caravandk_dyn')
 
-        self.boundary_file = os.path.join(
-            path,
-            "Caravan_DK",
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
+            #"Caravan_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
             "Caravan_extension_DK",
@@ -125,16 +127,10 @@ class Caravan_DK(_RainfallRunoff):
             "camelsdk_basin_shapes.shp"
         )
 
-        self._create_boundary_id_map(self.boundary_file, 3)
+    @property
+    def boundary_id_map(self) -> str:
+        return "gauge_id"
 
-    @staticmethod
-    def _get_map(sf_reader, id_index, name: str = '') -> Dict[str, int]:
-
-        catch_ids_map = {
-            str(rec[id_index]).split('_')[1]: idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
-
-        return catch_ids_map
     
     @property
     def static_map(self) -> Dict[str, str]:
@@ -267,9 +263,11 @@ class Caravan_DK(_RainfallRunoff):
             dynamic_features,
             st=None,
             en=None) -> dict:
+        
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features)
 
-        dyn = {stn: self._read_csv(stn)[features] for stn in stations}
+        dyn = {stn: self._read_csv(stn).loc[st:en, features] for stn in stations}
 
         return dyn
     

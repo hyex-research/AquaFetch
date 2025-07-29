@@ -148,8 +148,6 @@ class LamaHCE(_RainfallRunoff):
         self.dyn_fname = os.path.join(self.path,
                                       f'lamah_{data_type}_{timestep}_dyn.nc')
 
-        self._create_boundary_id_map(self.boundary_file, 0)
-
     @property
     def static_map(self) -> Dict[str, str]:
         return {
@@ -201,7 +199,7 @@ class LamaHCE(_RainfallRunoff):
         }
 
     @property
-    def boundary_file(self):
+    def boundary_file(self) -> os.PathLike:
         if self.timestep == 'D':
             return os.path.join(self.path,
                                 "A_basins_total_upstrm",
@@ -435,7 +433,7 @@ class LamaHCE(_RainfallRunoff):
     ):
         """Reads features of one or more station"""
 
-        cpus = self.processes or get_cpus()
+        cpus = self.processes or min(get_cpus(), 32)
 
         if cpus == 1 or len(stations) < 10:
             results = {}
@@ -825,20 +823,20 @@ class LamaHIce(LamaHCE):
 
     @property
     def q_dir(self):
-        #directory = 'lamah_ice'
+        """returns the path where q files are located"""
         if self.timestep == 'H':
             return os.path.join(
                 self.path, 
                     "lamah_ice_hourly", 
                     "lamah_ice_hourly",
                     'D_gauges', '2_timeseries')
-        # self.path/CAMELS_AT/data_type_dir
+
         return os.path.join(self.path, "lamah_ice", 
                             "lamah_ice",
                             'D_gauges', '2_timeseries')
 
     @property
-    def boundary_file(self):
+    def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path,
                             "lamah_ice",
                             "lamah_ice",
@@ -881,7 +879,7 @@ class LamaHIce(LamaHCE):
         """
         returns names of stations as a list
         """
-        return [fname.split('.')[0].split('_')[1] for fname in os.listdir(self.q_path)]
+        return [fname.split('.')[0].split('_')[1] for fname in os.listdir(self._clim_ts_path())]
 
     def static_data(self) -> pd.DataFrame:
         """
@@ -948,7 +946,10 @@ class LamaHIce(LamaHCE):
 
         fpath = os.path.join(self._catch_attr_path(), "Catchment_attributes.csv")
 
-        df = pd.read_csv(fpath, sep=';', index_col='id')
+        if self.data_type == 'intermediate_lowimp':
+            df = pd.read_csv(fpath, index_col='id')
+        else:
+            df = pd.read_csv(fpath, sep=';', index_col='id')
         df.index = df.index.astype(str)
         return df
 
@@ -1158,9 +1159,6 @@ class LamaHIce(LamaHCE):
 
         timestep = {'H': 'h', 'D': 'd'}[self.timestep]
 
-        if not os.path.exists(fpath):
-            return pd.DataFrame(index=pd.date_range(self.start, self.end, freq=timestep))
-
         dtypes = {
             "YYYY": np.int32,
             "DD": np.int32,
@@ -1189,6 +1187,12 @@ class LamaHIce(LamaHCE):
             "prec_rav": np.float32,
             "prec_carra": np.float32,
         }
+
+        if not os.path.exists(fpath):
+            return pd.DataFrame(
+                columns=list(dtypes.keys())[3:],
+                index=pd.date_range(self.start, self.end, freq=timestep))
+
         df = pd.read_csv(fpath, sep=';', dtype=dtypes, nrows=nrows)
 
         index = df.apply(
@@ -1234,7 +1238,7 @@ class LamaHIce(LamaHCE):
     ):
         """Reads features of one or more station"""
 
-        cpus = self.processes or get_cpus()
+        cpus = self.processes or min(get_cpus(), 16)
 
         if self.verbosity>1: 
             print(f"reading dynamic data for {len(stations)} stations with {cpus} cpus")

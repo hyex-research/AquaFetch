@@ -1,10 +1,11 @@
 
 import os
 import site   # so that aqua_fetch directory is in path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 from aqua_fetch import CamelsChem
+from aqua_fetch.wq._camels_chem import Camels_Ch_Chem
 
 
 ds = CamelsChem(
@@ -56,8 +57,42 @@ def test_fetch_atm_dep():
     return  
 
 
+def test_camels_ch_chem():
+    
+    ds = Camels_Ch_Chem(
+        path='/mnt/datawaha/hyex/atr/data',
+        verbosity=3
+        )
+
+    stns = ds.stations()
+
+    assert len(stns) == 115
+
+    coords = ds.stn_coords()
+    assert coords.shape == (115, 2)
+
+    data = ds.fetch_catch_avg(stations=['2009', '2011'])
+    assert data['2009'].shape == (209, 32)
+    assert data['2011'].shape == (209, 32)
+    data = ds.fetch_catch_avg()
+    assert len(data) == 115
+
+    data = ds.fetch_wq_ts(stations=['2009', '2011'])
+    assert data['2009'].shape == (14610, 4)
+    assert data['2011'].shape == (14610, 4)
+    data = ds.fetch_wq_ts()
+    assert len(data) == 115
+
+    data = ds.fetch_isotope(stations=['2009', '2016'])
+    assert data['2009'].shape == (452, 4)
+    assert data['2016'].shape == (450, 4)
+
+    return
+
 test_fetch()
 
 test_fetch_atm_dep()
+
+test_camels_ch_chem()
 
 print('All tests passed!')

@@ -9,7 +9,8 @@ import pandas as pd
 
 from .._datasets import Datasets
 from ..utils import check_st_en, check_attributes
-from .._project import laea_to_wgs84
+from .._geom_utils import laea_to_wgs84
+from .._backend import fiona
 
 
 class Quadica(Datasets):
@@ -134,7 +135,7 @@ class Quadica(Datasets):
 
         Examples
         --------
-            >>> from water.datasets import Quadica
+            >>> from aqua_fetch import Quadica
             >>> dataset = Quadica()
             >>> df = dataset.wrtds_monthly()
 
@@ -683,7 +684,7 @@ class Quadica(Datasets):
 
         coords =  self._stn_coords()
     
-        # following 2 lines are from .prj file of the shapefile
+        # following 2 lines are from .prj file 
         false_easting, false_northing = 4321000.0, 3210000.0
         lat_0, lon_0 = 52, 10
 
@@ -705,21 +706,20 @@ class Quadica(Datasets):
             A dataframe with columns 'lat', 'long'
         """
 
-        from shapefile import Reader
-
         stns_file = os.path.join(self.path, "GIS", "stations.shp")
 
-        stns_sf = Reader(stns_file)
+        data = []
 
-        # get the attribute and xy coordinates of the stations
-        stn_data = []
-        for rec, shape in zip(stns_sf.records(), stns_sf.shapes()):
-            stn_data.append([rec.OBJECTID, *shape.points[0]])
+        with fiona.open(stns_file) as src:
 
-        stn_coords = pd.DataFrame(stn_data, columns=['OBJECTID', 'long', 'lat']).set_index('OBJECTID')
+            for _, feature in enumerate(src):
+                geometry = feature['geometry']
 
-        stns_sf.close()
+                data.append([*geometry.coordinates, feature.properties['OBJECTID']])
 
+        stn_coords = pd.DataFrame(data, columns=['long', 'lat', 'OBJECTID'])
+
+        stn_coords.set_index('OBJECTID', inplace=True)
         stn_coords['long'] = stn_coords.pop('long')
 
         return stn_coords.astype(np.float32)

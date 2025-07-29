@@ -17,7 +17,6 @@ from aqua_fetch import GSHA
 from aqua_fetch import Japan
 from aqua_fetch import Arcticnet
 from aqua_fetch import Spain
-
 from utils import (
     test_dataset,
     test_coords, 
@@ -26,7 +25,8 @@ from utils import (
     test_boundary, 
     test_plot_stations,
     test_fetch_static_feature,
-    test_fetch_dynamic_features
+    test_fetch_dynamic_features,
+    test_plot_catchment,
     )
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -122,15 +122,15 @@ def test_lai():
 
     assert isinstance(ds.lai_stn('1001_arcticnet'), pd.Series)
 
-    lai = ds.lai()
+    lai = ds.fetch_lai()
     assert len(lai) == 21568, len(lai)
 
     lai.dims['time'] == 14541
 
-    out = ds.lai('1001_arcticnet')
+    out = ds.fetch_lai('1001_arcticnet')
     assert len(out) == 1, len(out)
 
-    out = ds.lai(agency='arcticnet')
+    out = ds.fetch_lai(agency='arcticnet')
 
     assert len(out) == 106, len(out)
 
@@ -142,13 +142,13 @@ def test_storage():
     assert isinstance(out, pd.DataFrame), type(out)
     assert out.shape[1] == 6, out.shape
 
-    out = ds.storage_vars(agency='arcticnet')
+    out = ds.fetch_storage_vars(agency='arcticnet')
 
     assert len(out) == 106, len(out)
 
     out['1001_arcticnet'].shape[1] == 6
 
-    out = ds.storage_vars()
+    out = ds.fetch_storage_vars()
 
     assert len(out) == 21568, len(out)
 
@@ -162,10 +162,10 @@ def test_meteo():
 
     assert out.shape[1] == 19, out.shape
 
-    out = ds.meteo_vars(agency='arcticnet')
+    out = ds.fetch_meteo_vars(agency='arcticnet')
     assert len(out) == 106, len(out)
 
-    out = ds.meteo_vars()
+    out = ds.fetch_meteo_vars()
 
     assert len(out) == 21568, len(out)
 
@@ -211,6 +211,16 @@ def test_fetch_dynamic_features_():
     return
 
 
+def test_stn_dynamic_features():
+    data = ds.fetch_stn_dynamic_features('1001_arcticnet')
+    data.shape == (16071, 26)
+    assert len(ds.dynamic_features) == 26
+    data = ds.fetch_stn_dynamic_features('1001_arcticnet',
+    dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
+    data.shape == (16071, 2)
+    return
+
+
 test_stations(ds, 21568)
 
 test_boundary(ds)
@@ -238,6 +248,10 @@ test_meteo()
 test_fetch_static_features()
 
 test_fetch_dynamic_features_()
+
+test_stn_dynamic_features()
+
+test_plot_catchment(ds)
 
 print('All tests passed!')
 

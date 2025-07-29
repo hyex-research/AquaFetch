@@ -1,6 +1,6 @@
 
 sphinx
-sphinx-prompt
+sphinx-prompt<=1.8.0  # 1.10 is not being installed as of 20250626
 sphinx_rtd_theme==2.0.0
 sphinx_issues
 sphinx_copybutton
@@ -28,3 +28,4 @@ scipy
 # shapely manually download the wheel file and install
 #pyshp
 #statsmodels
+fiona

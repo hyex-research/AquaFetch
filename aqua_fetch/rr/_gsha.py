@@ -16,11 +16,11 @@ from typing import List, Union, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from .._backend import xarray as xr, shapefile
+from .._backend import xarray as xr
 
 from ..utils import get_cpus
 from ..utils import check_attributes
-from ..utils import merge_shapefiles
+from ..utils import merge_shapefiles_fiona
 from .utils import _RainfallRunoff
 
 from ._map import (
@@ -149,13 +149,18 @@ class GSHA(_RainfallRunoff):
         wsAll.index = wsAll.pop('station_id')
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
 
-        self.boundary_file = os.path.join(self.path, "boundaries.shp")
-        self._create_boundary_id_map(self.boundary_file, 7)
-
         self._daily_dynamic_features = self.__daily_dynamic_features()
         self._yearly_dynamic_features = self.__yearly_dynamic_features()
 
         self._static_features = self.__static_features()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, "boundaries.shp")
+
+    @property
+    def boundary_id_map(self) -> str:
+        return "gauge_id"
 
     @property
     def agencies(self) -> List[str]:
@@ -298,8 +303,7 @@ class GSHA(_RainfallRunoff):
         if not os.path.exists(out_shapefile):
             shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if
                          filename.endswith('.shp')]
-            merge_shapefiles(shp_files, out_shapefile,
-                             add_new_field=True)
+            merge_shapefiles_fiona(shp_files, out_shapefile)
         return
 
     def _get_stations(
@@ -974,11 +978,15 @@ class GSHA(_RainfallRunoff):
         Examples
         --------
         >>> from aqua_fetch import GSHA
-        >>> camels = GSHA()
-        >>> camels.fetch_stn_dynamic_features('1001_arcticnet').unstack()
-        >>> camels.dynamic_features
-        >>> camels.fetch_stn_dynamic_features('1001_arcticnet',
-        ... features=['tmax_AWAP', 'vprp_AWAP']).unstack()
+        >>> dataset = GSHA()
+        >>> data = dataset.fetch_stn_dynamic_features('1001_arcticnet')
+        >>> data.shape
+        (16071, 26)
+        >>> dataset.dynamic_features
+        >>> data = dataset.fetch_stn_dynamic_features('1001_arcticnet',
+        ... dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
+        >>> data.shape
+        (16071, 2)
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
@@ -1000,7 +1008,7 @@ class GSHA(_RainfallRunoff):
             en=None,
             as_dataframe=False,
             agency: List[str] = "all",
-    )-> xr.Dataset:
+    )-> "Dataset":
         """
         Fetches all or selected dynamic features of one station.
 
@@ -1021,15 +1029,18 @@ class GSHA(_RainfallRunoff):
 
         Examples
         --------
-            >>> from aqua_fetch import GSHA
-            >>> camels = GSHA()
-            >>> camels.fetch_dynamic_features('1001_arcticnet', as_dataframe=True).unstack()
-            >>> camels.dynamic_features
-            >>> camels.fetch_dynamic_features('1001_arcticnet',
-            ... features=['tmax_AWAP', 'vprp_AWAP', 'q_mmd_obs'],
-            ... as_dataframe=True).unstack()
+        >>> from aqua_fetch import GSHA
+        >>> dataset = GSHA()
+        >>> data = dataset.fetch_dynamic_features('1001_arcticnet', as_dataframe=True)
+        >>> data.shape
+        (16071, 26)
+        >>> dataset.dynamic_features
+        >>> stns = ['1001_arcticnet', '10062_arcticnet']
+        >>> data = dataset.fetch_dynamic_features(stns,
+        ... dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
         """
 
+        # todo : extremely slow even for two stations
         stations = self._get_stations(stations, agency)
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
@@ -1043,7 +1054,7 @@ class GSHA(_RainfallRunoff):
                 return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features))})
 
         if as_dataframe:
-            raise NotImplementedError("as_dataframe=True is not implemented yet")
+            raise NotImplementedError("as_dataframe=True is not implemented yet for multiple stations")
 
         # todo : we should read meteo, storage and lai only when they are required!
         meteo_vars = self.fetch_meteo_vars(stations)
@@ -1131,8 +1142,11 @@ class _GSHA(_RainfallRunoff):
 
         self.gsha = GSHA(path=self.gsha_path, verbosity=verbosity)
 
-        self.boundary_file = self.gsha.boundary_file
         self._stations = self.__stations()
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return self.gsha.boundary_file
 
     @property
     def start(self) -> pd.Timestamp:
@@ -1159,50 +1173,6 @@ class _GSHA(_RainfallRunoff):
         by GSHA.
         """
         return [stn.split('_')[0] for stn in self.gsha.agency_stations(self.agency_name)]
-
-    def get_boundary(
-            self,
-            catchment_id: str,
-            as_type: str = 'numpy'
-    ):
-        """
-        returns boundary of a catchment in a required format
-
-        Parameters
-        ----------
-        catchment_id : str
-            name/id of catchment
-        as_type : str
-            'numpy' or 'geopandas'
-
-        Examples
-        --------
-        >>> from aqua_fetch import Japan
-        >>> dataset = Japan()
-        >>> dataset.get_boundary(dataset.stations()[0])
-        ... # for Arcticnet
-        >>> from aqua_fetch import Arcticnet
-        >>> dataset = Arcticnet()
-        >>> dataset.get_boundary('1001')
-        """
-
-        if shapefile is None:
-            raise ModuleNotFoundError("shapefile module is not installed. Please install it to use boundary file")
-
-        from shapefile import Reader
-
-        bndry_sf = Reader(self.boundary_file)
-        if self.agency_name == 'RID':
-            catchment_id = catchment_id.replace('.', '_')
-        bndry_shp = bndry_sf.shape(self.gsha.bndry_id_map[f"{catchment_id}_{self.agency_name}"])
-
-        bndry_sf.close()
-
-        xyz = np.array(bndry_shp.points)
-
-        xyz = self.transform_coords(xyz)
-
-        return xyz
 
     def _fetch_dynamic_features(
             self,
@@ -1503,7 +1473,7 @@ class Japan(_GSHA):
     `river.go.jp website <http://www1.river.go.jp>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2022-12-31.
     """
 
@@ -1525,28 +1495,27 @@ class Japan(_GSHA):
                 'area': catchment_area(),
                 'lat': gauge_latitude(),
                 'long': gauge_longitude(),
-
         }
 
     @property
     def agency_name(self)->str:
         return 'MLIT'
 
-    def _maybe_move_and_merge_shpfiles(self):
+    # def _maybe_move_and_merge_shpfiles(self):
 
-        out_shp_file = os.path.join(self.path, "boundaries.shp")
+    #     out_shp_file = os.path.join(self.path, "boundaries.shp")
 
-        if not os.path.exists(out_shp_file):
-            df = self.gsha._coords()
-            jpn_stns = df.loc[df['agency'] == 'MLIT']
-            shp_path = os.path.join(self.gsha.path, "WatershedPolygons", 
-                                    "WatershedPolygons")
-            shp_files = [os.path.join(shp_path, f"{filename}.shp") for filename in jpn_stns['station_id'].values]
-            for f in shp_files:
-                assert os.path.exists(f)
+    #     if not os.path.exists(out_shp_file):
+    #         df = self.gsha._coords()
+    #         jpn_stns = df.loc[df['agency'] == 'MLIT']
+    #         shp_path = os.path.join(self.gsha.path, "WatershedPolygons", 
+    #                                 "WatershedPolygons")
+    #         shp_files = [os.path.join(shp_path, f"{filename}.shp") for filename in jpn_stns['station_id'].values]
+    #         for f in shp_files:
+    #             assert os.path.exists(f)
 
-            merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
-        return
+    #         merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
+    #     return
 
     def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single
@@ -1809,7 +1778,7 @@ class Arcticnet(_GSHA):
     `r-arcticnet project <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2003-12-31 although the observed
     streamflow (q_cms_obs) for some stations is available as earlier as from
     1913-01-01.
@@ -1968,7 +1937,7 @@ class Spain(_GSHA):
     `ceh-es <https://ceh-flumen64.cedex.es>`_ website.
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2020-09-30.
     """
 
@@ -2093,7 +2062,7 @@ class Thailand(_GSHA):
     `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of staic features are 35 and dynamic features are 27 and the
+    the number of static features are 35 and dynamic features are 27 and the
     data is available from 1980-01-01 to 1999-12-31.
     """
     url = {

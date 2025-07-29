@@ -41,6 +41,12 @@ from .rr import Italy
 from .rr import CAMELS_FR
 from .rr import Portugal
 from .rr import Caravan_DK
+from .rr import CAMELS_NZ
+from .rr import CAMELS_LUX
+from .rr import CAMELS_COL
+from .rr import CAMELS_SK
+from .rr import CAMELS_FI
+from .rr import Slovenia
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -81,7 +87,6 @@ from .wq import RC4USCoast
 from .wq import DoceRiver
 from .wq import SeluneRiver
 from .wq import busan_beach
-from .wq import RiverChemSiberia
 from .wq import SyltRoads
 from .wq import ecoli_mekong_laos
 from .wq import ecoli_houay_pano
@@ -93,37 +98,39 @@ from .wq import GRiMeDB
 from .wq import BuzzardsBay
 from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
+from .wq import Camels_Ch_Chem
+from .wq import Oligotrend
 
 # *** Miscellaneous ***
 
-from ._datasets import Weisssee
-from ._datasets import WaterChemEcuador
-from ._datasets import WaterChemVictoriaLakes
-from ._datasets import WeatherJena
-from ._datasets import WQCantareira
-from ._datasets import WQJordan
-from ._datasets import FlowSamoylov
-from ._datasets import FlowSedDenmark
-from ._datasets import StreamTempSpain
-from ._datasets import RiverTempEroo
-from ._datasets import HoloceneTemp
-from ._datasets import FlowTetRiver
-from ._datasets import SedimentAmersee
-from ._datasets import HydrocarbonsGabes
-from ._datasets import HydroChemJava
-from ._datasets import PrecipBerlin
-from ._datasets import GeoChemMatane
-from ._datasets import WQJordan2
-from ._datasets import YamaguchiClimateJp
-from ._datasets import FlowBenin
-from ._datasets import HydrometricParana
-from ._datasets import RiverTempSpain
-from ._datasets import RiverIsotope
-from ._datasets import EtpPcpSamoylov
-from ._datasets import SWECanada
-from ._datasets import gw_punjab
-from ._datasets import RRAlpineCatchments
-from ._hyperspectral import SoilPhosphorus
+from .misc import Weisssee
+from .misc import WaterChemEcuador
+from .misc import WaterChemVictoriaLakes
+from .misc import WeatherJena
+from .misc import WQCantareira
+from .misc import WQJordan
+from .misc import FlowSamoylov
+from .misc import FlowSedDenmark
+from .misc import StreamTempSpain
+from .misc import RiverTempEroo
+from .misc import HoloceneTemp
+from .misc import FlowTetRiver
+from .misc import SedimentAmersee
+from .misc import HydrocarbonsGabes
+from .misc import HydroChemJava
+from .misc import PrecipBerlin
+from .misc import GeoChemMatane
+from .misc import WQJordan2
+from .misc import YamaguchiClimateJp
+from .misc import FlowBenin
+from .misc import HydrometricParana
+from .misc import RiverTempSpain
+from .misc import RiverIsotope
+from .misc import EtpPcpSamoylov
+from .misc import SWECanada
+from .misc import gw_punjab
+from .misc import RRAlpineCatchments
+from .misc import SoilPhosphorus
 
 
 ALL_DATASETS = [
@@ -167,6 +174,12 @@ ALL_DATASETS = [
     MtropicsVietnam.__class__.__name__,
     NPCTRCatchments.__class__.__name__,
     GRDCCaravan.__class__.__name__,
+    CAMELS_NZ.__class__.__name__,
+    CAMELS_LUX.__class__.__name__,
+    CAMELS_COL.__class__.__name__,
+    CAMELS_SK.__class__.__name__,
+    CAMELS_FI.__class__.__name__,
+    Slovenia.__class__.__name__,
 
     Quadica.__class__.__name__,
     GRQA.__class__.__name__,
@@ -175,7 +188,6 @@ ALL_DATASETS = [
     DoceRiver.__class__.__name__,
     SeluneRiver.__class__.__name__,
     busan_beach.__name__,
-    RiverChemSiberia.__class__.__name__,
     SyltRoads.__class__.__name__,
     ecoli_mekong_laos.__name__,
     ecoli_houay_pano.__name__,
@@ -187,6 +199,8 @@ ALL_DATASETS = [
     BuzzardsBay.__class__.__name__,
     WhiteClayCreek.__class__.__name__,
     RiverChemSiberia.__class__.__name__,
+    Camels_Ch_Chem.__class__.__name__,
+    Oligotrend.__class__.__name__,
     
     ec_removal_biochar.__name__,
     cr_removal.__name__,
@@ -264,4 +278,4 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     return df[inputs + target]
 
 
-__version__ = "1.0.0rc2"
+__version__ = "1.0.0rc3"

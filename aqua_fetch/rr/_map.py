@@ -5,6 +5,8 @@
 # aggregation_type = min, max, mean, total, sum etc.
 # height = height of the measurement like 2m/10m etc.
 
+# TODO : differentiate between catchment averaged and temporal averaged features, the word 'mean' is ambiguous
+# for example mean air temperature can mean catchment averaged or temporal averaged
 # ****** Dynmaic Features *******
 
 # %% streamflow
@@ -362,7 +364,8 @@ def groundwater_percentages()->str:
 
 # %%
 # soil moisture layer
-# todo : is it same as soil water layer?
+# todo : is it same as soil water layer? 
+# in section 2.6 of CAMELS-LUX documentation, it is mentioned that
 
 def soil_moisture_layer1()->str:
     """ m3/m3"""
@@ -450,18 +453,33 @@ def cloud_cover()->str:
 def catchment_area()->str:
     return "area_km2"
 
+
+def catchment_area_with_specifier(specifier:str)->str:
+    """catchment area in square kilometers"""
+    return f"area_km2_{specifier}"
+
+
+def catchment_perimeter()->str:
+    """Catchment perimeter in kilometers"""
+    return "perimeter_km"
+
+
 def gauge_latitude()->str:
+    """in units of WGS84 (degrees)"""
     return "lat"
 
 def gauge_longitude()->str:
+    """in units of WGS84 (degrees)"""
     return "long"
 
+
 def slope(unit)->str:
+    """Average slope of the catchment"""
     return f"slope_{unit}"
 
 
 def gauge_elevation_meters()->str:
-    """elevation of the gauge station in meters"""
+    """elevation of the gauge station in meters (m a.s.l)"""
     return "elev_gauge_m"
 
 
@@ -480,9 +498,19 @@ def max_catchment_elevation_meters()->str:
     return "elev_catch_max_m"
 
 
+def med_catchment_elevation_meters()->str:
+    """median elevation of the catchment in meters"""
+    return "elev_catch_max_m"
+
+
 def urban_fraction()->str:
     """Fraction of urban area in the catchment"""
     return "urban_frac"
+
+
+def urban_fraction_with_specifier(specifier:str)->str:
+    """Fraction of urban area in the catchment with a specifier such as year"""
+    return f"urban_frac_{specifier}"
 
 
 def forest_fraction()->str:
@@ -490,10 +518,33 @@ def forest_fraction()->str:
     return "forest_frac"
 
 
+def forest_fraction_with_specifier(specifier:str)->str:
+    """Fraction of forest area in the catchment with a specifier such as year"""
+    return f"forest_frac_{specifier}"
+
+
 def grass_fraction()->str:
-    """Fraction of grass area in the
-    catchment"""
+    """Fraction of grass area in the catchment"""
     return "grass_frac"
+
+
+def grass_fraction_with_specifier(specifier:str)->str:
+    """Fraction of grass area in the catchment with a specifier such as year.
+    """
+    return f"grass_frac_{specifier}"
+
+
+def crop_fraction()->str:
+    """Fraction of cropland area in the catchment.
+    In CAMELS-LUX it is named as 'agricultural_land'
+    """
+    return "crop_frac"
+
+def crop_fraction_with_specifier(specifier:str)->str:
+    """Fraction of cropland area in the catchment with a specifier such as year.
+    In CAMELS-LUX it is named as 'agricultural_land'
+    """
+    return f"crop_frac_{specifier}"
 
 
 def impervious_fraction()->str:
@@ -502,6 +553,8 @@ def impervious_fraction()->str:
 
 
 def aridity_index()->str:
+    """the ratio of mean daily & ERA5-Land potential 
+    evapotranspiration to mean daily precipitation"""
     return "aridity"
 
 
@@ -523,3 +576,28 @@ def catchment_centroid_longitude()->str:
 
 def elong_ratio()->str:
     return "elong_ratio"
+
+
+def silt_percentage() -> str:
+    """Percentage of silt dominated soils of total area in %"""
+    return "silt_perc"
+
+
+def clay_percentage() -> str:
+    """Percentage of clay dominated soils of total area in %"""
+    return "clay_perc"
+
+
+def soil_depth() -> str:
+    """Mean soil depth to bedrock in meters"""
+    return "soil_depth_m"
+
+
+def population_density() -> str:
+    """Population density in people per square kilometer"""
+    return "pop_density_km2"
+
+
+def population_density_with_specifier(specifier: str) -> str:
+    """Population density in people per square kilometer with a specifier such as year"""
+    return f"pop_density_{specifier}_km2"

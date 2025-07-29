@@ -224,7 +224,7 @@ def dye_removal(
 
     """
 
-    url = "https://gitlab.com/atrcheema/bajwachor/-/raw/main/scripts/data/230613_Photocatalysis_with_Zeeshan_data_CMKim_Updated.csv"
+    url = "https://raw.githubusercontent.com/AtrCheema/weil101/refs/heads/master/scripts/data/230613_Photocatalysis_with_Zeeshan_data_CMKim_Updated.csv"
     df = maybe_download_and_read_data(url, "dye_removal.csv")
 
     columns = {

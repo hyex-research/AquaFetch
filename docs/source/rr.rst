@@ -23,7 +23,7 @@ provides several methods to access static features, dynamic features, or catchme
 boundaries. Although the raw data files for each dataset may come in different formats, 
 the methods to access these features through the :py:class:`aqua_fetch.rr.RainfallRunoff` class remain the same. 
 Individual classes for each dataset are also available and may offer more control to 
-users over specific datasets. However, for most cases, the use of the :py:class:`aqua_fetch.rr.RainfallRunoff` 
+users over specific datasets. However, for most cases, the use of the :py:class:`aqua_fetch.rr.RainfallRunoff`
 class will suffice.
 
 The naming and units of dynamic features in each dataset may vary. However, we have 
@@ -45,7 +45,7 @@ is optional since it initiaties the download of GSHA and EStreams datasets which
 be time-consuming and may not always be necessary.
 
 Certain datasets in this package feature overlapping stations from the same region. 
-For example, both the ``Bull`` and ``Spain`` datasets cover Spain. 
+For example, both the :py:class:`aqua_fetch.Bull` and ``Spain`` datasets cover Spain. 
 However, the Bull dataset was introduced by by `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_ , 
 whereas the Spain dataset was introduced in this work. The Spain dataset contains 
 more stations, totaling 889, while the Bull dataset includes 484 stations.
@@ -64,7 +64,7 @@ are still obtained from HYSETS.
 List of datasets
 ================
 .. list-table:: Stations per Source
-   :widths: 10 15 10 10 10 10 10 10 30
+   :widths: 8 13 7 7 10 10 10 10 30
    :header-rows: 1
 
    * - Source Name
@@ -139,6 +139,15 @@ List of datasets
      - 1913 - 2018
      - Chile
      - `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_
+   * - ``CAMELS_COL``
+     - :py:class:`aqua_fetch.rr.CAMELS_COL`
+     - 347
+     - 
+     - 6
+     - 255
+     - 1981 - 2022
+     - Columbia
+     - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
      - 1555
@@ -157,6 +166,15 @@ List of datasets
      - 1989 - 2023
      - Denmark
      - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
+   * - ``CAMELS_FI``
+     - :py:class:`aqua_fetch.rr.CAMELS_FI`
+     - 320
+     - 
+     - 16
+     - 111
+     - 1963 - 2023
+     - Finland
+     - `Seppä et al., 2024 <https://doi.org/10.5281/zenodo.16257216>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -184,6 +202,24 @@ List of datasets
      - 1980 - 2020
      - Republic of India
      - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
+   * - ``CAMELS_LUX``
+     - :py:class:`aqua_fetch.rr.CAMELS_LUX`
+     - 56
+     - 56
+     - 25
+     - 61
+     - 2004 - 2021
+     - Luxumbourg
+     - `Nijzink et al., 2025 <https://doi.org/10.5194/essd-2024-482>`_
+   * - ``CAMELS_NZ``
+     - :py:class:`aqua_fetch.rr.CAMELS_NZ`
+     - 
+     - 369
+     - 5
+     - 39
+     - 1972 - 2024
+     - New Zealand
+     - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
    * - ``CAMELS_SE``
      - :py:class:`aqua_fetch.rr.CAMELS_SE`
      - 50
@@ -193,6 +229,15 @@ List of datasets
      - 1961 - 2020
      - Sweden
      - `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_
+   * - ``CAMELS_SK``
+     - :py:class:`aqua_fetch.rr.CAMELS_SK`
+     - 
+     - 178
+     - 17
+     - 215
+     - 2000 - 2019
+     - South Korea
+     - `Kim et al., 2025 <https://doi.org/10.5281/zenodo.15073263>`_
    * - ``CAMELS_US``
      - :py:class:`aqua_fetch.rr.CAMELS_US`
      - 671
@@ -301,6 +346,15 @@ List of datasets
      - 1950 - 2021
      - Iceland
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
+   * - ``NPCTR Catchments``
+     - :py:class:`aqua_fetch.rr.NPCTRCatchments`
+     - 
+     - 7
+     - 8
+     - 14
+     - 2013 - 2019
+     - Iceland
+     - `Korver et al., (2024) <https://doi.org/10.5194/essd-14-4231-2022>`_
    * - ``Poland``
      - :py:class:`aqua_fetch.rr.Poland`
      - 1287
@@ -327,16 +381,7 @@ List of datasets
      - 0
      - 2016 - 2019
      - Lulea (Sweden)
-     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_   
-   * - ``Spain``
-     - :py:class:`aqua_fetch.rr.Spain`
-     - 889
-     -
-     - 27
-     - 35
-     - 1979 - 2020
-     - Spain
-     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_     
+     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
    * - ``Simbi``
      - :py:class:`aqua_fetch.rr.Simbi`
      - 24
@@ -345,7 +390,25 @@ List of datasets
      - 232
      - 1920 - 1940
      - Haiti
-     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_   
+     - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
+   * - ``Slovenia``
+     - :py:class:`aqua_fetch.rr.Slovenia`
+     - 117
+     -
+     - 3
+     - 10
+     - 1950 - 2023
+     - Slovenia
+     - `vode.arso.gov.si <https://vode.arso.gov.si>`_
+   * - ``Spain``
+     - :py:class:`aqua_fetch.rr.Spain`
+     - 889
+     -
+     - 27
+     - 35
+     - 1979 - 2020
+     - Spain
+     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_
    * - ``Thailand``
      - :py:class:`aqua_fetch.rr.Thailand`
      - 73
@@ -464,6 +527,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.CAMELS_COL
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.CAMELS_DE
    :members:
    :show-inheritance:
@@ -478,7 +548,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr.Caravan_DK
+.. autoclass:: aqua_fetch.rr.CAMELS_FI
    :members:
    :show-inheritance:
 
@@ -506,6 +576,20 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.CAMELS_LUX
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_NZ
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.CAMELS_SE
    :members:
    :show-inheritance:
@@ -513,7 +597,21 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.CAMELS_SK
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.CAMELS_US
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.Caravan_DK
    :members:
    :show-inheritance:
 
@@ -590,6 +688,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.NPCTRCatchments
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.Poland
    :members:
    :show-inheritance:
@@ -612,6 +717,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.Simbi
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.Slovenia
    :members:
    :show-inheritance:
 
@@ -644,12 +756,6 @@ This provides more control over the datasets.
 
    .. automethod:: __init__
 
-
-.. autoclass:: aqua_fetch.rr.NPCTRCatchments
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
 
 
 The following datasets are very much similar to RainfallRunoff datasets,

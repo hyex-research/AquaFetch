@@ -48,12 +48,19 @@ from ._estreams import Poland
 from ._estreams import Italy
 from ._camels import CAMELS_FR
 from ._estreams import Portugal
+from ._camels import CAMELS_NZ
+from ._camels import CAMELS_LUX
+from ._camels import CAMELS_COL
+from ._camels import CAMELS_SK
+from ._camels import CAMELS_FI
+from ._estreams import Slovenia
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
 from .mtropics import MtropcsThailand
 from .mtropics import MtropicsVietnam
 from ._misc import DraixBleone
+from ._misc import JialingRiverChina
 
 
 DATASETS = {
@@ -93,6 +100,12 @@ DATASETS = {
     'Italy': Italy,
     'CAMELS_FR': CAMELS_FR,
     'Portugal': Portugal,
+    'CAMELS_NZ': CAMELS_NZ,
+    'CAMELS_LUX': CAMELS_LUX,
+    'CAMELS_COL': CAMELS_COL,
+    'CAMELS_SK': CAMELS_SK,
+    'CAMELS_FI': CAMELS_FI,
+    'Slovenia': Slovenia,
 }
 
 
@@ -110,45 +123,57 @@ class RainfallRunoff(object):
     >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     >>> df.columns = df.columns.get_level_values('dynamic_features')
     >>> df.shape
-       (21184, 26)
+       (26388, 28)
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       222
+       561
     ... # get data of 10 % of stations as dataframe
     >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
-       (550784, 22)
+       (738864, 56)
     ... # The returned dataframe is a multi-indexed data
     >>> df.index.names == ['time', 'dynamic_features']
         True
     ... # get data by station id
-    >>> _, df = dataset.fetch(stations='224214A', as_dataframe=True).unstack()
-    >>> df.shape
-        (21184, 26)
+    >>> _, df = dataset.fetch(stations='912101A', as_dataframe=True)
+    >>> df.unstack().shape
+        (26388, 28)
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs']).unstack()
-    >>> data.shape
-       (21184, 4)
+    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs'])
+    >>> data.unstack().shape
+       (26388, 4)
     ... # get names of available static features
     >>> dataset.static_features
+    ... # get all static features of all stations
+    >>> df = dataset.fetch_static_features()
+    >>> df.shape
+         (561, 187)
+    ... # get area of a single station
+    >>> area = dataset.area('912101A')
+    >>> type(area), area.shape
+        (pandas.core.series.Series, (1,))
     ... # get data of 10 random stations
     >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
-       (21184, 260)
+       (26388, 280)
     # If we want to get both static and dynamic data 
-    >>> static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 166), (550784, 1))
+    >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 187), (26388, 28))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (472, 2)
-    >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
-        18.3861	80.3917
-    >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+        (561, 2)
+    >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+       -18.643612	139.253052
+    >>> dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
+    ... # get boundary of the catchment
+    >>> boundary = dataset.get_boundary('912101A')
+    >>> b.shape
+    >>> (20086, 2)
 
     See :ref:`sphx_glr_auto_examples_camels_australia.py` for more comprehensive usage example.
 
@@ -181,13 +206,18 @@ class RainfallRunoff(object):
             - ``CAMELS_BR``
             - ``CAMELS_CH``
             - ``CAMELS_CL``
+            - ``CAMELS_COL``
             - ``CAMELS_DE``
             - ``CAMELS_DK0``
             - ``CAMELS_DK``
+            - ``CAMELS_FI``
             - ``CAMELS_FR``
             - ``CAMELS_GB``
             - ``CAMELS_IND``
+            - ``CAMELS_LUX``
+            - ``CAMELS_NZ``
             - ``CAMELS_SE``
+            - ``CAMELS_SK``
             - ``CAMELS_US``
             - ``EStreams``
             - ``Finland``
@@ -204,6 +234,7 @@ class RainfallRunoff(object):
             - ``Portugal``
             - ``RRLuleaSweden``
             - ``Simbi``
+            - ``Slovenia``
             - ``Spain``
             - ``Thailand``
             - ``USGS``
@@ -228,7 +259,7 @@ class RainfallRunoff(object):
         kwargs :
             additional keyword arguments for the underlying dataset class
             For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for ``CAMELS_BR``
+            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`
         """
 
         if dataset not in DATASETS:
@@ -249,6 +280,17 @@ class RainfallRunoff(object):
 
     def __len__(self):
         return len(self.stations())
+
+    def __getattr__(self, item):
+        """
+        Although we are using most attributes of the underlying dataset class,
+        by directly accessing them, but there still can be some dataset specific
+        attributes that are not directly accessed. In that case, we can use this
+        method to access those attributes.
+        """
+        if hasattr(self.dataset, item):
+            return getattr(self.dataset, item)
+        raise AttributeError(f"{item} not found in {self.name} dataset")
 
     def num_dynamic(self) -> int:
         """number of dynamic features associated with the dataset"""
@@ -325,9 +367,9 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
-        >>> camels.fetch_static_features('224214A')
+        >>> camels.fetch_static_features('912101A')
         >>> camels.static_features
-        >>> camels.fetch_static_features('224214A',
+        >>> camels.fetch_static_features('912101A',
         ... features=['elev_mean', 'relief', 'ksat', 'pop_mean'])
         """
 
@@ -569,9 +611,9 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
-        >>> camels.fetch_dynamic_features('224214A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
         >>> camels.dynamic_features
-        >>> camels.fetch_dynamic_features('224214A',
+        >>> camels.fetch_dynamic_features('912101A',
         ... features=['airtemp_C_silo_max', 'vp_hpa_silo', 'q_cms_obs'],
         ... as_dataframe=True).unstack()
         """
@@ -630,6 +672,7 @@ class RainfallRunoff(object):
             self,
             stations: List[str] = 'all',
             marker='.',
+            color:str=None,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
@@ -644,6 +687,8 @@ class RainfallRunoff(object):
             For names of stations, see :meth:`stations`.
         marker :
             marker to use.
+        color : str, optional
+            name of static feature to use as color.             
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -664,9 +709,15 @@ class RainfallRunoff(object):
         >>> ax = dataset.plot_stations(marker='o', ms=0.3, show=False)
         >>> ax.set_title("Stations")
         >>> plt.show()
+        using area as color
+        >>> ds.plot_stations(color='area_km2')
 
         """
-        return self.dataset.plot_stations(stations, marker, ax, show, **kwargs)
+        return self.dataset.plot_stations(
+            stations, 
+            marker=marker,
+            color=color,
+            ax=ax, show=show, **kwargs)
 
     def q_mmd(
             self,
@@ -733,17 +784,19 @@ class RainfallRunoff(object):
     def get_boundary(
             self,
             station: str,
-            as_type: str = 'numpy'
     ):
         """
-        returns boundary of a catchment in a required format
+        returns boundary of a catchment as fiona.Geometry object.
 
         Parameters
         ----------
         station : str
             name/id of catchment. For names of catchments, see :meth:`stations`.
-        as_type : str
-            'numpy' or 'geopandas'
+        
+        Returns
+        -------
+        fiona.Geometry
+            a fiona.Geometry object representing the boundary of the catchment.
 
         Examples
         --------
@@ -751,15 +804,16 @@ class RainfallRunoff(object):
         >>> dataset = RainfallRunoff('CAMELS_SE')
         >>> dataset.get_boundary(dataset.stations()[0])
         """
-        return self.dataset.get_boundary(station, as_type)
+        return self.dataset.get_boundary(station)
 
     def plot_catchment(
             self,
             station: str,
+            show_outlet:bool = False,
             ax: plt_Axes = None,
             show: bool = True,
             **kwargs
-    ) -> plt.Axes:
+    ):
         """
         plots catchment boundaries
 
@@ -767,6 +821,8 @@ class RainfallRunoff(object):
         ----------
         station : str
             name/id of station. For names of stations, see :meth:`stations`
+        show_outlet : bool, optional (default=False)
+            if True, then outlet of the catchment will be plotted as a red dot
         ax : plt.Axes
             matplotlib axes to draw the plot. If not given, then
             new axes will be created.
@@ -788,12 +844,18 @@ class RainfallRunoff(object):
         >>> plt.show()
 
         """
-        return self.dataset.plot_catchment(station, ax, show, **kwargs)
+        return self.dataset.plot_catchment(
+            station,
+            show_outlet=show_outlet,
+            ax=ax, 
+            show=show,
+            **kwargs)
 
     def stations(self) -> List[str]:
         """
-        returns names/ids of all stations. This can be either gauge id or basin id.
-        Every catchment has a unique name/id which can be used to fetch its data.
+        Names/ids of stations/catchment/basins/gauges or whatever that would
+        be used to index each catchment in the dataset. Every catchment has a 
+        unique name/id which can be used to fetch its data.
 
         Examples
         --------

@@ -71,15 +71,15 @@ class CAMELS_BR(_RainfallRunoff):
     >>> data.index.names == ['time', 'dynamic_features']
      True
     # get data by station id
-    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True)
+    >>> df.unstack().shape
     (14245, 12)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> df.unstack().shape
     (14245, 4)
     # get names of available static features
     >>> dataset.static_features
@@ -89,8 +89,8 @@ class CAMELS_BR(_RainfallRunoff):
     (170940, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 67), (170940, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 67), (14245, 12))
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
@@ -155,14 +155,23 @@ class CAMELS_BR(_RainfallRunoff):
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
         self._maybe_to_netcdf('camels_dyn_br')
 
-        self.boundary_file = os.path.join(
-            path,
-            "CAMELS_BR",
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
             "14_CAMELS_BR_catchment_boundaries",
             "14_CAMELS_BR_catchment_boundaries",
             "camels_br_catchments.shp"
         )
-        self._create_boundary_id_map(self.boundary_file, 3)
+
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (.shp/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        """
+        return "gauge_id"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -468,10 +477,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         features = check_attributes(attributes, self.dynamic_features, 'dynamic_features')
 
-        if st is None:
-            st = self.start
-        if en is None:
-            en = self.end
+        st, en = self._check_length(st, en)
 
         cpus = self.processes or min(get_cpus(), 64)
 
@@ -593,15 +599,15 @@ class CABra(_RainfallRunoff):
     >>> len(stns)
     735
     # get data by station id
-    >>> _, df = dataset.fetch(stations='92', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='92', as_dataframe=True)
+    >>> df.unstack().shape
     (10956, 13)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs'])
+    >>> df.unstack().shape
     (10956, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -611,8 +617,8 @@ class CABra(_RainfallRunoff):
     (131472, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 87), (131472, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 87), (10956, 13))
 
     """
 
@@ -659,9 +665,19 @@ class CABra(_RainfallRunoff):
         if to_netcdf:
             self._maybe_to_netcdf(f'cabra_{met_src}_dyn')
 
-        self.boundary_file = os.path.join(self.path, "CABra_boundaries", "CABra_boundaries.shp")
-        self._create_boundary_id_map(self.boundary_file, 2)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.path, "CABra_boundaries", "CABra_boundaries.shp")
 
+    @property
+    def boundary_id_map(self) -> str:
+        """
+        Name of the attribute in the boundary (.shp/.gpkg) file that
+        will be used to map the catchment/station id to the geometry of the
+        catchment/station. This is used to create the boundary id map.
+        """
+        return "ID_CABra"
+    
     @property
     def static_map(self) -> Dict[str, str]:
         return {
@@ -670,27 +686,6 @@ class CABra(_RainfallRunoff):
                 'latitude': gauge_latitude(),
                 'longitude': gauge_longitude(),
         }
-
-    @staticmethod
-    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
-
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        catch_ids_map = {
-            str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
-        return catch_ids_map
 
     @property
     def dyn_map(self):
@@ -1175,6 +1170,7 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
             en=None
     ) -> dict:
 
+        st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         if self.verbosity>1:
@@ -1194,6 +1190,8 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
 
         meteos = [
             self._read_meteo_from_csv(station=station, source=self.met_src) for station in stations]
+        # todo : this will be correct only if we are getting data for all stations
+        # but what if we want to get data for some random stations?
         # 10 because first 10 stations don't have data for "ref" source
         met_idx = pd.to_datetime(
             meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
@@ -1220,6 +1218,6 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
             stn_df.index.name = 'time'
             stn_df.columns.name = 'dynamic_features'
 
-            dyn[stn] = stn_df
+            dyn[stn] = stn_df.loc[st:en]
 
         return dyn

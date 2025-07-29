@@ -26,9 +26,7 @@ extra_requires = [
 
 # spatial processing
 # maybe manually download the wheel file and install
-# shapely, # for spatial processing in mtropics
-'pyshp',
-# fiona, # processing of shapefiles in mtropics
+"fiona<=1.10.1", # processing of shapefiles in mtropics
 
 # for reading data
 'netCDF4',
@@ -46,7 +44,7 @@ setup(
 
     name='aqua_fetch',
 
-    version = "1.0.0rc2",
+    version = "1.0.0rc3",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
@@ -55,11 +53,10 @@ setup(
     url='https://github.com/hyex-research/AquaFetch',
 
     author='Ather Abbas',
-    author_email='ather_abbas786@yahoo.com',
+    author_email='ather.abbas.cheema@gmail.com',
 
     package_data={'aqua_fetch': ['data/portugal_stn_codes.csv']},
     include_package_data=True,
-    #data_files=[('data', ['data/portugal_stn_codes.csv'])],
 
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -88,6 +85,7 @@ setup(
               'aqua_fetch/wq',
               'aqua_fetch/rr',
               'aqua_fetch/wwt',
+              'aqua_fetch/misc',
               ],
 
     install_requires=min_requirements,

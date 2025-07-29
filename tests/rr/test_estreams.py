@@ -1,4 +1,5 @@
 
+import math
 import os
 import site
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,6 +22,7 @@ from aqua_fetch import Finland
 from aqua_fetch import Italy
 from aqua_fetch import Poland
 from aqua_fetch import Portugal
+from aqua_fetch import Slovenia
 
 from utils import (
     test_dataset,
@@ -30,7 +32,8 @@ from utils import (
     test_boundary,
     test_plot_stations,
     test_fetch_static_feature,
-    test_fetch_dynamic_features
+    test_fetch_dynamic_features,
+    test_plot_catchment,
     )
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -121,7 +124,9 @@ test_boundary(ds)
 
 test_plot_stations(ds)
 
-test_stations(ds, 15047)
+test_stations(ds, 17130)
+
+test_plot_catchment(ds)
 
 print('All tests passed!')
 
@@ -201,6 +206,25 @@ nan_cols = q.columns[q.isna().all()]
 test_dataset(ds, 
              num_stations=280, 
              dyn_data_len=18628, 
+             num_static_attrs=214,
+              num_dyn_attrs=10,
+              test_df=False,
+              )
+
+
+## Slovenia
+
+ds = Slovenia(path=gscad_path, verbosity=3)
+
+q = ds.get_q()
+
+assert q.shape == (27028, 117)
+
+assert len(q.columns[q.isna().all()]) == 0, len(q.columns[q.isna().all()])
+
+test_dataset(ds, 
+             num_stations=117, 
+             dyn_data_len=27028, 
              num_static_attrs=214,
               num_dyn_attrs=10,
               test_df=False,

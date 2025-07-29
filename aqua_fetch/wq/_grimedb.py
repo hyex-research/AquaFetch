@@ -25,12 +25,28 @@ class GRiMeDB(Datasets):
     >>> ds.stn_coords()
     >>> ds.shape
     5029, 2
+    >>> conc = ds.concentrations(streams=['Indus River'])
+    >>> conc.shape
+    (2, 59)    
+    >>> conc = ds.concentrations(parameters=['Q', 'NO3', 'NH4', 'TN', 'SRP', 'TP', 'DOC'])
+    >>> conc.shape
+    (25052, 7)
+    >>> fluxes = ds.fluxes()
+    >>> fluxes.shape
+    (7298, 52)
+    >>> fluxes['Site_ID'].nunique()
+    1903
+    >>> sites = ds.sites()
+    >>> sites['Site_ID'].nunique()
+    5029
+    >>> sites['Stream_Name'].nunique()
+    2722    
     """
     url = {
-        "concentrations.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-ntl.420.1&entityid=ba3e270bcab8ace5d157c995e4b791e4",
-        "fluxes.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-ntl.420.1&entityid=1a559f00566ed9f9f33ccb0daab0bef5",
-        "sites.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-ntl.420.1&entityid=3faa64303d5f5bcd043bb88f6768e603",
-        "sources.csv": "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-ntl.420.1&entityid=3615386d27a2d148be09e70ac22799e4"
+        "concentrations.csv": "https://pasta.lternet.edu/package/data/eml/knb-lter-ntl/420/2/ba3e270bcab8ace5d157c995e4b791e4",
+        "fluxes.csv": "https://pasta.lternet.edu/package/data/eml/knb-lter-ntl/420/2/1a559f00566ed9f9f33ccb0daab0bef5",
+        "sites.csv": "https://pasta.lternet.edu/package/data/eml/knb-lter-ntl/420/2/3faa64303d5f5bcd043bb88f6768e603",
+        "sources.csv": "https://pasta.lternet.edu/package/data/eml/knb-lter-ntl/420/2/3615386d27a2d148be09e70ac22799e4",
     }
 
     def __init__(self, path=None, **kwargs):
@@ -111,7 +127,7 @@ class GRiMeDB(Datasets):
         elif streams != "all":
             streams = check_attributes(streams, self.streams, 'streams')
             sites = self.sites()
-            stations = sites.loc[sites['Stream_Name'].isin(streams), 'Site_ID'].values.tolist()
+            stations = sites.loc[sites['Stream_Name'].isin(streams), 'Site_ID'].values.astype(int).tolist()
             df = df[df['Site_ID'].isin(stations)]
         
         if parameters != "all":

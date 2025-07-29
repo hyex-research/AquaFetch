@@ -49,8 +49,8 @@ class SWatCh(Datasets):
     --------
     Examples
     --------
-    >>> from water.datasets import Swatch
-    >>> ds = Swatch()
+    >>> from aqua_fetch import SWatCh
+    >>> ds = SWatCh()
     >>> df = ds.fetch()
     >>> df.shape
     (3901296, 6)
@@ -65,8 +65,8 @@ class SWatCh(Datasets):
 
     url = "https://zenodo.org/record/6484939"
     def __init__(self,
-                 remove_csv_after_download=False,
-                 path=None,
+                 remove_csv_after_download:bool=False,
+                 path:Union[str, os.PathLike]=None,
                  **kwargs):
         """
         parameters
@@ -111,7 +111,7 @@ class SWatCh(Datasets):
     def npy_files(self)->list:
         return [fname for f in os.walk(self.path) for fname in f[2] if fname.endswith('.npy')]
 
-    def read_csv(self)->pd.DataFrame:
+    def read_csv(self, reduce_memory:bool = True)->pd.DataFrame:
 
         df = pd.read_csv(self.csv_name,
                          dtype = {col: str for col in CATS}.update(
@@ -129,7 +129,8 @@ class SWatCh(Datasets):
         dates = pd.to_datetime(df.pop("ActivityStartDate") + " " + df.pop("ActivityStartTime"))
         df.index = dates
 
-        maybe_reduce_memory(df, hints=h)
+        if reduce_memory:
+            maybe_reduce_memory(df, hints=h)
 
         strings = ["ResultComment", "ResultAnalyticalMethodID", "MonitoringLocationID",
                    "MonitoringLocationName"]
@@ -142,16 +143,17 @@ class SWatCh(Datasets):
     
     def stn_coords(self):
         """
-        Returns the coordinates of all the stations in the dataset
+        Returns the coordinates of all the stations in the dataset and 'loc_id' as index.
 
         Returns
         -------
         pd.DataFrame
             A dataframe with columns 'lat', 'long'
         """
-        df = self.fetch(parameters=['lat', 'long', 'location'])
+        # use loc_id instead of location because it appears location has duplicates
+        df = self.fetch(parameters=['lat', 'long', 'loc_id'])
         return df.drop_duplicates(
-            subset=['location'])[['lat', 'long', 'location']].set_index('location').astype(np.float32)
+            subset=['loc_id'])[['lat', 'long', 'loc_id']].set_index('loc_id').astype(np.float32)
 
     def _maybe_to_binary(self):
         """reads the csv file and saves each columns in binary format using numpy.
@@ -207,8 +209,8 @@ class SWatCh(Datasets):
 
         Examples
         --------
-        >>> from water.datasets import Swatch
-        >>> ds = Swatch()
+        >>> from aqua_fetch import SWatCh
+        >>> ds = SWatCh()
         >>> df = ds.fetch()
         >>> df.shape
         (3901296, 6)

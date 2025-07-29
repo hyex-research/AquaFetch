@@ -17,7 +17,7 @@ directly access and utilize the data without labor-intensive and time-consuming 
 
 The package comprises three submodules, each representing a different type of water 
 resource data: `rr` for rainfall-runoff processes, `wq` for surface water quality, 
-and `wwt` for wastewater treatment. The rr submodule offers data for 47,716 catchments 
+and `wwt` for wastewater treatment. The rr submodule offers data for 47,291 catchments 
 worldwide, encompassing both dynamic and static features for each catchment. The 
 dynamic features consist of observed streamflow and meteorological time series, 
 averaged over the catchment area, available at daily or hourly time steps. Static 

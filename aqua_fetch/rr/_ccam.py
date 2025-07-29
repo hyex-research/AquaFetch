@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._backend import shapefile
+from .._backend import fiona
 from .._backend import xarray as xr
-from ..utils import merge_shapefiles
+from ..utils import merge_shapefiles_fiona
 from ..utils import check_attributes, dateandtime_now
 
 from ._map import (
@@ -72,14 +72,15 @@ class CCAM(_RainfallRunoff):
     >>> len(stns)
     102
     # get data by station id
-    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True)
+    >>> df.unstack().shape
     (8035, 16)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pre', 'tem_mean', 'evp', 'rhu', 'q']).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(1, as_dataframe=True, 
+      ... dynamic_features=['pcp_mm', 'airtemp_C_mean', 'evap_mm', 'rh_%', 'q_cms_obs'])
+    >>> df.unstack().shape
     (8035, 5)
     # get names of available static features
     >>> dataset.static_features
@@ -89,8 +90,8 @@ class CCAM(_RainfallRunoff):
     (128560, 10)  # remember this is multi-indexed DataFrame
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
-    ((1, 124), (128560, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 124), (8035, 16))
 
     """
     url = "https://zenodo.org/record/5729444"
@@ -132,16 +133,22 @@ class CCAM(_RainfallRunoff):
                                 "7_HydroMLYR",
                                 "0_basin_boundary")
 
-        self.boundary_file = os.path.join(shp_path, 'boundaries.shp')
         files = [file for file in os.listdir(shp_path) if file.endswith('.shp')]
         shp_files = [os.path.join(shp_path, shp_file) for shp_file in files]
         boundaries = os.path.join(shp_path, "boundaries")
 
-        if shapefile is not None:
-            merge_shapefiles(shp_files, boundaries, add_new_field=True,
-                                ignore_previous_fields=True, verbosity=self.verbosity)
+        if fiona is not None:
+            merge_shapefiles_fiona(shp_files, boundaries)
 
-            self._create_boundary_id_map(self.boundary_file, 2)
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path, 
+            "7_HydroMLYR", 
+            "7_HydroMLYR", 
+            "0_basin_boundary",
+            "boundaries",
+            "boundaries.shp")
 
     @property
     def static_map(self) -> Dict[str, str]:

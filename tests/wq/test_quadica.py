@@ -18,10 +18,6 @@ class TestQuadica(unittest.TestCase):
         assert DS.avg_temp().shape == (828, 1386)
         return
     
-    def test_coords(self):
-        assert DS.coords().shape == (1386, 2)
-        return
-
     def test_pet(self):
         assert DS.pet().shape == (828, 1386)
 
@@ -60,8 +56,8 @@ class TestQuadica(unittest.TestCase):
         return
 
     def test_catchment_attrs(self):
-        assert DS.catchment_attributes().shape == (1386, 113)
-        assert DS.catchment_attributes(stations=['1', '2', '3']).shape == (3, 113)
+        assert DS.catchment_attributes().shape == (1386, 112), DS.catchment_attributes().shape
+        assert DS.catchment_attributes(stations=['1', '2', '3']).shape == (3, 112)
         return
 
     def test_fetch_monthly(self):
@@ -87,8 +83,13 @@ class TestQuadica(unittest.TestCase):
 
         return
 
+    def test_stn_coords(self):
+        coords = DS.stn_coords()
+        assert coords.shape == (1386, 2), coords.shape
+        assert 'lat' in coords.columns
+        assert 'long' in coords.columns
+        return
 
-#dyn, cat = DS.fetch_monthly(max_nan_tol=None)
 
 if __name__=="__main__":
     unittest.main()

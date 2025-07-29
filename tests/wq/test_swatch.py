@@ -1,17 +1,17 @@
 
 import os
 import site   # so that aqua_fetch directory is in path
-wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
 import unittest
 
 import pandas as pd
 
-from aqua_fetch import Swatch
+from aqua_fetch import SWatCh
 
 
-ds = Swatch(path='/mnt/datawaha/hyex/atr/data')
+ds = SWatCh(path='/mnt/datawaha/hyex/atr/data', verbosity = 4)
 
 
 class TestSwatch(unittest.TestCase):
@@ -35,9 +35,9 @@ class TestSwatch(unittest.TestCase):
         return
     
     def test_coords(self):
-        coords = ds.coords
+        coords = ds.stn_coords()
         assert isinstance(coords, pd.DataFrame)
-        assert coords.shape == (26322, 2)
+        assert coords.shape == (26322, 2), coords.shape
         return
 
 

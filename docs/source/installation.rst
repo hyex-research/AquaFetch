@@ -13,10 +13,11 @@ choose to install all of them as well.
 ::
     pip install aqua-fetch[all]
 
-This will install `xarray <https://docs.xarray.dev/en/stable/>`_, `shapely <https://shapely.readthedocs.io/en/stable/>`_, 
-`pyshp <https://github.com/GeospatialPython/pyshp>`_ and `easy_mpl <https://easy-mpl.readthedocs.io/>`_ libraries. The xarray 
+This will install `xarray <https://docs.xarray.dev/en/stable/>`_, `netCDF4 <https://unidata.github.io/netcdf4-python/>`_, 
+`fiona <https://fiona.readthedocs.io/en/stable/>`_ and
+`easy_mpl <https://easy-mpl.readthedocs.io/>`_ libraries. The xarray 
 library is used to save the data in netCDF4 format for faster I/O operations. 
-shapely and shapefile libraries are used to process shapefiles while easy_mpl is used for plotting purpose.
+fiona is used to process shapefiles while easy_mpl is used for plotting purpose.
 
 We can also specify the AquaFetch version that we want to install as below
 ::
@@ -39,11 +40,11 @@ The latest code however (possibly with less bugs and more features) can be insta
 
 To install the latest branch (`dev`) with all requirements use ``all`` keyword
 ::
-    python -m pip install "AquaFetch[all] @ git+https://github.com/hyex-research/AquaFetch.git@dev"
+    python -m pip install "aqua-fetch[all] @ git+https://github.com/hyex-research/AquaFetch.git@dev"
 
 This will install `xarray <https://docs.xarray.dev/en/stable/>`_, `netCDF4 <https://github.com/Unidata/netcdf4-python>`_, 
 `easy_mpl <https://easy-mpl.readthedocs.io/>`_
-and `pyshp <https://github.com/GeospatialPython/pyshp>`_
+and `fiona <https://fiona.readthedocs.io/en/stable/>`_ libraries.
 
 You can also install AquaFetch from a specific commit using the commit code (SHA) as below
 ::

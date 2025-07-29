@@ -18,8 +18,14 @@ from aqua_fetch import WaterBenchIowa
 from aqua_fetch import CAMELS_DE
 from aqua_fetch import CAMELS_SE
 from aqua_fetch import CAMELS_IND
+from aqua_fetch import CAMELS_FR
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
+from aqua_fetch import CAMELS_NZ
+from aqua_fetch import CAMELS_LUX
+from aqua_fetch import CAMELS_COL
+from aqua_fetch import CAMELS_SK
+from aqua_fetch.rr import CAMELS_FI
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -146,10 +152,58 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 472, 14976, 210, 20)
         return
 
+    def test_fr(self):
+        ds = CAMELS_FR(gscad_path, verbosity=4)
+        test_dataset(
+            ds,
+            num_stations=654,
+            dyn_data_len=18993,
+            num_static_attrs=344,
+            num_dyn_attrs=22,
+        )
+        return
+
     def test_rainfallrunoff(self):
         ds_aus = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
                                  overwrite=True)
-        test_dataset(ds_aus, 561, 26388, 187, 26)
+        test_dataset(ds_aus, 561, 26388, 187, 28)
+        return
+
+    def test_camels_nz(self):
+        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 369, 460928, 39, 5, 
+                     yearly_steps=8760  # this number might not be correct
+                     )
+        return
+
+    def test_camels_lux(self):
+        for ts, num_vals, yearly_steps in zip(
+            ['D', 'H', '15Min'],
+            [6209, 149016, 596061],
+            [366, 8761, 35041],
+        ):
+            dataset = CAMELS_LUX(path=os.path.join(gscad_path, 'CAMELS'),
+                                 timestep=ts)
+            test_dataset(dataset, 56, num_vals, 61, 25, st="20120101", en="20121231", yearly_steps=yearly_steps)
+        return
+
+    def test_camels_col(self):
+        dataset = CAMELS_COL(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 347, 15340, 255, 6)
+        return
+
+    def test_camels_sk(self):
+        dataset = CAMELS_SK(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 178, 175320, 215, 17,
+                     st="20120101", en="20121231", 
+                     yearly_steps=8761)
+        return
+
+    def test_camels_fi(self):
+
+        dataset = CAMELS_FI(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+        test_dataset(dataset, 320, 23010, 106, 16)
+
         return
 
 

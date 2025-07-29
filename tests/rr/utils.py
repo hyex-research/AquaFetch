@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from aqua_fetch._backend import xarray as xr
 
-import matplotlib.pyplot as plt
+from aqua_fetch._backend import plt, netCDF4, fiona
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,7 @@ def test_stations(dataset, stations_len):
     stations = dataset.stations()
     assert len(stations) == stations_len, f'number of stations for {dataset.name} are {len(stations)}'
 
-    for stn in stations:
-        assert isinstance(stn, str)
-
-    assert all([isinstance(i, str) for i in stations])
+    assert all([isinstance(stn, str) for stn in stations])
     return
 
 
@@ -57,8 +54,30 @@ def test_plot_stations(dataset):
     ax.set_title("Stations")
     assert isinstance(ax, plt.Axes)
     plt.close()
+
+    dataset.plot_stations(color='area_km2', show=False)
+    plt.close()
     return
 
+
+def test_plot_catchment(dataset):
+    logger.info(f"testing plot_catchment for {dataset.name}")
+
+    stations = dataset.stations()
+    ax = dataset.plot_catchment(stations[0], show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    ax = dataset.plot_catchment(stations[0], marker='o', ms=0.3, show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    stations = dataset.stations()
+    ax = dataset.plot_catchment(stations[0], show_outlet=True, show=False)
+    assert isinstance(ax, plt.Axes)
+    plt.close()
+
+    return
 
 def test_area(dataset):
     logger.info(f"testing area for {dataset.name}")
@@ -97,9 +116,9 @@ def test_q_mmd(dataset):
 def test_boundary(dataset):
     logger.info(f"testing get_boundary for {dataset.name}")
 
-    boundary = dataset.get_boundary(dataset.stations()[0])
+    geometry = dataset.get_boundary(dataset.stations()[0])
 
-    assert isinstance(boundary, np.ndarray)
+    assert isinstance(geometry, fiona.Geometry), f"Expected fiona.Geometry, got {type(geometry)}"
 
     return
 
@@ -181,7 +200,7 @@ def test_selected_dynamic_features(dataset, as_dataframe=False):
 
     if as_dataframe:
         data = data.unstack()
-        assert data.shape[1] == 2
+        assert data.shape[1] == 2, f"data.shape is {data.shape}, expected 2 dynamic features"
     else:
         assert len(data.dynamic_features) == 2, len(data.dynamic_features)
 
@@ -202,10 +221,10 @@ def test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_le
 
     station = random.choice(dataset.stations())
 
-    static, dynamic = dataset.fetch_station_features(station)
+    static, dynamic = dataset.fetch_station_features(station, static_features='all')
 
     assert static.shape == (1, num_static_attrs), f"shape is {static.shape}"
-    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.data_vars)}"
+    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.columns)}"
     assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
 
     # test for single static feature
@@ -267,10 +286,11 @@ def check_dataframe(
         #         _stn_data_len = len(stn_data.iloc[stn_data.index.get_level_values('dynamic_features') == dyn_attr])
         #         assert _stn_data_len>=stn_data_len, f"{col} for {dataset.name} is not of length {stn_data_len}"
         stn_data = df[col].unstack()
+        desired_shape = (data_len, len(dataset.dynamic_features))
         # data for each station must minimum be of this shape
-        msg = f"""for {col} station of {dataset.name} the shape is {stn_data.shape}"""
+        msg = f"""for {col} station of {dataset.name} the shape is {stn_data.shape} and not {desired_shape}"""
         if raise_len_error:
-            assert stn_data.shape == (data_len, len(dataset.dynamic_features)), msg
+            assert stn_data.shape == desired_shape, msg
         else:
             logger.warning(msg)
 
@@ -357,19 +377,28 @@ def test_st_en_with_static_and_dynamic(
     return
 
 
-def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
-                 test_df=True, yearly_steps=366,
+def test_dataset(dataset, 
+                 num_stations, 
+                 dyn_data_len, 
+                 num_static_attrs, 
+                 num_dyn_attrs,
+                 test_df=True, 
+                 yearly_steps=366,
                  raise_len_error=True,
-                 st="20040101", en="20041231",
+                 st="20040101", 
+                 en="20041231",
                  has_q: bool = True,
                  ):
-    # check that dynamic attribues from all data can be retrieved.
-    test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
+    
+    if netCDF4 is not None:
+        # check that dynamic attribues from all data can be retrieved.
+        test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
     if test_df:
         test_dynamic_data(dataset, 'all', num_stations, dyn_data_len, as_dataframe=True)
 
-    # check that dynamic data of 10% of stations can be retrieved
-    test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
+    if netCDF4 is not None:
+        # check that dynamic data of 10% of stations can be retrieved
+        test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
                       raise_len_error=raise_len_error)
     if test_df:
         test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len, True,
@@ -380,7 +409,8 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     test_static_data(dataset, 0.1,
                      int(num_stations * 0.1))  # check that static data of 10% of stations can be retrieved
 
-    test_all_data(dataset, 3, dyn_data_len, raise_len_error=raise_len_error)
+    if netCDF4 is not None:
+        test_all_data(dataset, 3, dyn_data_len, raise_len_error=raise_len_error)
 
     if test_df:
         test_all_data(dataset, 3, dyn_data_len, True, raise_len_error=raise_len_error)
@@ -388,21 +418,23 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     # check length of static attribute categories
     test_attributes(dataset, num_static_attrs, num_dyn_attrs, num_stations)
 
-    # make sure dynamic data from one station have num_dyn_attrs attributes
-    test_fetch_dynamic_features(dataset, random.choice(dataset.stations()))
+    if netCDF4 is not None:
+        # make sure dynamic data from one station have num_dyn_attrs attributes
+        test_fetch_dynamic_features(dataset, random.choice(dataset.stations()))
     if test_df:
         test_fetch_dynamic_features(dataset, random.choice(dataset.stations()), True)
 
-    # make sure that dynamic data from 3 stations each have correct length/shape
-    test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len)
+    if netCDF4 is not None:
+        # make sure that dynamic data from 3 stations each have correct length/shape
+        test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len)
     if test_df:
         test_fetch_dynamic_multiple_stations(dataset, 3, dyn_data_len, True)
 
     # make sure that static data from one station can be retrieved
     test_fetch_static_feature(dataset, random.choice(dataset.stations()),
                               num_stations, num_static_attrs)
-
-    test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()),
+    if netCDF4 is not None:
+        test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()),
                                        yearly_steps=yearly_steps,
                                        st=st, en=en)
     if test_df:
@@ -413,18 +445,22 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     # test that selected dynamic features can be retrieved successfully
     test_selected_dynamic_features(dataset, as_dataframe=test_df)
 
-    # test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_data_len)
+    test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_data_len)
 
     test_coords(dataset)
 
-    test_plot_stations(dataset)
+    if plt is not None:
+        test_plot_stations(dataset)
 
     test_area(dataset)
 
     if has_q:
         test_q_mmd(dataset)
 
-    test_boundary(dataset)
+    if fiona is not None:
+        test_boundary(dataset)
+
+        test_plot_catchment(dataset)
 
     logger.info(f"** Finished testing {dataset.name} **")
 

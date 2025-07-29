@@ -38,3 +38,5 @@ from ._grimedb import GRiMeDB
 from ._misc import BuzzardsBay
 from ._misc import WhiteClayCreek
 from ._river_chem_siberia import RiverChemSiberia
+from ._camels_chem import Camels_Ch_Chem
+from ._oligotrend import Oligotrend

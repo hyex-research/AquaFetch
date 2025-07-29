@@ -81,15 +81,15 @@ class GRDCCaravan(_RainfallRunoff):
     >>> df.index.names == ['time', 'dynamic_features']
         True
     get data by station id
-    >>> _, df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> _, df = dataset.fetch(stations='GRDC_3664802', as_dataframe=True)
+    >>> df.unstack().shape
          (26800, 39)
     get names of available dynamic features
     >>> dataset.dynamic_features
     get only selected dynamic features
     >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs']).unstack()
-    >>> data.shape
+    ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs'])
+    >>> data.unstack().shape
         (26800, 4)
     get names of available static features
     >>> dataset.static_features
@@ -99,8 +99,8 @@ class GRDCCaravan(_RainfallRunoff):
         (1045239, 10)
     If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-        ((1, 211), (1045200, 1))
+    >>> static.shape, dynamic.unstack().shape
+        ((1, 211), (26800, 39))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (5357, 2)
@@ -151,18 +151,19 @@ class GRDCCaravan(_RainfallRunoff):
             elif self.verbosity > 0:
                 print(f"{_file} at {self.path} already exists")
 
-        self.boundary_file = os.path.join(
-            self.shapefiles_path,
-            'grdc_basin_shapes.shp'
-        )
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         # so that we dont have to read the files again and again
         self._stations = self.other_attributes().index.to_list()
         self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
 
         self.dyn_fname = ''
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.shapefiles_path,
+            'grdc_basin_shapes.shp'
+        )
 
     @property
     def static_map(self) -> Dict[str, str]:

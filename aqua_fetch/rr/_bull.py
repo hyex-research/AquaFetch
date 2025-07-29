@@ -102,15 +102,15 @@ class Bull(_RainfallRunoff):
     >>> len(stns)
     484
     # get data by station id
-    >>> df = dataset.fetch(stations='BULL_9007', as_dataframe=True).unstack()
-    >>> df.shape
+    >>> df = dataset.fetch(stations='BULL_9007', as_dataframe=True)
+    >>> df.unstack().shape
     (25932, 55)
     # get names of available dynamic features
     >>> dataset.dynamic_features
     # get only selected dynamic features
     >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms']).unstack()
-    >>> df.shape
+    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms'])
+    >>> df.unstack().shape
     (25932, 4)
     # get names of available static features
     >>> dataset.static_features
@@ -120,8 +120,8 @@ class Bull(_RainfallRunoff):
     (166166, 10)  # remember this is multi-indexed DataFrame
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 214), (1426260, 1))
+    >>> static.shape, dynamic.unstack().shape
+    ((1, 214), (25932, 55))
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (484, 2)
@@ -153,11 +153,11 @@ class Bull(_RainfallRunoff):
         self._dynamic_features = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
         self._static_features = list(set(self._static_data().columns.tolist()))
 
-        self.boundary_file = os.path.join(self.shapefiles_path, "BULL_basin_shapes.shp")
-
-        self._create_boundary_id_map(self.boundary_file, 0)
-
         self.dyn_fname = ''
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self.shapefiles_path, "BULL_basin_shapes.shp")
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -278,6 +278,7 @@ class Bull(_RainfallRunoff):
             with py7zr.SevenZipFile(fpath, mode='r') as z:
                 z.extractall(path = self.path)
                 print(f'Extracted {file}')
+        return
 
     def caravan_attributes(self) -> pd.DataFrame:
         """a dataframe of shape (484, 10)"""
