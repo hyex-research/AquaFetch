@@ -55,12 +55,12 @@ dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide
 _, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.levels[1]
-df.shape
-   (26388, 28)
+df.shape   # ->    (26388, 28)
+
 # get name of all stations as list
 stns = dataset.stations()
-len(stns)
-   561
+len(stns)  # -> 561
+
 # get data of 10 % of stations as dataframe
 _, df = dataset.fetch(0.1, as_dataframe=True)
 df.shape  # (738864, 56)

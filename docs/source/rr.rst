@@ -346,6 +346,15 @@ List of datasets
      - 1950 - 2021
      - Iceland
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
+   * - ``NPCTR Catchments``
+     - :py:class:`aqua_fetch.rr.NPCTRCatchments`
+     - 
+     - 7
+     - 8
+     - 14
+     - 2013 - 2019
+     - Iceland
+     - `Korver et al., (2024) <https://doi.org/10.5194/essd-14-4231-2022>`_
    * - ``Poland``
      - :py:class:`aqua_fetch.rr.Poland`
      - 1287
@@ -372,25 +381,7 @@ List of datasets
      - 0
      - 2016 - 2019
      - Lulea (Sweden)
-     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_   
-   * - ``Spain``
-     - :py:class:`aqua_fetch.rr.Spain`
-     - 889
-     -
-     - 27
-     - 35
-     - 1979 - 2020
-     - Spain
-     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_
-   * - ``Slovenia``
-     - :py:class:`aqua_fetch.rr.Slovenia`
-     - 117
-     -
-     - 3
-     - 10
-     - 1950 - 2023
-     - Slovenia
-     - `vode.arso.gov.si <https://vode.arso.gov.si>`_     
+     - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
    * - ``Simbi``
      - :py:class:`aqua_fetch.rr.Simbi`
      - 24
@@ -400,6 +391,24 @@ List of datasets
      - 1920 - 1940
      - Haiti
      - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
+   * - ``Slovenia``
+     - :py:class:`aqua_fetch.rr.Slovenia`
+     - 117
+     -
+     - 3
+     - 10
+     - 1950 - 2023
+     - Slovenia
+     - `vode.arso.gov.si <https://vode.arso.gov.si>`_
+   * - ``Spain``
+     - :py:class:`aqua_fetch.rr.Spain`
+     - 889
+     -
+     - 27
+     - 35
+     - 1979 - 2020
+     - Spain
+     - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_
    * - ``Thailand``
      - :py:class:`aqua_fetch.rr.Thailand`
      - 73
@@ -679,6 +688,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.NPCTRCatchments
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.Poland
    :members:
    :show-inheritance:
@@ -740,12 +756,6 @@ This provides more control over the datasets.
 
    .. automethod:: __init__
 
-
-.. autoclass:: aqua_fetch.rr.NPCTRCatchments
-   :members:
-   :show-inheritance:
-
-   .. automethod:: __init__
 
 
 The following datasets are very much similar to RainfallRunoff datasets,
