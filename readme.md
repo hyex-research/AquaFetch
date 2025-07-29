@@ -52,6 +52,8 @@ and the catchment boundary. The following example demonstrates how to fetch data
 ```python
 from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
+
+# get the data of a single (randomly selected) station
 _, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.levels[1]
@@ -86,7 +88,8 @@ dataset.static_features
 # get data of 10 random stations
 df = dataset.fetch(10, as_dataframe=True)
 df.shape  # remember this is a multiindexed dataframe  with shape (26388, 280)
-# If we get both static and dynamic data
+
+# If we want to get both static and dynamic data
 static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
 static.shape, dynamic.unstack().shape   # ((1, 187), (26388, 28))
 
