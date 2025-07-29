@@ -167,7 +167,7 @@ class CAMELS_BR(_RainfallRunoff):
     @property
     def boundary_id_map(self) -> str:
         """
-        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        Name of the attribute in the boundary (.shp/.gpkg) file that
         will be used to map the catchment/station id to the geometry of the
         catchment/station. This is used to create the boundary id map.
         """
@@ -672,7 +672,7 @@ class CABra(_RainfallRunoff):
     @property
     def boundary_id_map(self) -> str:
         """
-        Name of the attribute in the boundary (shapefile/.gpkg) file that
+        Name of the attribute in the boundary (.shp/.gpkg) file that
         will be used to map the catchment/station id to the geometry of the
         catchment/station. This is used to create the boundary id map.
         """
@@ -686,27 +686,6 @@ class CABra(_RainfallRunoff):
                 'latitude': gauge_latitude(),
                 'longitude': gauge_longitude(),
         }
-
-    @staticmethod
-    def _get_map(sf_reader, id_index=None, name: str = '') -> Dict[str, int]:
-
-        fieldnames = [f[0] for f in sf_reader.fields[1:]]
-
-        if len(fieldnames) > 1:
-            if id_index is None:
-                raise ValueError(f"""
-                more than one fileds are present in {name} shapefile 
-                i.e: {fieldnames}. 
-                Please provide a value for id_idx_in_{name} that must be
-                less than {len(fieldnames)}
-                """)
-        else:
-            id_index = 0
-
-        catch_ids_map = {
-            str(int(rec[id_index])): idx for idx, rec in enumerate(sf_reader.iterRecords())
-        }
-        return catch_ids_map
 
     @property
     def dyn_map(self):

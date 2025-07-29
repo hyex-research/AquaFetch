@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._project import utm_to_lat_lon
+from .._geom_utils import utm_to_lat_lon
 from ..utils import get_cpus
 from ..utils import check_attributes, download, unzip
 
@@ -3146,13 +3146,6 @@ class CAMELS_NZ(_RainfallRunoff):
 
         if self.to_netcdf:
             self._maybe_to_netcdf('camels_nz_dyn')
-
-    @property
-    def boundary_id_index(self) -> int:
-        """
-        index of the column in the shapefile which contains the catchment ids
-        """
-        return 0
 
     @property
     def boundary_file(self)-> os.PathLike:

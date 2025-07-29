@@ -13,6 +13,9 @@ from .._backend import netCDF4
 from .._backend import fiona
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
 from ..utils import check_attributes, get_cpus
+from .._geom_utils import (
+    _make_boundary_2d
+)
 
 from ._map import (
     catchment_area,
@@ -1066,43 +1069,6 @@ class _RainfallRunoff(Datasets):
 
         return geometry
 
-    def _make_boundary_2d(self, geometry)-> List[np.ndarray]:
-
-        def make_polygon_2d(polygon):
-            """
-            converts a 3D polygon to 2D polygon by removing the z coordinate
-            """
-            if polygon.ndim == 3:
-                assert polygon.shape[0] == 1, "Only one polygon is expected for a catchment"
-                polygon = polygon[0]
-            
-            if polygon.shape[1] == 3:
-                # if the polygon has 3 coordinates, then we will remove the z coordinate
-                assert polygon[:, -1].sum() == 0, "Z coordinate is not zero for the polygon"
-                polygon = polygon[:, :-1]
-
-            return polygon
-
-        rings = []
-        if geometry.type == 'MultiPolygon':
-            for polygon in geometry.coordinates:
-                if len(polygon) == 1:
-                    polygon = np.array(polygon)
-                    rings.append(make_polygon_2d(polygon))
-                else:
-                    for p in polygon:  # for GRDC_1159100, # there are multiple polygons
-                        p = np.array(p)
-                        rings.append(make_polygon_2d(p))
-        else:
-            if len(geometry.coordinates) > 1:
-                for polygon in geometry.coordinates:
-                    polygon = np.array(polygon)
-                    rings.append(make_polygon_2d(polygon))
-            else:
-                polygon = np.array(geometry.coordinates)
-                rings.append(make_polygon_2d(polygon))
-        return rings
-
     def plot_catchment(
             self,
             catchment_id: str,
@@ -1145,7 +1111,7 @@ class _RainfallRunoff(Datasets):
         """
         geometry = self.get_boundary(catchment_id)
 
-        rings = self._make_boundary_2d(geometry)
+        rings:List[np.ndarray] = _make_boundary_2d(geometry)
 
         _kws = dict(
             ax_kws=dict(xlabel="Longitude", ylabel="Latitude")

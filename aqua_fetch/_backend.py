@@ -36,12 +36,9 @@ except (ModuleNotFoundError, ImportError) as e:
 
 
 try:
-    import shapely
-    from shapely.geometry import shape, mapping
     from shapely.ops import unary_union
 except (ModuleNotFoundError, OSError):
-    shape, mapping, unary_union = None, None, None
-    shapely = None
+    unary_union = None
 
 
 try:

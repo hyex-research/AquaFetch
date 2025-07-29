@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._backend import netCDF4, shapefile, xarray as xr
+from .._backend import netCDF4, xarray as xr
 from ..utils import get_cpus
 from ..utils import check_attributes
 from ._hysets import HYSETS

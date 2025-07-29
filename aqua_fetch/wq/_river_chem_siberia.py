@@ -6,7 +6,9 @@ from typing import List
 
 import pandas as pd
 
+from .._backend import fiona
 from .._datasets import Datasets
+from .._geom_utils import calc_centroid
 
 
 class RiverChemSiberia(Datasets):
@@ -56,6 +58,8 @@ class RiverChemSiberia(Datasets):
     >>> ds = RiverChemSiberia()
     >>> ds.stations()
     ['Selenga-Baikal', 'Angara', 'Lena', 'Eastern-Siberia', 'Kolyma', 'Yana', 'Indigirka']
+    >>> len(ds.parameters)
+    34
     """
     url = {
         "Sample data.zip": "https://springernature.figshare.com/ndownloader/files/37706754",
@@ -78,41 +82,35 @@ class RiverChemSiberia(Datasets):
         """
         Returns the coordinates of the stations.
         """
-
-        from shapefile import Reader
-        from shapely.geometry import shape, Point
-
         stns_file = os.path.join(self.path, "Boundary data", "Boundary data", "Basin_boundary.shp")
-
-        sf = Reader(stns_file)
-
         coords = []
-        # Iterate through the shapes in the shapefile
-        for shaperec in sf.iterShapeRecords():
-            # Convert shapefile geometries into shapely geometries
-            polygon = shape(shaperec.shape.__geo_interface__)
-            centroid = polygon.centroid
-            
-            # Print or process the centroid
-            coords.append([centroid.x, centroid.y, shaperec.record.Basin])
 
-        sf.close()
+        # Read Basin_boundary.shp
+        with fiona.open(stns_file) as src:
+            for _, feature in enumerate(src):
+
+                geometry = feature['geometry']
+
+                centroid = calc_centroid(geometry)
+
+                basin = feature.properties['Basin']
+
+                coords.append([*centroid, basin])
 
         sf = os.path.join(self.path, "Boundary data", "Boundary data", "Eastern_Siberia_boundary.shp")
-        sf = Reader(sf)
+        # Read Basin_boundary.shp
+        with fiona.open(sf) as src:
+            for _, feature in enumerate(src):
 
-        # Iterate through the shapes in the shapefile
-        for shaperec in sf.iterShapeRecords():
-            # Convert shapefile geometries into shapely geometries
-            polygon = shape(shaperec.shape.__geo_interface__)
-            centroid = polygon.centroid
-            
-            # Print or process the centroid
-            coords.append([centroid.x, centroid.y, 'Eastern_Siberia'])
+                geometry = feature['geometry']
 
-        sf.close()
+                centroid = calc_centroid(geometry)
 
-        return pd.DataFrame(coords, columns=['long', 'lat', 'index']).set_index('index')
+                coords.append([*centroid, "Eastern_Siberia"])
+
+        coords = pd.DataFrame(coords, columns=['long', 'lat', 'index']).set_index('index')
+
+        return coords
 
     def stations(self)->List[str]:
         """
@@ -140,8 +138,9 @@ class RiverChemSiberia(Datasets):
         Returns the boundary data of the water chemistry in eastern Siberian rivers.
         """
         fpath = os.path.join(self.path, "Boundary data", "Boundary data", "Boundary_data.csv")
-
+        # todo
         raise NotImplementedError("The method is not implemented yet.")
 
     def meteorology(self):
+        # todo
         raise NotImplementedError("The method is not implemented yet.")

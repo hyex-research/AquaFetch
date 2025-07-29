@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from ._backend import shapefile, plt, xarray, netCDF4, matplotlib
-from ._backend import fiona, shapely
+from ._backend import fiona
 
 
 COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
@@ -556,87 +556,6 @@ def le_column(df:pd.DataFrame, col_name:str)->tuple:
     return df, None, encoder
 
 
-
-def plot_shapefile(
-        shp_files,
-        labels=None,
-        show_all_together=True,
-        bbox_shp=None,
-        recs=None, rec_idx=None,
-        leg_kws=None,
-        save=False,
-        colors=None,
-        markersize=12,
-        save_kws=None
-        ):
-
-    """
-    leg_kws:{'bbox_to_anchor': (1.02, -0.15),
-                   'numpoints': 1,
-                   'fontsize': 16,
-                   'markerscale':2}
-    save_kws:{'fname': 'point_plot', 'bbox_inches': 'tight'}
-    """
-    if not isinstance(shp_files, list):
-        shp_files = [shp_files]
-
-    if leg_kws is None:
-        leg_kws = {'bbox_to_anchor': (0.93, -0.15),
-                   'numpoints': 1,
-                   'fontsize': 16,
-                   'markerscale': 2}
-    if labels is None:
-        labels = {}
-    if save_kws is None:
-        save_kws = {'fname': 'point_plot', 'dpi': 300, 'bbox_inches': 'tight'}
-
-    records = shapefile.Reader(shp_files[0]).shapeRecords()
-    Colors = random.choices(COLORS, k=len(records))
-
-    if len(shp_files) > 1:
-        for i in range(1, len(shp_files)):
-            shp_reader = shapefile.Reader(shp_files[i])
-            records += shp_reader.shapeRecords()
-            Colors += random.choices(COLORS, k=len(shp_reader.shapeRecords()))
-
-    plt.close('all')
-    for feature, n in zip(records, Colors):
-
-        if recs is not None:
-            assert isinstance(rec_idx, int)
-            rec = feature.record[rec_idx]
-        else:
-            rec, recs = '', ''
-
-        if rec in recs:
-            f_if = feature.shape.__geo_interface__
-            if f_if is None:
-                pass
-            else:
-                if f_if['type'].lower() in ['point']:  # it is point
-                    c = colors.get(rec, random.choice(COLORS))
-                    plt.plot(*f_if['coordinates'], '*', label=labels.get(rec, rec), color=c, markersize=markersize)
-                else:
-                    plot_polygon_feature(feature, n, shapefile.Reader(shp_files[0]).bbox)
-
-    if bbox_shp is not None:
-        shp_reader = shapefile.Reader(bbox_shp)
-        records = shp_reader.shapeRecords()
-        for feature, n in zip(records, Colors):
-            plot_polygon_feature(feature, n, shapefile.Reader(shp_files[0]).bbox)
-
-        plt.legend(**leg_kws)
-        if not show_all_together:
-            plt.show()
-
-    if save:
-        plt.savefig(**save_kws)
-    # if show_all_together:
-    plt.show()
-    # shp_reader.close()
-    return
-
-
 def plot_polygon_feature(feature, n, bbox):
     f_if = feature.shape.__geo_interface__
     polys = len(f_if['coordinates'])
@@ -959,9 +878,6 @@ def get_version_info()->dict:
 
     if fiona is not None:
         versions['fiona'] = fiona.__version__
-    
-    if shapely is not None:
-        versions['shapely'] = shapely.__version__
 
     return versions
 
@@ -1013,6 +929,8 @@ def merge_shapefiles_fiona(shp_files, output_path):
 
     import fiona
 
+    print(f"Merging {len(shp_files)} shapefiles into {output_path}")
+
     # Read schema and CRS from the first shapefile
     with fiona.open(shp_files[0], 'r') as first:
         schema = first.schema
@@ -1027,8 +945,8 @@ def merge_shapefiles_fiona(shp_files, output_path):
 
     # Write merged output
     with fiona.open(output_path, 'w', driver='ESRI Shapefile', crs=crs, schema=schema) as output:
-        for shp in shp_files:
-            
+        for idx, shp in enumerate(shp_files):
+
             base_name = os.path.splitext(os.path.basename(shp))[0]
 
             with fiona.open(shp, 'r') as src:
@@ -1038,130 +956,12 @@ def merge_shapefiles_fiona(shp_files, output_path):
                         'properties': {'gauge_id': base_name}
                     }
                     output.write(new_feature)
-    
+
+            if idx % 1000 == 0:
+                print(f"Processed {idx + 1}/{len(shp_files)} shapefiles...")
+
     print(f"Merged {len(shp_files)} shapefiles into {output_path}")
 
-    return
-
-
-def _merge_shapefiles(shapefiles,
-                      out_shapefile,
-                      add_new_field:bool = False,
-                      new_field_name:str = "ID",
-                      new_field_val_maker = None,
-                      ignore_previous_fields:bool = False
-                      ):
-   # Merge shapefiles into one
-    from shapefile import Reader, Writer
-
-    added = False
-    with Writer(out_shapefile) as shp_writer:
-        for shp_file in shapefiles:
-            with Reader(shp_file) as shp_reader:
-
-                shp_reader.numRecords == 1
-                shp_reader.numShapes == 1
-
-                if not shp_writer.fields and not ignore_previous_fields:
-                    shp_writer.fields = shp_reader.fields[1:]
-
-                if add_new_field and not added:
-                    shp_writer.fields.append([new_field_name, 'C', 50, 0])
-                    added = True
-
-                for shp_record in shp_reader.iterShapeRecords():
-                    
-                    if ignore_previous_fields:
-                        shp_record.record = []
-
-                    if add_new_field:
-                        ID = os.path.basename(shp_reader.shapeName)
-                        if new_field_val_maker is not None:
-                            ID = new_field_val_maker(ID)
-                        shp_record.record.append(ID)
-                        if len(shp_record.record) != len(shp_writer.fields):
-                            raise ValueError(f"""
-in {ID} {len(shp_record.record)} records are found but number of fields are {len(shp_writer.fields)}""")
-                    shp_writer.record(*shp_record.record)
-                    #
-                    shp_writer.shape(shp_record.shape)
-    return
-
-
-def read_proj(proj_file)->str:
-    """reads the projection"""
-    with open(proj_file, 'r') as fp:
-        proj = fp.readlines()
-    assert len(proj)==1
-    return proj[0]
-
-
-def merge_shapefiles(
-        shapefiles:List[str],
-        out_shapefile:str,
-        add_new_field:bool = False,
-        new_field_name:str = "ID",
-        new_field_val_maker = None,
-        ensure_same_projection:bool = True,
-        ignore_previous_fields:bool = False,
-        verbosity:int = 0
-):
-    """
-    merges shapefiles into one out_shapefile
-
-    Parameters
-    -----------
-    shapefiles : list
-        list of paths of shapefiles that needs to be merged
-    out_shapefile : str
-    add_new_field : bool
-        if True, then a new field is added in the shape file. The value of each record
-        for this field will be the name of the shape file that is being merged.
-    new_field_name : str
-        The name of new field to be added
-    ensure_same_projection : bool
-        wether to ensure that all shape files  in ``shapefiles`` list have
-        same projection or not
-    ignore_previous_fields : bool
-        if true will not copy fields from the shapefiles in the new/merged shapefile.
-    """
-    if os.path.exists(out_shapefile + '.shp'):
-        if verbosity>0:
-            print(f"{out_shapefile} already exists")
-        return
-    proj_file = os.path.join(os.path.dirname(out_shapefile),
-                             f"{os.path.basename(out_shapefile)}.prj")
-
-    # making sure that the all files have save projection
-    prj_files = []
-    for f in shapefiles:
-        dirname = os.path.dirname(f)
-        basename = os.path.basename(f)
-        basename = basename.split('.shp')[0]
-
-        prj_file = os.path.join(dirname, f"{basename}.prj")
-        prj_files.append(prj_file)
-
-    if ensure_same_projection:
-        proj0 = read_proj(prj_files[0])
-
-        for proj_f in prj_files:
-            prj = read_proj(proj_f)
-            assert prj == proj0, f"""
-            projection of {proj_f} differs from projection of rest shapefiles"""
-
-        with open(prj_files[0], 'r') as f:
-            lines = f.readlines()
-            with open(proj_file, "w") as f1:
-                f1.writelines(lines)
-
-    _merge_shapefiles(
-        shapefiles, out_shapefile, 
-        add_new_field=add_new_field, 
-        new_field_name=new_field_name,
-        new_field_val_maker=new_field_val_maker,
-        ignore_previous_fields=ignore_previous_fields
-        )
     return
 
 

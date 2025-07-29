@@ -20,7 +20,7 @@ from .._backend import xarray as xr
 
 from ..utils import get_cpus
 from ..utils import check_attributes
-from ..utils import merge_shapefiles
+from ..utils import merge_shapefiles_fiona
 from .utils import _RainfallRunoff
 
 from ._map import (
@@ -160,7 +160,7 @@ class GSHA(_RainfallRunoff):
 
     @property
     def boundary_id_map(self) -> str:
-        return "ID"
+        return "gauge_id"
 
     @property
     def agencies(self) -> List[str]:
@@ -303,8 +303,7 @@ class GSHA(_RainfallRunoff):
         if not os.path.exists(out_shapefile):
             shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if
                          filename.endswith('.shp')]
-            merge_shapefiles(shp_files, out_shapefile,
-                             add_new_field=True)
+            merge_shapefiles_fiona(shp_files, out_shapefile)
         return
 
     def _get_stations(
@@ -1502,21 +1501,21 @@ class Japan(_GSHA):
     def agency_name(self)->str:
         return 'MLIT'
 
-    def _maybe_move_and_merge_shpfiles(self):
+    # def _maybe_move_and_merge_shpfiles(self):
 
-        out_shp_file = os.path.join(self.path, "boundaries.shp")
+    #     out_shp_file = os.path.join(self.path, "boundaries.shp")
 
-        if not os.path.exists(out_shp_file):
-            df = self.gsha._coords()
-            jpn_stns = df.loc[df['agency'] == 'MLIT']
-            shp_path = os.path.join(self.gsha.path, "WatershedPolygons", 
-                                    "WatershedPolygons")
-            shp_files = [os.path.join(shp_path, f"{filename}.shp") for filename in jpn_stns['station_id'].values]
-            for f in shp_files:
-                assert os.path.exists(f)
+    #     if not os.path.exists(out_shp_file):
+    #         df = self.gsha._coords()
+    #         jpn_stns = df.loc[df['agency'] == 'MLIT']
+    #         shp_path = os.path.join(self.gsha.path, "WatershedPolygons", 
+    #                                 "WatershedPolygons")
+    #         shp_files = [os.path.join(shp_path, f"{filename}.shp") for filename in jpn_stns['station_id'].values]
+    #         for f in shp_files:
+    #             assert os.path.exists(f)
 
-            merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
-        return
+    #         merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
+    #     return
 
     def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single

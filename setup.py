@@ -26,8 +26,6 @@ extra_requires = [
 
 # spatial processing
 # maybe manually download the wheel file and install
-# shapely, # for spatial processing in mtropics
-'pyshp',
 "fiona<=1.10.1", # processing of shapefiles in mtropics
 
 # for reading data
@@ -88,6 +86,7 @@ setup(
               'aqua_fetch/wq',
               'aqua_fetch/rr',
               'aqua_fetch/wwt',
+              'aqua_fetch/misc',
               ],
 
     install_requires=min_requirements,

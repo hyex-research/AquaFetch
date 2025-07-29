@@ -1,24 +1,52 @@
+
 import os
 import site
-
 # add the parent directory in the path
 wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
-import pandas as pd
+import fiona
 import numpy as np
-
-from pyproj import Transformer
-
+import pandas as pd
 import matplotlib.pyplot as plt
+from easy_mpl.utils import despine_axes
 from mpl_toolkits.basemap import Basemap
 
-from easy_mpl.utils import despine_axes
+from pyproj import Transformer
+from shapely.geometry import shape
 
-from aqua_fetch._project import utm_to_lat_lon, laea_to_wgs84
 from aqua_fetch import RainfallRunoff, Quadica
 
+from aqua_fetch._geom_utils import calc_centroid
+from aqua_fetch._geom_utils import utm_to_lat_lon, laea_to_wgs84
+
+
 DATA_PATH = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+
+
+def test_calc_centroid():
+
+    stns_file = os.path.join(
+        ds.path, 
+        "Boundary data", "Boundary data", 
+        "Basin_boundary.shp")
+
+    # Read Basin_boundary.shp
+    with fiona.open(stns_file) as shp:
+        for _, feature in enumerate(shp):
+            # Convert fiona geometry to shapely geometry
+            geometry = feature['geometry']
+
+            polygon = shape(feature['geometry'])
+            centroid = polygon.centroid
+
+            shp_cent = np.array(centroid.coords.xy).T[0]
+
+            centroid1 = calc_centroid(geometry)
+            est_cent = np.array(centroid1)
+
+            np.testing.assert_allclose(est_cent, shp_cent, rtol=1e-5, atol=1e-5)
+    return
 
 
 def test_25832_to_4326():
