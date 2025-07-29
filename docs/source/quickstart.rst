@@ -92,7 +92,7 @@ adsorption, sonolysis and membrane filteration.
 .. code-block:: python
 
     >>> from aqua_fetch import ec_removal_biochar
-    >>> data, *_ = ec_removal_biochar()
+    >>> data, _ = ec_removal_biochar()
     >>> data.shape
     (3757, 27)
     >>> data, encoders = ec_removal_biochar(encoding="le")

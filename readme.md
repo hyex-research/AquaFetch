@@ -38,7 +38,7 @@ numpy, pandas and requests. To install the library with full list of dependencie
 
 	python -m pip install "aqua-fetch[all] @ git+https://github.com/hyex-research/AquaFetch.git"
 
-This will install addtional optional depencdies which include xarray, fiona, netCDF and easy_mpl.
+This will install addtional optional depencdies which include [xarray](https://docs.xarray.dev/en/stable/), [fiona](https://fiona.readthedocs.io/en/stable/), [netCDF4](https://github.com/Unidata/netcdf4-python) and [easy_mpl](https://easy-mpl.readthedocs.io/).
 
 ## Usage
 The following sections describe brief usage of datasets from each of the three submodules i.e. ``rr``, ``wq`` and ``wwt``.
