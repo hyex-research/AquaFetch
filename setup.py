@@ -44,7 +44,7 @@ setup(
 
     name='aqua_fetch',
 
-    version = "1.0.0rc3",
+    version = "1.0.0rc4",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
