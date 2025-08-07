@@ -51,55 +51,55 @@ and the catchment boundary. The following example demonstrates how to fetch data
 
 ```python
 from aqua_fetch import RainfallRunoff
-dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
+dataset = RainfallRunoff('CAMELS_SE')  # instead of CAMELS_SE, you can provide any other dataset name
 
 # get the data of a single (randomly selected) station
 _, df = dataset.fetch(stations=1, as_dataframe=True)
 df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
 df.columns = df.columns.levels[1]
-df.shape   # ->    (26388, 28)
+df.shape   # ->    (21915, 4)
 
 # get name of all stations as list
 stns = dataset.stations()
-len(stns)  # -> 561
+len(stns)  # -> 50
 
 # get data of 10 % of stations as dataframe
 _, df = dataset.fetch(0.1, as_dataframe=True)
-df.shape  # (738864, 56)
+df.shape  # (87660, 5)
 
 # The returned dataframe is a multi-indexed data
 df.index.names   # ['time', 'dynamic_features'] 
 
 # get data by station id
-_, df = dataset.fetch(stations='912101A', as_dataframe=True)
-df.unstack().shape  # (26388, 28)
+_, df = dataset.fetch(stations='5', as_dataframe=True)
+df.unstack().shape  # (21915, 4)
 
 # get names of available dynamic features
 dataset.dynamic_features
 
 # get only selected dynamic features
 _, data = dataset.fetch(1, as_dataframe=True,
-...  dynamic_features=['airtemp_C_mean_agcd', 'pcp_mm_agcd', 'aet_mm_silo_morton', 'q_cms_obs'])
-data.unstack().shape  # (26388, 4)
+...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
+data.unstack().shape  # (21915, 3)
 
 # get names of available static features
 dataset.static_features
 
 # get data of 10 random stations
-df = dataset.fetch(10, as_dataframe=True)
-df.shape  # remember this is a multiindexed dataframe  with shape (26388, 280)
+_, df = dataset.fetch(10, as_dataframe=True)
+df.shape  # remember this is a multiindexed dataframe  with shape (87660, 10)
 
 # If we want to get both static and dynamic data
-static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
-static.shape, dynamic.unstack().shape   # ((1, 187), (26388, 28))
+static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
+static.shape, dynamic.unstack().shape   # ((1, 76), (21915, 4))
 
 # get coordinates of all stations
 coords = dataset.stn_coords()
-coords.shape  #     (561, 2)
-# get coordinates of station whose id is 912101A
-dataset.stn_coords('912101A')       # -18.643612	139.253052
+coords.shape  #     (50, 2)
+# get coordinates of station whose id is 5
+dataset.stn_coords('5')       # 68.035599	21.9758
 # get coordinates of two stations
-dataset.stn_coords(['912101A', '912105A'])
+dataset.stn_coords(['5', '736'])
 ```
 
 The datasets related to surface water quality are available using functional or objected-oriented API

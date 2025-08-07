@@ -25,7 +25,8 @@ from aqua_fetch import CAMELS_NZ
 from aqua_fetch import CAMELS_LUX
 from aqua_fetch import CAMELS_COL
 from aqua_fetch import CAMELS_SK
-from aqua_fetch.rr import CAMELS_FI
+from aqua_fetch import CAMELS_FI
+from aqua_fetch.rr._camels import CAMELSH
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'

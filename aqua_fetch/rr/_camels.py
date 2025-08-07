@@ -13,10 +13,10 @@ import pandas as pd
 
 from .utils import _RainfallRunoff
 from .._geom_utils import utm_to_lat_lon
-from ..utils import get_cpus
+from ..utils import get_cpus, download_and_unzip
 from ..utils import check_attributes, download, unzip
 
-from .._backend import netCDF4
+from .._backend import netCDF4, xarray as xr
 
 from ._map import (
     observed_streamflow_cms,
@@ -453,7 +453,7 @@ class CAMELS_GB(_RainfallRunoff):
         self._maybe_to_netcdf('camels_gb_dyn')
 
         if not os.path.exists(self.boundary_file):
-            unzip(self.data_path)
+            unzip(self.data_path, verbosity=self.verbosity)
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -747,12 +747,12 @@ class CAMELS_AUS(_RainfallRunoff):
             if os.path.exists(fpath) and overwrite:
                 os.remove(fpath)
                 if verbosity > 0: print(f"Re-downloading {_file} from {url + _file} at {fpath}")
-                download(url + _file, outdir=self.path, fname=_file)
+                download(url + _file, outdir=self.path, fname=_file, verbosity=self.verbosity)
 
             elif not os.path.exists(fpath):
                 if verbosity > 0:
                     print(f"Downloading {_file} from {url + _file} at {fpath}")
-                download(url + _file, outdir=self.path, fname=_file)
+                download(url + _file, outdir=self.path, fname=_file, verbosity=self.verbosity)
             elif verbosity > 0:
                 print(f"{_file} already exists at {self.path}")
 
@@ -2014,10 +2014,10 @@ class CAMELS_SE(_RainfallRunoff):
     """
 
     url = {
-        'catchment properties.zip': "https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment+properties.zip",
-        'catchment time series.zip': 'https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment+time+series.zip',
-        'catchment_GIS_shapefiles.zip': "https://snd.se/sv/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=catchment_GIS_shapefiles.zip",
-        'Documentation_2024-01-02.pdf': 'https://snd.se/en/catalogue/download/dataset/2023-173/1?principal=user.uu.se&filename=Documentation_2024-01-02.pdf&isDoc=y'
+ 'catchment properties.zip': 'https://api.researchdata.se/dataset/2023-173/1/file/data?filePath=catchment+properties.zip',
+ 'catchment time series.zip': 'https://api.researchdata.se/dataset/2023-173/1/file/data?filePath=catchment+time+series.zip',
+ 'catchment_GIS_shapefiles.zip': 'https://api.researchdata.se/dataset/2023-173/1/file/data?filePath=catchment_GIS_shapefiles.zip',
+ 'Documentation_2024-01-02.pdf': 'https://api.researchdata.se/dataset/2023-173/1/file/documentation?filePath=Documentation_2024-01-02.pdf'
     }
 
     def __init__(
@@ -2045,8 +2045,8 @@ class CAMELS_SE(_RainfallRunoff):
             if not os.path.exists(fpath) and not overwrite:
                 if verbosity > 0:
                     print(f"Downloading {_file} from {url}")
-                download(url, outdir=self.path, fname=_file, )
-                unzip(self.path)
+                download(url, outdir=self.path, fname=_file, verbosity=self.verbosity)
+                unzip(self.path, verbosity=self.verbosity)
             else:
                 if self.verbosity > 0: print(f"{_file} at {self.path} already exists")
 
@@ -3140,7 +3140,8 @@ class CAMELS_NZ(_RainfallRunoff):
             download(
             outdir=self.path,
             url=self.url,
-            fname="camels_nz.zip"
+            fname="camels_nz.zip",
+            verbosity=self.verbosity,
         )
 
         unzip(self.path, verbosity=self.verbosity)
@@ -4417,3 +4418,81 @@ class CAMELS_FI(_RainfallRunoff):
             else:
                 raise FileNotFoundError(f"Boundary file {zip_file} not found.")
         return
+
+
+class CAMELSH(_RainfallRunoff):
+    """
+    Dataset of ~5,000 catchments from united states of america following the work of
+    `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ .
+
+    Please note that usage of this dataset requires xarray and netCDF4 libraries.
+    """
+    url = {
+        "Hourly2.zip": "https://zenodo.org/records/16729675",  # contains observed q and water level
+        "timeseries_nonobs.7z": "https://zenodo.org/records/15070091",  # contains NLDAS forcing data
+        "attributes.7z": "https://zenodo.org/records/15066778",
+        "info.csv": "https://zenodo.org/records/15066778",
+        "shapefiles.7z": "https://zenodo.org/records/15066778"
+    }
+
+
+    def __init__(self,
+                 path=None,
+                 overwrite=False,
+                 **kwargs,
+    ):
+        super(CAMELSH, self).__init__(
+        path=path,
+        timestep="H",
+        **kwargs)
+            
+        for fname, url in self.url.items():
+            fpath = os.path.join(self.path, fname)
+
+            if not os.path.exists(fpath) or overwrite:
+                download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
+
+    @property
+    def h2_path(self) -> os.PathLike:
+        return os.path.join(self.path, "Hourly2", "Hourly2")
+    
+    @property
+    def attr_path(self) -> os.PathLike:
+        return os.path.join(self.path, "attributes")
+    
+    @property
+    def sf_path(self) -> os.PathLike:
+        return os.path.join(self.path, "shapefiles")
+    
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.sf_path,
+            "CAMELSH_shapefile.shp"
+        )
+    
+    def _read_stn_dyn(self, stn):
+        fpath = os.path.join(self.h2_path, f"{stn}_hourly.csv")
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f"Dynamic data for station {stn} not found in {self.h2_path}")
+        
+        ds = xr.open_dataset(fpath, engine='netcdf4')
+        return ds
+    
+    def _static_data(self) -> pd.DataFrame:
+        """
+        reads static data for all stations
+        """
+        csv_files = glob.glob(os.path.join(self.attr_path, '*.csv'))
+
+        dfs = []
+        for csv_file in csv_files:
+            df = pd.read_csv(
+                csv_file, 
+                index_col=0, 
+                dtype={0: str}
+            )
+            df.index = df.index.astype(str)
+            dfs.append(df)
+
+        return pd.concat(dfs)

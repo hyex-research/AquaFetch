@@ -91,6 +91,10 @@ def download_from_zenodo(
         retry: int, Number of times to Retry on error.
     """
 
+    # if outdir is file raise error
+    if os.path.isfile(outdir):
+        raise ValueError(f"Output directory {outdir} is a file, not a directory.")
+
     if requests is None:
         raise ImportError(f"You must isntall ``requests`` module first.")
 
