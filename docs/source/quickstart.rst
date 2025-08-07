@@ -22,7 +22,7 @@ however, the same interface can be used to access `all other datasets <https://a
     >>> df.columns = df.columns.levels[1]
     >>> df.shape
     (21915, 4)
-    ...
+
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -31,7 +31,7 @@ however, the same interface can be used to access `all other datasets <https://a
     >>> _, df = dataset.fetch(0.1, as_dataframe=True)
     >>> df.shape
        (87660, 5)
-    ...
+
     ... # The returned dataframe is a multi-indexed data
     >>> df.index.names
         ['time', 'dynamic_features']
@@ -46,19 +46,19 @@ however, the same interface can be used to access `all other datasets <https://a
     ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs']).unstack()
     >>> data.shape
        (21915, 3)
-    ...
+
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, df = dataset.fetch(10, as_dataframe=True)
     >>> df.shape  # remember this is a multiindexed dataframe
        (87660, 10)
-    ...
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic.shape
     ((1, 76), (21915, 4))
-    ...
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (50, 2)
