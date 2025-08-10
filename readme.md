@@ -47,7 +47,7 @@ For detailed usage examples see [docs](https://aquafetch.readthedocs.io/en/lates
 The core of ``rr`` sub-module is the [``RainfallRunoff``](https://aquafetch.readthedocs.io/en/latest/rainfall_runoff.html#aquafetch.rr.RainfallRunoff) class. This class
 fetches dynamic features (catchment averaged hydrometeorological data at daily or sub-daily timesteps),
 static features (catchment characteristics related to topography, soil, land use-land cover, or hydrological indices that have constant values over time)
-and the catchment boundary. The following example demonstrates how to fetch data for [CAMELS_AUS](https://aquafetch.readthedocs.io/en/latest/rainfall_runoff.html#aquafetch.rr.CAMELS_AUS). However, the method is the same for all [available rainfall-runoff datasets](https://aquafetch.readthedocs.io/en/latest/rainfall_runoff.html#id36).
+and the catchment boundary. The following example demonstrates how to fetch data for [CAMELS_SE](https://aquafetch.readthedocs.io/en/latest/rainfall_runoff.html#aquafetch.rr.CAMELS_SE). However, the method is the same for all [available rainfall-runoff datasets](https://aquafetch.readthedocs.io/en/latest/rainfall_runoff.html#id36).
 
 ```python
 from aqua_fetch import RainfallRunoff

@@ -10,7 +10,7 @@ Rainfall-Runoff Datasets
 The package provides a unified interface to access multiple rainfall-runoff datasets.
 A rainfall runoff dataset consists of observed streamflow, meterological time series 
 data averaged over the catchments, static features of the catchments and catchment
-boundary as shapefile. The following example shows how to acess `CAMELS_AUS <https://doi.org/10.5194/essd-2024-263>`_ dataset
+boundary as shapefile. The following example shows how to acess `CAMELS_SE <https://snd.se/en/catalogue/dataset/2023-173>`_ dataset
 however, the same interface can be used to access `all other datasets <https://aquafetch.readthedocs.io/en/latest/rr.html#list-of-datasets>`_ as well.
 
 .. code-block:: python
