@@ -278,4 +278,4 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     return df[inputs + target]
 
 
-__version__ = "1.0.0rc3"
+__version__ = "1.0.0"

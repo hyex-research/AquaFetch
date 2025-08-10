@@ -471,6 +471,19 @@ def unzip(
     for gz_file in gz_files:
         shutil.unpack_archive(gz_file, path)
 
+    sevenz_files = glob.glob(f"{path}/*.7z")
+
+    if len(sevenz_files) > 0:
+        try:
+            import py7zr
+        except (ModuleNotFoundError, ImportError):
+            raise ImportError('py7zr is required to extract the .7z files. Please install it using `pip install py7zr`')
+
+        for fpath in sevenz_files:
+            if not os.path.exists(os.path.join(path, fpath.split('.7z')[0])):
+                with py7zr.SevenZipFile(fpath, mode='r') as z:
+                    z.extractall(path = path)
+                    print(f'Extracted {fpath}')
     return
 
 
