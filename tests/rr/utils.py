@@ -224,12 +224,19 @@ def test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_le
     static, dynamic = dataset.fetch_station_features(station, static_features='all')
 
     assert static.shape == (1, num_static_attrs), f"shape is {static.shape}"
-    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.columns)}"
+    assert len(dynamic.columns) == num_dyn_attrs, f"num_dyn_attrs is {len(dynamic.columns)} not {num_dyn_attrs}"
     assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
 
     # test for single static feature
+    static, dynamic = dataset.fetch_station_features(station, static_features=dataset.static_features[0], dynamic_features=None)
+    assert static.shape == (1, 1), f"shape is {static.shape}"
+    assert dynamic is None
 
     # test for single dynamic feature
+    static, dynamic = dataset.fetch_station_features(station, static_features=None, dynamic_features=dataset.dynamic_features[0])
+    assert static is None
+    assert len(dynamic.columns) == 1, f"num_dyn_attrs is {len(dynamic.columns)} not {1}"
+    assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
 
     return
 

@@ -578,8 +578,8 @@ class CAMELS_AUS(_RainfallRunoff):
     """
     This is a dataset of 561 Australian catchments with 187 static features and
     28 dyanmic features for each catchment. The dyanmic features are timeseries
-    from 1950-01-01 to 2022-03-31. This class Reads CAMELS-AUS dataset of
-    `Fowler et al., 2024 <https://doi.org/10.5194/essd-2024-263>`_ .
+    from 1950-01-01 to 2022-03-31. By default this class reads version 2 of CAMELS-AUS dataset
+    following `Fowler et al., 2024 <https://doi.org/10.5194/essd-2024-263>`_ .
 
     If ``version`` is 1 then this class reads data following `Fowler et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
     which is a dataset of 222 Australian catchments with 161 static features
@@ -899,22 +899,26 @@ class CAMELS_AUS(_RainfallRunoff):
             en=None,
             ):
 
-        # todo currently it reads the data for all stations even if we want
-        # only one station. This makes it quite slow when we want to get data for only
-        # one station
-
         st, en = self._check_length(st, en)
         dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         dyn_attrs = {}
         dyn = {}
-        for _attr in list(self.folders[self.version].keys()):
-            _path = os.path.join(self.path, f'{self.folders[self.version][_attr]}{SEP}{_attr}.csv')
-            attr_df = pd.read_csv(_path, na_values=['-99.99'])
-            attr_df.index = pd.to_datetime(attr_df[['year', 'month', 'day']])
-            [attr_df.pop(col) for col in ['year', 'month', 'day']]
+        dtype = {stn: np.float32 for stn in stations}
+        dtype.update({'year': str, 'month': str, 'day': str})
 
-            dyn_attrs[_attr] = attr_df
+        for _attr in list(self.folders[self.version].keys()):
+
+            if self.dyn_map.get(_attr, _attr) not in dynamic_features:
+                continue
+
+            _path = os.path.join(self.path, f'{self.folders[self.version][_attr]}{SEP}{_attr}.csv')
+            
+            attr_df = pd.read_csv(_path, na_values=['-99.99'], usecols=['year', 'month', 'day'] + stations,
+                                  dtype=dtype)
+            attr_df.index = pd.to_datetime(attr_df[['year', 'month', 'day']])
+
+            dyn_attrs[_attr] = attr_df[stations]
 
         # making one separate dataframe for one station
         for idx, stn in enumerate(stations):
@@ -4422,8 +4426,11 @@ class CAMELS_FI(_RainfallRunoff):
 
 class CAMELSH(_RainfallRunoff):
     """
-    Dataset of ~5,000 catchments from united states of america following the work of
-    `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ .
+    Dataset of 5,767 catchments from united states of america following the work of
+    `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ . It consists
+    of hourly data with 14 dynamic features and 780 static features. The dynamic features
+    span from 19800101 to 20241231 with hourly timestep. The data is downloaded from
+    `Zenodo <https://zenodo.org/records/16729675>`_.
 
     Please note that usage of this dataset requires xarray and netCDF4 libraries.
     """
@@ -4452,6 +4459,9 @@ class CAMELSH(_RainfallRunoff):
             if not os.path.exists(fpath) or overwrite:
                 download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
 
+    def stations(self) -> List[str]:
+        return [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+
     @property
     def h2_path(self) -> os.PathLike:
         return os.path.join(self.path, "Hourly2", "Hourly2")
@@ -4471,13 +4481,34 @@ class CAMELSH(_RainfallRunoff):
             "CAMELSH_shapefile.shp"
         )
     
-    def _read_stn_dyn(self, stn):
-        fpath = os.path.join(self.h2_path, f"{stn}_hourly.csv")
+    @property
+    def nonobs_path(self) -> os.PathLike:
+        return os.path.join(self.path, "Data", "CAMELSH", "timeseries_nonobs")
+
+    def _read_stn_q(self, stn):
+        fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
         if not os.path.exists(fpath):
-            raise FileNotFoundError(f"Dynamic data for station {stn} not found in {self.h2_path}")
+            raise FileNotFoundError(f"q data for station {stn} not found in {self.h2_path}")
         
         ds = xr.open_dataset(fpath, engine='netcdf4')
         return ds
+
+    def _read_stn_forcing(self, stn):
+        fpath = os.path.join(self.nonobs_path, f"{stn}.nc")
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f"forcing data for station {stn} not found in {self.nonobs_path}")
+        
+        ds = xr.open_dataset(fpath, engine='netcdf4')
+
+        ds = ds.rename({'DateTime': 'time'})
+        return ds    
+    
+    def _read_stn_dyn(self, stn:str, nrows=None) -> pd.DataFrame:
+        q = self._read_stn_q(stn)
+        forcing = self._read_stn_forcing(stn)
+        # todo : converting to pandas will make the code extremely slow
+        # conversion should be done after we have fetched data from all stations and if required
+        return xr.merge([q, forcing]).to_pandas()
     
     def _static_data(self) -> pd.DataFrame:
         """
@@ -4487,12 +4518,19 @@ class CAMELSH(_RainfallRunoff):
 
         dfs = []
         for csv_file in csv_files:
-            df = pd.read_csv(
+
+            if 'attributes_hydroATLAS.csv' in csv_file:
+                df = pd.read_csv(
                 csv_file, 
                 index_col=0, 
-                dtype={0: str}
-            )
+                sep='\t',
+                dtype={0: str})
+            else:
+                df = pd.read_csv(
+                csv_file, 
+                index_col=0, 
+                dtype={0: str})
             df.index = df.index.astype(str)
             dfs.append(df)
 
-        return pd.concat(dfs)
+        return pd.concat(dfs, axis=1)

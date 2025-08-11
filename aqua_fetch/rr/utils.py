@@ -234,6 +234,8 @@ class _RainfallRunoff(Datasets):
 
         cpus = self.processes or min(get_cpus(), 16)
         start = time.time()
+        if len(stations) < cpus:
+            cpus = 1
 
         if cpus == 1:
             dyn = {}
@@ -685,8 +687,9 @@ class _RainfallRunoff(Datasets):
                 dyn = self._read_dynamic(stations, dynamic_features, st=st, en=en)
 
             else:
-                dyn = xr.open_dataset(self.dyn_fname)  # daataset
-                dyn = dyn[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
+                ds = xr.open_dataset(self.dyn_fname)  # daataset
+                dyn = ds[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
+                ds.close()
                 if as_dataframe:
                     dyn = dyn.to_dataframe(['time', 'dynamic_features'])
 
@@ -800,7 +803,8 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
-        >>> dataset.fetch_station_features('912101A')
+        >>> static, dynamic = dataset.fetch_station_features('912101A')
+        >>> static.shape, dynamic.shape
 
         """
         st, en = self._check_length(st, en)
@@ -813,6 +817,11 @@ class _RainfallRunoff(Datasets):
             
             if xr is not None and isinstance(dynamic, xr.Dataset):
                 dynamic = dynamic[station].to_pandas()
+            
+            elif isinstance(dynamic, pd.DataFrame) and len(dynamic.index.names) > 1:
+                # it is multiindex DataFrame, we need to stack it
+                dynamic = dynamic.unstack()
+                dynamic.columns = dynamic.columns.levels[1]
 
             if static_features is not None:
                 static = self.fetch_static_features(station, static_features)

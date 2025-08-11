@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/aqua-fetch.svg)](https://badge.fury.io/py/aqua-fetch)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aqua-fetch)](https://pypi.org/project/aqua-fetch/)
 [![status](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387/status.svg)](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387)
+[![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.16792359.svg)](https://doi.org/10.5281/zenodo.16792359)
 
 <p float="left">
   <img src="/docs/source/imgs/logo.png"/>
