@@ -228,8 +228,17 @@ class LamaHCE(_RainfallRunoff):
         if not self.all_ncs_exist and to_netcdf:
             self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
 
-        self.dyn_fname = os.path.join(self.path,
-                                      f'lamah_{data_type}_{timestep}_dyn.nc')
+        # self.dyn_fname = os.path.join(self.path,
+        #                               f'lamah_{data_type}_{timestep}_dyn.nc')
+
+    @property
+    def dyn_fname(self) -> Union[str, os.PathLike]:
+        """
+        name of the .nc file which contains dynamic features. This file is created during dataset initialization
+        only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
+        file can take some time however it leads to faster I/O operations.
+        """
+        return self.name.lower() + f"_{self.timestep}_{self.self.data_type}.nc"
 
     @property
     def static_map(self) -> Dict[str, str]:

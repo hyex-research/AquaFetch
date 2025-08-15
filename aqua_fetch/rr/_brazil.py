@@ -185,7 +185,7 @@ class CAMELS_BR(_RainfallRunoff):
                 print(f"{fpath} already exists")
 
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
-        self._maybe_to_netcdf('camels_dyn_br')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -725,11 +725,20 @@ class CABra(_RainfallRunoff):
         self._dynamic_features = self.__dynamic_features()
         self._static_features = self.__static_features()
 
-        self.dyn_fname = os.path.join(self.path,
-                                      f'cabra_{met_src}_dyn.nc')
+        # self.dyn_fname = os.path.join(self.path,
+        #                               f'cabra_{met_src}_dyn.nc')
 
-        if to_netcdf:
-            self._maybe_to_netcdf(f'cabra_{met_src}_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
+
+    @property
+    def dyn_fname(self) -> Union[str, os.PathLike]:
+        """
+        name of the .nc file which contains dynamic features. This file is created during dataset initialization
+        only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
+        file can take some time however it leads to faster I/O operations.
+        """
+        return self.name.lower() + f"_{self.timestep}_{self.met_src}.nc"
 
     @property
     def boundary_file(self) -> os.PathLike:

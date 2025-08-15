@@ -156,10 +156,10 @@ class CCAM(_RainfallRunoff):
         self.path = path
         self._download(overwrite=overwrite)
 
-        self.dyn_fname = os.path.join(self.path, 'ccam_dyn.nc')
+        #self.dyn_fname = os.path.join(self.path, 'ccam_dyn.nc')
 
         if to_netcdf:
-            self._maybe_to_netcdf('ccam_dyn')
+            self._maybe_to_netcdf()
             self._maybe_meteo_to_nc()
         
         shp_path = os.path.join(self.path,

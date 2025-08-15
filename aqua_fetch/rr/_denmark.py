@@ -142,10 +142,10 @@ class Caravan_DK(_RainfallRunoff):
         self._static_features = self._static_data().columns.to_list()
         self._dynamic_features = self.__dynamic_features()
 
-        self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
+        # self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
 
         #if to_netcdf:
-        self._maybe_to_netcdf('caravandk_dyn')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:

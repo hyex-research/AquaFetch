@@ -323,7 +323,7 @@ class HYSETS(_RainfallRunoff):
 
             unzip(self.path, verbosity=self.verbosity)
 
-        self._maybe_to_netcdf('')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -387,7 +387,7 @@ class HYSETS(_RainfallRunoff):
     def dynamic_features(self)->List[str]:
         return sorted(list(self.dyn_map.values()))
 
-    def _maybe_to_netcdf(self, fname: str):
+    def _maybe_to_netcdf(self):
 
         for src in list(set(list(self.sources.values()))):
             fname = f'HYSETS_2023_update_{src}.nc'

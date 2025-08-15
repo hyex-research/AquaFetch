@@ -247,7 +247,7 @@ class CAMELS_US(_RainfallRunoff):
             f'basin_timeseries_v1p2_metForcing_obsFlow{SEP}basin_dataset_public_v1p2')
 
         self._static_features = self._static_data().columns.tolist()
-        self._maybe_to_netcdf('camels_us_dyn')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -515,7 +515,7 @@ class CAMELS_GB(_RainfallRunoff):
 
         self._static_features = self._static_data().columns.tolist()
 
-        self._maybe_to_netcdf('camels_gb_dyn')
+        self._maybe_to_netcdf()
 
         if not os.path.exists(self.boundary_file):
             unzip(self.data_path, verbosity=self.verbosity)
@@ -867,8 +867,8 @@ class CAMELS_AUS(_RainfallRunoff):
         if netCDF4 is None:
             to_netcdf = False
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_aus_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -1192,8 +1192,8 @@ class CAMELS_CL(_RainfallRunoff):
             
         self._static_features = self._static_data().columns.tolist()
 
-        self.dyn_fname = os.path.join(self.path, 'camels_cl_dyn.nc')
-        self._maybe_to_netcdf('camels_cl_dyn')
+        # self.dyn_fname = os.path.join(self.path, 'camels_cl_dyn.nc')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -1490,8 +1490,8 @@ class CAMELS_CH(_RainfallRunoff):
 
         self._dynamic_features = self._read_stn_dyn(self.stations()[0]).columns.tolist()
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_ch_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -1972,8 +1972,8 @@ class CAMELS_DE(_RainfallRunoff):
             warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")
             to_netcdf = False
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_de_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -2286,8 +2286,8 @@ class CAMELS_SE(_RainfallRunoff):
             warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")
             to_netcdf = False
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_se_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -2566,8 +2566,8 @@ class CAMELS_DK(_RainfallRunoff):
         self._static_features = self._static_data().columns.to_list()
         self._dynamic_features = self._read_csv(self.stations()[0]).columns.to_list()
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_dk_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -2864,8 +2864,8 @@ class CAMELS_IND(_RainfallRunoff):
         self._static_features = self._static_data().columns.to_list()
         self._dynamic_features = self._read_stn_dyn(self.stations()[0]).columns.to_list()
 
-        if to_netcdf:
-            self._maybe_to_netcdf('camels_ind_dyn')
+        # if to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -3132,8 +3132,8 @@ class CAMELS_FR(_RainfallRunoff):
 
         self._dynamic_features = self._read_stn_dyn(self.stations()[0]).columns.to_list()
 
-        if self.to_netcdf:
-            self._maybe_to_netcdf('camels_fr_dyn')
+        # if self.to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:        
@@ -3449,8 +3449,8 @@ class CAMELS_NZ(_RainfallRunoff):
         # unzip the .zip files which are inside the camels_nz folder
         unzip(os.path.join(self.path, 'camels_nz'), verbosity=self.verbosity)
 
-        if self.to_netcdf:
-            self._maybe_to_netcdf('camels_nz_dyn')
+        # if self.to_netcdf:
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self)-> os.PathLike:
@@ -3775,8 +3775,8 @@ class CAMELS_COL(_RainfallRunoff):
 
         self._download(overwrite=overwrite)
 
-        if self.to_netcdf:
-            self._maybe_to_netcdf(f'camels_lux_dyn')
+        # if self.to_netcdf:
+        self._maybe_to_netcdf()
         
     @property
     def bbox(self) -> Dict[str, float]:
@@ -4064,8 +4064,8 @@ class CAMELS_SK(_RainfallRunoff):
         
         self._download(overwrite=self.overwrite)
 
-        if self.to_netcdf:
-            self._maybe_to_netcdf(f'camels_sk_dyn_{self.timestep}')
+        # if self.to_netcdf:
+        self._maybe_to_netcdf()
         
         self._unzip_7z_files()
 
@@ -4329,7 +4329,7 @@ class CAMELS_LUX(_RainfallRunoff):
         self._download(overwrite=overwrite)
 
         # if self.to_netcdf:
-        self._maybe_to_netcdf(f'camels_lux_dyn_{self.timestep}')
+        self._maybe_to_netcdf()
 
     @property
     def static_features(self) -> List[str]:
@@ -4619,7 +4619,7 @@ class CAMELS_FI(_RainfallRunoff):
 
         self._unzip_boundaries()
 
-        self._maybe_to_netcdf(f'camels_fi_dyn')
+        self._maybe_to_netcdf()
 
     @property
     def data_path(self) -> os.PathLike:

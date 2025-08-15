@@ -144,6 +144,24 @@ class _RainfallRunoff(Datasets):
         if not given, then the first attribute in the boundary file will be used.
         """
         return None
+    
+    @property
+    def dyn_fname(self) -> Union[str, os.PathLike]:
+        """
+        name of the .nc file which contains dynamic features. This file is created during dataset initialization
+        only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
+        file can take some time however it leads to faster I/O operations.
+        """
+        return self.name.lower() + f"_{self.timestep}.nc"
+
+    @property
+    def dyn_fpath(self) -> os.PathLike:
+        return os.path.join(self.path, self.dyn_fname)
+
+    @property
+    def dyn_fpath_exists(self) -> bool:
+        """checks if the .nc file which contains dynamic features exists"""
+        return os.path.exists(self.dyn_fpath)
 
     def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
         """converts discharge from mmd to cms"""
@@ -579,16 +597,16 @@ class _RainfallRunoff(Datasets):
             **kwargs
         )
 
-    def _maybe_to_netcdf(self, fname: str):
+    def _maybe_to_netcdf(self):
 
         # todo : we should save the dynamic data with default names of dynamic features
         # and then convert them to the standard names using the dyn_map
         # otherwise everytime we change dyn_map, we will have to convert the data again
         # and more importantly, all the users who used a previous version of the dataset
         # will have to download the data again, which is not good
-        self.dyn_fname = os.path.join(self.path, f'{fname}.nc')
+
         if self.to_netcdf:
-            if not os.path.exists(self.dyn_fname) or self.overwrite:
+            if not self.dyn_fpath_exists or self.overwrite:
                 # saving all the data in netCDF file using xarray
                 print(f'converting data to netcdf format for faster io operations')
                 _, data = self.fetch(static_features=None)
@@ -748,11 +766,11 @@ class _RainfallRunoff(Datasets):
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> camels = CAMELS_AUS()
-        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True)
         >>> camels.dynamic_features
         >>> camels.fetch_dynamic_features('912101A',
-        ... features=['airtemp_C_awap_max', 'vp_hpa_awap', 'q_cms_obs'],
-        ... as_dataframe=True).unstack()
+        ... dynamic_features=['airtemp_C_awap_max', 'vp_hpa_awap', 'q_cms_obs'],
+        ... as_dataframe=True)
         """
 
         assert isinstance(station, str), f"station id must be string is is of type {type(station)}"

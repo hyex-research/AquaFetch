@@ -138,11 +138,11 @@ class HYPE(_RainfallRunoff):
         fpath = os.path.join(self.path, 'hype_year_dyn.nc')
         if not os.path.exists(fpath):
             self.time_step = 'daily'
-            self._maybe_to_netcdf('hype_daily_dyn')
+            self._maybe_to_netcdf()
             self.time_step = 'month'
-            self._maybe_to_netcdf('hype_month_dyn')
+            self._maybe_to_netcdf()
             self.time_step = 'year'
-            self._maybe_to_netcdf('hype_year_dyn')
+            self._maybe_to_netcdf()
             self.time_step = time_step
 
         self.dyn_fname = os.path.join(self.path, f'hype_{time_step}_dyn.nc')

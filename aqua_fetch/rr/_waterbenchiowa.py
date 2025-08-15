@@ -28,25 +28,24 @@ class WaterBenchIowa(_RainfallRunoff):
     >>> from aqua_fetch import WaterBenchIowa
     >>> ds = WaterBenchIowa()
     ... # fetch static and dynamic features of 5 stations
-    >>> data = ds.fetch(5, as_dataframe=True)
-    >>> data.shape  # it is a multi-indexed DataFrame
+    >>> static, dynamic = ds.fetch(5, static_features='all', as_dataframe=True)
+    >>> len(dynamic)  # it is a dictionary with DataFrame
+    5 
+    ... # keys of dynamic are station names and values are DataFrames
+    >>> data = dynamic.popitem()[1]
+    >>> data.shape
     (184032, 5)
-    ... # fetch both static and dynamic features of 5 stations
-    >>> data = ds.fetch(5, static_features="all", as_dataframe=True)
-    >>> data.keys()
-    dict_keys(['dynamic', 'static'])
-    >>> data['static'].shape
+    >>> static.shape
     (5, 7)
-    >>> data['dynamic']  # returns a xarray DataSet
+
     ... # using another method
-    >>> data = ds.fetch_dynamic_features('644', as_dataframe=True)
-    >>> data.unstack().shape
+    >>> dynamic = ds.fetch_dynamic_features('644', as_dataframe=True)
+    >>> dynamic['644'].shape
     (61344, 3)
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> data = ds.fetch(stations='644', static_features="all", as_dataframe=True)
-    >>> data['static'].shape, data['dynamic'].shape
-    >>> ((1, 7), (184032, 1))
+
+    >>> static, dynamic = ds.fetch(stations='644', static_features="all", as_dataframe=True)
+    >>> static.shape, dynamic['644'].shape
+    >>> ((1, 7), (184032, 5))
     """
     url = "https://zenodo.org/record/7087806#.Y6rW-BVByUk"
 
@@ -55,7 +54,7 @@ class WaterBenchIowa(_RainfallRunoff):
 
         self._download()
 
-        self._maybe_to_netcdf('WaterBenchIowa.nc')
+        self._maybe_to_netcdf()
 
     @property
     def static_map(self) -> Dict[str, str]:
