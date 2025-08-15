@@ -17,9 +17,9 @@ however, the same interface can be used to access `all other datasets <https://a
 
     >>> from aqua_fetch import RainfallRunoff
     >>> dataset = RainfallRunoff('CAMELS_SE')  # instead of CAMELS_SE, you can provide any other dataset name
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.columns = df.columns.levels[1]
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='5', as_dataframe=True)
+    >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (21915, 4)
 
@@ -28,36 +28,45 @@ however, the same interface can be used to access `all other datasets <https://a
     >>> len(stns)
        50
     ... # get data of 10 % of stations as dataframe
-    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-       (87660, 5)
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (5)
+       5
 
-    ... # The returned dataframe is a multi-indexed data
-    >>> df.index.names
-        ['time', 'dynamic_features']
-    ... # get data by station id
-    >>> _, df = dataset.fetch(stations='5', as_dataframe=True).unstack()
-    >>> df.shape
-        (21915, 4)
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(21915, 4), (21915, 4), (21915, 4), (21915, 4), (21915, 4)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs']).unstack()
-    >>> data.shape
+    >>> _, dynamic = dataset.fetch('5', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['5'].shape
        (21915, 3)
 
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-       (87660, 10)
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
 
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.shape
-    ((1, 76), (21915, 4))
+    >>> static.shape, len(dynamic), dynamic['5'].shape
+    ((1, 76), 1, (21915, 4))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   # -> xarray.core.dataset.Dataset
+
+    >>> dynamic.dims   # -> FrozenMappingWarningOnValuesAccess({'time': 21915, 'dynamic_features': 4})
+
+    >>> len(dynamic.data_vars)   # -> 10
 
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
@@ -66,6 +75,13 @@ however, the same interface can be used to access `all other datasets <https://a
         68.035599	21.9758
     >>> dataset.stn_coords(['5', '736'])  # returns coordinates of two stations
 
+    # get area of a single station
+    >>> dataset.area('5')
+    # get coordinates of two stations
+    >>> dataset.area(['5', '736'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('5')
 
 Water Quality Datasets
 =======================

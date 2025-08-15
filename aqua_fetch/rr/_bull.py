@@ -79,55 +79,74 @@ class Bull(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import Bull
     >>> dataset = Bull()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (1426260, 48)  # 40 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['BULL_9007'].unstack().shape  # the name of station could be different
-    (25932, 13)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 25932, 'dynamic_features': 55})
-    >>> len(data.data_vars)
-        48
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='BULL_9007', as_dataframe=True)
+    >>> df = dynamic['BULL_9007'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (25932, 55)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    484
-    # get data by station id
-    >>> df = dataset.fetch(stations='BULL_9007', as_dataframe=True)
-    >>> df.unstack().shape
-    (25932, 55)
-    # get names of available dynamic features
+       484
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (48 out of 484)
+       48
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(25932, 55), (25932, 55), (25932, 55),... (25932, 55), (25932, 55)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms'])
-    >>> df.unstack().shape
-    (25932, 4)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('BULL_9007', as_dataframe=True,
+    ...  dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms'])
+    >>> dynamic['BULL_9007'].shape
+       (25932, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (166166, 10)  # remember this is multi-indexed DataFrame
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 214), (25932, 55))
+    >>> static.shape, len(dynamic), dynamic['BULL_9007'].shape
+    ((1, 214), 1, (25932, 55))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 25932, 'dynamic_features': 55})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (484, 2)
-    >>> dataset.stn_coords('BULL_9007')  # returns coordinates of station whose id is GRDC_3664802
-        41.298	-1.967
+    >>> dataset.stn_coords('BULL_9007')  # returns coordinates of station whose id is BULL_9007
+        41.298  -1.967
     >>> dataset.stn_coords(['BULL_9007', 'BULL_8083'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('BULL_9007')
+    # get coordinates of two stations
+    >>> dataset.area(['BULL_9007', 'BULL_8083'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('BULL_9007')
 
     """
 
@@ -150,7 +169,7 @@ class Bull(_RainfallRunoff):
         else:
             self.ftype = "netcdf"
 
-        self._dynamic_features = self._read_dynamic_for_stn(self.stations()[0]).columns.tolist()
+        self._dynamic_features = self._read_stn_dyn(self.stations()[0]).columns.tolist()
         self._static_features = list(set(self._static_data().columns.tolist()))
 
         self.dyn_fname = ''
@@ -275,9 +294,11 @@ class Bull(_RainfallRunoff):
 
         for file in files:
             fpath = os.path.join(self.path, file)
-            with py7zr.SevenZipFile(fpath, mode='r') as z:
-                z.extractall(path = self.path)
-                print(f'Extracted {file}')
+            extracted_path = os.path.join(self.path, file[:-3])  # remove .7z extension
+            if not os.path.exists(extracted_path):
+                with py7zr.SevenZipFile(fpath, mode='r') as z:
+                    z.extractall(path = self.path)
+                    print(f'Extracted {file}')
         return
 
     def caravan_attributes(self) -> pd.DataFrame:
@@ -310,7 +331,7 @@ class Bull(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
         return df
 
-    def _read_dynamic_for_stn(self, station: str) -> pd.DataFrame:
+    def _read_stn_dyn(self, station: str) -> pd.DataFrame:
 
         station = station.split('_')[1]
 
@@ -327,38 +348,6 @@ class Bull(_RainfallRunoff):
         df.rename(columns=self.dyn_map, inplace=True)
 
         return df
-
-    def _read_dynamic(
-            self,
-            stations,
-            dynamic_features,
-            st=None,
-            en=None) -> dict:
-
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
-        stations = check_attributes(stations, self.stations())
-
-        if st is None:
-            st = self.start
-        if en is None:
-            en = self.end
-
-        cpus = self.processes or min(get_cpus(), 64)
-
-        if len(stations) > 10 and cpus > 1:
-
-            with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
-                results = executor.map(
-                    self._read_dynamic_for_stn,
-                    stations,
-                )
-            dyn = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
-        else:
-            dyn = {
-                stn: self._read_dynamic_for_stn(stn).loc[st: en, dynamic_features] for stn in stations
-            }
-
-        return dyn
 
     def _read_q_for_stn(self, station) -> pd.DataFrame:
         """a dataframe of shape (time, 1)"""

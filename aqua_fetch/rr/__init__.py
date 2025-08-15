@@ -6,7 +6,7 @@ Rainfall Runoff datasets
 # https://springernature.figshare.com/articles/dataset/ExtendinG_SUb-DAily_River_Discharge_data_over_INdia_GUARDIAN_/27004282
 
 import os
-from typing import Union, List
+from typing import Dict, Union, List
 
 import pandas as pd
 from .._backend import plt, plt_Axes
@@ -118,62 +118,72 @@ class RainfallRunoff(object):
     Examples
     --------
     >>> from aqua_fetch import RainfallRunoff
-    >>> dataset = RainfallRunoff('CAMELS_AUS')  # instead of CAMELS_AUS, you can provide any other dataset name
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.columns = df.columns.get_level_values('dynamic_features')
+    >>> dataset = RainfallRunoff('CAMELS_SE')  # instead of CAMELS_SE, you can provide any other dataset name
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='5', as_dataframe=True)
+    >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-       (26388, 28)
+    (21915, 4)
+
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       561
+       50
     ... # get data of 10 % of stations as dataframe
-    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-       (738864, 56)
-    ... # The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
-    ... # get data by station id
-    >>> _, df = dataset.fetch(stations='912101A', as_dataframe=True)
-    >>> df.unstack().shape
-        (26388, 28)
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (5)
+       5
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(21915, 4), (21915, 4), (21915, 4), (21915, 4), (21915, 4)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
-    ...  dynamic_features=['airtemp_C_silo_max', 'pcp_mm_silo', 'aet_mm_silo_morton', 'q_cms_obs'])
-    >>> data.unstack().shape
-       (26388, 4)
+    >>> _, dynamic = dataset.fetch('5', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['5'].shape
+       (21915, 3)
+
     ... # get names of available static features
     >>> dataset.static_features
-    ... # get all static features of all stations
-    >>> df = dataset.fetch_static_features()
-    >>> df.shape
-         (561, 187)
-    ... # get area of a single station
-    >>> area = dataset.area('912101A')
-    >>> type(area), area.shape
-        (pandas.core.series.Series, (1,))
     ... # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-       (26388, 280)
-    # If we want to get both static and dynamic data 
-    >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 187), (26388, 28))
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['5'].shape
+    ((1, 76), 1, (21915, 4))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   # -> xarray.core.dataset.Dataset
+
+    >>> dynamic.dims   # -> FrozenMappingWarningOnValuesAccess({'time': 21915, 'dynamic_features': 4})
+
+    >>> len(dynamic.data_vars)   # -> 10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (561, 2)
-    >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
-       -18.643612	139.253052
-    >>> dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
-    ... # get boundary of the catchment
-    >>> boundary = dataset.get_boundary('912101A')
-    >>> b.shape
-    >>> (20086, 2)
+        (50, 2)
+    >>> dataset.stn_coords('5')  # returns coordinates of station whose id is 5
+        68.035599	21.9758
+    >>> dataset.stn_coords(['5', '736'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('5')
+    # get coordinates of two stations
+    >>> dataset.area(['5', '736'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('5')
 
     See :ref:`sphx_glr_auto_examples_camels_australia.py` for more comprehensive usage example.
 
@@ -413,7 +423,7 @@ class RainfallRunoff(object):
             en: Union[None, str] = None,
             as_dataframe: bool = False,
             **kwargs  # todo, where do these keyword args go?
-            ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
+            ) -> tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
         Fetches the features of one or more stations.
 
@@ -465,34 +475,40 @@ class RainfallRunoff(object):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or a python dictionary whose keys are station names
+            and values are :obj:`pandas.DataFrame`. It depends upon whether `as_dataframe`
             is True or False and whether the :obj:`xarray` library is installed or not.
             If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
             equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
-            and `time` and `dynamic_features` as dimensions and coordinates. If 
-            dynamic features are returned as :obj:`pandas.DataFrame`, then
-            the first index is `time` and the second index is `dynamic_features`.
+            and `time` and `dynamic_features` as dimensions and coordinates.
 
         Examples
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
+
         >>> # get data of 10% of stations
-        >>> _, df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        >>> _, dynamic = dataset.fetch(stations=0.1, as_dataframe=True)  # dynamic is a dictionary
+
         ...  # fetch data of 5 (randomly selected) stations
         >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
-        ... # fetch data of 3 selected stations
-        >>> _, three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+
+        ... # fetch data of 2 selected stations
+        >>> _, two_selec_stn_data = dataset.fetch(stations=['912101A','912105A'], as_dataframe=True)
+
         ... # fetch data of a single stations
-        >>> _, single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
+        >>> _, single_stn_data = dataset.fetch(stations='912101A', as_dataframe=True)
+
         ... # get both static and dynamic features as dictionary
         >>> static, dyanmic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> dynamic
+
         ... # get only selected dynamic features
-        >>> _, sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['q_cms_obs', 'solrad_wm2_silo'], as_dataframe=True)
+        >>> _, sel_dyn_features = dataset.fetch(stations='912101A',
+        ...     dynamic_features=['q_cms_obs', 'pcp_mm_silo'], as_dataframe=True)
+
         ... # fetch data between selected periods
-        >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
+        >>> _, data = dataset.fetch(stations='912101A', st="20010101", en="20101231", as_dataframe=True)
 
         """
         return self.dataset.fetch(stations, dynamic_features, static_features, st, en, as_dataframe, **kwargs)
@@ -506,7 +522,7 @@ class RainfallRunoff(object):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
+              ) -> tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
         Reads attributes of more than one stations.
 
@@ -541,13 +557,12 @@ class RainfallRunoff(object):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or a python dictionary whose keys are names of stations
+            and values are :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the :obj:`xarray` library is installed or not.
             If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
             equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
-            and `time` and `dynamic_features` as dimensions and coordinates. If 
-            dynamic features are returned as :obj:`pandas.DataFrame`, then
-            the first index is `time` and the second index is `dynamic_features`.
+            and `time` and `dynamic_features` as dimensions and coordinates.
 
         Raises
         ------
@@ -611,11 +626,11 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> camels = RainfallRunoff('CAMELS_AUS')
-        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('912101A', as_dataframe=True)
         >>> camels.dynamic_features
         >>> camels.fetch_dynamic_features('912101A',
         ... features=['airtemp_C_silo_max', 'vp_hpa_silo', 'q_cms_obs'],
-        ... as_dataframe=True).unstack()
+        ... as_dataframe=True)
         """
         return self.dataset.fetch_dynamic_features(
             station, dynamic_features, st, en, as_dataframe)

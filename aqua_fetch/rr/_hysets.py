@@ -116,17 +116,75 @@ class HYSETS(_RainfallRunoff):
     Examples
     --------
     >>> from aqua_fetch import HYSETS
-    >>> dataset = HYSETS(path="path/to/HYSETS")
-    ... # fetch data of a random station
-    >>> _, df = dataset.fetch(1, as_dataframe=True)
+    >>> dataset = HYSETS()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='5', as_dataframe=True)
+    >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (27028, 20)
-    >>> stations = dataset.stations()
-    >>> len(stations)
-    14425
-    >>> _, df = dataset.fetch('999', as_dataframe=True)
-    >>> df.unstack().shape
-    (27028, 20)
+
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       14425
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (1442 out of 14425)
+       1442
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(27028, 20), (27028, 20), (27028, 20),... (27028, 20), (27028, 20)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('5', as_dataframe=True,
+    ...  dynamic_features=['evap_mm', 'pcp_mm', 'snowmelt_mm', 'swe_mm', 'q_cms_obs'])
+    >>> dynamic['5'].shape
+       (27028, 5)
+
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['5'].shape
+    ((1, 30), 1, (27028, 20))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 27028, 'dynamic_features': 20})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (14425, 2)
+    >>> dataset.stn_coords('5')  # returns coordinates of station whose id is 5
+        47.091389	-67.731392
+    >>> dataset.stn_coords(['5', '12'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('5')
+    # get coordinates of two stations
+    >>> dataset.area(['5', '12'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('5')
 
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
@@ -267,8 +325,6 @@ class HYSETS(_RainfallRunoff):
 
         self._maybe_to_netcdf('')
 
-        self._stations = self.__stations()
-
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path,  
@@ -342,7 +398,7 @@ class HYSETS(_RainfallRunoff):
 
     @property
     def static_features(self)->List[str]:
-        df = self.read_static_data(nrows=2)
+        df = self._static_data(nrows=2)
         return df.columns.to_list()
 
     def stations(self) -> List[str]:
@@ -366,17 +422,14 @@ class HYSETS(_RainfallRunoff):
         >>> dataset.stations()
 
         """
-        return self._stations
-
-    def __stations(self)->List[str]:
-        return self.read_static_data().index.to_list()
+        return super().stations()
 
     @property
     def WatershedID_OfficialID_map(self):
         """A dictionary mapping Watershed_ID to Official_ID.
         For example '01AD002': '1'
         """
-        return self.read_static_data(
+        return self._static_data(
             usecols=['Watershed_ID', 'Official_ID']
             ).loc[:, 'Official_ID'].to_dict()
 
@@ -385,50 +438,16 @@ class HYSETS(_RainfallRunoff):
         """A dictionary mapping Official_ID to Watershed_ID.
         For example '1': '01AD002'
         """
-        s = self.read_static_data(usecols=['Watershed_ID', 'Official_ID'])
+        s = self._static_data(usecols=['Watershed_ID', 'Official_ID'])
         return {v:k for k,v in s.loc[:, 'Official_ID'].to_dict().items()}
-        
-    @property
-    def start(self)->str:
-        return "19500101"
 
     @property
-    def end(self)->str:
-        return "20231231"
+    def start(self)->pd.Timestamp:
+        return pd.Timestamp("19500101")
 
-    # def q_mmd(
-    #         self,
-    #         stations: Union[str, List[str]] = 'all'
-    # )->pd.DataFrame:
-    #     """
-    #     returns streamflow in the units of milimeter per day. This is obtained
-    #     by diving q_cms/area
-
-    #     parameters
-    #     ----------
-    #     stations : str/list
-    #         name/names of stations. Default is None, which will return
-    #         area of all stations
-
-    #     Returns
-    #     --------
-    #     pd.DataFrame
-    #         a :obj:`pandas.DataFrame` whose indices are time-steps and columns
-    #         are catchment/station ids.
-
-    #     """
-    #     stations = check_attributes(stations, self.stations())
-    #     _, q = self.fetch_stations_features(stations,
-    #                                        dynamic_features=observed_streamflow_cms(),
-    #                                        as_dataframe=True)
-    #     # todo: this is not good practice. fetch_stations_features should requrn q with correct
-    #     # column names and after correcting it correct it in USGS as well
-    #     q.columns = stations
-        
-    #     q.index = q.index.get_level_values(0)
-    #     area_m2 = self.area(stations) * 1e6  # area in m2
-    #     q = (q / area_m2) * 86400  # cms to m/day
-    #     return q * 1e3  # to mm/day
+    @property
+    def end(self)->pd.Timestamp:
+        return pd.Timestamp("20231231")
 
     def area(
             self,
@@ -493,13 +512,13 @@ class HYSETS(_RainfallRunoff):
         >>> features = dataset.fetch_stations_features(stations)
         """
         stations = check_attributes(stations, self.stations())
-        stations = [int(stn) for stn in stations]
+        stations_int = [int(stn) for stn in stations]
 
         static, dynamic = None, None
 
         if dynamic_features is not None:
 
-            dynamic = self._fetch_dynamic_features(stations=stations,
+            dynamic = self._fetch_dynamic_features(stations=stations_int,
                                                dynamic_features=dynamic_features,
                                                as_dataframe=as_dataframe,
                                                st=st,
@@ -508,19 +527,15 @@ class HYSETS(_RainfallRunoff):
                                                )
 
             if static_features is not None:  # we want both static and dynamic
-                static = self._fetch_static_features(station=stations,
+                static = self.fetch_static_features(stations,
                                                      static_features=static_features,
-                                                     st=st,
-                                                     en=en,
-                                                     **kwargs
                                                      )
 
         elif static_features is not None:
             # we want only static
-            static = self._fetch_static_features(
-                station=stations,
+            static = self.fetch_static_features(
+                stations,
                 static_features=static_features,
-                **kwargs
             )
         else:
             raise ValueError
@@ -565,7 +580,7 @@ class HYSETS(_RainfallRunoff):
         # Then converting it to (dynamic_features, time) with watershed as data_vars. This method is faster
         # for fewer dynamic features but slower for many dynamic features.
 
-        stations = np.subtract(stations, 1).astype(str).tolist()
+        stations_1 = np.subtract(stations, 1).astype(str).tolist()
         st, en = self._check_length(st, en)
         attrs = check_attributes(dynamic_features, self.dynamic_features)
 
@@ -580,7 +595,7 @@ class HYSETS(_RainfallRunoff):
             if xds is None or f_ not in xds.dynamic_features:
                 xds = xr.open_dataset(fpath)
 
-            features[f] = xds.sel(dynamic_features=[f_], time=slice(st, en))[stations]
+            features[f] = xds.sel(dynamic_features=[f_], time=slice(st, en))[stations_1]
 
             if self.verbosity>1:
                 print(f"{idx+1}/{len(attrs)} fetched {f}")
@@ -602,75 +617,12 @@ class HYSETS(_RainfallRunoff):
         xds = xds.rename(data_vars_map)
 
         if as_dataframe:
-            return xds.to_dataframe(['time', 'dynamic_features'])
+            stations = np.array(stations).astype(str).tolist()
+            return {stn:xds[stn].to_pandas() for stn in stations}
 
         return xds
 
-    def _fetch_static_features(
-            self,
-            station="all",
-            static_features: Union[str, list] = 'all',
-            st=None,
-            en=None
-    ):
-
-        df = self.read_static_data()
-
-        static_features = check_attributes(static_features, self.static_features, 'static_features')
-
-        if isinstance(station, list):
-            station = [str(stn) for stn in station]
-
-        stations = check_attributes(station, self.stations(), 'stations')
-
-        return df.loc[stations, static_features]
-
-    def fetch_static_features(
-            self,
-            stations: Union[str, List[str]]="all",
-            static_features:Union[str, List[str]]="all",
-            st=None,
-            en=None,
-    ) -> pd.DataFrame:
-        """
-        returns static atttributes of one or multiple stations
-
-        Parameters
-        ----------
-            stations : str
-                name/id of station of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-            st :
-            en :
-
-        Examples
-        ---------
-        >>> from aqua_fetch import HYSETS
-        >>> dataset = HYSETS()
-        get the names of stations
-        >>> stns = dataset.stations()
-        >>> len(stns)
-            14425
-        get all static data of all stations
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (14425, 28)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('991')
-        >>> static_data.shape
-           (1, 28)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'Elevation_m'])
-        >>> static_data.shape
-           (14425, 2)
-        """
-        return self._fetch_static_features(stations, static_features, st, en)
-
-    def read_static_data(self, usecols=None, nrows=None):
+    def _static_data(self, usecols=None, nrows=None):
         """
         reads the HYSETS_watershed_properties.txt file while using `Watershed_ID`
         as index instead of ``Official_ID``. Watershed_ID starts with 1,2,3 and so on

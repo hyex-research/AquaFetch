@@ -103,13 +103,13 @@ class TestCamels(unittest.TestCase):
         for k, v in data.items():
             assert v.shape == (61344, 3)
 
-        _, data = dataset.fetch(5, as_dataframe=True)
-        assert data.shape == (184032, 5)
+        _, dynamic = dataset.fetch(5, as_dataframe=True)
+        assert len(dynamic) == 5
 
-        _, data = dataset.fetch(5, static_features="all", as_dataframe=True)
-        assert data['static'].shape == (5, 7)
+        static, dynamic = dataset.fetch(5, static_features="all", as_dataframe=True)
+        assert static.shape == (5, 7)
         data = dataset.fetch_dynamic_features('644', as_dataframe=True)
-        assert data.unstack().shape == (61344, 3)
+        assert data['644'].shape == (61344, 3)
 
         stns = dataset.stations()
         assert len(stns) == 125
@@ -123,7 +123,7 @@ class TestCamels(unittest.TestCase):
         static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
         assert static_data.shape == (125, 2)
 
-        data = dataset.fetch_static_features('592', features=['slope', 'area'])
+        data = dataset.fetch_static_features('592', static_features=['slope', 'area'])
         assert data.shape == (1,2)
         return
 

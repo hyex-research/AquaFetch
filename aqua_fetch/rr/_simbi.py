@@ -33,6 +33,9 @@ class Simbi(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import Simbi
     >>> simbi = Simbi()
+    >>> len(simbi.stations())
+    24
+
     """
 
     url = {
@@ -64,10 +67,8 @@ class Simbi(_RainfallRunoff):
 
         self._download(overwrite=overwrite)
 
-        self._static_features = self.static_data().columns.tolist()
+        self._static_features = self._static_data().columns.tolist()
         self._dynamic_features = list(self.dyn_map.values())
-
-        #self.boundary_file = os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')
 
         self._create_boundary_id_map()
 
@@ -205,7 +206,7 @@ class Simbi(_RainfallRunoff):
         """
         Returns names/IDs of 24 stations with static data.
         """
-        return self.static_data().index.tolist()
+        return self._static_data().index.tolist()
 
     def daily_bsi(self)->pd.DataFrame:
         """
@@ -474,7 +475,7 @@ class Simbi(_RainfallRunoff):
             self.monthly_clim_sigs()
         ], axis=1)
     
-    def static_data(self)->pd.DataFrame:
+    def _static_data(self)->pd.DataFrame:
         """
         Read the static data.
         """
@@ -486,80 +487,6 @@ class Simbi(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
 
         return df
-
-    def fetch_static_features(
-            self,
-            stations: Union[str, list] = 'all',
-            static_features: Union[str, list] = 'all'
-    )->pd.DataFrame:
-        """
-
-        Returns static features of one or more stations.
-
-        Parameters
-        ----------
-            stations : str/list
-                name/id of station/stations of which to extract the data
-            static_features : list/str, optional (default="all")
-                The name/names of features to fetch. By default, all available
-                static features are returned.
-
-        Returns
-        -------
-        pd.DataFrame
-            a :obj:`pandas.DataFrame` of shape (stations, features)
-
-        Examples
-        ---------
-        >>> from aqua_fetch import Simbi
-        >>> dataset = Simbi()
-        get all static data of all stations
-        >>> stns = dataset.static_data_stations()
-        >>> static_data = dataset.fetch_static_features(stns)
-        >>> static_data.shape
-           (24, 232)
-        get static data of one station only
-        >>> static_data = dataset.fetch_static_features('001')
-        >>> static_data.shape
-           (1, 232)
-        get the names of static features
-        >>> dataset.static_features
-        get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['stream_density', 'pcp', 'Forest_lc_98'])
-        >>> static_data.shape
-           (24, 3)
-        >>> data = dataset.fetch_static_features('001', static_features=['stream_density', 'pcp', 'Forest_lc_98'])
-        >>> data.shape
-           (1, 3)
-        """
-        stations = check_attributes(stations, self.static_data_stations())
-
-        df = self.static_data().copy()
-        features = check_attributes(static_features, self.static_features,
-                                    "static_features")
-        return df.loc[stations, features]            
- 
-    def _read_dynamic(
-        self,
-        stations,
-        dynamic_features,
-        st="1919-01-01",
-        en="2005-12-31"
-) ->dict:
-        """
-        reads dynamic data of one or more catchments
-        """
-
-        attributes = check_attributes(dynamic_features, self.dynamic_features)
-        stations = check_attributes(stations, self.stations())
-
-        dyn = {}
-
-        for stn in stations:
-            df = self._read_dynamic_for_stn(stn).loc[st:en, attributes]
-            dyn[stn] = df
-
-        return dyn
 
     def read_stn_q(self, stn:str)->pd.DataFrame:
         """
@@ -598,7 +525,7 @@ class Simbi(_RainfallRunoff):
             df = pd.read_csv(fpath, parse_dates=True, index_col=0)
         return df
     
-    def _read_dynamic_for_stn(self, stn:str)->pd.DataFrame:
+    def _read_stn_dyn(self, stn:str)->pd.DataFrame:
         """
         Read the daily streamflow, rainfall, and temperature data for a station.
         """

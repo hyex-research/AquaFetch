@@ -96,42 +96,74 @@ class CAMELS_US(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_US
     >>> dataset = CAMELS_US()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='11478500', as_dataframe=True)
+    >>> df = dynamic['11478500'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (12784, 8)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    671
-    # we can get data of 10% catchments as below
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (460488, 51)
-    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
-    >>> data.index.names == ['time', 'dynamic_features']
-     True
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='11478500', as_dataframe=True)
-    >>> df.unstack().shape
-    (12784, 8)
-    # get names of available dynamic features
+       671
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (67 out of 671)
+       67
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(12784, 8), (12784, 8), (12784, 8),... (12784, 8), (12784, 8)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'solrad_wm2', 'airtemp_C_max', 'airtemp_C_min', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (12784, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('11478500', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'solrad_wm2', 'airtemp_C_max', 'airtemp_C_min', 'q_cms_obs'])
+    >>> dynamic['11478500'].shape
+       (12784, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (102272, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data 
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='11478500', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 59), (12784, 8))
+    >>> static.shape, len(dynamic), dynamic['11478500'].shape
+    ((1, 59), 1, (12784, 8))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 12784, 'dynamic_features': 8})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (671, 2)
+    >>> dataset.stn_coords('11478500')  # returns coordinates of station whose id is 11478500
+        40.480419	-123.890877
+    >>> dataset.stn_coords(['11478500', '14020000'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('11478500')
+    # get coordinates of two stations
+    >>> dataset.area(['11478500', '14020000'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('11478500')
 
     """
     DATASETS = ['CAMELS_US']
@@ -373,41 +405,74 @@ class CAMELS_GB(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_GB
     >>> dataset = CAMELS_GB()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-     (164360, 67)
-    >>> data.index.names == ['time', 'dynamic_features']
-    True
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='38017', as_dataframe=True)
+    >>> df = dynamic['38017'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (16436, 10)
-    # get name of all stations as list
+    (26388, 28)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    671
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='97002', as_dataframe=True)
-    >>> df.unstack().shape
-    (16436, 10)
-    # get names of available dynamic features
+       671
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (67 out of 671)
+       67
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(26388, 28), (26388, 28), (26388, 28),... (26388, 28), (26388, 28)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['windspeed_mps', 'airtemp_C_mean', 'pet_mm', 'pcp_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (16436, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('38017', as_dataframe=True,
+    ...  dynamic_features=['windspeed_mps', 'airtemp_C_mean', 'pet_mm', 'pcp_mm', 'q_cms_obs'])
+    >>> dynamic['38017'].shape
+       (26388, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (164360, 10)  # remember this is multi-indexed DataFrame
-    # when we get both static and dynamic data, the returned data is a dictionary
-    # with ``static`` and ``dyanic`` keys.
-    >>> static, dynamic = dataset.fetch(stations='97002', static_features="all", as_dataframe=True)
-    >>> static, dynamic.shape
-    ((1, 290), (164360, 1))
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='38017', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['38017'].shape
+    ((1, 145), 1, (26388, 28))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26388, 'dynamic_features': 28})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (671, 2)
+    >>> dataset.stn_coords('38017')  # returns coordinates of station whose id is 38017
+        51.880001	-0.28
+    >>> dataset.stn_coords(['38017', '42001'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('38017')
+    # get coordinates of two stations
+    >>> dataset.area(['38017', '42001'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('38017')
     """
     dynamic_features_ = ["precipitation", "pet", "temperature", "discharge_spec",
                          "discharge_vol", "peti",
@@ -590,42 +655,82 @@ class CAMELS_AUS(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_AUS
     >>> dataset = CAMELS_AUS()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    >>> df.shape   # if you are using version 1 then the shape will be (21184, 28)
-       (26388, 28)
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='912101A', as_dataframe=True)
+    >>> df = dynamic['912101A'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (26388, 28)
+
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       222
+       561
     ... # get data of 10 % of stations as dataframe
-    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-       (550784, 22)
-    ... # The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
-    ... # get data by station id
-    >>> df = dataset.fetch(stations='912101A', as_dataframe=True)[1].unstack()
-    >>> df.shape    # if you are using version 1 then the shape will be (21184, 28)
-        (26388, 28)
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (56 out of 561)
+       56
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(26388, 28), (26388, 28), (26388, 28),... (26388, 28), (26388, 28)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
     ... # get names of available dynamic features
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    >>> _, dynamic = dataset.fetch('912101A', as_dataframe=True,
     ...  dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'et_morton_actual_SILO', 'q_cms_obs'])
-    >>> data.unstack().shape    # if you are using version 1 then the shape will be (21184, 4)
+    >>> dynamic['912101A'].shape
        (26388, 4)
+
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-       (26388, 260)
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='912101A', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack()shape
-    >>> ((1, 166), (26388, 28))
+    >>> static.shape, len(dynamic), dynamic['912101A'].shape
+    ((1, 187), 1, (26388, 28))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26388, 'dynamic_features': 28})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (561, 2)
+    >>> dataset.stn_coords('912101A')  # returns coordinates of station whose id is 912101A
+        -38.214199	-71.8283
+    >>> dataset.stn_coords(['912101A', '912105A'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('912101A')
+    # get coordinates of two stations
+    >>> dataset.area(['912101A', '912105A'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('912101A')
+
+    # The version 1 can be of CAMELS_AUS can be accessed as below
+    >>> dataset = CAMELS_AUS(version=1)
+    >>> len(dataset.stations())
+    222
+    >>> _, dynamic = dataset.fetch(stations='912101A', as_dataframe=True)
+    >>> dynamic['912101A'].shape
+    (23376, 26)
     """
 
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
@@ -966,42 +1071,74 @@ class CAMELS_CL(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_CL
     >>> dataset = CAMELS_CL()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='8350001', as_dataframe=True)
+    >>> df = dynamic['8350001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-        (38374, 12)
-    # get name of all stations as list
+    (38374, 12)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    516
-    # we can get data of 10% catchments as below
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (460488, 51)
-    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
-    >>> df.index.names == ['time', 'dynamic_features']
-     True
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='8350001', as_dataframe=True)
-    >>> df.unstack().shape
-    (38374, 12)
-    # get names of available dynamic features
+       516
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (51 out of 516)
+       51
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(38374, 12), (38374, 12), (38374, 12),... (38374, 12), (38374, 12)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pet_mm_hargreaves', 'pcp_mm_mswep', 'airtemp_C_mean', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (38374, 4)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('8350001', as_dataframe=True,
+    ...  dynamic_features=['pet_mm_hargreaves', 'pcp_mm_mswep', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['8350001'].shape
+       (38374, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (460488, 10)
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='8350001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    >>> ((1, 104), (38374, 12))
+    >>> static.shape, len(dynamic), dynamic['8350001'].shape
+    ((1, 104), 1, (38374, 12))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 38374, 'dynamic_features': 12})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (516, 2)
+    >>> dataset.stn_coords('8350001')  # returns coordinates of station whose id is 8350001
+        -38.214199	-71.8283
+    >>> dataset.stn_coords(['8350001', '3820003'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('8350001')
+    # get coordinates of two stations
+    >>> dataset.area(['8350001', '3820003'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('8350001')
     """
 
     urls = {
@@ -1241,39 +1378,74 @@ class CAMELS_CH(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_CH
     >>> dataset = CAMELS_CH()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (128560, 10)
-    >>> data.index.names == ['time', 'dynamic_features']
-    True
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='2004', as_dataframe=True)
+    >>> df = dynamic['2004'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (8036, 9)
-    # get name of all stations as list
+    (14610, 9)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    331
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='2004', as_dataframe=True)
-    >>> df.unstack().shape
-    (8036, 9)
-    # get names of available dynamic features
+       331
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (33 out of 331)
+       33
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(14610, 9), (14610, 9), (14610, 9),... (14610, 9), (14610, 9)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True, dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (8036, 3)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('2004', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['2004'].shape
+       (14610, 3)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (72324, 10)  # remember this is multi-indexed DataFrame
-    # If we get both static and dynamic data 
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='2004', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 209), (8036, 9))
+    >>> static.shape, len(dynamic), dynamic['2004'].shape
+    ((1, 209), 1, (14610, 9))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 14610, 'dynamic_features': 9})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (331, 2)
+    >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
+        47.925221       8.191595
+    >>> dataset.stn_coords(['2004', '2007'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('2004')
+    # get coordinates of two stations
+    >>> dataset.area(['2004', '2007'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('2004')
 
     """
     url = {
@@ -1688,55 +1860,81 @@ class CAMELS_DE(_RainfallRunoff):
     This is the data from 1555 German catchments following the work of
     `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_ .
     The data is downloaded from `zenodo <https://zenodo.org/record/12733968>`_ .
-    This data consists of 155 static and 21 dynamic features. The dynamic features
+    This data consists of 111 static and 21 dynamic features. The dynamic features
     span from 1951-01-01 to 2020-12-31 with daily timestep.
 
     Examples
     --------
-    >>> from aqua_fetch import CAMELS_DE
-    >>> dataset = CAMELS_DE()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> from aqua_fetch import CAMELS_DK
+    >>> dataset = CAMELS_DK()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='DE110260', as_dataframe=True)
+    >>> df = dynamic['DE110260'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-       (25568, 21)
-    get name of all stations as list
+    (25568, 21)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
        1555
-    get data of 10 % of stations as dataframe
-    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-        (536928, 155)
-    The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
-    get data by station id
-    >>> _, df = dataset.fetch(stations='DE110260', as_dataframe=True)
-    >>> df.unstack().shape
-        (25568, 21)
-    get names of available dynamic features
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (155 out of 1555)
+       155
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(25568, 21), (25568, 21), (25568, 21),... (25568, 21), (25568, 21)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('DE110260', as_dataframe=True,
     ...  dynamic_features=['airtemp_C_mean', 'rh_%', 'pcp_mm_mean', 'q_cms_obs'])
-    >>> data.unstack().shape
-        (25568, 4)
-    get names of available static features
+    >>> dynamic['DE110260'].shape
+       (25568, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-        (536928, 10)
-    If we want to get both static and dynamic data 
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='DE110260', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-        ((1, 111), (25568, 21))
+    >>> static.shape, len(dynamic), dynamic['DE110260'].shape
+    ((1, 111), 1, (25568, 21))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 25568, 'dynamic_features': 21})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (1555, 2)
-    >>> dataset.stn_coords('DE110250')  # returns coordinates of station whose id is DE110250
-        47.925221	8.191595
-    >>> dataset.stn_coords(['DE110250', 'DE110260'])  # returns coordinates of two stations
+    >>> dataset.stn_coords('DE110260')  # returns coordinates of station whose id is DE110260
+        47.925221       8.191595
+    >>> dataset.stn_coords(['DE110260', 'DE110250'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('DE110260')
+    # get coordinates of two stations
+    >>> dataset.area(['DE110260', 'DE110250'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('DE110260')
     """
     url = "https://zenodo.org/record/12733968"
 
@@ -1970,50 +2168,76 @@ class CAMELS_SE(_RainfallRunoff):
 
     Examples
     --------
-    >>> from aqua_fetch import CAMELS_SE
-    >>> dataset = CAMELS_SE()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> _, df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    >>> from aqua_fetch import CAMELS_DK
+    >>> dataset = CAMELS_DK()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='5', as_dataframe=True)
+    >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-       (21915, 4)
-    get name of all stations as list
+    (21915, 4)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
        50
-    get data of 10 % of stations as dataframe
-    >>> _, df = dataset.fetch(0.1, as_dataframe=True)
-    >>> df.shape
-       (87660, 5)
-    The returned dataframe is a multi-indexed data
-    >>> df.index.names == ['time', 'dynamic_features']
-        True
-    get data by station id
-    >>> _, df = dataset.fetch(stations='5', as_dataframe=True)
-    >>> df.unstack().shape
-         (21915, 4)
-    get names of available dynamic features
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (5 out of 50)
+       5
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(21915, 4), (21915, 4), (21915, 4),... (21915, 4), (21915, 4)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    get only selected dynamic features
-    >>> _, data = dataset.fetch(1, as_dataframe=True,
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('5', as_dataframe=True,
     ...  dynamic_features=['q_cms_obs', 'q_mmd_obs', 'pcp_mm', 'airtemp_C_mean'])
-    >>> data.unstack().shape
-        (21915, 4)
-    get names of available static features
+    >>> dynamic['5'].shape
+       (21915, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape  # remember this is a multiindexed dataframe
-        (87660, 10)
-    If we want to get both static and dynamic data
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-        ((1, 76), (21915, 4))
+    >>> static.shape, len(dynamic), dynamic['5'].shape
+    ((1, 76), 1, (21915, 4))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 21915, 'dynamic_features': 4})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (50, 2)
-    >>> dataset.stn_coords('5')  # returns coordinates of station whose id is GRDC_3664802
-        68.0356	21.9758
+    >>> dataset.stn_coords('5')  # returns coordinates of station whose id is 5
+        68.0356 21.9758
     >>> dataset.stn_coords(['5', '200'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('5')
+    # get coordinates of two stations
+    >>> dataset.area(['5', '200'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('5')
 
     """
 
@@ -2213,55 +2437,74 @@ class CAMELS_DK(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_DK
     >>> dataset = CAMELS_DK()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (166166, 30)  # 30 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['54130033'].unstack().shape
-    (12782, 13)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 12782, 'dynamic_features': 13})
-    >>> len(data.data_vars)
-        30
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='54130033', as_dataframe=True)
+    >>> df = dynamic['54130033'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (12782, 13)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    304
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='54130033', as_dataframe=True)
-    >>> df.unstack().shape
-    (12782, 13)
-    # get names of available dynamic features
+       304
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (30 out of 304)
+       30
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(12782, 13), (12782, 13), (12782, 13),... (12782, 13), (12782, 13)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['Abstraction', 'pet_mm', 'airtemp_C_mean', 'pcp_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (12782, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('54130033', as_dataframe=True,
+    ...  dynamic_features=['Abstraction', 'pet_mm', 'airtemp_C_mean', 'pcp_mm', 'q_cms_obs'])
+    >>> dynamic['54130033'].shape
+       (12782, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (166166, 10)  # remember this is multi-indexed DataFrame
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='54130033', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 119), (12782, 13))
+    >>> static.shape, len(dynamic), dynamic['54130033'].shape
+    ((1, 119), 1, (12782, 13))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 12782, 'dynamic_features': 13})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (304, 2)
-    >>> dataset.stn_coords('54130033')  # returns coordinates of station whose id is GRDC_3664802
-        6131379.493	559057.7232
+    >>> dataset.stn_coords('54130033')  # returns coordinates of station whose id is 54130033
+        55.325242	9.93079
     >>> dataset.stn_coords(['54130033', '13210113'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('54130033')
+    # get coordinates of two stations
+    >>> dataset.area(['54130033', '13210113'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('54130033')
     """
 
     url = {
@@ -2529,55 +2772,74 @@ class CAMELS_IND(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_IND
     >>> dataset = CAMELS_IND()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (299520, 47)  # 47 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['17015'].unstack().shape
-    (14976, 20)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 14976, 'dynamic_features': 20})
-    >>> len(data.data_vars)
-        47
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='3001', as_dataframe=True)
+    >>> df = dynamic['3001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (14976, 20)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    472
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='3001', as_dataframe=True)
-    >>> df.unstack().shape
-    (14976, 20)
-    # get names of available dynamic features
+       472
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (47 out of 472)
+       47
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(14976, 20), (14976, 20), (14976, 20),... (14976, 20), (14976, 20)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (14976, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('3001', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    >>> dynamic['3001'].shape
+       (14976, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (299520, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='3001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 210), (14976, 20))
+    >>> static.shape, len(dynamic), dynamic['3001'].shape
+    ((1, 210), 1, (14976, 20))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 14976, 'dynamic_features': 20})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (472, 2)
     >>> dataset.stn_coords('3001')  # returns coordinates of station whose id is 3001
-        18.3861	80.3917
+        48.006298   -4.063848
     >>> dataset.stn_coords(['3001', '17021'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('3001')
+    # get coordinates of two stations
+    >>> dataset.area(['3001', '17021'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('3001')
     """
     url = "https://zenodo.org/records/13221214"
 
@@ -2778,57 +3040,74 @@ class CAMELS_FR(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_FR
     >>> dataset = CAMELS_FR()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (166166, 30)   # 30 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['J421191001'].unstack().shape
-    (12782, 13)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 460928, 'dynamic_features': 13})
-    >>> len(data.data_vars)
-        36
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='J421191001', as_dataframe=True)
+    >>> df = dynamic['J421191001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (18993, 22)
-    # get name of all stations as list
+    (12782, 22)
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    654
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='J421191001', as_dataframe=True)
-    >>> df.unstack().shape
-    (18993, 22)
-    # get names of available dynamic features
+       654
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (65 out of 654)
+       65
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(12782, 22), (12782, 22), (12782, 22),... (12782, 22), (12782, 22)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'spechum_gkg', 'airtemp_C_mean', 'pet_mm_pm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (18993, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('J421191001', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'spechum_gkg', 'airtemp_C_mean', 'pet_mm_pm', 'q_cms_obs'])
+    >>> dynamic['J421191001'].shape
+       (12782, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (417846, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='J421191001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 334), (18993, 22))
+    >>> static.shape, len(dynamic), dynamic['J421191001'].shape
+    ((1, 344), 1, (12782, 22))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 12782, 'dynamic_features': 22})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (654, 2)
     >>> dataset.stn_coords('J421191001')  # returns coordinates of station whose id is J421191001
-        48.006298   -4.063848	
-    >>> dataset.stn_coords(['J421191001', 'U104401001'])  # returns coordinates of two stations
-    J421191001	48.006298    -4.063848
-    U104401001	173.170761   -34.918594	
+        48.006298   -4.063848
+    >>> dataset.stn_coords(['J421191001', '802'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('J421191001')
+    # get coordinates of two stations
+    >>> dataset.area(['J421191001', '802'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('J421191001')
     """
     url = {
         "ADDITIONAL_LICENSES.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343463",
@@ -3076,57 +3355,74 @@ class CAMELS_NZ(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_NZ
     >>> dataset = CAMELS_NZ()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (2304640, 36)   # 36 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['74321'].unstack().shape
-    (460928, 5)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 460928, 'dynamic_features': 5})
-    >>> len(data.data_vars)
-        36
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='74321', as_dataframe=True)
+    >>> df = dynamic['74321'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (460928, 5)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    369
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='74321', as_dataframe=True)
-    >>> df.unstack().shape
-    (460928, 5)
-    # get names of available dynamic features
+       347
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (34 out of 347)
+       34
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(460928, 5), (460928, 5), (460928, 5),... (460928, 5), (460928, 5)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (460928, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('74321', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    >>> dynamic['74321'].shape
+       (460928, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (2304640, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='74321', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 39), (460928, 5))
+    >>> static.shape, len(dynamic), dynamic['74321'].shape
+    ((1, 39), 1, (460928, 5))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 460928, 'dynamic_features': 5})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (369, 2)
+        (347, 2)
     >>> dataset.stn_coords('74321')  # returns coordinates of station whose id is 74321
-        -45.945599	170.101486
+        -45.945599      170.101486
     >>> dataset.stn_coords(['74321', '802'])  # returns coordinates of two stations
-    74321	-45.945599	170.101486
-    802	-34.918594	173.170761
+
+    # get area of a single station
+    >>> dataset.area('74321')
+    # get coordinates of two stations
+    >>> dataset.area(['74321', '802'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('74321')
     """
     url = "https://figshare.canterbury.ac.nz/ndownloader/articles/28827644/versions/1"
 
@@ -3394,57 +3690,74 @@ class CAMELS_COL(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_COL
     >>> dataset = CAMELS_COL()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (92040, 34)   # 34 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['35067040'].unstack().shape
-    (15340, 5)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 15340, 'dynamic_features': 6})
-    >>> len(data.data_vars)
-        34
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='35067040', as_dataframe=True)
+    >>> df = dynamic['35067040'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (15340, 6)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    347
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='35067040', as_dataframe=True)
-    >>> df.unstack().shape
-    (15340, 6)
-    # get names of available dynamic features
+       347
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (34 out of 347)
+       34
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(15340, 6), (15340, 6), (15340, 6),... (15340, 6), (15340, 6)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (15340, 6)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('35067040', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    >>> dynamic['35067040'].shape
+       (15340, 4)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (2304640, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='35067040', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 255), (15340, 6))
+    >>> static.shape, len(dynamic), dynamic['35067040'].shape
+    ((1, 255), 1, (15340, 6))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 15340, 'dynamic_features': 6})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (347, 2)
     >>> dataset.stn_coords('35067040')  # returns coordinates of station whose id is 35067040
-        4.746433	-73.587807
+        4.746433        -73.587807
     >>> dataset.stn_coords(['35067040', '21187030'])  # returns coordinates of two stations
-    35067040	4.746433	-73.587807
-    21187030	4.203826	-75.092720
+
+    # get area of a single station
+    >>> dataset.area('35067040')
+    # get coordinates of two stations
+    >>> dataset.area(['35067040', '21187030'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('35067040')
 
     """
     url = "https://zenodo.org/records/15554735"
@@ -3664,57 +3977,74 @@ class CAMELS_SK(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_SK
     >>> dataset = CAMELS_SK()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (2980440, 17)   # 17 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['2013615'].unstack().shape
-    (175320, 13)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 175320, 'dynamic_features': 17})
-    >>> len(data.data_vars)
-        17
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='2013615', as_dataframe=True)
+    >>> df = dynamic['2013615'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (175320, 17)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    178
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='2013615', as_dataframe=True)
-    >>> df.unstack().shape
-    (175320, 17)
-    # get names of available dynamic features
+       178
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (17 out of 178)
+       17
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(175320, 17), (175320, 17), (175320, 17),... (175320, 17), (175320, 17)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['total_precipitation', 'snow_depth', 'air_temp_obs', 'potential_evaporation', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (175320, 17)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('2013615', as_dataframe=True,
+    ...  dynamic_features=['total_precipitation', 'snow_depth', 'air_temp_obs', 'potential_evaporation', 'q_cms_obs'])
+    >>> dynamic['2013615'].shape
+       (175320, 17)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (155225, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='2013615', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 215), (175320, 17))
+    >>> static.shape, len(dynamic), dynamic['2013615'].shape
+    ((1, 215), 1, (175320, 17))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 175320, 'dynamic_features': 17})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (178, 2)
     >>> dataset.stn_coords('2013615')  # returns coordinates of station whose id is 2013615
-        35.880798	128.173096
+        35.880798       128.173096
     >>> dataset.stn_coords(['2013615', '2017620'])  # returns coordinates of two stations
-    2013615	35.880798	128.173096
-    2017620	35.527500	128.359207
+
+    # get area of a single station
+    >>> dataset.area('2013615')
+    # get coordinates of two stations
+    >>> dataset.area(['2013615', '2017620'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('2013615')
     
     """
 
@@ -3897,57 +4227,86 @@ class CAMELS_LUX(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_LUX
     >>> dataset = CAMELS_LUX()
-    >>> _, data = dataset.fetch(0.5, as_dataframe=True)
-    >>> data.shape
-    (155225, 28)   # 28 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['ID_02'].unstack().shape
-    (6209, 13)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 6209, 'dynamic_features': 25})
-    >>> len(data.data_vars)
-        5
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='ID_02', as_dataframe=True)
+    >>> df = dynamic['ID_02'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (6209, 25)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    56
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='ID_02', as_dataframe=True)
-    >>> df.unstack().shape
-    (6209, 25)
-    # get names of available dynamic features
+       56
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (5)
+       5
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(6209, 25), (6209, 25), (6209, 25),... (6209, 25), (6209, 25)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_station', 'rh_%', 'airtemp_C_mean', 'pet_mm_pm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (6209, 25)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('ID_02', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm_station', 'rh_%', 'airtemp_C_mean', 'pet_mm_pm', 'q_cms_obs'])
+    >>> dynamic['ID_02'].shape
+       (6209, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (155225, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='ID_02', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 61), (6209, 25))
+    >>> static.shape, len(dynamic), dynamic['ID_02'].shape
+    ((1, 61), 1, (6209, 25))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 6209, 'dynamic_features': 25})
+
+    >>> len(dynamic.data_vars)
+    10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (56, 2)
     >>> dataset.stn_coords('ID_02')  # returns coordinates of station whose id is ID_02
-        49.586288	6.14908
-    >>> dataset.stn_coords(['ID_01', 'ID_02'])  # returns coordinates of two stations
-    ID_01	49.526478	6.114957
-    ID_02	49.586288	6.14908
+        49.586288       6.14908
+    >>> dataset.stn_coords(['ID_02', 'ID_01'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('ID_02')
+    # get coordinates of two stations
+    >>> dataset.area(['ID_02', 'ID_01'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('ID_02')
+
+    # if we want to get hourly data we can do as below
+    >>> dataset = CAMELS_LUX(timestep='H')
+    >>> _, dynamic = dataset.fetch(stations='ID_02', as_dataframe=True)
+    >>> df.shape
+    (149016, 25)   
+
+    # if we want to get 15Min data we can do as below
+    >>> dataset = CAMELS_LUX(timestep='15Min')
+    >>> _, dynamic = dataset.fetch(stations='ID_02', as_dataframe=True)
+    >>> df.shape
+    (596061, 25) 
     """
 
     url = "https://zenodo.org/records/14910359"
@@ -4174,57 +4533,73 @@ class CAMELS_FI(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CAMELS_FI
     >>> dataset = CAMELS_FI()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (368160, 32)   # 32 represents number of stations
-    Since data is a multi-index dataframe, we can get data of one station as below
-    >>> data['1156'].unstack().shape
-    (23010, 16)
-    If we don't set as_dataframe=True, then the returned data will be a xarray Dataset
-    >>> _, data = dataset.fetch(0.1)
-    >>> type(data)
-        xarray.core.dataset.Dataset
-    >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 23010, 'dynamic_features': 16})
-    >>> len(data.data_vars)
-        32
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)  # get data of only one random station
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='1156', as_dataframe=True)
+    >>> df = dynamic['1156'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (23010, 16)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    320
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='1156', as_dataframe=True)
-    >>> df.unstack().shape
-    (23010, 16)
-    # get names of available dynamic features
+       320
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (32)
+       32
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(23010, 16), (23010, 16), (23010, 16),... (23010, 16), (23010, 16)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm', 'snowdepth_m', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (23010, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('1156', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'snowdepth_m', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
+    >>> dynamic['1156'].shape
+       (23010, 5)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (368160, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='1156', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 106), (23010, 16))
+    >>> static.shape, len(dynamic), dynamic['1156'].shape
+    ((1, 106), 1, (23010, 5))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 23010, 'dynamic_features': 16})
+
+    >>> len(dynamic.data_vars)   # -> 10
+
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (320, 2)
     >>> dataset.stn_coords('1156')  # returns coordinates of station whose id is 1156
-        62.253101	24.444099
+        62.253101       24.444099
     >>> dataset.stn_coords(['1156', '1116'])  # returns coordinates of two stations
-    1156	62.253101	24.444099
-    1116	60.385201	22.355301
+
+    # get area of a single station
+    >>> dataset.area('1156')
+    # get coordinates of two stations
+    >>> dataset.area(['1156', '1116'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('1156')
     """
 
     url = "https://zenodo.org/records/16257216"

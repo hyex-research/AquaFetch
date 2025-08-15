@@ -241,7 +241,7 @@ class _RainfallRunoff(Datasets):
             dyn = {}
             for idx, stn in enumerate(stations):
             
-                stn_df = self._read_stn_dyn(stn).loc[st:en]
+                stn_df = self._read_stn_dyn(stn).loc[st:en, dyn_feats]
                 
                 stn_df.columns.name = 'dynamic_features'
                 stn_df.index.name = 'time'
@@ -263,7 +263,7 @@ class _RainfallRunoff(Datasets):
                 stn_df.columns.name = 'dynamic_features'
                 stn_df.index.name = 'time'
 
-                dyn[stn] = stn_df.loc[st:en]
+                dyn[stn] = stn_df.loc[st:en, dyn_feats]
 
         total = time.time() -  start
         if self.verbosity:
@@ -489,7 +489,7 @@ class _RainfallRunoff(Datasets):
               en: Union[None, str] = None,
               as_dataframe: bool = False,
               **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
+              ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
         Fetches the features of one or more stations.
 
@@ -521,33 +521,33 @@ class _RainfallRunoff(Datasets):
             returned as pandas DataFrame with shape (stations, staticfeatures).
             The index of static features is the station/gauge ids while the columns 
             are the static features. Dynamic features are returned as either
-            xarray Dataset or pandas DataFrame depending upon whether `as_dataframe`
+            xarray Dataset or a dictionary with keys as station names and values as
+            pandas DataFrame. This depends upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
             If dynamic features are xarray Dataset, then it consists of `data_vars`
             equal to the number of stations and `time` adn `dynamic_features` as
-            dimensions. If dynamic features are returned as pandas DataFrame, then
-            the first index is `time` and the second index is `dynamic_features`.
+            dimensions.
 
         Examples
         --------
         >>> from aqua_fetch import CAMELS_AUS
         >>> dataset = CAMELS_AUS()
         >>> # get data of 10% of stations
-        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        >>> _, dynamic = dataset.fetch(stations=0.1, as_dataframe=True)  # dynamic is a dictionary
         ...  # fetch data of 5 (randomly selected) stations
-        >>> five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
+        >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
         ... # fetch data of 3 selected stations
-        >>> three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        >>> _, three_selec_stn_data = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
         ... # fetch data of a single stations
-        >>> single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
+        >>> _, single_stn_data = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
         >>> static, dynamic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> dynamic
         ... # get only selected dynamic features
-        >>> sel_dyn_features = dataset.fetch(stations='318076',
+        >>> _, sel_dyn_features = dataset.fetch(stations='318076',
         ...     dynamic_features=['q_mmd_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
-        >>> data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
+        >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         if isinstance(stations, int):
@@ -609,7 +609,7 @@ class _RainfallRunoff(Datasets):
             en: Union[str, pd.Timestamp] = None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
+              ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
         Reads features of more than one stations.
 
@@ -640,12 +640,12 @@ class _RainfallRunoff(Datasets):
             returned as :obj:`pandas.DataFrame` with shape (stations, staticfeatures).
             The index of static features is the station/gauge ids while the columns 
             are the static features. Dynamic features are returned as either
-            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or a :obj:`dict` with keys as station names and values as
+            :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the xarray module is installed or not.
             If dynamic features are xarray Dataset, then it consists of `data_vars`
-            equal to the number of stations and `time` adn `dynamic_features` as
-            dimensions. If dynamic features are returned as pandas DataFrame, then
-            the first index is `time` and the second index is `dynamic_features`.
+            equal to the number of stations and `time` and `dynamic_features` as
+            dimensions.
 
         Raises:
             ValueError, if both dynamic_features and static_features are None
@@ -658,7 +658,7 @@ class _RainfallRunoff(Datasets):
         >>> dataset.stations()
         ... # get data of selected stations as xarray Dataset
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'])
-        ... # get data of selected stations as pandas DataFrame
+        ... # get data of selected stations as dictionary of pandas DataFrame
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
         ...  as_dataframe=True)
         ... # get both dynamic and static features of selected stations
@@ -691,7 +691,7 @@ class _RainfallRunoff(Datasets):
                 dyn = ds[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
                 ds.close()
                 if as_dataframe:
-                    dyn = dyn.to_dataframe(['time', 'dynamic_features'])
+                    dyn = {stn:dyn[stn].to_pandas() for stn in dyn}
 
             if static_features is not None:
                 static = self.fetch_static_features(stations, static_features)
@@ -738,8 +738,8 @@ class _RainfallRunoff(Datasets):
         pd.DataFrame/xr.Dataset
             a pandas dataframe or xarray dataset of dynamic features
             If as_dataframe is True, then the returned data is a pandas
-            DataFrame with multiindex. The first index is `time` and the second
-            index is `dynamic_features`. If as_dataframe is False, and xarray
+            DataFrame whose index is `time` and the columns are 
+            `dynamic_features`. If as_dataframe is False, and xarray
             module is installed, then the returned data is xarray dataset with
             `data_vars` equal to the number of stations and `time` and `dynamic_features`
             as dimensions.
@@ -817,11 +817,14 @@ class _RainfallRunoff(Datasets):
             
             if xr is not None and isinstance(dynamic, xr.Dataset):
                 dynamic = dynamic[station].to_pandas()
+
+                if isinstance(dynamic, pd.Series):
+                    # when single dynamic feature for a single station
+                    dynamic = pd.DataFrame(dynamic, columns=[dynamic_features])
             
-            elif isinstance(dynamic, pd.DataFrame) and len(dynamic.index.names) > 1:
-                # it is multiindex DataFrame, we need to stack it
-                dynamic = dynamic.unstack()
-                dynamic.columns = dynamic.columns.levels[1]
+            elif isinstance(dynamic, dict):
+                assert len(dynamic) == 1, f"Expected dynamic dict of length 1, got {len(dynamic)}"
+                dynamic = dynamic.popitem()[1]
 
             if static_features is not None:
                 static = self.fetch_static_features(station, static_features)
@@ -955,7 +958,8 @@ class _RainfallRunoff(Datasets):
                 stations,
                 dynamic_features="q_cms_obs", 
                 as_dataframe=True)
-            q.index = q.index.get_level_values(0)
+            q = pd.DataFrame.from_dict({stn:df['q_cms_obs'] for stn,df in q.items()})
+
             area_m2 = self.area(stations) * 1e6  # area in m2
             q = (q / area_m2) * 86400  # cms to m/day
             return q * 1e3  # to mm/day
@@ -966,7 +970,8 @@ class _RainfallRunoff(Datasets):
                 stations,
                 dynamic_features=self._mmd_feature_name,
                 as_dataframe=True)
-            q.index = q.index.get_level_values(0)
+
+            q = pd.DataFrame.from_dict({stn:df[self._mmd_feature_name] for stn,df in q.items()})
             return q
 
     def stn_coords(
@@ -1144,23 +1149,16 @@ class _RainfallRunoff(Datasets):
         return ax
 
 
-def _handle_dynamic(dyn, as_dataframe: bool):
+def _handle_dynamic(
+        dyn, 
+        as_dataframe: bool
+        ) -> Union[Dict[str, pd.DataFrame], "Dataset"]:
     if as_dataframe and isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
         # if the dyn is a dictionary of station, DataFames pairs, and each DataFrame's index is 'time'
-        # 'columns' are 'dynamic_features', we will return a MultiIndex
-        # dataframe instead of a dictionary whose first index is time and second index is dynamic_feature
-        # Step 1: Convert each DataFrame to long format (melt)
-        long_dfs = []
         for station, df in dyn.items():
-            long_df = df.reset_index().melt(id_vars='time', var_name='dynamic_feature', value_name='value')
-            long_df['station'] = station
-            long_dfs.append(long_df)
-        # Step 2: Concatenate all long DataFrames into one
-        combined_df = pd.concat(long_dfs)
-        # Step 3: Pivot to get desired format: rows = (time, dynamic_feature), columns = stations
-        dyn = combined_df.pivot(index=['time', 'dynamic_feature'], columns='station', values='value')
+            assert isinstance(df, pd.DataFrame), f"Data for station {station} is not a DataFrame"
     elif isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
+        assert xr is not None, f"For as_dataframe {as_dataframe} and dyn: {type(dyn)}, xarray module must be installed"
         # dyn is a dictionary of key, DataFames and we have to return xr Dataset
-        # dyn = pd.concat(dyn, axis=0, keys=dyn.keys())
         dyn = xr.Dataset(dyn)
     return dyn

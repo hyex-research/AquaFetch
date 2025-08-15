@@ -20,6 +20,7 @@ from utils import (
     test_boundary,
     test_plot_catchment,
     test_plot_stations,
+    test_static_data,
     )
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -28,17 +29,17 @@ dataset = Simbi(path=gscad_path)
 
 #test_dataset(dataset, 70, 17167, 232, 3, raise_len_error=False)
     # check that dynamic attribues from all data can be retrieved.
-test_dynamic_data(dataset, None, 24, 17167)
-test_dynamic_data(dataset, None, 24, 17167, as_dataframe=True)
+test_dynamic_data(dataset, None, 24, 2800)
+test_dynamic_data(dataset, None, 24, 2800, as_dataframe=True)
 
 # check that dynamic data of 10% of stations can be retrieved
-test_dynamic_data(dataset, 0.1, 2, 17167, 
+test_dynamic_data(dataset, 0.1, 2, 2800, 
                     raise_len_error=False)
-test_dynamic_data(dataset, 0.5, int(24*0.5), 17167, True,
+test_dynamic_data(dataset, 0.5, int(24*0.5), 2800, True,
                     raise_len_error=False)
 test_attributes(dataset, 232, 3, 24)
 
-# dataset.area(dataset.static_data_stations())
+test_static_data(dataset, 24, 24)
 
 test_area(dataset)
 

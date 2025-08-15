@@ -958,6 +958,8 @@ class GSHA(_RainfallRunoff):
             self,
             station: str,
             dynamic_features='all',
+            st : Union[str, pd.Timestamp] = None,
+            en : Union[str, pd.Timestamp] = None
     ) -> pd.DataFrame:
         """
         Fetches all or selected dynamic features of one station.
@@ -989,6 +991,7 @@ class GSHA(_RainfallRunoff):
         (16071, 2)
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        st, en = self._check_length(st, en)
 
         out = pd.concat(
             [self.meteo_vars_stn(station),
@@ -996,7 +999,7 @@ class GSHA(_RainfallRunoff):
              self.lai_stn(station).rename('lai')
              ],
             axis=1
-        ).loc[:, features]
+        ).loc[st:en, features]
         out.columns.name = 'dynamic_features'
         return out
 
@@ -1049,12 +1052,15 @@ class GSHA(_RainfallRunoff):
 
         if len(stations) == 1:
             if as_dataframe:
-                return self.fetch_stn_dynamic_features(stations[0], features)
+                stn_df = self.fetch_stn_dynamic_features(stations[0], features, st, en)
+                return {stations[0]: stn_df}
             else:
-                return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features))})
+                return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features, st, en))})
 
         if as_dataframe:
-            raise NotImplementedError("as_dataframe=True is not implemented yet for multiple stations")
+            # raise NotImplementedError("as_dataframe=True is not implemented yet for multiple stations")
+            dynamic = {stn:self.fetch_stn_dynamic_features(stn, features, st, en) for stn in stations}
+            return dynamic
 
         # todo : we should read meteo, storage and lai only when they are required!
         meteo_vars = self.fetch_meteo_vars(stations)
@@ -1198,6 +1204,8 @@ class _GSHA(_RainfallRunoff):
             features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
+            if isinstance(daily_q, pd.DataFrame):  # as_dataframe is True so 
+                daily_q = {stn:pd.DataFrame(daily_q[stn].rename(observed_streamflow_cms())) for stn in daily_q.columns}
             return daily_q
 
         stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
@@ -1212,16 +1220,19 @@ class _GSHA(_RainfallRunoff):
                 daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
-                # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={stn: stn.split('_')[0] for stn in stations}, inplace=True)
-                assert isinstance(data.index, pd.MultiIndex)
-                # data is multiindex dataframe but daily_q is not
-                # first make daily_q multiindex
-                daily_q['dynamic_features'] = 'daily_q'
-                daily_q.set_index('dynamic_features', append=True, inplace=True)
-                daily_q = daily_q.reorder_levels(['time', 'dynamic_features'])
-                data = pd.concat([data, daily_q], axis=0).sort_index()
+                assert isinstance(data, dict), type(data)
+                data = {stn.split('_')[0]: stn_data for stn, stn_data in data.items()}
 
+                for stn,meteo_df in data.items():
+                    stn_df = pd.concat([meteo_df, daily_q[stn].rename(observed_streamflow_cms())], axis=1)
+                    data[stn] = stn_df
+        else:
+            if isinstance(data, xr.Dataset):
+                data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
+            else:
+                assert isinstance(data, dict)
+                data = {stn.split('_')[0]: stn_data for stn, stn_data in data.items()}
+                    
         return data
 
     def _fetch_static_features(

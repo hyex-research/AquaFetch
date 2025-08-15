@@ -41,41 +41,74 @@ class Caravan_DK(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import Caravan_DK
     >>> dataset = Caravan_DK()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (569751, 30)  # 30 represents number of stations
-    >>> data.index.names == ['time', 'dynamic_features']
-    True
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='80001', as_dataframe=True)
+    >>> df = dynamic['80001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (14609, 39)
-    # get name of all stations as list
+
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    308
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='80001', as_dataframe=True)
-    >>> df.unstack().shape
-    (14609, 39)
-    # get names of available dynamic features
+       308
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (31 out of 308)
+       31
+
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(14609, 39), (14609, 39), (14609, 39),... (14609, 39), (14609, 39)]
+
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',
-    ... 'potential_evaporation_sum', 'total_precipitation_sum', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (14609, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('80001', as_dataframe=True,
+    ...  dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',  'q_cms_obs'])
+    >>> dynamic['80001'].shape
+       (14609, 3)
+
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (569751, 10)  # remember this is multi-indexed DataFrame
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 211), (14609, 39))
+    >>> static.shape, len(dynamic), dynamic['80001'].shape
+    ((1, 211), 1, (14609, 39))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 14609, 'dynamic_features': 39})
+
+    >>> len(dynamic.data_vars)
+    10
+
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (308, 2)
+    >>> dataset.stn_coords('80001')  # returns coordinates of station whose id is 80001
+        57.10371	10.3516
+    >>> dataset.stn_coords(['80001', '240001'])  # returns coordinates of two stations
+
+    # get area of a single station
+    >>> dataset.area('80001')
+    # get coordinates of two stations
+    >>> dataset.area(['80001', '240001'])
+
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('80001')
     """
 
     url = "https://zenodo.org/record/7962379"

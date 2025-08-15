@@ -350,6 +350,8 @@ class EStreams(_RainfallRunoff):
             self,
             station: str,
             dynamic_features='all',
+            st:Union[str, pd.Timestamp] = None,
+            en:Union[str, pd.Timestamp] = None,
     ) -> pd.DataFrame:
         """
         Fetches all or selected dynamic features of one station.
@@ -371,14 +373,15 @@ class EStreams(_RainfallRunoff):
         --------
         >>> from aqua_fetch import EStreams
         >>> camels = EStreams()
-        >>> camels.fetch_stn_dynamic_features('IEEP0281').unstack()
+        >>> camels.fetch_stn_dynamic_features('IEEP0281')
         >>> camels.dynamic_features
         >>> camels.fetch_stn_dynamic_features('IEEP0281',
-        ... features=['p_mean', 't_mean', 'pet_mean']).unstack()
+        ... features=['p_mean', 't_mean', 'pet_mean'])
         """
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        st, en = self._check_length(st, en)
 
-        return self.meteo_data_station(station).loc[:, features]
+        return self.meteo_data_station(station).loc[st:en, features]
 
     def fetch_dynamic_features(
             self,
@@ -410,11 +413,11 @@ class EStreams(_RainfallRunoff):
         --------
         >>> from aqua_fetch import EStreams
         >>> camels = EStreams()
-        >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True).unstack()
+        >>> camels.fetch_dynamic_features('IEEP0281', as_dataframe=True)
         >>> camels.dynamic_features
         >>> camels.fetch_dynamic_features('IEEP0281',
         ... features=['p_mean', 't_mean', 'pet_mean'],
-        ... as_dataframe=True).unstack()
+        ... as_dataframe=True)
         """
 
         stations = self._get_stations(countries, stations)
@@ -423,12 +426,15 @@ class EStreams(_RainfallRunoff):
 
         if len(stations) == 1:
             if as_dataframe:
-                return self.fetch_stn_dynamic_features(stations[0], features)
+                stn_df = self.fetch_stn_dynamic_features(stations[0], features, st, en)
+                return {stations[0]: stn_df}
             else:
-                return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features))})
+                return xr.Dataset({stations[0]: xr.DataArray(self.fetch_stn_dynamic_features(stations[0], features, st, en))})
 
         if as_dataframe:
-            raise NotImplementedError("as_dataframe=True is not implemented yet")
+            data = {stn:self.fetch_stn_dynamic_features(stn, features, st, en) for stn in stations}
+            # raise NotImplementedError("as_dataframe=True is not implemented yet")
+            return data
 
         return self.meteo_data(stations).sel(dynamic_features=features)
 
@@ -544,6 +550,8 @@ class _EStreams(_RainfallRunoff):
             features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
+            if isinstance(daily_q, pd.DataFrame):  # as_dataframe is True so 
+                daily_q = {stn:pd.DataFrame(daily_q[stn].rename(observed_streamflow_cms())) for stn in daily_q.columns}
             return daily_q
 
         # stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
@@ -558,15 +566,18 @@ class _EStreams(_RainfallRunoff):
                 daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features').sel(time=slice(st, en))
             else:
-                # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={stn: stn.split('_')[0] for stn in stations}, inplace=True)
-                assert isinstance(data.index, pd.MultiIndex)
-                # data is multiindex dataframe but daily_q is not
-                # first make daily_q multiindex
-                daily_q['dynamic_features'] = 'daily_q'
-                daily_q.set_index('dynamic_features', append=True, inplace=True)
-                daily_q = daily_q.reorder_levels(['time', 'dynamic_features'])
-                data = pd.concat([data, daily_q], axis=0).sort_index()
+                assert isinstance(data, dict)
+                data = {stn.split('_')[0]: stn_data for stn, stn_data in data.items()}
+
+                for stn,meteo_df in data.items():
+                    stn_df = pd.concat([meteo_df, daily_q[stn].rename(observed_streamflow_cms())], axis=1)
+                    data[stn] = stn_df
+        else:
+            if isinstance(data, xr.Dataset):
+                data = data.rename({stn: stn.split('_')[0] for stn in data.data_vars})
+            else:
+                assert isinstance(data, dict)
+                data = {stn.split('_')[0]: stn_data for stn, stn_data in data.items()}
 
         return data
 
@@ -574,12 +585,13 @@ class _EStreams(_RainfallRunoff):
             self,
             station="all",
             static_features: Union[str, list] = 'all',
-            st=None,
-            en=None,
+            **kwargs
     ) -> pd.DataFrame:
         """Fetches static features of station."""
+
         if self.verbosity > 1:
             print('fetching static features')
+
         stations = check_attributes(station, self.stations(), 'stations')
         # stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
         static_feats = self.estreams.fetch_static_features(stations, static_features).copy()
@@ -606,13 +618,12 @@ class _EStreams(_RainfallRunoff):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or a python dictionary whose keys are station names and values
+            are :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the :obj:`xarray` library is installed or not.
             If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
             equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
-            and `time` and `dynamic_features` as dimensions and coordinates. If 
-            dynamic features are returned as :obj:`pandas.DataFrame`, then
-            the first index is `time` and the second index is `dynamic_features`.
+            and `time` and `dynamic_features` as dimensions and coordinates.
 
         Examples
         --------
@@ -637,8 +648,6 @@ class _EStreams(_RainfallRunoff):
             if static_features is not None:  # we want both static and dynamic
                 static = self._fetch_static_features(station=stations,
                                                      static_features=static_features,
-                                                     st=st,
-                                                     en=en,
                                                      **kwargs
                                                      )
 
@@ -660,8 +669,7 @@ class _EStreams(_RainfallRunoff):
             self,
             stations: Union[str, List[str]] = "all",
             static_features: Union[str, List[str]] = "all",
-            st=None,
-            en=None,
+            countries: List[str] = "all",
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -673,8 +681,6 @@ class _EStreams(_RainfallRunoff):
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
-            st :
-            en :
 
         Examples
         ---------
@@ -699,7 +705,9 @@ class _EStreams(_RainfallRunoff):
         >>> static_data.shape
            (12004, 2)
         """
-        return self._fetch_static_features(stations, static_features, st, en)
+        # stations = self.estreams._get_stations(countries, stations)
+
+        return self._fetch_static_features(stations, static_features)
 
 
 START_YEAR = 2012
@@ -1539,7 +1547,7 @@ class Italy(_EStreams):
             data.index.name = "time"
 
         # replace 'hsl-abr:5010' with 'ITIS0001'
-        data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+        data = data.rename(columns=self.gauge_id_basin_id_map()).sort_index()
 
         if as_dataframe:
             return data
@@ -1706,7 +1714,7 @@ class Poland(_EStreams):
             data.index.name = 'time'
 
         # replace '149180020' with 'PL000001'
-        data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+        data = data.rename(columns=self.gauge_id_basin_id_map()).sort_index()
 
         # todo: make sure that the following stations actually not have any data
         if data.shape[1]<len(self.stations()):
@@ -2020,7 +2028,7 @@ class Portugal(_EStreams):
 
         # q_df columns are 03J/02H	15G/02H	11H/02H which needs to be mapped to PT000001	PT000002	PT000003
         # because stations are identified by basin_id
-        q_df = q_df.rename(columns=self.gauge_id_basin_id_map())
+        q_df = q_df.rename(columns=self.gauge_id_basin_id_map()).sort_index()
 
         if as_dataframe:
             return q_df
@@ -2154,7 +2162,7 @@ class Slovenia(_EStreams):
         q_df.index.name = 'time'
 
         # because stations are identified by basin_id
-        q_df = q_df.rename(columns=self.gauge_id_basin_id_map())
+        q_df = q_df.rename(columns=self.gauge_id_basin_id_map()).sort_index()
 
         if as_dataframe:
             return q_df

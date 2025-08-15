@@ -243,9 +243,9 @@ plt.show()
 _ = hist(streamflow.skew().values.reshape(-1,), bins=50)
 
 # %%
-_, df = dataset.fetch(stations=1, as_dataframe=True)
-df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-df.columns = df.columns.get_level_values('dynamic_features')
+_, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+print(len(dynamic))
+df = dynamic.popitem()[1] # the key in dynamic is the station name and value is stn dynamic data as DataFrame
 df.shape
 
 # %%
@@ -259,33 +259,30 @@ len(stns)
 
 # %%
 # get data of 10 % of stations as dataframe
-_, df = dataset.fetch(0.1, as_dataframe=True)
-df.shape
+_, dynamic = dataset.fetch(0.1, as_dataframe=True)
+len(dynamic)  # remember this is a dictionary of dataframes
 
 # %%
+# The keys in dynamic dictionary are names of stations
+dynamic.keys()
 
-df
-
-# %%
-# The returned dataframe is a multi-indexed data
-df.index.names == ['time', 'dynamic_features']
-
-df
 # %%
 # get data by station id
-df = dataset.fetch(stations='224214A', as_dataframe=True)[1].unstack()
-df.shape
+dynamic = dataset.fetch(stations='224214A', as_dataframe=True)[1]
+dynamic['224214A'].shape
 
 # %%
 
-df
+dynamic['224214A']
 
 # %%
 # get names of available dynamic features
 dataset.dynamic_features
 # get only selected dynamic features
-data = dataset.fetch(1, as_dataframe=True,
-dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs'])[1].unstack()
+dynamic = dataset.fetch(1, as_dataframe=True,
+dynamic_features=['airtemp_C_awap_max', 'pcp_mm_awap', 'aet_mm_silo_morton', 'q_cms_obs'])[1]
+print(type(dynamic))
+data = dynamic.popitem()[1]
 data.shape
 
 # %%
@@ -297,15 +294,15 @@ data
 # get names of available static features
 dataset.static_features
 # get data of 10 random stations
-_, df = dataset.fetch(10, as_dataframe=True)
-df.shape  # remember this is a multiindexed dataframe
+_, dynamic = dataset.fetch(10, as_dataframe=True)
+len(dynamic)  # remember this is a dictioanry of dataframes
 
 # %%
 
-# when we get both static and dynamic data, the returned data is a dictionary
-# with ``static`` and ``dyanic`` keys.
+# static data is always a pandas DataFrame while dynamic is a dictionary of dataframes
+# with keys as station names.
 static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
-static.shape, dynamic.shape
+static.shape, dynamic['224214A'].shape
 
 # %%
 static
