@@ -98,7 +98,7 @@ from .wq import GRiMeDB
 from .wq import BuzzardsBay
 from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
-from .wq import Camels_Ch_Chem
+from .wq import CamelsCHChem
 from .wq import Oligotrend
 
 # *** Miscellaneous ***
@@ -199,7 +199,7 @@ ALL_DATASETS = [
     BuzzardsBay.__class__.__name__,
     WhiteClayCreek.__class__.__name__,
     RiverChemSiberia.__class__.__name__,
-    Camels_Ch_Chem.__class__.__name__,
+    CamelsCHChem.__class__.__name__,
     Oligotrend.__class__.__name__,
     
     ec_removal_biochar.__name__,

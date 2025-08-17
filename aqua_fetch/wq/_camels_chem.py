@@ -306,11 +306,69 @@ def get_cols(parameters:List[str], all_cols:List[str])->List[str]:
     return cols
 
 
-class Camels_Ch_Chem(Datasets):
+class CamelsCHChem(Datasets):
     """
-    Water quality data for Switzerland following the work of `Nascimento et al., 2025 <https://eartharxiv.org/repository/view/9046/>`_
+    Water quality data for Switzerland following the work of 
+    `Nascimento et al., 2025 <https://eartharxiv.org/repository/view/9046/>`_
     The dataset is downloaded from `zenodo <https://zenodo.org/records/16158375>`_ .
     It contains over 40 water quality parameters  for 115 Swiss catchments from 1980-01-01 - 2020-12-31.
+    
+    Examples
+    --------
+    >>> from aqua_fetch import CamelsCHChem
+    >>> dataset = CamelsCHChem(path='/path/to/data')
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    115
+    ... find out names of stations
+    >>> stns[0:10]
+    ['2009', '2011', '2016', '2018', ... '2044']
+    ... get longitude and latitude of stations
+    >>> coords = dataset.stn_coords()
+    >>> coords.shape
+    (115, 2)
+    >>> data = dataset.fetch_catch_avg('2009')
+    >>> type(data)
+    dict
+    >>> len(data)
+    1
+    >>> data.keys()
+    '2009'
+    >>> data['2009'].shape
+    (209, 32)
+    >>> data = dataset.fetch_catch_avg(['2009', '2011', '2018'])
+    >>> data.keys()
+    dict_keys(['2009', '2011', '2018'])
+    >>> [val.shape for val in data.values()]
+    [(209, 32), (209, 32), (209, 32)]
+    >>> data['2009'].columns.tolist()
+    ['cereal', 'maize', 'sugarbeet', ... 'gve_ha', 'delta_2h']
+    ... find out start and end dates
+    >>> data['2009'].index[0], data['2009'].index[-1]
+    (Timestamp('1970-01-01'), Timestamp('2020-12-15'))
+    ...
+    ... get water quality time series
+    >>> data = dataset.fetch_wq_ts(stations=['2009', '2011'])
+    >>> data['2009'].shape
+    (14610, 4)
+    >>> data['2011'].shape 
+    (14610, 4)
+    >>> data['2011'].columns
+    Index(['temp_sensor', 'pH_sensor', 'ec_sensor', 'O2C_sensor'], dtype='object')
+    >>> data = dataset.fetch_wq_ts()
+    >>> len(data) 
+    115
+    >>> data['2009'].index[0], data['2009'].index[-1]
+    (Timestamp('1981-01-01 00:00:00'), Timestamp('2020-12-31 00:00:00'))
+    ...
+    # get isotope data
+    >>> data = dataset.fetch_isotope(stations=['2009', '2016'])
+    >>> data['2009'].shape 
+    (452, 4)
+    >>> data['2016'].shape 
+    (450, 4)
+    >>> data['2009'].columns
+    Index(['date_start', 'date_end', 'delta_2h', 'delta_18o'], dtype='object')
     """
 
     url = "https://zenodo.org/records/16158375"
@@ -391,7 +449,7 @@ class Camels_Ch_Chem(Datasets):
         
         Examples
         --------
-        >>> ds = Camels_Ch_Chem(path='/path/to/data')
+        >>> ds = CamelsCHChem(path='/path/to/data')
         >>> data = ds.fetch_catch_avg(stations=['2009', '2011'])
         >>> print(data['2009'].shape)  # (209, 32)
         >>> print(data['2011'].shape)  # (209, 32)
@@ -454,7 +512,7 @@ class Camels_Ch_Chem(Datasets):
         
         Examples
         --------
-        >>> ds = Camels_Ch_Chem(path='/path/to/data')
+        >>> ds = CamelsCHChem(path='/path/to/data')
         >>> data = ds.fetch_wq_ts('2009')['2009']
         >>> print(data.shape)  # (14610, 4)
         """

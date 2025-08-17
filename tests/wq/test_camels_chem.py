@@ -5,7 +5,7 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 site.addsitedir(wd_dir)
 
 from aqua_fetch import CamelsChem
-from aqua_fetch.wq._camels_chem import Camels_Ch_Chem
+from aqua_fetch import CamelsCHChem
 
 
 ds = CamelsChem(
@@ -59,7 +59,7 @@ def test_fetch_atm_dep():
 
 def test_camels_ch_chem():
     
-    ds = Camels_Ch_Chem(
+    ds = CamelsCHChem(
         path='/mnt/datawaha/hyex/atr/data',
         verbosity=3
         )
@@ -88,6 +88,7 @@ def test_camels_ch_chem():
     assert data['2016'].shape == (450, 4)
 
     return
+
 
 test_fetch()
 

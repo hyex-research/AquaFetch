@@ -84,7 +84,7 @@ class Bull(_RainfallRunoff):
     >>> df = dynamic['BULL_9007'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (25932, 55)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -93,11 +93,11 @@ class Bull(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (48 out of 484)
        48
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(25932, 55), (25932, 55), (25932, 55),... (25932, 55), (25932, 55)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -109,42 +109,42 @@ class Bull(_RainfallRunoff):
     ...  dynamic_features=['pet_mm_AEMET',  'airtemp_C_mean_AEMET', 'pcp_mm_ERA5Land', 'q_obs_cms'])
     >>> dynamic['BULL_9007'].shape
        (25932, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='BULL_9007', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['BULL_9007'].shape
     ((1, 214), 1, (25932, 55))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 25932, 'dynamic_features': 55})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (484, 2)
     >>> dataset.stn_coords('BULL_9007')  # returns coordinates of station whose id is BULL_9007
         41.298  -1.967
     >>> dataset.stn_coords(['BULL_9007', 'BULL_8083'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('BULL_9007')
     # get coordinates of two stations
     >>> dataset.area(['BULL_9007', 'BULL_8083'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('BULL_9007')
 

@@ -124,7 +124,7 @@ class RainfallRunoff(object):
     >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (21915, 4)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -133,11 +133,11 @@ class RainfallRunoff(object):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (5)
        5
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(21915, 4), (21915, 4), (21915, 4), (21915, 4), (21915, 4)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -149,41 +149,42 @@ class RainfallRunoff(object):
     ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
     >>> dynamic['5'].shape
        (21915, 3)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['5'].shape
     ((1, 76), 1, (21915, 4))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   # -> xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims   # -> FrozenMappingWarningOnValuesAccess({'time': 21915, 'dynamic_features': 4})
-
+    ...
     >>> len(dynamic.data_vars)   # -> 10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (50, 2)
     >>> dataset.stn_coords('5')  # returns coordinates of station whose id is 5
         68.035599	21.9758
     >>> dataset.stn_coords(['5', '736'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('5')
     # get coordinates of two stations
     >>> dataset.area(['5', '736'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('5')
+    ...
 
     See :ref:`sphx_glr_auto_examples_camels_australia.py` for more comprehensive usage example.
 
@@ -486,27 +487,27 @@ class RainfallRunoff(object):
         --------
         >>> from aqua_fetch import RainfallRunoff
         >>> dataset = RainfallRunoff('CAMELS_AUS')
-
+        ...
         >>> # get data of 10% of stations
         >>> _, dynamic = dataset.fetch(stations=0.1, as_dataframe=True)  # dynamic is a dictionary
-
+        ...
         ...  # fetch data of 5 (randomly selected) stations
         >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
-
+        ...
         ... # fetch data of 2 selected stations
         >>> _, two_selec_stn_data = dataset.fetch(stations=['912101A','912105A'], as_dataframe=True)
-
+        ...
         ... # fetch data of a single stations
         >>> _, single_stn_data = dataset.fetch(stations='912101A', as_dataframe=True)
-
+        ...
         ... # get both static and dynamic features as dictionary
         >>> static, dyanmic = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> dynamic
-
+        ...
         ... # get only selected dynamic features
         >>> _, sel_dyn_features = dataset.fetch(stations='912101A',
         ...     dynamic_features=['q_cms_obs', 'pcp_mm_silo'], as_dataframe=True)
-
+        ...
         ... # fetch data between selected periods
         >>> _, data = dataset.fetch(stations='912101A', st="20010101", en="20101231", as_dataframe=True)
 
@@ -677,7 +678,7 @@ class RainfallRunoff(object):
         >>> dataset = RainfallRunoff('CAMELS_AUS')
         >>> static, dynamic = dataset.fetch_station_features('912101A')
         >>> static.shape
-
+        ...
         >>> dynamic.shape
 
         """

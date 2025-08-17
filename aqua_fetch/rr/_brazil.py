@@ -60,7 +60,7 @@ class CAMELS_BR(_RainfallRunoff):
     >>> df = dynamic['46035000'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (14245, 10)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -69,11 +69,11 @@ class CAMELS_BR(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (59 out of 593)
        59
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(14245, 10), (14245, 10), (14245, 10),... (14245, 10), (14245, 10)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -85,19 +85,19 @@ class CAMELS_BR(_RainfallRunoff):
     ...  dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs'])
     >>> dynamic['46035000'].shape
        (14245, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['46035000'].shape
     ((1, 67), 1, (14245, 10))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
@@ -105,22 +105,22 @@ class CAMELS_BR(_RainfallRunoff):
 
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 14245, 'dynamic_features': 10})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (593, 2)
     >>> dataset.stn_coords('46035000')  # returns coordinates of station whose id is 46035000
         -12.8686	-43.3797
     >>> dataset.stn_coords(['46035000', '57170000'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('46035000')
     # get coordinates of two stations
     >>> dataset.area(['46035000', '57170000'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('46035000')
 
@@ -622,7 +622,7 @@ class CABra(_RainfallRunoff):
     >>> df = dynamic['92'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (10956, 13)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -631,11 +631,11 @@ class CABra(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (73 out of 735)
        73
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(10956, 13), (10956, 13), (10956, 13),... (10956, 13), (10956, 13)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -647,14 +647,14 @@ class CABra(_RainfallRunoff):
     ...  dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs'])
     >>> dynamic['92'].shape
        (10956, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['92'].shape
@@ -664,25 +664,25 @@ class CABra(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 10956, 'dynamic_features': 13})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (735, 2)
     >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 92
         -2.509	-47.764
     >>> dataset.stn_coords(['92', '5'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('92')
     # get coordinates of two stations
     >>> dataset.area(['92', '5'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('92')
 
