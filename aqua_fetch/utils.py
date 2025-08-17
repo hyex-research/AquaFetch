@@ -356,6 +356,7 @@ def download_and_unzip(
                                  doi=url, 
                                  include=include,
                                  files_to_check=files_to_check,
+                                 verbosity=verbosity,
                                  **kwargs)
         else:
             download(url, path, verbosity=verbosity)
@@ -371,6 +372,7 @@ def download_and_unzip(
                                      doi=url, 
                                      include=include,
                                      files_to_check=files_to_check,
+                                     verbosity=verbosity,
                                      **kwargs)
             else:
                 download(url, path, verbosity=verbosity)
@@ -386,6 +388,7 @@ def download_and_unzip(
                                      doi=url, 
                                      include=include,
                                      files_to_check=files_to_check,
+                                     verbosity=verbosity,
                                      **kwargs)
             elif 'drive.google' in url:
                 download_from_google_drive(url, path, fname, verbosity=verbosity)   

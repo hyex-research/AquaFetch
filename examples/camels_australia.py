@@ -291,16 +291,15 @@ data
 
 # %%
 
-# get names of available static features
-dataset.static_features
+# %%
 # get data of 10 random stations
 _, dynamic = dataset.fetch(10, as_dataframe=True)
 len(dynamic)  # remember this is a dictioanry of dataframes
 
 # %%
-
 # static data is always a pandas DataFrame while dynamic is a dictionary of dataframes
 # with keys as station names.
+
 static, dynamic = dataset.fetch(stations='224214A', static_features="all", as_dataframe=True)
 static.shape, dynamic['224214A'].shape
 
@@ -309,11 +308,11 @@ static
 
 # %%
 
-dynamic
+dynamic.keys()
 
 # %%
-# get data data of all stations as xarray dataset
-static, dynamic = dataset.fetch()
+# get dynamic data data of all stations as xarray dataset
+static, dynamic = dataset.fetch(static_features="all")
 static
 
 # %%
