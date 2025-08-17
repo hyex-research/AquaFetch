@@ -19,11 +19,38 @@ class CamelsChem(Datasets):
     Examples
     --------
     >>> from aqua_fetch import CamelsChem
-    >>> ds = CamelsChem(path='/path/to/dataset')
-    >>> len(ds.stations())
-    516
-    >>> len(ds.parameters)
+    >>> dataset = CamelsChem(path='/path/to/dataset')
+    >>> stns = dataset.stations()
+    >>> len(stns)
+    671
+    >>> stns[0:10]
+    ['1591400', '6350000', ... '11274500', '7295000']
+    >>> len(dataset.parameters)
     28
+    >>> dataset.parameters
+    ['cl_mg/l', 'na_mg/l', ... 'doc_mg/l']
+    ... get longitude and latitude of stations
+    >>> coords = dataset.stn_coords()
+    >>> coords.shape
+    (115, 2)
+    ... 
+    >>> data = dataset.fetch_atm_dep()
+    >>> type(data)
+    dict
+    ... 
+    >>> len(data)
+    671
+    ...
+    >>> data = dataset.fetch_atm_dep(stations='1591400', parameters='cl')
+    >>> data['1591400'].shape 
+    (34, 8)
+    ...
+    >>> data = dataset.fetch_atm_dep(stations=['1591400', '6350000'], parameters=['cl', 'na'])
+    >>> data['1591400'].shape
+    (34, 16)
+    >>> data['6350000'].shape
+    (34, 16)
+
     """
     url1 = {
         "Camels_chem_1980_2018.csv":
@@ -48,6 +75,8 @@ class CamelsChem(Datasets):
         self._stations = self.gauge_and_region_names()['gauge_id'].tolist()
 
         self._atm_dep_parameters = self.__atm_dep_parameters()
+
+        # todo : initialization taking ~15 seconds
     
     def _download(self, overwrite=False, **kwargs):
         
@@ -222,6 +251,8 @@ class CamelsChem(Datasets):
         """
         reads the atmospheric deposition data
         """
+        if self.verbosity>2:
+            print("reading atmospheric deposition data")
         fpath = os.path.join(self.path, 'DepCon_671_1985_2018.xlsx')
         atm_dep = pd.read_excel(fpath, index_col=1, dtype={'gauge_id': str})
         atm_dep.index = atm_dep.index.astype(str)

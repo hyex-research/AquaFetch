@@ -88,8 +88,8 @@ class LamaHCE(_RainfallRunoff):
             ):
 
         """
-        Parameters
-        ----------
+    Parameters
+    ----------
         path : str
             If the data is alredy downloaded then provide the complete
             path to it. If None, then the data will be downloaded.
@@ -102,8 +102,8 @@ class LamaHCE(_RainfallRunoff):
                 possible values are ``total_upstrm``, ``intermediate_all``
                 or ``intermediate_lowimp``
 
-        Examples
-        --------
+    Examples
+    --------
     >>> from aqua_fetch import LamaHCE
     # by default the timestep is daily and data_type is 'total_upstrm'
     >>> dataset = LamaHCE()
@@ -112,7 +112,7 @@ class LamaHCE(_RainfallRunoff):
     >>> df = dynamic['826'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (14244, 22)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -121,11 +121,11 @@ class LamaHCE(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (85 out of 859)
        85
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(14244, 22), (14244, 22), (14244, 22),... (14244, 22), (14244, 22)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -137,53 +137,53 @@ class LamaHCE(_RainfallRunoff):
     ...  dynamic_features=['airtemp_C_mean', 'total_et', 'pcp_mm', 'q_cms_obs'])
     >>> dynamic['826'].shape
        (14244, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='826', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['826'].shape
     ((1, 84), 1, (14244, 22))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 14244, 'dynamic_features': 22})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (859, 2)
     >>> dataset.stn_coords('826')  # returns coordinates of station whose id is 826
         2995596.0	4811891.0
     >>> dataset.stn_coords(['826', '819'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('826')
     # get coordinates of two stations
     >>> dataset.area(['826', '819'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('826')
-
+    ...
     # the data_type can also be 'intermediate_all'
     >>> dataset = LamaHCE(data_type='intermediate_all')
-
+    ...
     # or 'intermediate_lowimp'
     >>> dataset = LamaHCE(data_type='intermediate_lowimp')
     >>> len(dataset.stations())
     454
-
+    ...
     # the timestep can also be hourly i.e. 'H'
     >>> dataset = LamaHCE(timestep='H')
     >>> _, dynamic = dataset.fetch(stations='79', as_dataframe=True)
@@ -816,7 +816,7 @@ class LamaHIce(LamaHCE):
     >>> df = dynamic['92'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (26298, 36)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -825,11 +825,11 @@ class LamaHIce(LamaHCE):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (11 out of 111)
        11
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(26298, 36), (26298, 36), (26298, 36),... (26298, 36), (26298, 36)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -841,53 +841,53 @@ class LamaHIce(LamaHCE):
     ...  dynamic_features=['swe', 'pet_mm', 'pcp_mm', 'q_cms_obs'])
     >>> dynamic['92'].shape
        (26298, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['92'].shape
     ((1, 154), 1, (26298, 36))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 26298, 'dynamic_features': 36})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (111, 2)
     >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 92
         571777.0	309737.0
     >>> dataset.stn_coords(['92', '5'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('92')
     # get coordinates of two stations
     >>> dataset.area(['92', '5'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('92')
-
+    ...
     # the data_type can also be 'intermediate_all'
     >>> dataset = LamaHIce(data_type='intermediate_all')
-
+    ...
     # or 'intermediate_lowimp'
     >>> dataset = LamaHIce(data_type='intermediate_lowimp')
     >>> len(dataset.stations())
     86
-
+    ...
     # the timestep can also be 'H'
     >>> dataset = LamaHIce(timestep='H')
     >>> _, dynamic = dataset.fetch(stations='79', as_dataframe=True)

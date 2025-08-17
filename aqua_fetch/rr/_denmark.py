@@ -46,7 +46,7 @@ class Caravan_DK(_RainfallRunoff):
     >>> df = dynamic['80001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (14609, 39)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -55,11 +55,11 @@ class Caravan_DK(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (31 out of 308)
        31
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(14609, 39), (14609, 39), (14609, 39),... (14609, 39), (14609, 39)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -71,42 +71,42 @@ class Caravan_DK(_RainfallRunoff):
     ...  dynamic_features=['snow_depth_water_equivalent_mean', 'temperature_2m_mean',  'q_cms_obs'])
     >>> dynamic['80001'].shape
        (14609, 3)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='80001', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['80001'].shape
     ((1, 211), 1, (14609, 39))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 14609, 'dynamic_features': 39})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (308, 2)
     >>> dataset.stn_coords('80001')  # returns coordinates of station whose id is 80001
         57.10371	10.3516
     >>> dataset.stn_coords(['80001', '240001'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('80001')
     # get coordinates of two stations
     >>> dataset.area(['80001', '240001'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('80001')
     """

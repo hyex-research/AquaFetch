@@ -122,7 +122,7 @@ class HYSETS(_RainfallRunoff):
     >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (27028, 20)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -131,11 +131,11 @@ class HYSETS(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (1442 out of 14425)
        1442
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(27028, 20), (27028, 20), (27028, 20),... (27028, 20), (27028, 20)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -147,42 +147,42 @@ class HYSETS(_RainfallRunoff):
     ...  dynamic_features=['evap_mm', 'pcp_mm', 'snowmelt_mm', 'swe_mm', 'q_cms_obs'])
     >>> dynamic['5'].shape
        (27028, 5)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['5'].shape
     ((1, 30), 1, (27028, 20))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 27028, 'dynamic_features': 20})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (14425, 2)
     >>> dataset.stn_coords('5')  # returns coordinates of station whose id is 5
         47.091389	-67.731392
     >>> dataset.stn_coords(['5', '12'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('5')
     # get coordinates of two stations
     >>> dataset.area(['5', '12'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('5')
 

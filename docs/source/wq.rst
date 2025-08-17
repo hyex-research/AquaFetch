@@ -35,8 +35,8 @@ List of datasets
      - 1980 - 2018
      - Continental USA
      - `Sterle et al., 2024 <https://doi.org/10.5194/hess-28-611-2024>`_
-   * - Camels_Ch_Chem
-     - :py:class:`aqua_fetch.Camels_Ch_Chem`
+   * - CamelsCHChem
+     - :py:class:`aqua_fetch.CamelsCHChem`
      - 40
      - 1980 - 2020
      - Swtizerland
@@ -94,7 +94,7 @@ List of datasets
      - 17
      - 1986 - 2022
      - Global
-     - `Minaudo et al., 2025 <https://doi.org/10.5194/essd-17-3411-2025>_`
+     - `Minaudo et al., 2025 <https://doi.org/10.5194/essd-17-3411-2025>`_
    * - Sylt Roads
      - :py:class:`aqua_fetch.SyltRoads`
      - 15
@@ -144,7 +144,7 @@ Functions and Classes
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.Camels_Ch_Chem
+.. autoclass:: aqua_fetch.CamelsCHChem
    :members:
    :show-inheritance:
 

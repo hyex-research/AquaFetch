@@ -70,7 +70,7 @@ class GRDCCaravan(_RainfallRunoff):
     >>> df = dynamic['GRDC_3664802'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (26801, 39)
-
+    ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
@@ -79,11 +79,11 @@ class GRDCCaravan(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 10% of stations (535 out of 5357)
        535
-
+    ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(26801, 39), (26801, 39), (26801, 39),... (26801, 39), (26801, 39)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -95,45 +95,45 @@ class GRDCCaravan(_RainfallRunoff):
     ...  dynamic_features=['total_precipitation_sum', 'potential_evaporation_sum', 'temperature_2m_mean', 'q_cms_obs'])
     >>> dynamic['GRDC_3664802'].shape
        (26801, 4)
-
+    ...
     ... # get names of available static features
     >>> dataset.static_features
     ... # get data of 10 random stations
     >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
     >>> len(dynamic)  # remember this is a dictionary with values as dataframe
        10
-
+    ...
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='GRDC_3664802', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['GRDC_3664802'].shape
     ((1, 211), 1, (26801, 39))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
     xarray.core.dataset.Dataset
-
+    ...
     >>> dynamic.dims
     FrozenMappingWarningOnValuesAccess({'time': 26801, 'dynamic_features': 39})
-
+    ...
     >>> len(dynamic.data_vars)
     10
-
+    ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (5357, 2)
     >>> dataset.stn_coords('GRDC_3664802')  # returns coordinates of station whose id is GRDC_3664802
         -26.2271        -51.0771
     >>> dataset.stn_coords(['GRDC_3664802', 'GRDC_1159337'])  # returns coordinates of two stations
-
+    ...
     # get area of a single station
     >>> dataset.area('GRDC_3664802')
     # get coordinates of two stations
     >>> dataset.area(['GRDC_3664802', 'GRDC_1159337'])
-
+    ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('GRDC_3664802')
-
+    ...
     """
 
     url = {
