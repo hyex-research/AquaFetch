@@ -350,10 +350,10 @@ List of datasets
      - :py:class:`aqua_fetch.rr.NPCTRCatchments`
      - 
      - 7
-     - 8
+     - 14
      - 14
      - 2013 - 2019
-     - Iceland
+     - Canada
      - `Korver et al., (2024) <https://doi.org/10.5194/essd-14-4231-2022>`_
    * - ``Poland``
      - :py:class:`aqua_fetch.rr.Poland`
