@@ -25,7 +25,7 @@ from utils import (
     test_coords,
     test_plot_stations,
     test_area,
-    test_q_mmd,
+    test_q_mm,
     test_boundary,
     test_fetch_dynamic_multiple_stations,
     test_plot_catchment,
@@ -35,42 +35,42 @@ from utils import (
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 
-hy = HYSETS(path=gscad_path, verbosity=5)
+dataset = HYSETS(path=gscad_path, verbosity=5)
 
 # because it takes very long time, we don't test with all the data
-test_dynamic_data(hy, 0.1, int(14425 * 0.1), 27028)
+test_dynamic_data(dataset, 0.1, int(14425 * 0.1), 27028)
 
-test_static_data(hy, None, 14425)
-test_static_data(hy, 0.1, int(14425*0.1))
+test_static_data(dataset, None, 14425)
+test_static_data(dataset, 0.1, int(14425*0.1))
 
-test_all_data(hy, 2000, 27028)
-test_all_data(hy, 2000, 27028, True)
+test_all_data(dataset, 2000, 27028)
+test_all_data(dataset, 2000, 27028, True)
 
-test_attributes(hy, 30, 20, 14425)
+test_attributes(dataset, 30, 20, 14425)
 
-test_fetch_dynamic_features(hy, random.choice(hy.stations()))
-test_fetch_dynamic_features(hy, random.choice(hy.stations()), True)
+test_fetch_dynamic_features(dataset, random.choice(dataset.stations()), 27028)
+test_fetch_dynamic_features(dataset, random.choice(dataset.stations()), 27028, True)
 
-test_fetch_dynamic_multiple_stations(hy, 3,  27028)
-test_fetch_dynamic_multiple_stations(hy, 3, 27028, True)
+test_fetch_dynamic_multiple_stations(dataset, 3, 27028)
+test_fetch_dynamic_multiple_stations(dataset, 3, 27028, True)
 
-test_fetch_static_feature(hy, random.choice(hy.stations()),
+test_fetch_static_feature(dataset, random.choice(dataset.stations()),
                             14425, 30)
 
-test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), yearly_steps=366)
-test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), True, yearly_steps=366)
+test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), yearly_steps=366)
+test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), True, yearly_steps=366)
 
-test_selected_dynamic_features(hy)
-test_selected_dynamic_features(hy, True)
+test_selected_dynamic_features(dataset, 27028)
+test_selected_dynamic_features(dataset, 27028, True)
 
-test_coords(hy)
+test_coords(dataset)
 
-test_plot_stations(hy)
+test_plot_stations(dataset)
 
-test_area(hy)
+test_area(dataset)
 
-test_q_mmd(hy)
+test_q_mm(dataset)
 
-test_boundary(hy)
+test_boundary(dataset)
 
-test_plot_catchment(hy)
+test_plot_catchment(dataset)

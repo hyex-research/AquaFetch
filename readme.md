@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/aqua-fetch.svg)](https://badge.fury.io/py/aqua-fetch)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aqua-fetch)](https://pypi.org/project/aqua-fetch/)
 [![status](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387/status.svg)](https://joss.theoj.org/papers/a53b0c03154da4b953b04cdb43de2387)
+[![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.16792359.svg)](https://doi.org/10.5281/zenodo.16792359)
 
 <p float="left">
   <img src="/docs/source/imgs/logo.png"/>
@@ -53,10 +54,9 @@ and the catchment boundary. The following example demonstrates how to fetch data
 from aqua_fetch import RainfallRunoff
 dataset = RainfallRunoff('CAMELS_SE')  # instead of CAMELS_SE, you can provide any other dataset name
 
-# get the data of a single (randomly selected) station
-_, df = dataset.fetch(stations=1, as_dataframe=True)
-df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-df.columns = df.columns.levels[1]
+# get data by station id
+_, dynamic = dataset.fetch(stations='5', as_dataframe=True)
+df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
 df.shape   # ->    (21915, 4)
 
 # get name of all stations as list
@@ -64,34 +64,42 @@ stns = dataset.stations()
 len(stns)  # -> 50
 
 # get data of 10 % of stations as dataframe
-_, df = dataset.fetch(0.1, as_dataframe=True)
-df.shape  # (87660, 5)
+_, dynamic = dataset.fetch(0.1, as_dataframe=True)
+len(dynamic)  # 5
 
-# The returned dataframe is a multi-indexed data
-df.index.names   # ['time', 'dynamic_features'] 
+# dynamic is a dictionary whose values are dataframes of dynamic features
+[df.shape for df in dynamic.values()]   # [(21915, 4), (21915, 4), (21915, 4), (21915, 4), (21915, 4)]
 
-# get data by station id
-_, df = dataset.fetch(stations='5', as_dataframe=True)
-df.unstack().shape  # (21915, 4)
+# get the data of a single (randomly selected) station
+_, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+len(dynamic)  # 1
 
 # get names of available dynamic features
 dataset.dynamic_features
 
 # get only selected dynamic features
-_, data = dataset.fetch(1, as_dataframe=True,
+_, dynamic = dataset.fetch('5', as_dataframe=True,
 ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'q_cms_obs'])
-data.unstack().shape  # (21915, 3)
+dynamic['5'].shape  # (21915, 3)
 
 # get names of available static features
 dataset.static_features
 
 # get data of 10 random stations
-_, df = dataset.fetch(10, as_dataframe=True)
-df.shape  # remember this is a multiindexed dataframe  with shape (87660, 10)
+_, dynamic = dataset.fetch(10, as_dataframe=True)
+len(dynamic)  # 10
 
 # If we want to get both static and dynamic data
 static, dynamic = dataset.fetch(stations='5', static_features="all", as_dataframe=True)
-static.shape, dynamic.unstack().shape   # ((1, 76), (21915, 4))
+static.shape, len(dynamic), dynamic['5'].shape   # ((1, 76), 1, (21915, 4))
+
+# If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+_, dynamic = dataset.fetch(10)
+type(dynamic)   # -> xarray.core.dataset.Dataset
+	
+dynamic.dims   # -> FrozenMappingWarningOnValuesAccess({'time': 21915, 'dynamic_features': 4})
+
+len(dynamic.data_vars)   # -> 10
 
 # get coordinates of all stations
 coords = dataset.stn_coords()
@@ -100,6 +108,14 @@ coords.shape  #     (50, 2)
 dataset.stn_coords('5')       # 68.035599	21.9758
 # get coordinates of two stations
 dataset.stn_coords(['5', '736'])
+
+# get area of a single station
+dataset.area('5')
+# get coordinates of two stations
+dataset.area(['5', '736'])
+
+# if fiona library is installed we can get the boundary as fiona Geometry
+dataset.get_boundary('5')
 ```
 
 The datasets related to surface water quality are available using functional or objected-oriented API
@@ -152,6 +168,7 @@ mg_data_ohe.shape  # -> (1200, 31)
 | Arcticnet      | 106                    |                         | 27                       | 35                      | 1979 - 2003       | Arctic (Russia)                             | [R-Arcticnet](https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html)                                   |
 | Bull           | 484                    |                         | 55                       | 214                     | 1990 - 2020       | Spain                                       | [Aparicio et al., 2024](https://doi.org/10.1038/s41597-024-03594-5)                                         |
 | CABra          | 735                    |                         | 13                       | 87                      | 1980 - 2010       | Brazil                                      | [Almagro et al., 2021](https://doi.org/10.5194/hess-25-3105-2021)                                           |
+| CAMELSH        |                        | 5767                    | 13                       | 779                     | 1900 - 2024       | United States of America                     | [Tran et al., (2025)](https://doi.org/10.1038/s41597-025-05612-6)                                           |
 | CAMELS_AUS     | 222, 561               |                         | 28                       | 166, 187                | 1900 - 2018       | Australia                                   | [Flower et al., 2021](https://doi.org/10.5194/essd-13-3847-2021)                                            |
 | CAMELS_BR      | 897                    |                         | 10                       | 67                      | 1920 - 2019       | Brazil                                      | [Chagas et al., 2020](https://doi.org/10.5194/essd-12-2075-2020)                                            |
 | CAMELS_COL     | 347                    |                         | 6                        | 255                     | 1981 - 2022       | Columbia                                    | [Jimenez et al., 2025](https://doi.org/10.5194/essd-2025-200)                                               |
@@ -179,7 +196,7 @@ mg_data_ohe.shape  # -> (1200, 31)
 | Japan          | 751                    | 696                     | 27                       | 35                      | 1979 - 2022       | Japan                                       | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [river.go.jp](http://www1.river.go.jp)  |
 | LamaHCE        | 859                    | 859                     | 22                       | 80                      | 1981 - 2019       | Central Europe                              | [Klingler et al., 2021](https://doi.org/10.5194/essd-13-4529-2021)                                          |
 | LamaHIce       | 111                    | 111                     | 36                       | 154                     | 1950 - 2021       | Iceland                                     | [Helgason and Nijssen 2024](https://doi.org/10.5194/essd-16-2741-2024)                                      |
-| NPCTRCatchments| -                      | 7                       | 8                        | 14                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
+| NPCTRCatchments| -                      | 7                       | 14                       | 14                      | 2013 - 2019       | Canada                                      | [Korver et al., 2022](https://doi.org/10.5194/essd-14-4231-2022)                                            |
 | Poland         | 1287                   |                         | 10                       | 214                     | 1992 - 2020       | Poland                                      | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [danepubliczne.imgw.pl](https://danepubliczne.imgw.pl) |
 | Portugal       | 280                    |                         | 10                       | 214                     | 1992 - 2020       | Portugal                                    | [Nascimento et al., 2024](https://doi.org/10.5194/essd-2024-379) & [SNIRH Portugal](https://snirh.apambiente.pt) |
 | RRLuleaSweden  | 1                      |                         | 2                        | 0                       | 2016 - 2019       | Lulea (Sweden)                              | [Broekhuizen et al., 2020](https://doi.org/10.5194/hess-24-869-2020)                                        |
@@ -197,7 +214,7 @@ mg_data_ohe.shape  # -> (1200, 31)
 | Busan Beach               | 14                |     1              | 2018 - 2019       | Busan, South Korea        | [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)            |
 | Buzzards Bay              | 64                |                    | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)            |
 | CamelsChem                | 28                |     671            | 1980 - 2018       | Conterminous USA          | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
-| Camels_Ch_Chem            | 40                |     115            | 1980 - 2020       | Swtizerland               | [Nascimento et al., 2025](https://eartharxiv.org/repository/view/9046/)      |
+| CamelsCHChem            | 40                |     115            | 1980 - 2020       | Swtizerland               | [Nascimento et al., 2025](https://eartharxiv.org/repository/view/9046/)      |
 | Ecoli Mekong River        | 10                |                    | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Mekong River (Laos) | 10                |                    | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Houay Pano (Laos)   | 10                |                    | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |

@@ -71,6 +71,7 @@ def download_from_zenodo(
         tolerate_error=False,
         include:list = None,
         files_to_check:list = None,
+        verbosity:int = 1,
         **kwargs
 ):
     """
@@ -157,9 +158,9 @@ def download_from_zenodo(
             size_in_gb = round(total_size * 1e-9, 5)
             if size_in_gb < 1:
                 size_in_mb = round(total_size * 1e-6, 5)
-                print(f"Total data to be downloaded is {size_in_mb} MB")
+                if verbosity: print(f"Total data to be downloaded is {size_in_mb} MB")
             else:
-                print(f"Total data to be downloaded is {size_in_gb} GB")
+                if verbosity: print(f"Total data to be downloaded is {size_in_gb} GB")
             if md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
                     for f in files:
@@ -181,22 +182,22 @@ def download_from_zenodo(
                             )
                             wgetfile.write(link + '\n')
             else:
-                print('Title: {}'.format(js['metadata']['title']))
-                print('Keywords: ' +
+                if verbosity: print('Title: {}'.format(js['metadata']['title']))
+                if verbosity: print('Keywords: ' +
                        (', '.join(js['metadata'].get('keywords', []))))
-                print('Publication date: ' + js['metadata']['publication_date'])
-                print('DOI: ' + js['metadata']['doi'])
-                print('Total size: {:.1f} MB'.format(total_size / 2 ** 20))
+                if verbosity: print('Publication date: ' + js['metadata']['publication_date'])
+                if verbosity: print('DOI: ' + js['metadata']['doi'])
+                if verbosity: print('Total size: {:.1f} MB'.format(total_size / 2 ** 20))
 
                 for f in files:
                     if abort_signal:
-                        print('Download aborted with CTRL+C.')
-                        print('Already successfully downloaded files are kept.')
+                        if verbosity: print('Download aborted with CTRL+C.')
+                        if verbosity: print('Already successfully downloaded files are kept.')
                         break
                     link = f['links']['self']
                     size = f['size'] / 2 ** 20
-                    print()
-                    print(f'Link: {link}   size: {size:.1f} MB')
+                    if verbosity: print()
+                    if verbosity: print(f'Link: {link}   size: {size:.1f} MB')
                     fname = f['key']
                     checksum = f['checksum']
 
@@ -208,7 +209,7 @@ def download_from_zenodo(
 
                     for _ in range(retry + 1):
                         try:
-                            filename = download(link, outdir=outdir, fname=fname)
+                            filename = download(link, outdir=outdir, fname=fname, verbosity=verbosity)
                         except Exception as e:
                             print('  Download error.')
                             time.sleep(pause)
@@ -223,7 +224,7 @@ def download_from_zenodo(
 
                     h1, h2 = check_hash(filename, checksum)
                     if h1 == h2:
-                        print(f'Checksum is correct. ({h1})')
+                        if verbosity: print(f'Checksum is correct. ({h1})')
                     else:
                         print(f'Checksum is INCORRECT!({h1} got:{h2})')
                         if not keep:
@@ -234,7 +235,7 @@ def download_from_zenodo(
                         if not tolerate_error:
                             sys.exit(1)
                 else:
-                    print('All files have been downloaded.')
+                    if verbosity: print('All files have been downloaded.')
         else:
             raise Exception('Record could not get accessed.')
     

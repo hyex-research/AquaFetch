@@ -103,6 +103,15 @@ List of datasets
      - 1980 - 2010
      - Brazil
      - `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_ 
+   * - ``CAMELSH``
+     - :py:class:`aqua_fetch.rr.CAMELSH`
+     - 
+     - 5667
+     - 13
+     - 799
+     - 1900 - 2018
+     - United States of America
+     - `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_
    * - ``CAMELS_AUS``
      - :py:class:`aqua_fetch.rr.CAMELS_AUS`
      - 222, 561
@@ -350,10 +359,10 @@ List of datasets
      - :py:class:`aqua_fetch.rr.NPCTRCatchments`
      - 
      - 7
-     - 8
+     - 14
      - 14
      - 2013 - 2019
-     - Iceland
+     - Canada
      - `Korver et al., (2024) <https://doi.org/10.5194/essd-14-4231-2022>`_
    * - ``Poland``
      - :py:class:`aqua_fetch.rr.Poland`
@@ -493,6 +502,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CABra
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELSH
    :members:
    :show-inheritance:
 

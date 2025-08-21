@@ -1,8 +1,10 @@
+
 import gc
 import os
+import warnings
 from datetime import datetime
-from typing import Union, List, Dict
 import concurrent.futures as cf
+from typing import Union, List, Dict
 
 import numpy as np
 import pandas as pd
@@ -13,6 +15,7 @@ from .._backend import netCDF4
 from ..utils import get_cpus
 from ..utils import check_attributes, download, unzip
 from .utils import _RainfallRunoff, _handle_dynamic
+from .._geom_utils import laea_to_wgs84, lcc_to_wgs84
 
 from ._map import (
     observed_streamflow_cms,
@@ -47,6 +50,11 @@ from ._map import (
 
 SEP = os.sep
 
+# todo : currently when saving .nc files for each variable, we first fetch data for all meteo
+# variables and then save a single variable and extract data for all meteos again. This 
+# is extremely inefficient. We should not make multiple calls to .fetch we saving .ncs
+# todo : try to use mfopen_dataset instead of opening multiple .nc files separately
+# without xarray, LamaHCE seems to be much faster
 
 class LamaHCE(_RainfallRunoff):
     """
@@ -68,18 +76,20 @@ class LamaHCE(_RainfallRunoff):
     _data_types = ['total_upstrm', 'intermediate_all', 'intermediate_lowimp']
     time_steps = ['D', 'H']
 
-    def __init__(self, *,
-                 timestep: str = 'D',
-                 data_type: str = 'total_upstrm',
-                 path=None,
-                 to_netcdf: bool = True,
-                 overwrite=False,
-                 **kwargs
-                 ):
+    def __init__(
+            self,
+            path=None,
+            *,
+            timestep: str = 'D',
+            data_type: str = 'total_upstrm',
+            to_netcdf: bool = False,  # todo : current IO for .ncs are slow
+            overwrite=False,
+            **kwargs
+            ):
 
         """
-        Parameters
-        ----------
+    Parameters
+    ----------
         path : str
             If the data is alredy downloaded then provide the complete
             path to it. If None, then the data will be downloaded.
@@ -92,21 +102,94 @@ class LamaHCE(_RainfallRunoff):
                 possible values are ``total_upstrm``, ``intermediate_all``
                 or ``intermediate_lowimp``
 
-        Examples
-        --------
-        >>> from aqua_fetch import LamaHCE
-        >>> dataset = LamaHCE(timestep='D', data_type='total_upstrm')
-        # The daily dataset is from 859 with 80 static and 22 dynamic features
-        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
-        (859, 80, 22)
-        >>> df = dataset.fetch(3, as_dataframe=True)
-        >>> df.shape
-        (313368, 3)
-        >>> dataset = LamaHCE(timestep='H', data_type='total_upstrm')
-        >>> len(dataset.stations()), len(dataset.static_features), len(dataset.dynamic_features)
-        (859, 80, 17)
-        >>> dataset.fetch_dynamic_features('1', features = ['q_cms_obs'])
-        """
+    Examples
+    --------
+    >>> from aqua_fetch import LamaHCE
+    # by default the timestep is daily and data_type is 'total_upstrm'
+    >>> dataset = LamaHCE()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='826', as_dataframe=True)
+    >>> df = dynamic['826'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (14244, 22)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       859
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (85 out of 859)
+       85
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(14244, 22), (14244, 22), (14244, 22),... (14244, 22), (14244, 22)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('826', as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_mean', 'total_et', 'pcp_mm', 'q_cms_obs'])
+    >>> dynamic['826'].shape
+       (14244, 4)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='826', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['826'].shape
+    ((1, 84), 1, (14244, 22))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 14244, 'dynamic_features': 22})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (859, 2)
+    >>> dataset.stn_coords('826')  # returns coordinates of station whose id is 826
+        2995596.0	4811891.0
+    >>> dataset.stn_coords(['826', '819'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('826')
+    # get coordinates of two stations
+    >>> dataset.area(['826', '819'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('826')
+    ...
+    # the data_type can also be 'intermediate_all'
+    >>> dataset = LamaHCE(data_type='intermediate_all')
+    ...
+    # or 'intermediate_lowimp'
+    >>> dataset = LamaHCE(data_type='intermediate_lowimp')
+    >>> len(dataset.stations())
+    454
+    ...
+    # the timestep can also be hourly i.e. 'H'
+    >>> dataset = LamaHCE(timestep='H')
+    >>> _, dynamic = dataset.fetch(stations='79', as_dataframe=True)
+    >>> dynamic['79'].shape
+    (341856, 16)  # there are 16 dynamic features for hourly data
+    """
 
         assert timestep in self.time_steps, f"invalid timestep '{timestep}' given, choose from {self.time_steps}"
         assert data_type in self._data_types, f"invalid data_type '{data_type}' given, choose from {self._data_types}"
@@ -145,8 +228,14 @@ class LamaHCE(_RainfallRunoff):
         if not self.all_ncs_exist and to_netcdf:
             self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
 
-        self.dyn_fname = os.path.join(self.path,
-                                      f'lamah_{data_type}_{timestep}_dyn.nc')
+    @property
+    def dyn_fname(self) -> Union[str, os.PathLike]:
+        """
+        name of the .nc file which contains dynamic features. This file is created during dataset initialization
+        only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
+        file can take some time however it leads to faster I/O operations.
+        """
+        return self.name.lower() + f"_{self.timestep}_{self.self.data_type}.nc"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -253,7 +342,7 @@ class LamaHCE(_RainfallRunoff):
 
     def __dynamic_features(self) -> List[str]:
         station = self.stations()[0]
-        df = self.read_ts_of_station(station)  # this takes time
+        df = self._read_stn_dyn(station)  # this takes time
         cols = df.columns.to_list()
         [cols.remove(val) for val in ['DOY', 'ckhs', 'checked', 'HOD', 'qceq', 'qcol'] if val in cols]
         return cols
@@ -278,6 +367,22 @@ class LamaHCE(_RainfallRunoff):
                                         f'2_timeseries{SEP}{ts_dir}'))
         s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
         return s
+
+    def transform_stn_coords(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        transforms coordinates from EPSG:3035 (LAEA Europe) to projected
+
+        """
+
+        # following 2 lines are from .prj file 
+        false_easting, false_northing = 4321000.0, 3210000.0
+        lat_0, lon_0 = 52, 10
+
+        x, y = laea_to_wgs84(df.loc[:, 'long'], df.loc[:, 'lat'], lon_0, lat_0, false_easting, false_northing)
+
+        coord_m = pd.concat([x, y], axis=1)
+        coord_m.columns = ['lat', 'long']
+        return coord_m
 
     def fetch_stations_features(
             self,
@@ -316,13 +421,12 @@ class LamaHCE(_RainfallRunoff):
             returned as :obj:`pandas.DataFrame` with shape (stations, static features).
             The index of static features' DataFrame is the station/gauge ids while the columns 
             are names of the static features. Dynamic features are returned either as
-            :obj:`xarray.Dataset` or :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            :obj:`xarray.Dataset` or a dictionary with keys as station names and values
+            as :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
             is True or False and whether the :obj:`xarray` library is installed or not.
             If dynamic features are :obj:`xarray.Dataset`, then this dataset consists of `data_vars`
             equal to the number of stations and station names as :obj:`xarray.Dataset.variables`  
-            and `time` and `dynamic_features` as dimensions and coordinates. If 
-            dynamic features are returned as :obj:`pandas.DataFrame`, then
-            the first index is `time` and the second index is `dynamic_features`.
+            and `time` and `dynamic_features` as dimensions and coordinates.
 
         Raises:
             ValueError, if both dynamic_features and static_features are None
@@ -337,6 +441,13 @@ class LamaHCE(_RainfallRunoff):
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
         ...  as_dataframe=True)
         """
+
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
@@ -355,14 +466,13 @@ class LamaHCE(_RainfallRunoff):
                 dynamic = self._make_ds_from_ncs(dynamic_features, stations, st, en)
 
                 if as_dataframe:
-                    dynamic = dynamic.to_dataframe(['time', 'dynamic_features'])
+                    dynamic = {stn: dynamic[stn].to_pandas() for stn in dynamic}
 
             if static_features is not None:
                 static = self.fetch_static_features(stations, static_features)
                 dynamic = _handle_dynamic(dynamic, as_dataframe)
             else:
-                # if the dyn is a dictionary of key, DataFames, we will return a MultiIndex
-                # dataframe instead of a dictionary
+                # if the dyn is a dictionary of key, DataFames, we will return a as it is
                 dynamic = _handle_dynamic(dynamic, as_dataframe)
 
         elif static_features is not None:
@@ -402,28 +512,6 @@ class LamaHCE(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
         return df
 
-    def _read_dynamic1(
-            self,
-            stations,
-            dynamic_features: Union[str, list] = 'all',
-            st=None,
-            en=None,
-    ):
-        """Reads features of one or more station"""
-
-        stations_features = {}
-
-        for station in stations:
-
-            if dynamic_features is not None:
-                station_df = self.read_ts_of_station(station, dynamic_features)
-            else:
-                station_df = pd.DataFrame()
-            print(station_df.index[0], station_df.index[-1])
-            stations_features[station] = station_df[dynamic_features]
-
-        return stations_features
-
     def _read_dynamic(
             self,
             stations,
@@ -434,11 +522,12 @@ class LamaHCE(_RainfallRunoff):
         """Reads features of one or more station"""
 
         cpus = self.processes or min(get_cpus(), 32)
+        st, en = self._check_length(st, en)
 
         if cpus == 1 or len(stations) < 10:
             results = {}
             for idx, stn in enumerate(stations):
-                results[stn] = self.read_ts_of_station(stn, None).loc[:, dynamic_features]
+                results[stn] = self._read_stn_dyn(stn).loc[st:en, dynamic_features]
 
                 if self.verbosity > 0 and idx % 10 == 0:
                     print(f'{idx} stations read')
@@ -446,12 +535,11 @@ class LamaHCE(_RainfallRunoff):
 
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
-                    self.read_ts_of_station,
-                    stations,
-                    [None for _ in range(len(stations))]
+                    self._read_stn_dyn,
+                    stations
                 )
 
-            results = {stn: data.loc[:, dynamic_features] for stn, data in zip(stations, results)}
+            results = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         return results
 
     def _make_ds_from_ncs(self, dynamic_features, stations, st, en):
@@ -522,31 +610,16 @@ class LamaHCE(_RainfallRunoff):
                 'H': 'ckhs'}
         return cols[self.timestep]
 
-    def read_ts_of_station(
+    def _read_stn_dyn(
             self,
             station,
-            features=None
+            # features=None
     ) -> pd.DataFrame:
         # read a file containing timeseries data for one station
+        q_df = self._read_q_for_station(station)
 
-        q_df = pd.DataFrame()
-        if features is None:
-            q_df = self._read_q_for_station(station)
-        elif features in [observed_streamflow_cms(), self.chk_col]:
-            return self._read_q_for_station(station)
-        if isinstance(features, list):
-            if len(features) == 1 and features[0] in [observed_streamflow_cms(), self.chk_col]:
-                return self._read_q_for_station(station)
-            elif observed_streamflow_cms() in features or self.chk_col in features:
-                q_df = self._read_q_for_station(station)
+        met_df = self._read_met_for_station(station, features=None)
 
-        met_df = self._read_met_for_station(station, features)
-
-        # todo: this function is called at the start of the class when
-        # we don't know the names of dynamic features
-        # if features:
-        #     df = pd.concat([met_df, q_df], axis=1).loc[:, features]
-        # else:
         df = pd.concat([met_df, q_df], axis=1)
         # change the column names to the names of dynamic features
         df.rename(columns=self.dyn_map[self.timestep], inplace=True)
@@ -570,7 +643,6 @@ class LamaHCE(_RainfallRunoff):
             features = features.copy()
             [features.remove(itm) for itm in ['q_cms', 'ckhs'] if itm in features]
 
-        usecols = None
         met_dtype = {
             'YYYY': np.int32,
             'MM': np.int32,
@@ -604,10 +676,9 @@ class LamaHCE(_RainfallRunoff):
                 if not isinstance(features, list):
                     features = [features]
 
-                # usecols = ['YYYY', 'MM', 'DD'] + features
-
-            met_df = pd.read_csv(self.met_fname(station), sep=';', dtype=met_dtype,
-                                 # usecols=usecols
+            met_df = pd.read_csv(self.met_fname(station), 
+                                 sep=';', 
+                                 dtype=met_dtype,
                                  )
 
             if pd.__version__ > "2.1.4":
@@ -625,8 +696,6 @@ class LamaHCE(_RainfallRunoff):
                 if not isinstance(features, list):
                     features = [features]
 
-                # usecols = ['YYYY', 'MM', 'DD', 'hh', 'mm'] + features
-
             met_dtype.update({
                 'hh': np.int32,
                 'mm': np.int32,
@@ -637,13 +706,16 @@ class LamaHCE(_RainfallRunoff):
                 'surf_net_therm_rad': np.float32
             })
 
-            met_df = pd.read_csv(self.met_fname(station), sep=';', dtype=met_dtype,  # usecols=usecols
-                                 )
+            met_df = pd.read_csv(self.met_fname(station), sep=';', 
+                                 dtype=met_dtype)
 
             if pd.__version__ > "2.1.4":
                 periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
-                                                    month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
-                                                    minute=met_df["mm"], freq="h")
+                                                    month=met_df["MM"], 
+                                                    day=met_df["DD"], 
+                                                    hour=met_df["hh"],
+                                                    minute=met_df["mm"], 
+                                                    freq="h")
             else:
                 periods = pd.PeriodIndex(year=met_df["YYYY"],
                             month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
@@ -719,17 +791,106 @@ class LamaHCE(_RainfallRunoff):
 
     @property
     def end(self):  # todo, is it untill 2017 or 2019?
-        return "20191231"
+        return pd.Timestamp("2019-12-31 23:00:00")
 
 
 class LamaHIce(LamaHCE):
     """
-    Daily and hourly hydro-meteorological time series data of 111 river basins
+    Daily and hourly hydro-meteorological time series data of river basins
     of Iceland following `Helgason et al., 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_.
-    The total period of dataset is from 1950 to 2021 for daily
-    and 1976-20023 for hourly timestep. The average
+    The total period of dataset is from 1950 to 2021 from 111 catchments for daily
+    and from 1976-2023 for hourly timestep. The average
     length of daily data is 33 years while for that of hourly it is 11 years.
     The dataset is available on `hydroshare <https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/>`_
+
+    Examples
+    --------
+    >>> from aqua_fetch import LamaHIce
+    # by default the timestep is daily and data_type is 'total_upstrm'
+    >>> dataset = LamaHIce()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='92', as_dataframe=True)
+    >>> df = dynamic['92'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (26298, 36)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       111
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (11 out of 111)
+       11
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(26298, 36), (26298, 36), (26298, 36),... (26298, 36), (26298, 36)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('92', as_dataframe=True,
+    ...  dynamic_features=['swe', 'pet_mm', 'pcp_mm', 'q_cms_obs'])
+    >>> dynamic['92'].shape
+       (26298, 4)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['92'].shape
+    ((1, 154), 1, (26298, 36))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 26298, 'dynamic_features': 36})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (111, 2)
+    >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 92
+        571777.0	309737.0
+    >>> dataset.stn_coords(['92', '5'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('92')
+    # get coordinates of two stations
+    >>> dataset.area(['92', '5'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('92')
+    ...
+    # the data_type can also be 'intermediate_all'
+    >>> dataset = LamaHIce(data_type='intermediate_all')
+    ...
+    # or 'intermediate_lowimp'
+    >>> dataset = LamaHIce(data_type='intermediate_lowimp')
+    >>> len(dataset.stations())
+    86
+    ...
+    # the timestep can also be 'H'
+    >>> dataset = LamaHIce(timestep='H')
+    >>> _, dynamic = dataset.fetch(stations='79', as_dataframe=True)
+    >>> dynamic['79'].shape
+    (412848, 28)  # there are 28 dynamic features for hourly data
+    
     """
 
     url = {
@@ -755,7 +916,7 @@ class LamaHIce(LamaHCE):
             *,
             timestep: str = "D",
             data_type: str = "total_upstrm",
-            to_netcdf: bool = True,
+            to_netcdf: bool = False,
             **kwargs):
         """
 
@@ -846,14 +1007,14 @@ class LamaHIce(LamaHCE):
     @property
     def start(self):
         if self.timestep == "H":
-            return "19760826 00:00"
-        return "19500101"
+            return pd.Timestamp("19760826 00:00")
+        return pd.Timestamp("19500101")
 
     @property
     def end(self):
         if self.timestep == "H":
-            return "20230930 23:00"
-        return "20211231"
+            return pd.Timestamp("20230930 23:00")
+        return pd.Timestamp("20211231")
 
     @property
     def gauges_path(self):
@@ -868,6 +1029,29 @@ class LamaHIce(LamaHCE):
         if self.timestep == "H":
             return os.path.join(self.gauges_path, "2_timeseries", "hourly")
         return os.path.join(self.gauges_path, "2_timeseries", "daily")
+
+    def transform_stn_coords(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        transforms coordinates from EPSG:3057 (Lambert 1993) to EPSG:4326 (WGS84)
+
+        """
+
+        # following values are from .prj file 
+        # Parameters for EPSG:3057
+        lon_0 = -19.0        # Central Meridian
+        lat_0 = 65.0         # Latitude of Origin
+        lat_1 = 64.25        # First standard parallel
+        lat_2 = 65.75        # Second standard parallel
+        false_easting = 500000.0
+        false_northing = 500000.0
+
+        lat, lon = lcc_to_wgs84(
+        df['long'].values, df['lat'].values, 
+        lon_0, lat_0, lat_1, lat_2, false_easting, 
+        false_northing)
+
+        coords_m = pd.DataFrame({'lat': lat, 'long': lon})
+        return coords_m
 
     def met_fname(self, station):
         ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
@@ -1012,12 +1196,12 @@ class LamaHIce(LamaHCE):
 
         return df
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = None
     ) -> pd.DataFrame:
         """
-        returns streamflow in the units of milimeter per day. This is obtained
+        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
         by diving q_cms/area
 
         parameters
@@ -1033,11 +1217,18 @@ class LamaHIce(LamaHCE):
             are catchment/station ids.
 
         """
+        if self.timestep.lower().startswith('d'):
+            conversion_factor = 86400
+        elif self.timestep.lower().startswith('h'):
+            conversion_factor = 3600
+        else:
+            raise ValueError(f"Invalid timestep: {self.timestep}. ")
+
         stations = check_attributes(stations, self.stations(), 'stations')
         q = self.fetch_q(stations)
         area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # cms to m/day
-        return q * 1e3  # to mm/day
+        q = (q / area_m2) * conversion_factor  # cms to m
+        return q * 1e3  # to mm
 
     def fetch_q(
             self,
@@ -1101,6 +1292,13 @@ class LamaHIce(LamaHCE):
 
         fpath = os.path.join(self.q_path, f"ID_{stn}.csv")
 
+        if not os.path.exists(fpath):
+            timestep = {'H': 'h', 'D': 'd'}[self.timestep]
+
+            return pd.Series(dtype=np.float32,
+                             index=pd.date_range(self.start, self.end, freq=timestep),
+                             name='qobs')
+
         df = pd.read_csv(fpath, sep=';',
                          dtype={'YYYY': int,
                                 'MM': int,
@@ -1157,8 +1355,6 @@ class LamaHIce(LamaHCE):
         """
         fpath = os.path.join(self._clim_ts_path(), f"ID_{stn}.csv")
 
-        timestep = {'H': 'h', 'D': 'd'}[self.timestep]
-
         dtypes = {
             "YYYY": np.int32,
             "DD": np.int32,
@@ -1189,9 +1385,7 @@ class LamaHIce(LamaHCE):
         }
 
         if not os.path.exists(fpath):
-            return pd.DataFrame(
-                columns=list(dtypes.keys())[3:],
-                index=pd.date_range(self.start, self.end, freq=timestep))
+            raise FileNotFoundError(f"File not found: {fpath}")
 
         df = pd.read_csv(fpath, sep=';', dtype=dtypes, nrows=nrows)
 
@@ -1219,16 +1413,6 @@ class LamaHIce(LamaHCE):
             p = "lamah_ice_hourly"
         return os.path.join(self.path, p, p, self.DTYPES[self.data_type])
 
-    #@property
-    def __dynamic_features(self):
-        station = self.stations()[0]
-        df = self.fetch_stn_meteo(station, nrows=2)  # this takes time
-        cols = df.columns.to_list()
-        [cols.remove(val) for val in ['DOY', 'checked', 'HOD'] if val in cols]
-        dyn_feats = cols + ['obs_q_cms']
-
-        return [self.dyn_map[self.timestep].get(col, col) for col in dyn_feats]
-
     def _read_dynamic(
             self,
             stations,
@@ -1239,42 +1423,39 @@ class LamaHIce(LamaHCE):
         """Reads features of one or more station"""
 
         cpus = self.processes or min(get_cpus(), 16)
+        st, en = self._check_length(st, en)
 
         if self.verbosity>1: 
             print(f"reading dynamic data for {len(stations)} stations with {cpus} cpus")
 
         if cpus > 1:
 
-            #dynamic_features = [dynamic_features for _ in range(len(stations))]
-
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
-                    self.read_ts_of_station,
-                    stations,
-                    #dynamic_features
+                    self._read_stn_dyn,
+                    stations
                 )
 
             if dynamic_features == 'all':
                 results = {stn: data for stn, data in zip(stations, results)}
             else:
-                results = {stn: data.loc[:, dynamic_features] for stn, data in zip(stations, results)}
+                results = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         else:
             results = {}
             for idx, stn in enumerate(stations):
                 if dynamic_features == 'all':
-                    results[stn] = self.read_ts_of_station(stn)
+                    results[stn] = self._read_stn_dyn(stn)
                 else:
-                    results[stn] = self.read_ts_of_station(stn).loc[:, dynamic_features]
+                    results[stn] = self._read_stn_dyn(stn).loc[st:en, dynamic_features]
 
                 if idx % 10 == 0:
                     print(f"processed {idx} stations")
 
         return results
 
-    def read_ts_of_station(
+    def _read_stn_dyn(
             self,
-            station: str,
-            # dynamic_features
+            station: str
     ) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
@@ -1284,16 +1465,13 @@ class LamaHIce(LamaHCE):
         if self.verbosity>2:
             print(f"reading data for {station}")
 
-        q = self.fetch_stn_q(station)
-        met = self.fetch_stn_meteo(station)
+        q = self.fetch_stn_q(station).copy()
+        met = self.fetch_stn_meteo(station).copy()
 
         # drop duplicated index from met
-        met = met.loc[~met.index.duplicated(keep='first')]
+        met = met.loc[~met.index.duplicated(keep='first')].copy()
 
-        # todo: this method is called at the start when when dynamic_features attribute
-        # has not been set then how do we know dynamic features correctly?, so better
-        # to use all columns
-        df = pd.concat([met, q], axis=1).loc[self.start:self.end, :]
+        df = pd.concat([met, q], axis=1).loc[self.start:self.end, :].copy()
 
         for col in self.dyn_map[self.timestep]:
             if col in df.columns:
@@ -1301,6 +1479,15 @@ class LamaHIce(LamaHCE):
 
         df.columns.name = "dynamic_features"
         df.index.name = "time"
+
+        df = df.sort_index()
+        # Ensure df always extends to self.end
+        if df.index[-1] < self.end or df.index[0] > self.start:
+            timestep = {'H': 'h', 'D': 'd'}[self.timestep]
+            # Create complete date range from start of existing data to self.end
+            complete_range = pd.date_range(start=self.start, end=self.end, freq=timestep)
+            # Reindex to fill missing dates with NaN
+            df = df.reindex(complete_range)
         return df
 
     @property

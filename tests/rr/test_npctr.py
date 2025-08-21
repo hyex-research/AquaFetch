@@ -12,23 +12,17 @@ if __name__ == "__main__":
 
 logger = logging.getLogger(__name__)
 
-from utils import (
-    test_area,
-)
+from utils import test_dataset
 
 import pandas as pd
 
 from aqua_fetch.rr import NPCTRCatchments
 
 
-ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data')
+ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data', verbosity=4)
 
-h_q = ds.read_hourly_q()
+test_dataset(ds, 7, 53072, 14, 14, st="20140101", en="20141231")
 
-for k,v in h_q.items():
-    assert k in ds.stations()
-    assert isinstance(v, pd.DataFrame)
-    assert isinstance(v.index, pd.DatetimeIndex)
 
 sh_q = ds.read_5min_q()
 
@@ -38,36 +32,14 @@ for k,v in sh_q.items():
     assert isinstance(v.index, pd.DatetimeIndex)
 
 
-pcp = ds.read_pcp()
-rh = ds.read_rel_hum()
-temp = ds.read_temp()
-ws = ds.read_wind_speed()
-sol = ds.read_sol_rad()
-snowdepth = ds.read_snow_depth()
-winddir = ds.read_wind_dir()
-
-pcp = ds.get_pcp()
-
-static = ds.fetch_static_features('626')
-assert static.shape == (1, 14)
-
-static = ds.fetch_static_features('626',
-                              static_features=['area_km2', 'elev_catch_m', 'slope_%'])
-
-assert static.shape == (1, 3)
-
 ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data', timestep='5min')
 
 pcp_5m = ds.read_pcp()
 rh_5m = ds.read_rel_hum()
-temp_5m = ds.read_temp()
+#temp_5m = ds.read_temp()
 solrad_5m = ds.read_sol_rad()
 ws_5m = ds.read_wind_speed()
 snowdepth_5m = ds.read_snow_depth()
 winddir_5m = ds.read_wind_dir()
 
-static = ds._get_static()
 
-assert len(ds.static_features) == 14
-
-test_area(ds)

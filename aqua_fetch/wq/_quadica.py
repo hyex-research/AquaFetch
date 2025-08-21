@@ -691,7 +691,7 @@ class Quadica(Datasets):
         x, y = laea_to_wgs84(coords.loc[:, 'long'], coords.loc[:, 'lat'], lon_0, lat_0, false_easting, false_northing)
 
         coord_m = pd.concat([x, y], axis=1)
-        coord_m.columns = ['lat', 'long']    
+        coord_m.columns = ['lat', 'long']
 
         return coord_m
 

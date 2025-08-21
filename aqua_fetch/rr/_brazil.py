@@ -22,7 +22,7 @@ from ._map import (
     actual_evapotranspiration_with_specifier,
     total_precipitation_with_specifier,
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     mean_rel_hum_with_specifier,
     mean_windspeed_with_specifier,
     solar_radiation_with_specifier,
@@ -55,42 +55,74 @@ class CAMELS_BR(_RainfallRunoff):
     --------
     >>> from aqua_fetch import CAMELS_BR
     >>> dataset = CAMELS_BR()
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='46035000', as_dataframe=True)
+    >>> df = dynamic['46035000'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (14245, 12)
-    # get name of all stations as list
+    (14245, 10)
+    ...
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    593
-    # we can get data of 10% catchments as below
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (170940, 59)
-    # the data is multi-index with ``time`` and ``dynamic_features`` as indices
-    >>> data.index.names == ['time', 'dynamic_features']
-     True
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='46035000', as_dataframe=True)
-    >>> df.unstack().shape
-    (14245, 12)
-    # get names of available dynamic features
+       593
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (59 out of 593)
+       59
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(14245, 10), (14245, 10), (14245, 10),... (14245, 10), (14245, 10)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (14245, 4)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('46035000', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm_cpc', 'aet_mm_mgb', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['46035000'].shape
+       (14245, 4)
+    ...
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (170940, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='46035000', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 67), (14245, 12))
+    >>> static.shape, len(dynamic), dynamic['46035000'].shape
+    ((1, 67), 1, (14245, 10))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 14245, 'dynamic_features': 10})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (593, 2)
+    >>> dataset.stn_coords('46035000')  # returns coordinates of station whose id is 46035000
+        -12.8686	-43.3797
+    >>> dataset.stn_coords(['46035000', '57170000'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('46035000')
+    # get coordinates of two stations
+    >>> dataset.area(['46035000', '57170000'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('46035000')
 
     """
     url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
@@ -153,7 +185,7 @@ class CAMELS_BR(_RainfallRunoff):
                 print(f"{fpath} already exists")
 
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
-        self._maybe_to_netcdf('camels_dyn_br')
+        self._maybe_to_netcdf()
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -186,7 +218,7 @@ class CAMELS_BR(_RainfallRunoff):
     def dyn_map(self):
         # table 1 in paper
         return {
-            'streamflow_mm': observed_streamflow_mmd(),
+            'streamflow_mm': observed_streamflow_mm(),
             'temperature_min': min_air_temp(),
             'temperature_max': max_air_temp(),
             'temperature_mean': mean_air_temp(),
@@ -202,7 +234,7 @@ class CAMELS_BR(_RainfallRunoff):
     def dyn_generators(self):
         return {
             # new column to be created : function to be applied, inputs
-            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
+            observed_streamflow_cms(): (self.mm_to_cms, observed_streamflow_mm()),
             #mean_air_temp(): (self.mean_temp, (min_air_temp(), max_air_temp())),
         }
 
@@ -266,7 +298,7 @@ class CAMELS_BR(_RainfallRunoff):
     def end(self):
         return "20190228"
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
@@ -291,9 +323,10 @@ class CAMELS_BR(_RainfallRunoff):
 
         stations = check_attributes(stations, self.stations())
         _, q = self.fetch_stations_features(stations,
-                                         dynamic_features=observed_streamflow_mmd(),
+                                         dynamic_features=observed_streamflow_mm(),
                                          as_dataframe=True)
-        q.index = q.index.get_level_values(0)
+        #q.index = q.index.get_level_values(0)
+        q = pd.DataFrame.from_dict({stn:df[observed_streamflow_mm()] for stn,df in q.items()})
         # area_m2 = self.area(stations) * 1e6  # area in m2
         # q = (q / area_m2) * 86400  # cms to m/day
         return q  # * 1e3  # to mm/day
@@ -585,40 +618,74 @@ class CABra(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CABra
     >>> dataset = CABra()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (131472, 73)  # 73 represents number of stations
-    >>> data.index.names == ['time', 'dynamic_features']
-    True
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='92', as_dataframe=True)
+    >>> df = dynamic['92'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (10956, 13)
-    # get name of all stations as list
+    ...
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    735
-    # get data by station id
-    >>> _, df = dataset.fetch(stations='92', as_dataframe=True)
-    >>> df.unstack().shape
-    (10956, 13)
-    # get names of available dynamic features
+       735
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (73 out of 735)
+       73
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(10956, 13), (10956, 13), (10956, 13),... (10956, 13), (10956, 13)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True,
-    ... dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (10956, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('92', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm_ens', 'airtemp_C_ens_max', 'pet_mm_pm', 'rh_%_ens', 'q_cms_obs'])
+    >>> dynamic['92'].shape
+       (10956, 4)
+    ...
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (131472, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 87), (10956, 13))
+    >>> static.shape, len(dynamic), dynamic['92'].shape
+    ((1, 87), 1, (10956, 13))
+
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 10956, 'dynamic_features': 13})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (735, 2)
+    >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 92
+        -2.509	-47.764
+    >>> dataset.stn_coords(['92', '5'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('92')
+    # get coordinates of two stations
+    >>> dataset.area(['92', '5'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('92')
 
     """
 
@@ -645,12 +712,13 @@ class CABra(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         met_src : str
             source of meteorological data, must be one of
             ``ens``, ``era5`` or ``ref``.
         """
         super(CABra, self).__init__(path=path,
+                                    to_netcdf=to_netcdf,
                                     **kwargs)
         self.path = path
         self.met_src = met_src
@@ -659,11 +727,16 @@ class CABra(_RainfallRunoff):
         self._dynamic_features = self.__dynamic_features()
         self._static_features = self.__static_features()
 
-        self.dyn_fname = os.path.join(self.path,
-                                      f'cabra_{met_src}_dyn.nc')
+        self._maybe_to_netcdf()
 
-        if to_netcdf:
-            self._maybe_to_netcdf(f'cabra_{met_src}_dyn')
+    @property
+    def dyn_fname(self) -> Union[str, os.PathLike]:
+        """
+        name of the .nc file which contains dynamic features. This file is created during dataset initialization
+        only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
+        file can take some time however it leads to faster I/O operations.
+        """
+        return self.name.lower() + f"_{self.timestep}_{self.met_src}.nc"
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -1193,9 +1266,14 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
         # todo : this will be correct only if we are getting data for all stations
         # but what if we want to get data for some random stations?
         # 10 because first 10 stations don't have data for "ref" source
-        met_idx = pd.to_datetime(
-            meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
-                str))
+        if len(meteos) < 10:
+            met_idx = pd.to_datetime(
+                meteos[0]['Year'].astype(str) + '-' + meteos[0]['Month'].astype(str) + '-' + meteos[0]['Day'].astype(
+                    str))
+        else:
+            met_idx = pd.to_datetime(
+                meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
+                    str))
 
         met_cols = [col for col in meteos[0].columns if col not in ['Year', 'Month', 'Day']]
 

@@ -18,7 +18,7 @@ from shapely.geometry import shape
 from aqua_fetch import RainfallRunoff, Quadica
 
 from aqua_fetch._geom_utils import calc_centroid
-from aqua_fetch._geom_utils import utm_to_lat_lon, laea_to_wgs84
+from aqua_fetch._geom_utils import utm_to_lat_lon, laea_to_wgs84, lcc_to_wgs84
 
 
 DATA_PATH = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -160,6 +160,36 @@ def plot_test_25832_to_4326():
     return
 
 
+def test_lcc_to_wgs84():
+    coords = pd.DataFrame({
+        'lat': [397683.0, 383164.0, 359057.0, 451317.0, 621984.0],
+        'long': [403449.0, 401601.0, 551036.0, 370531.0, 375499.0]
+    })
+
+    transformer = Transformer.from_crs("EPSG:3057", "EPSG:4326")
+    lat_true, long_true = transformer.transform(coords.loc[:, 'long'], coords.loc[:, 'lat'])
+
+    # Parameters for EPSG:3057
+    lon_0 = -19.0        # Central Meridian
+    lat_0 = 65.0         # Latitude of Origin
+    lat_1 = 64.25        # First standard parallel
+    lat_2 = 65.75        # Second standard parallel
+    false_easting = 500000.0
+    false_northing = 500000.0
+
+    lat, lon = lcc_to_wgs84(
+        coords['long'].values, coords['lat'].values, 
+        lon_0, lat_0, lat_1, lat_2, false_easting, 
+        false_northing)
+
+    np.testing.assert_allclose(lat, lat_true, rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(lon, long_true, rtol=1e-5, atol=1e-5)
+
+    return
+
+
 test_25832_to_4326()
 
 test_laea_to_wgs84()
+
+test_lcc_to_wgs84()

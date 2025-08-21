@@ -2,6 +2,7 @@
 import os
 import re
 import time
+import warnings
 import requests
 from io import StringIO
 from typing import List, Union, Dict, Tuple
@@ -50,6 +51,80 @@ class USGS(_RainfallRunoff):
     ``A, [93]``, ``A, e``, ``A`` flags is used.
     For daily streamflow, "dv" service is used to download the data. 
     In this case, the data with only ``A`` and ``A, e`` flags is used.
+
+    Examples
+    --------
+    >>> from aqua_fetch import USGS
+    >>> dataset = USGS()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='01010000', as_dataframe=True)
+    >>> df = dynamic['01010000'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (27028, 20)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       12004
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (1200 out of 12004)
+       1200
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(27028, 20), (27028, 20), (27028, 20),... (27028, 20), (27028, 20)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('01010000', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'snowmelt_mm', 'airtemp_C_2m_min', 'swe_mm', 'q_cms_obs'])
+    >>> dynamic['01010000'].shape
+       (27028, 4)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='01010000', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['01010000'].shape
+    ((1, 29), 1, (27028, 20))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 27028, 'dynamic_features': 20})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (671, 2)
+    >>> dataset.stn_coords('01010000')  # returns coordinates of station whose id is 01010000
+        -69.715556	46.700556
+    >>> dataset.stn_coords(['01010000', '01010070'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('01010000')
+    # get coordinates of two stations
+    >>> dataset.area(['01010000', '01010070'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('01010000')
+
     """
 
     def __init__(
@@ -156,9 +231,7 @@ class USGS(_RainfallRunoff):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            static_features:Union[str, List[str]] = "all",
-            st=None,
-            en=None
+            static_features:Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         returns static atttributes of one or multiple stations
@@ -170,8 +243,6 @@ class USGS(_RainfallRunoff):
             static_features : list/str, optional (default="all")
                 The name/names of features to fetch. By default, all available
                 static features are returned.
-            st :
-            en :
 
         Examples
         ---------
@@ -202,8 +273,8 @@ class USGS(_RainfallRunoff):
         
         stations = check_attributes(stations, self.stations())
         map_ = self.hysets.OfficialID_WatershedID_map
-        stations = [int(map_[stn]) for stn in stations]        
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en)
+        stations = [map_[stn] for stn in stations]        
+        static_feats = self.hysets.fetch_static_features(stations, static_features)
         static_feats.set_index('Official_ID', inplace=True)
         return static_feats
 
@@ -249,7 +320,7 @@ class USGS(_RainfallRunoff):
             en=None,
             as_dataframe: bool = False,
             **kwargs
-              ) -> Tuple[pd.DataFrame, Union[pd.DataFrame, "Dataset"]]:
+              ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
         returns features of multiple stations
 
@@ -262,6 +333,12 @@ class USGS(_RainfallRunoff):
         """
         stations = check_attributes(stations, self.stations(), 'stations')
         static, dynamic = None, None
+
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
 
         # todo : reading data for 500 stations is taking ~ 10 minutes which is not sustainable
 
@@ -277,18 +354,14 @@ class USGS(_RainfallRunoff):
 
             if static_features is not None:  # we want both static and dynamic
                 static = self._fetch_static_features(station=stations,
-                                                     static_features=static_features,
-                                                     st=st,
-                                                     en=en,
-                                                     **kwargs
+                                                     static_features=static_features
                                                      )
 
         elif static_features is not None:
             # we want only static
             static = self._fetch_static_features(
                 station=stations,
-                static_features=static_features,
-                **kwargs
+                static_features=static_features
             )
         else:
             raise ValueError(f"static features are {static_features} and dynamic features are {dynamic_features}")
@@ -307,6 +380,9 @@ class USGS(_RainfallRunoff):
         st, en = self._check_length(st, en)
         features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
+        if self.verbosity>2:
+            print(f"fetching {len(features)} dynamic features for {len(stations)} stations  from {st} to {en}")
+
         daily_q = None
 
         if observed_streamflow_cms() in features:
@@ -320,6 +396,8 @@ class USGS(_RainfallRunoff):
             features.remove(observed_streamflow_cms())
 
         if len(features) == 0:
+            if isinstance(daily_q, pd.DataFrame):
+                daily_q = {stn:pd.DataFrame(daily_q[stn].rename(observed_streamflow_cms())) for stn in daily_q.columns}
             return daily_q
 
         karte = self.hysets.OfficialID_WatershedID_map
@@ -337,33 +415,37 @@ class USGS(_RainfallRunoff):
                 daily_q = daily_q.expand_dims({'dynamic_features': [observed_streamflow_cms()]})
                 data = xr.concat([data, daily_q], dim='dynamic_features')
             else:
-                # -1 because the data in .nc files hysets starts with 0
-                data.rename(columns={str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
-                assert isinstance(data.index, pd.MultiIndex)
-                # data is multiindex dataframe but daily_q is not
-                # first make daily_q multiindex
-                daily_q['dynamic_features'] = 'daily_q'
-                daily_q.set_index('dynamic_features', append=True, inplace=True)
-                daily_q = daily_q.reorder_levels(['time', 'dynamic_features'])
-                data = pd.concat([data, daily_q], axis=0).sort_index()
-                #data = data.join(daily_q, how='outer')
+                # todo : -1 ?
+                #data.rename(columns={str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items()}, inplace=True)
+                assert isinstance(data, dict)
+                # rename the keys in data using self.hysets.WatershedID_OfficialID_map
+                data = {self.hysets.WatershedID_OfficialID_map.get(k, k): v for k, v in data.items()}
 
+                for k,meteo_df in data.items():
+                    stn_df = pd.concat([meteo_df, daily_q[k].rename(observed_streamflow_cms())], axis=1)
+                    data[k] = stn_df
+        else:
+            if isinstance(data, xr.Dataset):
+                karte = {str(int(k)):v for k,v in self.hysets.WatershedID_OfficialID_map.items() if v in stations}
+                data = data.rename(karte)
+            else:
+                assert isinstance(data, dict)
+                # rename the keys in data using self.hysets.WatershedID_OfficialID_map
+                data = {self.hysets.WatershedID_OfficialID_map.get(k, k): v for k, v in data.items()}
         return data
 
     def _fetch_static_features(
             self,
             station="all",
-            static_features: Union[str, list] = 'all',
-            st=None,
-            en=None
+            static_features: Union[str, list] = 'all'
     )->pd.DataFrame:
         """Fetches static features of station."""
         if self.verbosity>1:
             print('fetching static features')
         stations = check_attributes(station, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
-        stations = [int(map_[stn]) for stn in stations]
-        static_feats = self.hysets.fetch_static_features(stations, static_features, st, en).copy()
+        stations = [map_[stn] for stn in stations]
+        static_feats = self.hysets.fetch_static_features(stations, static_features).copy()
         static_feats = static_feats.set_index('Official_ID')
         return static_feats
 

@@ -14,6 +14,9 @@ results/
 *.jpeg
 *.csv
 *.log
+*.nc
+
+*junk.py
 
 *dist/
 

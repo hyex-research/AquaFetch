@@ -14,7 +14,7 @@ from ..utils import check_attributes, dateandtime_now
 
 from ._map import (
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     min_air_temp,
     max_air_temp,
     mean_air_temp,
@@ -40,8 +40,8 @@ from ._map import (
 
 class CCAM(_RainfallRunoff):
     """
-    Dataset for chinese catchments. The CCAM dataset was published by
-    `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_ has two sets.
+    Dataset for Yellow River (China) catchments. The CCAM dataset was published by
+    `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_ and has two sets.
     One set consists of catchment attributes, meteorological data, catchment boundaries
     of over 4000 catchments. However this data does not have streamflow data. The second
     set consists of streamflow, catchment attributes, catchment boundaries and meteorological
@@ -58,40 +58,74 @@ class CCAM(_RainfallRunoff):
     ---------
     >>> from aqua_fetch import CCAM
     >>> dataset = CCAM()
-    >>> _, data = dataset.fetch(0.1, as_dataframe=True)
-    >>> data.shape
-    (128560, 10)
-    >>> data.index.names == ['time', 'dynamic_features']
-    True
-    >>> _, df = dataset.fetch(stations=1, as_dataframe=True)
-    >>> df = df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='0010', as_dataframe=True)
+    >>> df = dynamic['0010'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
     (8035, 16)
-    # get name of all stations as list
+    ...
+    ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-    102
-    # get data by station id
-    >>> _,  df = dataset.fetch(stations='0010', as_dataframe=True)
-    >>> df.unstack().shape
-    (8035, 16)
-    # get names of available dynamic features
+       102
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (10 out of 102)
+       10
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(8035, 16), (8035, 16), (8035, 16),... (8035, 16), (8035, 16)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
     >>> dataset.dynamic_features
-    # get only selected dynamic features
-    >>> _, df = dataset.fetch(1, as_dataframe=True, 
-      ... dynamic_features=['pcp_mm', 'airtemp_C_mean', 'evap_mm', 'rh_%', 'q_cms_obs'])
-    >>> df.unstack().shape
-    (8035, 5)
-    # get names of available static features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('0010', as_dataframe=True,
+    ...  dynamic_features=['pcp_mm', 'airtemp_C_mean', 'evap_mm', 'rh_%', 'q_cms_obs'])
+    >>> dynamic['0010'].shape
+       (8035, 5)
+    ...
+    ... # get names of available static features
     >>> dataset.static_features
-    # get data of 10 random stations
-    >>> _, df = dataset.fetch(10, as_dataframe=True)
-    >>> df.shape
-    (128560, 10)  # remember this is multi-indexed DataFrame
-    # If we want to get both static and dynamic data
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='0010', static_features="all", as_dataframe=True)
-    >>> static.shape, dynamic.unstack().shape
-    ((1, 124), (8035, 16))
+    >>> static.shape, len(dynamic), dynamic['0010'].shape
+    ((1, 124), 1, (8035, 8))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 8035, 'dynamic_features': 16})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (102, 2)
+    >>> dataset.stn_coords('0010')  # returns coordinates of station whose id is 0010
+        36.059803	112.3638
+    >>> dataset.stn_coords(['0010', '0104'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('0010')
+    # get coordinates of two stations
+    >>> dataset.area(['0010', '0104'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('0010')
 
     """
     url = "https://zenodo.org/record/5729444"
@@ -116,16 +150,14 @@ class CCAM(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         """
         super(CCAM, self).__init__(path=path, **kwargs)
         self.path = path
         self._download(overwrite=overwrite)
 
-        self.dyn_fname = os.path.join(self.path, 'ccam_dyn.nc')
-
         if to_netcdf:
-            self._maybe_to_netcdf('ccam_dyn')
+            self._maybe_to_netcdf()
             self._maybe_meteo_to_nc()
         
         shp_path = os.path.join(self.path,
@@ -195,48 +227,6 @@ class CCAM(_RainfallRunoff):
     @property
     def yr_data_path(self):
         return os.path.join(self.path, "7_HydroMLYR", "7_HydroMLYR", '1_data')
-
-    # def q_mmd(
-    #         self,
-    #         stations: Union[str, List[str]] = "all"
-    # )->pd.DataFrame:
-    #     """
-    #     returns streamflow in the units of milimeter per day. This is obtained
-    #     by diving ``q``/area
-
-    #     parameters
-    #     ----------
-    #     stations : str/list
-    #         name/names of stations. Default is ``all``, which will return
-    #         area of all stations
-
-    #     Returns
-    #     --------
-    #     pd.DataFrame
-    #         a pandas DataFrame whose indices are time-steps and columns
-    #         are catchment/station ids.
-
-    #     """
-    #     stations = check_attributes(stations, self.stations(), 'stations')
-    #     q = self.fetch_stations_features(stations,
-    #                                        dynamic_features='q',
-    #                                        as_dataframe=True)
-    #     q.index = q.index.get_level_values(0)
-    #     area_m2 = self.area(stations) * 1e6  # area in m2
-    #     q = (q / area_m2) * 86400  # cms to m/day
-    #     return q * 1e3  # to mm/day
-
-    # @property
-    # def _area_name(self) ->str:
-    #     return 'area'
-
-    # @property
-    # def _coords_name(self) ->List[str]:
-    #     return ['lat', 'lon']
-
-    # @property
-    # def _mmd_feature_name(self) ->str:
-    #     return observed_streamflow_mmd()
 
     def stations(self):
         """Returns station ids for catchments on Yellow River"""

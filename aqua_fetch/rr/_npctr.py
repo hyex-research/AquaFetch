@@ -12,6 +12,7 @@ from ..utils import check_attributes
 from .utils import _RainfallRunoff
 from ._map import(
     observed_streamflow_cms,
+    observed_streamflow_mm,
     mean_air_temp,
     mean_rel_hum,
     mean_windspeed,
@@ -110,6 +111,7 @@ class NPCTRCatchments(_RainfallRunoff):
 
     def __init__(self, path=None,
                  timestep:str = "Hourly",
+                 qflag = ["AV", "EV"],
                  **kwargs):
         super().__init__(path=path, **kwargs)
 
@@ -118,6 +120,18 @@ class NPCTRCatchments(_RainfallRunoff):
         self.timestep = _verify_timestep(timestep)
 
         self._static_features = self._get_static().columns.tolist()
+        
+        for flag in qflag:
+            assert flag in ['AV', 'EV', 'SVC', 'SVD']
+        self.qflags = qflag
+
+    @property
+    def start(self):
+        return pd.Timestamp("20130910 01:00:00")
+    
+    @property
+    def end(self):
+        return pd.Timestamp("20191231 23:00:00")
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -128,7 +142,16 @@ class NPCTRCatchments(_RainfallRunoff):
 
     @property
     def dynamic_features(self)->List[str]:
-        return []
+        return [total_precipitation(), 
+                observed_streamflow_cms(), 
+                'Qrate_min', 'Qrate_max', 'Qvol', 'Qvol_min',
+                'Qvol_max', 
+                observed_streamflow_mm(), 
+       'Qmm_min', 'Qmm_max', 
+       mean_air_temp(),
+       mean_windspeed(), 
+       solar_radiation(), 
+       mean_rel_hum()]
 
     @property
     def static_features(self)->List[str]:
@@ -191,8 +214,19 @@ class NPCTRCatchments(_RainfallRunoff):
                              'Qrate': self.fp,
                              })
         df.index = pd.to_datetime(df.pop('Datetime'))
+        # drop the tz information from index
+        df.index = df.index.tz_localize(None)
+        df.index.name = 'time'
 
-        df.rename(columns={'Qrate': observed_streamflow_cms()}, inplace=True)
+        # drop rows where Qrate and Qvol are nans
+        df.dropna(subset=['Qrate', 'Qvol', 'Qmm'], how="all", inplace=True)
+
+        df.rename(columns={'Qrate': observed_streamflow_cms(),
+                           'Qmm': observed_streamflow_mm()}, inplace=True)
+
+        df = df.loc[df['Qflag'].isin(self.qflags)]
+        # drop Qlevel and Qflag columns
+        df = df.drop(columns=['Qlevel', 'Qflag'])
 
         dfs = {name[3:]: grp for name, grp in df.groupby('Watershed')}
 
@@ -215,6 +249,27 @@ class NPCTRCatchments(_RainfallRunoff):
             dfs[stn] = df
         return dfs
 
+    def get_snowdepth(self):
+
+        data = self.read_snow_depth()
+
+        # todo : justify following selection
+        data = {
+            '1015': data['Hecate'],
+            '819': data['Hecate'],
+            '844': data['Hecate'],
+            '693': data['WSN693703'],
+            '703': data['WSN703708'],
+            '708': data['WSN703708'],
+            '626': data['WSN703708'],
+            }
+        
+        # drop duplicates from each dataframe based upon index
+        for stn, stn_df in data.items():
+            data[stn] = stn_df[~stn_df.index.duplicated(keep='first')]
+
+        return data
+
     def get_pcp(self, sensor="SSN"):
 
         df = self.read_pcp()
@@ -227,6 +282,15 @@ class NPCTRCatchments(_RainfallRunoff):
 
         # remove Site column
         data = {k: v.drop(columns='Site') for k, v in data.items()}
+
+        if sensor == "SSN":
+            # we don't have 703, 844 so use WSN for 703, 844
+            data['703'] = data['WSN703']
+            data['844'] = data['WSN844']
+        
+        for stn, stn_data in data.items():
+            data[stn] = stn_data.loc[stn_data['Qflags'].isin(self.qflags)].loc[:, total_precipitation()]
+
         return data
 
     def read_pcp(
@@ -265,6 +329,10 @@ class NPCTRCatchments(_RainfallRunoff):
                              'Site': str, 'TotalP': self.fp
                              })
         df.index = pd.to_datetime(df.pop('Date'))
+        df.index.name = 'time'
+
+        # drop rows where TotalP is NaN
+        df.dropna(subset=['TotalP', 'Rain'], how="all", inplace=True)
 
         df.rename(columns={'Rain': total_precipitation()}, inplace=True)
 
@@ -272,6 +340,7 @@ class NPCTRCatchments(_RainfallRunoff):
 
     def get_temp(self, sensor="SSN"):
         df = self.read_temp()
+
         if sensor == "SSN":
             df['Site'] = df['Site'].str.strip('SSN')
         elif sensor == "WSN":
@@ -281,6 +350,21 @@ class NPCTRCatchments(_RainfallRunoff):
 
         # remove Site column
         data = {k: v.drop(columns='Site') for k, v in data.items()}
+
+        if sensor == "SSN":
+            # we don't have 703, 844 so use WSN for 703, 844
+            data['703'] = data['WSN703']
+            data['844'] = data['WSN844']
+
+        flag_col = 'Qflag'
+        if self.timestep == '5min':
+            flag_col = 'Qflags'
+
+
+        for stn, stn_data in data.items():
+            data[stn] = stn_data.loc[stn_data[flag_col].isin(self.qflags)].loc[:, mean_air_temp()]
+
+        return data
 
     def read_temp(
             self,
@@ -322,9 +406,37 @@ class NPCTRCatchments(_RainfallRunoff):
                          usecols=usecols,
                          index_col='Date',
                          )
+        df.index = pd.to_datetime(df.index)
+        df.index.name = 'time'
         
         df.rename(columns={'TAir': mean_air_temp()}, inplace=True)
+
+        df.dropna(subset=['Qlevel', 'Site', mean_air_temp()], how="all", inplace=True)
+
+        # drop rows where index is nan
+        df = df[pd.notna(df.index)]
+
         return df
+
+    def get_relhum(self, sensor="SSN"):
+
+        df = self.read_rel_hum()
+
+        if sensor == "SSN":
+            df['Site'] = df['Site'].str.strip('SSN')
+        elif sensor == "WSN":
+            df['Site'] = df['Site'].str.strip('WSN')
+
+        data = {n: g for n, g in df.groupby('Site')}
+
+        # remove Site and Qlevel column
+        data = {k: v.drop(columns=['Site', 'Qlevel']) for k, v in data.items()}
+
+        if sensor == "SSN":
+            data['703'] = data['WSN703']
+            data['844'] = data['819'].copy()
+
+        return data
 
     def read_rel_hum(
             self,
@@ -364,11 +476,37 @@ class NPCTRCatchments(_RainfallRunoff):
                              'Qlevel': str
                          })
         df.index = pd.to_datetime(df.pop('Date'))
+        df.index.name = 'time'
 
         df.rename(columns={'RH': mean_rel_hum()}, inplace=True)
- 
+
+        df.dropna(subset=['Qlevel', mean_rel_hum()], how="all", inplace=True)
+
         return df
     
+    def get_windspeed(self):
+
+        df = self.read_wind_speed()
+
+        data = {n: g for n, g in df.groupby('Site')}
+
+        # remove Site column
+        data = {k: v.drop(columns='Site') for k, v in data.items()}
+
+        # todo : justify following selection
+        data['626'] = data['WSN626']
+        data['693'] = data['SSN693']
+        data['703'] = data['WSN703708']
+        data['708'] = data['WSN703708']
+        data['819'] = data['WSN8191015']
+        data['844'] = data['Hecate']
+        data['1015'] = data['WSN8191015']
+
+        for stn, stn_data in data.items():
+            data[stn] = stn_data.loc[stn_data['Qflags'].isin(self.qflags)].loc[:, mean_windspeed()]
+
+        return data
+
     def read_wind_speed(
             self,
     ):
@@ -406,9 +544,21 @@ class NPCTRCatchments(_RainfallRunoff):
                          },
                          parse_dates=True
                          )
+
+        df.index = pd.to_datetime(df.index)
+        df.index.name = 'time'
+
         df.rename(columns={'WindSpd': mean_windspeed()}, inplace=True)
         return df
     
+    def get_solrad(self):
+        df = self.read_sol_rad()
+
+        # use same solar radiation for all catchments/stations
+        data = {stn:df[solar_radiation()] for stn in self.stations()}
+
+        return data
+
     def read_sol_rad(
             self,
     ):
@@ -475,11 +625,26 @@ class NPCTRCatchments(_RainfallRunoff):
                         #usecols=['Date', 'Qlevel', 'Qflags', 'SnowDepth', 'Site'],
                          index_col='Date',
                          comment="<",
+                         nrows=52507,
                          )
+        
+        #df1 = df.iloc[0:52507].copy()
+        df.index = pd.to_datetime(df.index)
+
+        #df2 = df.iloc[52509:-1].copy()
+        #df2.index = pd.to_datetime(df2.index)
         
         df.rename(columns={'SnowDepth': snow_depth()}, inplace=True)
 
-        return df.iloc[0:-1]
+        df.rename(columns={old_col: old_col.replace('SnowDepth_', '') for old_col in df.columns}, inplace=True)
+
+        # drop the rows where all columns are non
+        df.dropna(how='all', inplace=True)
+
+        #df = df.iloc[0:-1].copy()
+        #df.index = pd.to_datetime(df.index)
+        #df.index.name = 'time'
+        return df
     
     def read_wind_dir(
             self,
@@ -525,17 +690,37 @@ class NPCTRCatchments(_RainfallRunoff):
 
         features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         stations = check_attributes(stations, self.stations(), 'stations')
+        st, en = self._check_length(st, en)
 
-        pcp = self.read_pcp()
-        temp = self.read_temp()
-        rh = self.read_rel_hum()
-        ws = self.read_wind_speed()
-        q = self.read_5min_q()
-        solrad = self.read_sol_rad()
-        snow = self.read_snow_depth()
-        winddir = self.read_wind_dir()
+        if self.timestep == '5min':
+            q = self.read_5min_q()
+        else:
+            q = self.read_hourly_q()
 
-        return
+        pcp = self.get_pcp()
+        temp = self.get_temp()
+        ws = self.get_windspeed()
+        snowdepth = self.get_snowdepth()
+        sol = self.get_solrad()
+        rh = self.get_relhum()
+
+        data = {}
+        for stn in stations:
+            stn_df = pd.concat([
+                pcp[stn], 
+                q[stn], 
+                temp[stn], 
+                ws[stn], 
+                snowdepth[stn], 
+                sol[stn], 
+                rh[stn]], 
+                axis=1).sort_index().loc[st:en, features]
+            
+            stn_df.columns.name = 'dynamic_features'
+            stn_df.index.name = 'time'
+            data[stn] = stn_df
+
+        return data
 
     def _get_static(self)->pd.DataFrame:
 

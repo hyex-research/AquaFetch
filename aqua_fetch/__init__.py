@@ -47,6 +47,7 @@ from .rr import CAMELS_COL
 from .rr import CAMELS_SK
 from .rr import CAMELS_FI
 from .rr import Slovenia
+from .rr import CAMELSH
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -98,7 +99,7 @@ from .wq import GRiMeDB
 from .wq import BuzzardsBay
 from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
-from .wq import Camels_Ch_Chem
+from .wq import CamelsCHChem
 from .wq import Oligotrend
 
 # *** Miscellaneous ***
@@ -180,6 +181,7 @@ ALL_DATASETS = [
     CAMELS_SK.__class__.__name__,
     CAMELS_FI.__class__.__name__,
     Slovenia.__class__.__name__,
+    CAMELSH.__class__.__name__,
 
     Quadica.__class__.__name__,
     GRQA.__class__.__name__,
@@ -199,7 +201,7 @@ ALL_DATASETS = [
     BuzzardsBay.__class__.__name__,
     WhiteClayCreek.__class__.__name__,
     RiverChemSiberia.__class__.__name__,
-    Camels_Ch_Chem.__class__.__name__,
+    CamelsCHChem.__class__.__name__,
     Oligotrend.__class__.__name__,
     
     ec_removal_biochar.__name__,

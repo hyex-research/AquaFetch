@@ -206,7 +206,7 @@ def test_fetch_dynamic_features_():
 
     assert len(out) == 106, len(out)
 
-    test_fetch_dynamic_features(ds, '1001_arcticnet')
+    test_fetch_dynamic_features(ds, '1001_arcticnet', 16071)
 
     return
 
@@ -263,7 +263,6 @@ test_dataset(ds,
              dyn_data_len=7305, 
              num_static_attrs=35,
               num_dyn_attrs=27,
-              test_df=False,
               st="1992-01-01",
               en="1992-12-31",
               )
@@ -275,8 +274,7 @@ test_dataset(ds,
              num_stations=751, 
              dyn_data_len=16071, 
              num_static_attrs=35,
-              num_dyn_attrs=27,
-              test_df=False,
+              num_dyn_attrs=27
               )
 
 
@@ -287,7 +285,6 @@ test_dataset(ds,
              dyn_data_len=9131, 
              num_static_attrs=35,
               num_dyn_attrs=27,
-              test_df=False,
               st="1992-01-01",
               en="1992-12-31",
               )
@@ -300,7 +297,6 @@ test_dataset(ds,
              dyn_data_len=15249,
              num_static_attrs=35,
               num_dyn_attrs=27,
-              test_df=False,
               st="1992-01-01",
               en="1992-12-31",
               )

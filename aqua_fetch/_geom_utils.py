@@ -136,6 +136,7 @@ def calc_centroid(geometry)->Tuple[float, float]:
     else:
         raise ValueError("Unsupported geometry type for centroid calculation.")
 
+
 def utm_to_lat_lon(easting, northing, zone:int):
     # Constants
     a = 6378137.0  # WGS 84 major axis
@@ -193,3 +194,75 @@ def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing):
     lon = lon_0 + np.arctan2(x_adj * np.sin(c), p * np.cos(lat_0) * np.cos(c) - y_adj * np.sin(lat_0) * np.sin(c))
 
     return (np.rad2deg(lat), np.rad2deg(lon))
+
+
+def lcc_to_wgs84(x, y, lon_0, lat_0, lat_1, lat_2, false_easting, false_northing):
+    """
+    Converts coordinates from a Lambert Conformal Conic (LCC) projection (EPSG:3057)
+    to WGS84 (latitude/longitude).
+
+    Args:
+        x (np.ndarray): Easting coordinates.
+        y (np.ndarray): Northing coordinates.
+        lon_0 (float): Longitude of origin / Central Meridian in degrees.
+        lat_0 (float): Latitude of origin in degrees.
+        lat_1 (float): First standard parallel in degrees.
+        lat_2 (float): Second standard parallel in degrees.
+        false_easting (float): False easting value.
+        false_northing (float): False northing value.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing latitude and longitude arrays.
+    """
+    # GRS80 Ellipsoid parameters (used by ISN93/EPSG:3057)
+    a = 6378137.0
+    f_inv = 298.257222101
+    f = 1 / f_inv
+    e2 = 2 * f - f**2
+    e = np.sqrt(e2)
+
+    # Convert degrees to radians
+    lon_0_rad = np.deg2rad(lon_0)
+    lat_0_rad = np.deg2rad(lat_0)
+    lat_1_rad = np.deg2rad(lat_1)
+    lat_2_rad = np.deg2rad(lat_2)
+
+    def t_calc(phi_rad, e_val):
+        sin_phi = np.sin(phi_rad)
+        return np.tan(np.pi/4 - phi_rad/2) / ((1 - e_val*sin_phi)/(1 + e_val*sin_phi))**(e_val/2)
+
+    m1 = np.cos(lat_1_rad) / np.sqrt(1 - e2 * np.sin(lat_1_rad)**2)
+    m2 = np.cos(lat_2_rad) / np.sqrt(1 - e2 * np.sin(lat_2_rad)**2)
+
+    t0 = t_calc(lat_0_rad, e)
+    t1 = t_calc(lat_1_rad, e)
+    t2 = t_calc(lat_2_rad, e)
+
+    n = np.log(m1 / m2) / np.log(t1 / t2)
+    F = m1 / (n * t1**n)
+    rho_0 = a * F * t0**n
+
+    # Adjust for false easting and northing
+    x_adj = x - false_easting
+    y_adj = rho_0 - (y - false_northing)
+
+    rho_prime = np.sqrt(x_adj**2 + y_adj**2)
+    
+    # Handle case where rho_prime is zero
+    rho_prime[rho_prime == 0] = 1e-10
+
+    t_prime = (rho_prime / (a * F))**(1/n)
+
+    # Iteratively solve for latitude
+    phi = np.pi/2 - 2 * np.arctan(t_prime)
+    for _ in range(5): # 5 iterations are generally sufficient
+        sin_phi = np.sin(phi)
+        phi_new = np.pi/2 - 2 * np.arctan(t_prime * ((1 - e*sin_phi)/(1 + e*sin_phi))**(e/2))
+        if np.all(np.abs(phi_new - phi) < 1e-10):
+            break
+        phi = phi_new
+
+    theta = np.arctan2(x_adj, y_adj)
+    lon = theta / n + lon_0_rad
+
+    return np.rad2deg(phi), np.rad2deg(lon)
