@@ -54,6 +54,7 @@ from ._camels import CAMELS_COL
 from ._camels import CAMELS_SK
 from ._camels import CAMELS_FI
 from ._estreams import Slovenia
+from ._camels import CAMELSH
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
 from .mtropics import MtropicsLaos
@@ -65,6 +66,7 @@ from ._misc import JialingRiverChina
 
 DATASETS = {
     "camels": _RainfallRunoff,
+    "CAMELSH": CAMELSH,
     "CAMELS_AUS": CAMELS_AUS,
     "CAMELS_CL": CAMELS_CL,
     "CAMELS_GB": CAMELS_GB,
@@ -213,6 +215,7 @@ class RainfallRunoff(object):
             - ``Bull``
             - ``CABra``
             - ``CCAM``
+            - ``CAMELSH``
             - ``CAMELS_AUS``
             - ``CAMELS_BR``
             - ``CAMELS_CH``
@@ -735,13 +738,13 @@ class RainfallRunoff(object):
             color=color,
             ax=ax, show=show, **kwargs)
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = 'all'
     ) -> pd.DataFrame:
         """
-        returns streamflow in the units of milimeter per day. This is obtained
-        by diving ``q``/area
+        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). 
+        This is obtained by diving ``q``/area
 
         parameters
         ----------
@@ -756,7 +759,7 @@ class RainfallRunoff(object):
             are catchment/station ids.
 
         """
-        return self.dataset.q_mmd(stations)
+        return self.dataset.q_mm(stations)
 
     def stn_coords(
             self,

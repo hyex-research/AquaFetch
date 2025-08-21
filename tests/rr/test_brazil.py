@@ -22,7 +22,7 @@ from utils import (
 
 
 for source in ['era5', 'ref', 'ens']:
-    dataset = CABra(path=gscad_path, met_src='era5', verbosity=4)
+    dataset = CABra(path=gscad_path, met_src=source, verbosity=4)
     test_dataset(dataset, 735, 10957, 87, 13)
 
 

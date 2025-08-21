@@ -285,7 +285,8 @@ class Datasets(object):
         else:
             #assert os.path.exists(x), f"The path {x} does not exist"
             if not os.path.exists(x) and self.verbosity>0:
-                print(f"The path {x} does not exist. Creating the directory.")
+                pass  # todo : why this check?
+                # print(f"The path {x} does not exist. Creating the directory.")
             x = os.path.join(x, self.__class__.__name__)
         # sanity_check(self.name, x)
         self._path = x
@@ -312,20 +313,20 @@ class Datasets(object):
 
     def _download_and_unzip(self):
         # todo : this function should not exist, we should always call _download
-        download_and_unzip(self.path, self.url)
+        download_and_unzip(self.path, self.url, verbosity=self.verbosity)
         return
 
     def download_from_pangaea(self, overwrite=False):
 
         if os.path.exists(self.path):
             if overwrite:
-                print("removing previously downloaded data and downloading again")
+                if self.verbosity: print("removing previously downloaded data and downloading again")
             else:
-                print(f"The path {self.path} already exists.")
+                if self.verbosity: print(f"The path {self.path} already exists.")
                 self.data_files = [f for f in os.listdir(self.path) if f.endswith('.txt')]
                 self.metadata_files = [f for f in os.listdir(self.path) if f.endswith('.json')]
                 if len(self.data_files) == 0:
-                    print(f"The path {self.path} is empty so downloading the files again")
+                    if self.verbosity: print(f"The path {self.path} is empty so downloading the files again")
                     self._download_from_pangaea()
         else:
             os.makedirs(self.path)

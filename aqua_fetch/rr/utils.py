@@ -163,16 +163,36 @@ class _RainfallRunoff(Datasets):
         """checks if the .nc file which contains dynamic features exists"""
         return os.path.exists(self.dyn_fpath)
 
-    def mmd_to_cms(self, q_mmd: pd.Series) -> pd.Series:
-        """converts discharge from mmd to cms"""
-        area_m2 = self.area(q_mmd.name) * 1e6
-        q_md = q_mmd * 0.001  # convert mm/day to m/day
-        return q_md * area_m2.iloc[0] / 86400
+    def mm_to_cms(self, q_mm: pd.Series) -> pd.Series:
+        """converts discharge from mm/timestep to cms"""
 
-    def cms_to_mmd(self, q_cms:pd.Series)->pd.Series:
-        """convert streamflow from cms to mmd"""
+        if self.timestep.lower().startswith('d'):
+            conversion_factor = 86400
+        elif self.timestep.lower().startswith('h'):
+            conversion_factor = 3600
+        elif self.timestep.lower().startswith('15min'):
+            conversion_factor = 900
+        else:
+            raise ValueError(f"Invalid timestep: {self.timestep}. ")
+
+        area_m2 = self.area(q_mm.name) * 1e6
+        q_md = q_mm * 0.001  # convert mm/timestep to m/timestep
+        return q_md * area_m2.iloc[0] / conversion_factor
+
+    def cms_to_mm(self, q_cms:pd.Series)->pd.Series:
+        """convert streamflow from cms to mm/timestep"""
+
+        if self.timestep.lower().startswith('d'):
+            conversion_factor = 86400
+        elif self.timestep.lower().startswith('h'):
+            conversion_factor = 3600
+        elif self.timestep.lower().startswith('15min'):
+            conversion_factor = 900
+        else:
+            raise ValueError(f"Invalid timestep: {self.timestep}. ")
+
         area_m2 = self.area(q_cms.name) * 1e6  # area in m2
-        return ((q_cms * 86400)/area_m2.iloc[0]) * 1e3  # cms to m/day
+        return ((q_cms * conversion_factor)/area_m2.iloc[0]) * 1e3  # cms to mm/timestep
 
     @staticmethod
     def mean_temp(tmin:pd.Series, tmax:pd.Series)->pd.Series:
@@ -285,7 +305,7 @@ class _RainfallRunoff(Datasets):
 
         total = time.time() -  start
         if self.verbosity:
-            print(f"Read {len(dyn)} stations for {len(dyn_feats)} in {total:.2f} seconds with {cpus} cpus.")
+            print(f"Read {len(dyn)} stations for {len(dyn_feats)} dyn features in {total:.2f} seconds with {cpus} cpus.")
     
         return dyn
 
@@ -432,7 +452,7 @@ class _RainfallRunoff(Datasets):
         raise NotImplementedError
 
     @property
-    def _mmd_feature_name(self) -> str:
+    def _mm_feature_name(self) -> str:
         return None
 
     @property
@@ -563,7 +583,7 @@ class _RainfallRunoff(Datasets):
         >>> dynamic
         ... # get only selected dynamic features
         >>> _, sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['q_mmd_obs', 'solrad_wm2_silo'], as_dataframe=True)
+        ...     dynamic_features=['q_mm_obs', 'solrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
@@ -608,13 +628,13 @@ class _RainfallRunoff(Datasets):
         if self.to_netcdf:
             if not self.dyn_fpath_exists or self.overwrite:
                 # saving all the data in netCDF file using xarray
-                print(f'converting data to netcdf format for faster io operations')
+                if self.verbosity: print(f'converting data to netcdf format for faster io operations')
                 _, data = self.fetch(static_features=None)
 
-                data.to_netcdf(self.dyn_fname)
+                data.to_netcdf(self.dyn_fpath)
             else:
                 if self.verbosity:
-                    print(f"dynamic data already exists in {self.dyn_fname}. "
+                    print(f"dynamic data already exists as {self.dyn_fpath}. "
                           f"To overwrite, set `overwrite=True`")
         return
 
@@ -681,12 +701,12 @@ class _RainfallRunoff(Datasets):
         ...  as_dataframe=True)
         ... # get both dynamic and static features of selected stations
         >>> dataset.fetch_stations_features(['912101A', '912105A', '915011A'],
-        ... dynamic_features=['q_mmd_obs', 'airtemp_C_mean_silo'], static_features=['elev_mean'])
+        ... dynamic_features=['q_mm_obs', 'airtemp_C_mean_silo'], static_features=['elev_mean'])
         """
 
         if xr is None:
             if not as_dataframe:
-                warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
                               "Dynamic features will be returned as pandas DataFrame")
                 as_dataframe = True
 
@@ -699,13 +719,13 @@ class _RainfallRunoff(Datasets):
 
             dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
-            if netCDF4 is None or not os.path.exists(self.dyn_fname):
+            if netCDF4 is None or not os.path.exists(self.dyn_fpath):
                 # read from csv files
                 # following code will run only once when fetch is called inside init method
                 dyn = self._read_dynamic(stations, dynamic_features, st=st, en=en)
 
             else:
-                ds = xr.open_dataset(self.dyn_fname)  # daataset
+                ds = xr.open_dataset(self.dyn_fpath)  # daataset
                 dyn = ds[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
                 ds.close()
                 if as_dataframe:
@@ -947,12 +967,12 @@ class _RainfallRunoff(Datasets):
 
         return ax
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
-        returns streamflow in the units of milimeter per day. This is obtained
+        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
         by diving ``q``/area
 
         parameters
@@ -971,7 +991,7 @@ class _RainfallRunoff(Datasets):
 
         stations = check_attributes(stations, self.stations(), 'stations')
 
-        if self._mmd_feature_name is None:
+        if self._mm_feature_name is None:
             _, q = self.fetch_stations_features(
                 stations,
                 dynamic_features="q_cms_obs", 
@@ -979,17 +999,29 @@ class _RainfallRunoff(Datasets):
             q = pd.DataFrame.from_dict({stn:df['q_cms_obs'] for stn,df in q.items()})
 
             area_m2 = self.area(stations) * 1e6  # area in m2
-            q = (q / area_m2) * 86400  # cms to m/day
-            return q * 1e3  # to mm/day
+
+             # Determine time conversion based on timestep
+            if self.timestep.lower().startswith('h'):
+                time_conversion = 3600  # seconds per hour
+            elif self.timestep.lower().startswith('d'):
+                time_conversion = 86400  # seconds per day
+            elif self.timestep.lower().startswith('15min'):
+                time_conversion = 900  # seconds per 15 minutes
+            else:
+                raise ValueError(f"Timestep '{self.timestep}' not supported.")
+            
+
+            q = (q / area_m2) * time_conversion  # cms to m
+            return q * 1e3  # to mm
 
         else:
 
             _, q = self.fetch_stations_features(
                 stations,
-                dynamic_features=self._mmd_feature_name,
+                dynamic_features=self._mm_feature_name,
                 as_dataframe=True)
 
-            q = pd.DataFrame.from_dict({stn:df[self._mmd_feature_name] for stn,df in q.items()})
+            q = pd.DataFrame.from_dict({stn:df[self._mm_feature_name] for stn,df in q.items()})
             return q
 
     def stn_coords(

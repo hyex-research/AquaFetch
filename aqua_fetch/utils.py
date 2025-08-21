@@ -4,7 +4,6 @@ import os
 import sys
 import glob
 import shutil
-import random
 import datetime
 import warnings
 import zipfile
@@ -437,6 +436,7 @@ def download_from_google_drive(url, path, fname, verbosity=1):
 def unzip(
         path:Union[str, os.PathLike], 
         overwrite:bool=False, 
+        keep_parent_dir:bool = False,
         verbosity=1
         ):
     """unzip all the zipped files in a directory"""
@@ -483,9 +483,14 @@ def unzip(
             raise ImportError('py7zr is required to extract the .7z files. Please install it using `pip install py7zr`')
 
         for fpath in sevenz_files:
-            if not os.path.exists(os.path.join(path, fpath.split('.7z')[0])):
+            unzip_fpath = os.path.join(path, fpath.split('.7z')[0])
+            if not os.path.exists(unzip_fpath):
+
+                if verbosity:
+                    print(f"Extracting {fpath}")
+
                 with py7zr.SevenZipFile(fpath, mode='r') as z:
-                    z.extractall(path = path)
+                    z.extractall(path = unzip_fpath if keep_parent_dir else path)
                     print(f'Extracted {fpath}')
     return
 

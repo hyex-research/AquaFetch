@@ -22,9 +22,9 @@ def simulated_streamflow_cms()->str:
     return "q_cms_sim"
 
 
-def observed_streamflow_mmd()->str:
-    """mm/day"""
-    return "q_mmd_obs"
+def observed_streamflow_mm()->str:
+    """mm/timestep"""
+    return "q_mm_obs"
 
 
 # %% precpiation
@@ -593,8 +593,10 @@ def soil_depth() -> str:
     return "soil_depth_m"
 
 
-def population_density() -> str:
+def population_density(year:int=None) -> str:
     """Population density in people per square kilometer"""
+    if year:
+        return f"pop_density_{year}_km2"
     return "pop_density_km2"
 
 

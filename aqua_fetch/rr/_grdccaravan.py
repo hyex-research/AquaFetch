@@ -10,12 +10,12 @@ from ..utils import get_cpus
 from ..utils import check_st_en  # todo check difference with self.check_length
 from ..utils import check_attributes, download, unzip
 
-from .._backend import netCDF4, xarray as xr
+from .._backend import xarray as xr
 
 
 from ._map import (
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     mean_air_temp,
     min_air_temp_with_specifier,
     max_air_temp_with_specifier,
@@ -182,8 +182,6 @@ class GRDCCaravan(_RainfallRunoff):
         self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_stn_dyn(self.stations()[0]).columns.tolist()
 
-        self.dyn_fname = ''
-
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(
@@ -202,7 +200,7 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def dyn_map(self):
         return {
-            'streamflow': observed_streamflow_mmd(),
+            'streamflow': observed_streamflow_mm(),
             'temperature_2m_mean': mean_air_temp_with_specifier('2m'),
             'temperature_2m_min': min_air_temp_with_specifier('2m'),
             'temperature_2m_max': max_air_temp_with_specifier('2m'),
@@ -212,7 +210,7 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def dyn_generator(self)->Dict[str, Tuple[Callable, Any]]:
         return {
-            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
+            observed_streamflow_cms(): (self.mm_to_cms, observed_streamflow_mm()),
         }
 
     @property

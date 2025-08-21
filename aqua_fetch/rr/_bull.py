@@ -7,7 +7,6 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from .._backend import netCDF4
 from .._backend import xarray as xr
-from ..utils import check_attributes, get_cpus
 from ._map import (
     total_potential_evapotranspiration_with_specifier,
     solar_radiation,
@@ -172,7 +171,7 @@ class Bull(_RainfallRunoff):
         self._dynamic_features = self._read_stn_dyn(self.stations()[0]).columns.tolist()
         self._static_features = list(set(self._static_data().columns.tolist()))
 
-        self.dyn_fname = ''
+        #self.dyn_fname = ''
 
     @property
     def boundary_file(self) -> os.PathLike:

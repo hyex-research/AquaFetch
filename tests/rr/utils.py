@@ -4,7 +4,6 @@ from typing import Dict
 
 import random
 
-import numpy as np
 import pandas as pd
 from aqua_fetch._backend import xarray as xr
 
@@ -99,15 +98,15 @@ def test_area(dataset):
     return
 
 
-def test_q_mmd(dataset):
-    logger.info(f"testing q_mmd for {dataset.name}")
+def test_q_mm(dataset):
+    logger.info(f"testing q_mm for {dataset.name}")
     stations = dataset.stations()
 
-    df = dataset.q_mmd(stations[0])  # returns q of station
+    df = dataset.q_mm(stations[0])  # returns q of station
     assert isinstance(df, pd.DataFrame)
     assert df.shape[1] == 1, df.shape
 
-    df = dataset.q_mmd(stations[0:2])  # returns q of two stations
+    df = dataset.q_mm(stations[0:2])  # returns q of two stations
     assert isinstance(df, pd.DataFrame)
     assert df.shape[1] == 2, df.shape
 
@@ -173,6 +172,10 @@ def test_fetch_dynamic_features(dataset, station, dynamic_data_len, as_dataframe
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
                       as_dataframe=False, raise_len_error=True):
     logger.info(f"test_dynamic_data for {dataset.name}")
+
+    if num_stations == 0:
+        num_stations = 3
+        stations = 3
 
     if stations == 'all' and len(dataset.stations()) > 500:
         if dataset.timestep == 'D':
@@ -466,7 +469,7 @@ def test_dataset(dataset,
     test_area(dataset)
 
     if has_q:
-        test_q_mmd(dataset)
+        test_q_mm(dataset)
 
     if fiona is not None:
         test_boundary(dataset)

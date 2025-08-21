@@ -14,7 +14,7 @@ from ..utils import check_attributes, dateandtime_now
 
 from ._map import (
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     min_air_temp,
     max_air_temp,
     mean_air_temp,

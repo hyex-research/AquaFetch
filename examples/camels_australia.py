@@ -213,7 +213,7 @@ dataset.dynamic_features
 # %%
 # Streamflow
 # ==================
-streamflow = dataset.q_mmd()
+streamflow = dataset.q_mm()
 
 streamflow.shape
 

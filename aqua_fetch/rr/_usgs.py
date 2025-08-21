@@ -336,7 +336,7 @@ class USGS(_RainfallRunoff):
 
         if xr is None:
             if not as_dataframe:
-                warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
                               "Dynamic features will be returned as pandas DataFrame")
                 as_dataframe = True
 

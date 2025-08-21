@@ -12,7 +12,7 @@ from ..utils import check_attributes
 from .utils import _RainfallRunoff
 from ._map import(
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     mean_air_temp,
     mean_rel_hum,
     mean_windspeed,
@@ -146,7 +146,7 @@ class NPCTRCatchments(_RainfallRunoff):
                 observed_streamflow_cms(), 
                 'Qrate_min', 'Qrate_max', 'Qvol', 'Qvol_min',
                 'Qvol_max', 
-                observed_streamflow_mmd(), 
+                observed_streamflow_mm(), 
        'Qmm_min', 'Qmm_max', 
        mean_air_temp(),
        mean_windspeed(), 
@@ -222,7 +222,7 @@ class NPCTRCatchments(_RainfallRunoff):
         df.dropna(subset=['Qrate', 'Qvol', 'Qmm'], how="all", inplace=True)
 
         df.rename(columns={'Qrate': observed_streamflow_cms(),
-                           'Qmm': observed_streamflow_mmd()}, inplace=True)
+                           'Qmm': observed_streamflow_mm()}, inplace=True)
 
         df = df.loc[df['Qflag'].isin(self.qflags)]
         # drop Qlevel and Qflag columns

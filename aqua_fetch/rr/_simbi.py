@@ -72,8 +72,6 @@ class Simbi(_RainfallRunoff):
 
         self._create_boundary_id_map()
 
-        self.dyn_fname = ''
-
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path, '01_SIMBI_CATCHMENT', 'Haitian_Catchment.shp')

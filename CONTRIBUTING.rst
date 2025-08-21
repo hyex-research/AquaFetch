@@ -40,7 +40,7 @@ Consider that you want to add a new rainfall-runoff dataset named ``NewDataSourc
     - ``end``  -> return the end date of the dataset
     - ``start`` -> return the start date of the dataset
     - ``stn_coords``
-    - ``q_mmd``
+    - ``q_mm``
     - ``boundary_file``  -> the path to the file containing catchment boudaries for the dataset.
 - import this class in ``aqua_fetch/__init__.py`` file in aqua_fetch folder and change the ``ALL_DATASETS`` lists to include this new class
 - update the ``DATASETS`` dictionary in ``aqua_fetch/rr/__init__.py`` file to include this new class

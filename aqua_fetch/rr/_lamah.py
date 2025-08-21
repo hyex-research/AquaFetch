@@ -228,9 +228,6 @@ class LamaHCE(_RainfallRunoff):
         if not self.all_ncs_exist and to_netcdf:
             self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
 
-        # self.dyn_fname = os.path.join(self.path,
-        #                               f'lamah_{data_type}_{timestep}_dyn.nc')
-
     @property
     def dyn_fname(self) -> Union[str, os.PathLike]:
         """
@@ -447,7 +444,7 @@ class LamaHCE(_RainfallRunoff):
 
         if xr is None:
             if not as_dataframe:
-                warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
                               "Dynamic features will be returned as pandas DataFrame")
                 as_dataframe = True
 
@@ -1199,12 +1196,12 @@ class LamaHIce(LamaHCE):
 
         return df
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = None
     ) -> pd.DataFrame:
         """
-        returns streamflow in the units of milimeter per day. This is obtained
+        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
         by diving q_cms/area
 
         parameters
@@ -1220,11 +1217,18 @@ class LamaHIce(LamaHCE):
             are catchment/station ids.
 
         """
+        if self.timestep.lower().startswith('d'):
+            conversion_factor = 86400
+        elif self.timestep.lower().startswith('h'):
+            conversion_factor = 3600
+        else:
+            raise ValueError(f"Invalid timestep: {self.timestep}. ")
+
         stations = check_attributes(stations, self.stations(), 'stations')
         q = self.fetch_q(stations)
         area_m2 = self.area(stations) * 1e6  # area in m2
-        q = (q / area_m2) * 86400  # cms to m/day
-        return q * 1e3  # to mm/day
+        q = (q / area_m2) * conversion_factor  # cms to m
+        return q * 1e3  # to mm
 
     def fetch_q(
             self,

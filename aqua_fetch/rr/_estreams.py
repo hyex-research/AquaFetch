@@ -635,6 +635,12 @@ class _EStreams(_RainfallRunoff):
         stations = check_attributes(stations, self.stations(), 'stations')
         static, dynamic = None, None
 
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
         if dynamic_features is not None:
 
             dynamic = self._fetch_dynamic_features(stations=stations,

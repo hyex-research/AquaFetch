@@ -8,10 +8,14 @@ from .utils import _RainfallRunoff
 from ..utils import check_attributes
 
 from ._map import (
+    observed_streamflow_cms,
+    observed_streamflow_mm,
+    # evapotranspiration
     catchment_area,
     gauge_latitude,
     gauge_longitude,
-    slope
+    slope,
+    total_precipitation,
     )
 
 
@@ -66,8 +70,8 @@ class WaterBenchIowa(_RainfallRunoff):
     @property
     def dyn_map(self):
         return {
-        'discharge': 'obs_q_mmd',
-        'precipitation': 'pcp_mm',
+        'discharge': observed_streamflow_mm(),
+        'precipitation': total_precipitation(),
         }
 
     def stations(self)->List[str]:
@@ -79,11 +83,11 @@ class WaterBenchIowa(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        return ['precipitation', 'et', 'discharge']
+        return [total_precipitation, 'et', observed_streamflow_mm()]
 
     @property
     def static_features(self)->List[str]:
-        return ['travel_time', 'area', 'slope', 'loam', 'silt',
+        return ['travel_time', catchment_area(), slope('perc'), 'loam', 'silt',
                 'sandy_clay_loam', 'silty_clay_loam']
 
     @property

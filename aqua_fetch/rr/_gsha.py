@@ -10,6 +10,7 @@ __all__ = [
 
 import os
 import time
+import warnings
 import concurrent.futures as cf
 from typing import List, Union, Dict, Tuple
 
@@ -1286,6 +1287,12 @@ class _GSHA(_RainfallRunoff):
             the first index is `time` and the second index is `dynamic_features`.
         """
         stations = check_attributes(stations, self.stations(), 'stations')
+
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
 
         static, dynamic = None, None
 

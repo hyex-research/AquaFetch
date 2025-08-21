@@ -25,7 +25,7 @@ from utils import (
     test_coords,
     test_plot_stations,
     test_area,
-    test_q_mmd,
+    test_q_mm,
     test_boundary,
     test_fetch_dynamic_multiple_stations,
     test_plot_catchment,
@@ -69,7 +69,7 @@ test_plot_stations(dataset)
 
 test_area(dataset)
 
-test_q_mmd(dataset)
+test_q_mm(dataset)
 
 test_boundary(dataset)
 

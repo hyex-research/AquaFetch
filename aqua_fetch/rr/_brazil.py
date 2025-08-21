@@ -22,7 +22,7 @@ from ._map import (
     actual_evapotranspiration_with_specifier,
     total_precipitation_with_specifier,
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     mean_rel_hum_with_specifier,
     mean_windspeed_with_specifier,
     solar_radiation_with_specifier,
@@ -218,7 +218,7 @@ class CAMELS_BR(_RainfallRunoff):
     def dyn_map(self):
         # table 1 in paper
         return {
-            'streamflow_mm': observed_streamflow_mmd(),
+            'streamflow_mm': observed_streamflow_mm(),
             'temperature_min': min_air_temp(),
             'temperature_max': max_air_temp(),
             'temperature_mean': mean_air_temp(),
@@ -234,7 +234,7 @@ class CAMELS_BR(_RainfallRunoff):
     def dyn_generators(self):
         return {
             # new column to be created : function to be applied, inputs
-            observed_streamflow_cms(): (self.mmd_to_cms, observed_streamflow_mmd()),
+            observed_streamflow_cms(): (self.mm_to_cms, observed_streamflow_mm()),
             #mean_air_temp(): (self.mean_temp, (min_air_temp(), max_air_temp())),
         }
 
@@ -298,7 +298,7 @@ class CAMELS_BR(_RainfallRunoff):
     def end(self):
         return "20190228"
 
-    def q_mmd(
+    def q_mm(
             self,
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
@@ -323,9 +323,10 @@ class CAMELS_BR(_RainfallRunoff):
 
         stations = check_attributes(stations, self.stations())
         _, q = self.fetch_stations_features(stations,
-                                         dynamic_features=observed_streamflow_mmd(),
+                                         dynamic_features=observed_streamflow_mm(),
                                          as_dataframe=True)
-        q.index = q.index.get_level_values(0)
+        #q.index = q.index.get_level_values(0)
+        q = pd.DataFrame.from_dict({stn:df[observed_streamflow_mm()] for stn,df in q.items()})
         # area_m2 = self.area(stations) * 1e6  # area in m2
         # q = (q / area_m2) * 86400  # cms to m/day
         return q  # * 1e3  # to mm/day
@@ -717,6 +718,7 @@ class CABra(_RainfallRunoff):
             ``ens``, ``era5`` or ``ref``.
         """
         super(CABra, self).__init__(path=path,
+                                    to_netcdf=to_netcdf,
                                     **kwargs)
         self.path = path
         self.met_src = met_src
@@ -725,10 +727,6 @@ class CABra(_RainfallRunoff):
         self._dynamic_features = self.__dynamic_features()
         self._static_features = self.__static_features()
 
-        # self.dyn_fname = os.path.join(self.path,
-        #                               f'cabra_{met_src}_dyn.nc')
-
-        # if to_netcdf:
         self._maybe_to_netcdf()
 
     @property
@@ -1268,9 +1266,14 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
         # todo : this will be correct only if we are getting data for all stations
         # but what if we want to get data for some random stations?
         # 10 because first 10 stations don't have data for "ref" source
-        met_idx = pd.to_datetime(
-            meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
-                str))
+        if len(meteos) < 10:
+            met_idx = pd.to_datetime(
+                meteos[0]['Year'].astype(str) + '-' + meteos[0]['Month'].astype(str) + '-' + meteos[0]['Day'].astype(
+                    str))
+        else:
+            met_idx = pd.to_datetime(
+                meteos[10]['Year'].astype(str) + '-' + meteos[10]['Month'].astype(str) + '-' + meteos[10]['Day'].astype(
+                    str))
 
         met_cols = [col for col in meteos[0].columns if col not in ['Year', 'Month', 'Day']]
 

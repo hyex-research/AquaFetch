@@ -20,7 +20,7 @@ from .._backend import netCDF4, xarray as xr
 
 from ._map import (
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     mean_air_temp,
     min_air_temp_with_specifier,
     max_air_temp_with_specifier,
@@ -91,6 +91,9 @@ class CAMELS_US(_RainfallRunoff):
     following `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_ ,
     `Newman et al., 2022 <https://gdex.ucar.edu/dataset/camels.html.>`_ and
     `Addor et al., 2017 <https://hess.copernicus.org/articles/21/5293/2017/>`_.
+
+    Please note this data is also known as "CAMELS" however, we have named it CAMELS_US
+    to differentiate it from other CAMELS like datasts from other parts of the world.
 
     Examples
     --------
@@ -542,7 +545,7 @@ class CAMELS_GB(_RainfallRunoff):
         # table 1 in https://essd.copernicus.org/articles/12/2459/2020/#&gid=1&pid=1
         return {
             'discharge_vol': observed_streamflow_cms(),
-            'discharge_spec': observed_streamflow_mmd(),
+            'discharge_spec': observed_streamflow_mm(),
             'temperature': mean_air_temp(),
             'humidity': mean_rel_hum(),  # todo: convert from g/kg to %
             'windspeed': mean_windspeed(),
@@ -592,8 +595,8 @@ class CAMELS_GB(_RainfallRunoff):
         return gauge_ids
 
     @property
-    def _mmd_feature_name(self) -> str:
-        return observed_streamflow_mmd()
+    def _mm_feature_name(self) -> str:
+        return observed_streamflow_mm()
 
     @property
     def _area_name(self) -> str:
@@ -894,7 +897,7 @@ class CAMELS_AUS(_RainfallRunoff):
         # table 2 in https://essd.copernicus.org/articles/13/3847/2021/#&gid=1&pid=1
         return {
             'streamflow_MLd': observed_streamflow_cms(),
-            'streamflow_mmd': observed_streamflow_mmd(),
+            'streamflow_mmd': observed_streamflow_mm(),
             'tmin_SILO': min_air_temp_with_specifier('silo'),
             'tmax_SILO': max_air_temp_with_specifier('silo'),
             'tmin_AWAP': min_air_temp_with_specifier('awap'),
@@ -1217,7 +1220,7 @@ class CAMELS_CL(_RainfallRunoff):
     def dyn_map(self):
         return {
             'streamflow_m3s': observed_streamflow_cms(),
-            'streamflow_mm': observed_streamflow_mmd(),
+            'streamflow_mm': observed_streamflow_mm(),
             'tmin_cr2met': min_air_temp(),
             'tmax_cr2met': max_air_temp(),
             'tmean_cr2met': mean_air_temp(),
@@ -1267,8 +1270,8 @@ class CAMELS_CL(_RainfallRunoff):
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     @property
-    def _mmd_feature_name(self) -> str:
-        return observed_streamflow_mmd()
+    def _mm_feature_name(self) -> str:
+        return observed_streamflow_mm()
 
     def stn_coords(
             self,
@@ -1518,7 +1521,7 @@ class CAMELS_CH(_RainfallRunoff):
         return {
             'discharge_vol(m3/s)': observed_streamflow_cms(),
             # 'discharge_vol(m3/s)': 'sim_q_cms',
-            'discharge_spec(mm/d)': observed_streamflow_mmd(),
+            'discharge_spec(mm/d)': observed_streamflow_mm(),
             'temperature_min(°C)': min_air_temp(),
             'temperature_max(°C)': max_air_temp(),
             'temperature_mean(°C)': mean_air_temp(),
@@ -1997,7 +2000,7 @@ class CAMELS_DE(_RainfallRunoff):
         # table 1 in https://essd.copernicus.org/articles/16/5625/2024/#&gid=1&pid=1
         return {
             'discharge_vol': observed_streamflow_cms(),
-            'discharge_spec': observed_streamflow_mmd(),
+            'discharge_spec': observed_streamflow_mm(),
             'temperature_min': min_air_temp(),
             'temperature_max': max_air_temp(),
             'temperature_mean': mean_air_temp(),
@@ -2152,10 +2155,10 @@ class CAMELS_DE(_RainfallRunoff):
         return 'area'
 
     @property
-    def _mmd_feature_name(self) -> str:
+    def _mm_feature_name(self) -> str:
         """Observed catchment-specific discharge (converted to millimetres per day
         using catchment areas"""
-        return observed_streamflow_mmd()
+        return observed_streamflow_mm()
 
 
 class CAMELS_SE(_RainfallRunoff):
@@ -2197,7 +2200,7 @@ class CAMELS_SE(_RainfallRunoff):
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, dynamic = dataset.fetch('5', as_dataframe=True,
-    ...  dynamic_features=['q_cms_obs', 'q_mmd_obs', 'pcp_mm', 'airtemp_C_mean'])
+    ...  dynamic_features=['q_cms_obs', 'q_mm_obs', 'pcp_mm', 'airtemp_C_mean'])
     >>> dynamic['5'].shape
        (21915, 5)
     ...
@@ -2309,7 +2312,7 @@ class CAMELS_SE(_RainfallRunoff):
     def dyn_map(self):
         return {
             'Qobs_m3s': observed_streamflow_cms(),
-            'Qobs_mm': observed_streamflow_mmd(),
+            'Qobs_mm': observed_streamflow_mm(),
             'Tobs_C': mean_air_temp(),
             'Pobs_mm': total_precipitation(),
         }
@@ -2331,7 +2334,7 @@ class CAMELS_SE(_RainfallRunoff):
         return os.path.join(self.path, 'catchment time series', 'catchment time series')
 
     @property
-    def _mmd_feature_name(self) -> str:
+    def _mm_feature_name(self) -> str:
         return observed_streamflow_cms()
 
     @property
@@ -3162,7 +3165,7 @@ class CAMELS_FR(_RainfallRunoff):
             # streamflow in liters per second
             'tsd_q_l': observed_streamflow_cms(),
             # streamflow in milimeters per day
-            'tsd_q_mm': observed_streamflow_mmd(),
+            'tsd_q_mm': observed_streamflow_mm(),
             'tsd_wind': mean_windspeed(),
             'tsd_temp_min': min_air_temp(),  # minimum air temperature over the period (18h day-1, 18h day]
             'tsd_temp_max': max_air_temp(),  # maximum air temperature over the period (18h day-1, 18h day]
@@ -4391,7 +4394,7 @@ class CAMELS_LUX(_RainfallRunoff):
         """
         return {
             'Q': observed_streamflow_cms(),
-            'Qspec': observed_streamflow_mmd(),
+            'Qspec': observed_streamflow_mm(),
             'RR_rad': total_precipitation_with_specifier('radar'),
             'RR_stn': total_precipitation_with_specifier('station'),
             'tp': total_precipitation_with_specifier('era5'),
@@ -4658,7 +4661,7 @@ class CAMELS_FI(_RainfallRunoff):
         """
         return {
             'discharge_vol': observed_streamflow_cms(),
-            'discharge_spec': observed_streamflow_mmd(),
+            'discharge_spec': observed_streamflow_mm(),
             'precipitation': total_precipitation(),
             'pet': total_potential_evapotranspiration(),
             'temperature_min': min_air_temp(),
@@ -4803,15 +4806,91 @@ class CAMELSH(_RainfallRunoff):
     """
     Dataset of 5,767 catchments from united states of america following the work of
     `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ . It consists
-    of hourly data with 14 dynamic features and 780 static features. The dynamic features
+    of hourly data with 13 dynamic features and 779 static features. The dynamic features
     span from 19800101 to 20241231 with hourly timestep. The data is downloaded from
     `Zenodo <https://zenodo.org/records/16729675>`_.
 
     Please note that usage of this dataset requires xarray and netCDF4 libraries.
+
+    Examples
+    --------
+    >>> from aqua_fetch import CAMELSH
+    >>> dataset = CAMELSH()
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       5767
+    ... # get data by station id/name
+    >>> _, dynamic = dataset.fetch(stations='02342070', as_dataframe=True)
+    >>> df = dynamic['02342070'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (394488, 13)
+    ...
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (67 out of 5767)
+       67
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(394488, 13), (394488, 8), (394488, 13),... (394488, 13), (394488, 13)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('02342070', as_dataframe=True,
+    ...  dynamic_features=['SWdown', 'pcp_mm', 'pet_mm', 'airtemp_C_mean', 'q_cms_obs'])
+    >>> dynamic['02342070'].shape
+       (394488, 5)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='02342070', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['02342070'].shape
+    ((1, 779), 1, (394488, 13))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 394488, 'dynamic_features': 8})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (5767, 2)
+    >>> dataset.stn_coords('02342070')  # returns coordinates of station whose id is 02342070
+        32.37431	-84.957993
+    >>> dataset.stn_coords(['02342070', '14316700'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('02342070')
+    # get coordinates of two stations
+    >>> dataset.area(['02342070', '14316700'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('02342070')
+  
+    
     """
     url = {
         "Hourly2.zip": "https://zenodo.org/records/16729675",  # contains observed q and water level
         "timeseries_nonobs.7z": "https://zenodo.org/records/15070091",  # contains NLDAS forcing data
+        "timeseries.7z": "https://zenodo.org/records/15066778",
         "attributes.7z": "https://zenodo.org/records/15066778",
         "info.csv": "https://zenodo.org/records/15066778",
         "shapefiles.7z": "https://zenodo.org/records/15066778"
@@ -4834,8 +4913,55 @@ class CAMELSH(_RainfallRunoff):
             if not os.path.exists(fpath) or overwrite:
                 download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
 
+            uzipped_dir_path = os.path.join(self.path, fname.split('.')[0])
+            if not os.path.exists(uzipped_dir_path):
+                unzip(self.path, keep_parent_dir=True, verbosity=self.verbosity)
+
+        self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+
     def stations(self) -> List[str]:
-        return [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+        return self.__stations
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        return {
+            'LAT_GAGE': gauge_latitude(),
+            'LNG_GAGE': gauge_longitude(),
+            #'LAT_CENT': centroid_latitude(),
+            #'LONG_CENT': centroid_longitude(),
+            'ELEV_MEAN_M_BASIN': catchment_elevation_meters(),
+            'DRAIN_SQKM': catchment_area(),
+            'ELEV_SITE_M': gauge_elevation_meters(),
+            'SLOPE_PCT': slope('percent'),
+            'PDEN_2000_BLOCK': population_density(2000),
+            'PDEN_DAY_LANDSCAN_2007': population_density(2007),
+            #'PDEN_NIGHT_LANDSCAN_2007': population_density(2007),
+            # 'CLAYAVE': clay_content(),
+            # 'SILTAVE': silt_content(),
+            # 'SANDAVE': sand_content(),
+        }
+
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        return {
+            #'water_level': water_level('m'),
+            'Tair': mean_air_temp(),
+            'PotEvap': total_potential_evapotranspiration(),
+            'Rainf': total_precipitation(),
+            'streamflow': observed_streamflow_cms()
+        }
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(
+            self.path,
+            "shapefiles",
+            "CAMELSH_shapefile.shp"
+        )
+
+    @property
+    def boundary_id_map(self) -> str:
+        return "GAGE_ID"
 
     @property
     def h2_path(self) -> os.PathLike:
@@ -4858,7 +4984,11 @@ class CAMELSH(_RainfallRunoff):
     
     @property
     def nonobs_path(self) -> os.PathLike:
-        return os.path.join(self.path, "Data", "CAMELSH", "timeseries_nonobs")
+        return os.path.join(self.path, "timeseries_nonobs", "Data", "CAMELSH", "timeseries_nonobs")
+
+    @property
+    def timeseries_path(self) -> os.PathLike:
+        return os.path.join(self.path, "timeseries", "Data", "CAMELSH", "timeseries")
 
     def _read_stn_q(self, stn):
         fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
@@ -4871,9 +5001,14 @@ class CAMELSH(_RainfallRunoff):
     def _read_stn_forcing(self, stn):
         fpath = os.path.join(self.nonobs_path, f"{stn}.nc")
         if not os.path.exists(fpath):
-            raise FileNotFoundError(f"forcing data for station {stn} not found in {self.nonobs_path}")
+            fpath = os.path.join(self.timeseries_path, f"{stn}.nc")
+            if not os.path.exists(fpath):
+                raise FileNotFoundError(f"forcing data for station {stn} not found in {self.nonobs_path}")
         
         ds = xr.open_dataset(fpath, engine='netcdf4')
+
+        # todo : what is difference between Streamflow in forcing and streamflow in Hourly2 path?
+        ds = ds.drop_vars("Streamflow", errors="ignore")
 
         ds = ds.rename({'DateTime': 'time'})
         return ds    
@@ -4883,8 +5018,11 @@ class CAMELSH(_RainfallRunoff):
         forcing = self._read_stn_forcing(stn)
         # todo : converting to pandas will make the code extremely slow
         # conversion should be done after we have fetched data from all stations and if required
-        return xr.merge([q, forcing]).to_pandas()
-    
+        ds = xr.merge([q, forcing]).to_pandas()
+        
+        ds.rename(columns=self.dyn_map, inplace=True)
+        return ds
+
     def _static_data(self) -> pd.DataFrame:
         """
         reads static data for all stations
@@ -4908,4 +5046,11 @@ class CAMELSH(_RainfallRunoff):
             df.index = df.index.astype(str)
             dfs.append(df)
 
-        return pd.concat(dfs, axis=1)
+        df = pd.concat(dfs, axis=1)
+
+        # drop duplicate columns
+        df = df.loc[:, ~df.columns.duplicated()]
+
+        # rename columns using self.static_map
+        df = df.rename(columns=self.static_map)
+        return df

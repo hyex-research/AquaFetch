@@ -1,6 +1,6 @@
 
 import os
-from datetime import datetime
+import warnings
 from typing import Union, List, Dict, Tuple
 
 import numpy as np
@@ -17,7 +17,7 @@ from ..utils import check_attributes, download, unzip
 
 from ._map import (
     observed_streamflow_cms,
-    observed_streamflow_mmd,
+    observed_streamflow_mm,
     min_air_temp,
     max_air_temp,
     mean_air_temp,
@@ -369,11 +369,11 @@ class HYSETS(_RainfallRunoff):
             'surface_net_solar_radiation':   net_solar_radiation(), # surface_net_solar_radiation_shortwave in J/m2
             'surface_net_thermal_radiation': net_longwave_radiation(), # surface_net_thermal_radiation_longwave in J/m2
             'surface_pressure': mean_air_pressure(), # convert Pa to hPa
-            'surface_runoff': observed_streamflow_mmd(),
+            'surface_runoff': observed_streamflow_mm(),
             'total_cloud_cover': cloud_cover(),
             'total_precipitation': total_precipitation(),
 
-            # 'total_runoff': observed_streamflow_mmd(), todo : it appears same as runoff?
+            # 'total_runoff': observed_streamflow_mm(), todo : it appears same as runoff?
         }
 
     @property
@@ -511,6 +511,13 @@ class HYSETS(_RainfallRunoff):
         >>> stations = dataset.stations()[0:3]
         >>> features = dataset.fetch_stations_features(stations)
         """
+
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
         stations = check_attributes(stations, self.stations())
         stations_int = [int(stn) for stn in stations]
 

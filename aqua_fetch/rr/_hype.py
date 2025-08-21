@@ -145,8 +145,6 @@ class HYPE(_RainfallRunoff):
             self._maybe_to_netcdf()
             self.time_step = time_step
 
-        self.dyn_fname = os.path.join(self.path, f'hype_{time_step}_dyn.nc')
-
     def stations(self) -> list:
         _stations = np.arange(1, 565).astype(str)
         return list(_stations)
@@ -197,7 +195,7 @@ class HYPE(_RainfallRunoff):
         return stns_dfs
 
     @property
-    def _mmd_feature_name(self) ->str:
+    def _mm_feature_name(self) ->str:
         return 'Streamflow_mm'
 
     def fetch_static_features(self, station, static_features=None):

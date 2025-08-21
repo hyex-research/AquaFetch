@@ -26,7 +26,7 @@ from aqua_fetch import CAMELS_LUX
 from aqua_fetch import CAMELS_COL
 from aqua_fetch import CAMELS_SK
 from aqua_fetch import CAMELS_FI
-from aqua_fetch.rr._camels import CAMELSH
+from aqua_fetch import CAMELSH
 
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
@@ -42,21 +42,21 @@ from utils import test_dataset
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        ds_gb = CAMELS_GB(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(ds_gb, 671, 16436, 145, 10)
+        dataset = CAMELS_GB(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 671, 16436, 145, 10)
         return
 
     def test_aus(self):
-        ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS_AUS_V1'), version=1)
-        test_dataset(ds_aus, 222, 23376, 166, 28)
+        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS_AUS_V1'), version=1)
+        test_dataset(dataset, 222, 23376, 166, 28)
 
-        ds_aus = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2, verbosity=4)
-        test_dataset(ds_aus, 561, 26388, 187, 28)
+        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2, verbosity=4)
+        test_dataset(dataset, 561, 26388, 187, 28)
         return
 
     def test_hype(self):
-        ds_hype = HYPE(path=gscad_path)
-        test_dataset(ds_hype, 564, 12783, 0, 9)
+        dataset = HYPE(path=gscad_path)
+        test_dataset(dataset, 564, 12783, 0, 9)
         return
 
     def test_cl(self):
@@ -71,8 +71,8 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_ccam(self):
-        ccam = CCAM(path=gscad_path)
-        test_dataset(ccam, 102, 8035, 124, 16)
+        dataset = CCAM(path=gscad_path)
+        test_dataset(dataset, 102, 8035, 124, 16)
         return
 
     def test_ccam_meteo(self):
@@ -128,11 +128,11 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_camels_ch(self):
-        ds_swiss = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(ds_swiss, 331, 14610, 209, 9)
+        dataset = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'))
+        test_dataset(dataset, 331, 14610, 209, 9)
 
-        ds_swiss = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'), timestep='H')
-        q = ds_swiss.read_hourly_q_ch(ds_swiss.hourly_stations()[0])
+        dataset = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'), timestep='H')
+        q = dataset.read_hourly_q_ch(dataset.hourly_stations()[0])
         assert pd.infer_freq(q.index) == 'H'
 
         return
@@ -165,9 +165,9 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_rainfallrunoff(self):
-        ds_aus = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
+        dataset = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
                                  overwrite=True)
-        test_dataset(ds_aus, 561, 26388, 187, 28)
+        test_dataset(dataset, 561, 26388, 187, 28)
         return
 
     def test_camels_nz(self):
@@ -205,6 +205,12 @@ class TestCamels(unittest.TestCase):
         dataset = CAMELS_FI(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
         test_dataset(dataset, 320, 23010, 106, 16)
 
+        return
+
+    def test_camelsh(self):
+        dataset = CAMELSH(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+
+        test_dataset(dataset, 5767, 394488, 779, 13)
         return
 
 
