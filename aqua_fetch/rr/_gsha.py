@@ -118,7 +118,7 @@ class GSHA(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         """
         super(GSHA, self).__init__(path=path, to_netcdf=to_netcdf, 
                                    overwrite=overwrite, **kwargs)

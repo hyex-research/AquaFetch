@@ -267,7 +267,7 @@ class RainfallRunoff(object):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as :obj:`xarray`.
+            require netCDF4 package as well as :obj:`xarray`.
         verbosity : int
             0: no message will be printed
         kwargs :

@@ -1480,7 +1480,7 @@ class CAMELS_CH(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc. but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         """
         super().__init__(path=path, **kwargs)
 
@@ -1965,7 +1965,7 @@ class CAMELS_DE(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc. but will
-            require netCDF5 package as well as xarray.
+            require netCDF4 package as well as xarray.
         """
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
@@ -2560,7 +2560,7 @@ class CAMELS_DK(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarray.
         """
         super(CAMELS_DK, self).__init__(path=path, **kwargs)
         self._download(overwrite=overwrite)

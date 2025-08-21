@@ -712,7 +712,7 @@ class CABra(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         met_src : str
             source of meteorological data, must be one of
             ``ens``, ``era5`` or ``ref``.

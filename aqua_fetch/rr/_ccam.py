@@ -150,13 +150,11 @@ class CCAM(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         """
         super(CCAM, self).__init__(path=path, **kwargs)
         self.path = path
         self._download(overwrite=overwrite)
-
-        #self.dyn_fname = os.path.join(self.path, 'ccam_dyn.nc')
 
         if to_netcdf:
             self._maybe_to_netcdf()

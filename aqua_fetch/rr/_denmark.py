@@ -133,18 +133,15 @@ class Caravan_DK(_RainfallRunoff):
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
-            require netcdf5 package as well as xarry.
+            require netCDF4 package as well as xarry.
         """
-        super(Caravan_DK, self).__init__(path=path, **kwargs)
+        super(Caravan_DK, self).__init__(path=path, to_netcdf=to_netcdf, **kwargs)
         self.path = path
         self._download(overwrite=overwrite)
 
         self._static_features = self._static_data().columns.to_list()
         self._dynamic_features = self.__dynamic_features()
 
-        # self.dyn_fname = os.path.join(self.path, 'caravandk_dyn.nc')
-
-        #if to_netcdf:
         self._maybe_to_netcdf()
 
     @property
