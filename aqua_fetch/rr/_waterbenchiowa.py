@@ -41,12 +41,12 @@ class WaterBenchIowa(_RainfallRunoff):
     (184032, 5)
     >>> static.shape
     (5, 7)
-
+    ...
     ... # using another method
     >>> dynamic = ds.fetch_dynamic_features('644', as_dataframe=True)
     >>> dynamic['644'].shape
     (61344, 3)
-
+    ...
     >>> static, dynamic = ds.fetch(stations='644', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic['644'].shape
     >>> ((1, 7), (184032, 5))

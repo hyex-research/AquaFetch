@@ -141,7 +141,7 @@ def dye_removal(
     Parameters
     ----------
     parameters : list, optional
-        features to use as input. It must be a subset of the following features
+        Names of parameters to be fetched. It must be a subset of the following features
 
             - ``catalyst``
             - ``hydrothermal_synthesis_time_min)``
@@ -178,6 +178,7 @@ def dye_removal(
             - ``solution_pH``
             - ``HA_mg/L``
             - ``anions``
+            - ``final_concentration_mg/l``
 
         encoding : str, default=None
             type of encoding to use for the two categorical features i.e., ``Catalyst_type``
@@ -194,12 +195,15 @@ def dye_removal(
     Examples
     --------
     >>> from aqua_fetch import dye_removal
-
+    ... by default it returns all features/parameters
     >>> data, encoders = dye_removal()
-    >>> assert data.shape == (1527, 36)
+    >>> data.shape  # the data is in the form of pandas DataFrame
+    (1527, 38)
     # using label encoding to encode the categorical variables
     >>> data, encoders = dye_removal(encoding='le')
-    >>> assert data.shape == (1527, 36), data.shape
+    >>> data.shape  # the data is in the form of pandas DataFrame
+    (1527, 38)
+    ... the encoders is a dictionary with keys as names of parameters
     >>> catalysts = encoders['catalyst'].inverse_transform(data.loc[:, 'catalyst'].values)
     >>> len(set(catalysts.tolist()))
     18
@@ -211,7 +215,8 @@ def dye_removal(
     {'NaCO3', 'N/A', 'Na2SO4', 'Na2HPO4', 'NaHCO3', 'NaCl'}
     # using one hot encoding for categroicla parameters
     >>> data, encoders = dye_removal(encoding='ohe')
-    >>> assert data.shape == (1527, 59), data.shape
+    >>> data.shape
+    (1527, 61)
     >>> catalysts = encoders['catalyst'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('catalyst')]].values)
     >>> len(set(catalysts.tolist()))
     18
@@ -262,15 +267,16 @@ def dye_removal(
     'Solution pH': 'solution_ph',  # 'Ci',
     'HA (mg/L)': 'ha_mg/l',
     'Anions': 'anions',
+    "Cf": "final_concentration_mg/l"
     }
 
     df.rename(columns=columns, inplace=True)
 
     # first order k following https://doi.org/10.1016/j.seppur.2019.116195
-    k = np.log(df["Ci"] / df["Cf"]) / df["time_m"]
+    k = np.log(df["Ci"] / df["final_concentration_mg/l"]) / df["time_m"]
     df["k_1st"] = k
 
-    k_2nd = ((1 / df["Cf"]) - (1 / df["Ci"])) / df["time_m"]
+    k_2nd = ((1 / df["final_concentration_mg/l"]) - (1 / df["Ci"])) / df["time_m"]
     df["k_2nd"] = k_2nd
 
     # at Time 0, let k==0
@@ -278,14 +284,17 @@ def dye_removal(
 
     # when final concentration is very low, k is not calculable (will be inf)
     # therefore inserting very small value of k
-    df.loc[df['Cf'] == 0.0, "k"] = 0.001
+    df.loc[df['final_concentration_mg/l'] == 0.0, "k"] = 0.001
+
+    # calculate efficiency in percentage using Ci and Cf columns
+    df["efficiency_%"] = (df["Ci"] - df["final_concentration_mg/l"]) / df["Ci"] * 100
 
     # mass_ratio = (loading / volume )/dye_conc.
 
     # when no anions are present, represent them as N/A
     df.loc[df['anions'].isin(['0', 'without Anion']), "anions"] = "N/A"
 
-    default_paras = list(columns.values()) + ['k_1st', 'k_2nd']
+    default_paras = list(columns.values()) + ['k_1st', 'k_2nd', "efficiency_%"]
 
     parameters = check_attributes(parameters, default_paras, 'parameters')
 

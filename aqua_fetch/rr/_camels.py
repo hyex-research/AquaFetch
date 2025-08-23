@@ -3376,7 +3376,7 @@ class CAMELS_NZ(_RainfallRunoff):
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(460928, 5), (460928, 5), (460928, 5),... (460928, 5), (460928, 5)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -3400,7 +3400,7 @@ class CAMELS_NZ(_RainfallRunoff):
     >>> static, dynamic = dataset.fetch(stations='74321', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['74321'].shape
     ((1, 39), 1, (460928, 5))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
@@ -3735,7 +3735,7 @@ class CAMELS_COL(_RainfallRunoff):
     >>> static, dynamic = dataset.fetch(stations='35067040', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['35067040'].shape
     ((1, 255), 1, (15340, 6))
-
+    ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
     ... type(dynamic)   
@@ -4248,7 +4248,7 @@ class CAMELS_LUX(_RainfallRunoff):
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
         [(6209, 25), (6209, 25), (6209, 25),... (6209, 25), (6209, 25)]
-
+    ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
     >>> len(dynamic)  # dynamic has data for 1 station
@@ -4804,10 +4804,10 @@ class CAMELS_FI(_RainfallRunoff):
 
 class CAMELSH(_RainfallRunoff):
     """
-    Dataset of 5,767 catchments from united states of america following the work of
-    `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ . It consists
-    of hourly data with 13 dynamic features and 779 static features. The dynamic features
-    span from 19800101 to 20241231 with hourly timestep. The data is downloaded from
+    Hourly data of 5,767 catchments from United States of America with 13 dynamic
+    features and 779 static features for each catchment. For more details on data see
+    `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_ . The dynamic features
+    span from 19800101 to 20241231 . The data is downloaded from
     `Zenodo <https://zenodo.org/records/16729675>`_.
 
     Please note that usage of this dataset requires xarray and netCDF4 libraries.
@@ -4884,8 +4884,7 @@ class CAMELSH(_RainfallRunoff):
     ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('02342070')
-  
-    
+
     """
     url = {
         "Hourly2.zip": "https://zenodo.org/records/16729675",  # contains observed q and water level
@@ -4895,7 +4894,6 @@ class CAMELSH(_RainfallRunoff):
         "info.csv": "https://zenodo.org/records/15066778",
         "shapefiles.7z": "https://zenodo.org/records/15066778"
     }
-
 
     def __init__(self,
                  path=None,

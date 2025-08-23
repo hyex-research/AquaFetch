@@ -8,7 +8,7 @@ __all__ = [
 
 
 import os
-from typing import Union, List
+from typing import Union, List, Dict
 
 import pandas as pd
 
@@ -481,3 +481,179 @@ class SeluneRiver(Datasets):
                         oxy_upstream_virey, oxy_upstream_virey_zh], axis=1)
         
         return df
+
+
+class WQNaizin(Datasets):
+    """
+    see `Dupas et al., 2024 <https://doi.org/10.1016/j.watres.2024.122108>`_ for details on data.
+    """
+    url = {
+        # High spatial resolution synoptic water chemistry sampling during streamflow intermittence in the Naizin catchment, northwest France
+        "Discharge_Naizin.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/602075",
+        "metadata_files_Naizin.pdf": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/602072",
+        "NaizinCatchment.zip" : "https://entrepot.recherche.data.gouv.fr/api/access/datafile/602081",
+        "PARAFACLoadings_Naizin.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/602080",
+        "StreamWaterChemistry_Naizin.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/602079",
+        # High-frequency measurements of 7 major ions concentrations during discharge events in the Kervidy-Naizin and Strengbach catchments (2018-2022)
+        "Brekenfeld_etal_2024_discharge_Kervidy-Naizin.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/192124",
+        "Brekenfeld_etal_2024_discharge_Strengbach.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/192126",
+        "Brekenfeld_etal_2024_IonConcentrations_Kervidy-Naizin.tab": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/192128",
+        "Brekenfeld_etal_2024_IonConcentrations_Strengbach.tab":"https://entrepot.recherche.data.gouv.fr/api/access/datafile/192129",
+        # High-frequency measurement of Nitrate and Dissolved Organic Carbon in the Kervidy-Naizin catchment (2010-2023)
+        "DataVerseSpectro.pdf":"https://entrepot.recherche.data.gouv.fr/api/access/datafile/188240",
+        "spectroDataverse.txt":"https://entrepot.recherche.data.gouv.fr/api/access/datafile/188198",
+        # High-frequency measurement of Total Phosphorus and Total Reactive Phosphorus in the Kervidy-Naizin catchment (2016-2023)
+        "phosphax30.txt":"https://entrepot.recherche.data.gouv.fr/api/access/datafile/188174",
+        "DataVersePhosphax.pdf": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/188175",
+        }
+
+
+class NinAfrica(Datasets):
+    """
+    Data of N compounts in sub-saharan African surface waters following the work of
+    `Jacobs and Breuer, 2024 <https://doi.org/10.1016/j.scitotenv.2024.176611>`_ .
+    The data is from 34 African countries.
+    """
+    url = "https://zenodo.org/records/13252417"
+    
+    def __init__(
+            self, 
+            path=None, 
+            **kwargs):
+
+        super().__init__(path=path, **kwargs)
+
+        self._download()
+
+    @property
+    def countries(self)->List[str]:
+        """
+        List of countries in the dataset.
+        """
+        return self.data()['country'].unique().tolist()
+
+    def data(self)->pd.DataFrame:
+        """
+        Return a DataFrame of the data
+        """
+        fpath = os.path.join(self.path, 'Dataset.xlsx')
+        df = pd.read_excel(fpath, index_col=0, skiprows=1)
+        # make a dictionary where columns are keys and first row values are values
+        info = df.iloc[0].to_dict()
+
+        df = df.iloc[2:].copy()
+
+        df.rename(columns=self._col_map(), inplace=True)
+        return df
+
+    def _col_map(self)->Dict[str, str]:
+
+        return {
+            'Elevation range [m a.s.l.]': 'elev_min',
+            'Unnamed: 15': 'elev_max',
+            'Precipitation [mm yr-1]': 'mean_pcp_mm', 
+            'Unnamed: 18': 'min_pcp_mm', 
+            'Unnamed: 19': 'max_pcp_mm',
+            'Air temperature [°C]': 'mean_airtemp_C',
+            'Unnamed: 21': 'sd_airtemp_C',
+            'Unnamed: 22': 'min_airtemp_C',
+            'Unnamed: 23': 'max_airtemp_C',
+            'Total N concentration [mg L-1]': 'mean_totN_mg/L', 
+            'Unnamed: 42': 'sd_totN_mg/L',
+            'Total N export [kg ha-1 y-1]': 'mean_totNexport_kg/ha/yr', 
+            'Unnamed: 44': 'sd_totNexport_kg/ha/yr',
+            'Particulate N concentration [mg L-1]': 'mean_particulateN_mg/L',
+            'Unnamed: 46': 'sd_particulateN_mg/L',
+            'Particulate N export [kg ha-1 y-1]': 'mean_particulateNexport_kg/ha/yr',
+            'Unnamed: 48': 'sd_particulateNexport_kg/ha/yr',
+            'TON concentration [mg L-1]': 'mean_TON_mg/L',  # total organic N
+            'Unnamed: 50': 'sd_TON_mg/L',
+            'TON export [kg ha-1 y-1]': 'mean_TONexport_kg/ha/yr',
+            'Unnamed: 52': 'sd_TONexport_kg/ha/yr',
+            'PON concentration [mg L-1]': 'mean_PON_mg/L',
+            'Unnamed: 54': 'sd_PON_mg/L',
+            'PON export [kg ha-1 y-1]': 'mean_PONexport_kg/ha/yr',
+            'Unnamed: 56': 'sd_PONexport_kg/ha/yr',
+            'TDN concentration [mg L-1]': 'mean_TDN_mg/L',
+            'Unnamed: 58': 'sd_TDN_mg/L',
+            'TDN export [kg ha-1 y-1]': 'mean_TDNexport_kg/ha/yr',
+            'Unnamed: 60': 'sd_TDNexport_kg/ha/yr',
+            'DON concentration [mg L-1]': 'mean_DON_mg/L',
+            'Unnamed: 62': 'sd_DON_mg/L',
+            'DON export [kg ha-1 y-1]': 'mean_DONexport_kg/ha/yr',
+            'Unnamed: 64': 'sd_DONexport_kg/ha/yr',
+            'DIN concentration [mg L-1]': 'mean_DIN_mg/L',
+            'Unnamed: 66': 'sd_DIN_mg/L',
+            'DIN export [kg ha-1 y-1]': 'mean_DINexport_kg/ha/yr',
+            'Unnamed: 68': 'sd_DINexport_kg/ha/yr',
+            'NO3-N+NO2-N concentration [mg L-1]': 'mean_NO3-N+NO2-N_mg/L',
+            'Unnamed: 70': 'sd_NO3-N+NO2-N_mg/L',
+            'NO3-N+NO2-N export [kg ha-1 y-1]': 'mean_NO3-N+NO2-Nexport_kg/ha/yr',
+            'Unnamed: 72': 'sd_NO3-N+NO2-Nexport_kg/ha/yr',
+            'NO3-N concentration [mg L-1]': 'mean_NO3-N_mg/L',
+            'Unnamed: 74': 'sd_NO3-N_mg/L',
+            'NO3-N export [kg ha-1 y-1]': 'mean_NO3-Nexport_kg/ha/yr',
+            'Unnamed: 76': 'sd_NO3-Nexport_kg/ha/yr',
+            'NO2-N concentration [mg L-1]': 'mean_NO2-N_mg/L',
+            'Unnamed: 78': 'sd_NO2-N_mg/L',
+            'NO2-N export [kg ha-1 y-1]': 'mean_NO2-Nexport_kg/ha/yr',
+            'Unnamed: 80': 'sd_NO2-Nexport_kg/ha/yr',
+            'NH4-N concentration [mg L-1]': 'mean_NH4-N_mg/L',
+            'Unnamed: 82': 'sd_NH4-N_mg/L',
+            'NH4-N export [kg ha-1 y-1]': 'mean_NH4-Nexport_kg/ha/yr',
+            'Unnamed: 84': 'sd_NH4-Nexport_kg/ha/yr',
+            'NH3-N concentration [mg L-1]': 'mean_NH3-N_mg/L',
+            'Unnamed: 86': 'sd_NH3-N_mg/L',
+            'NH3-N export [kg ha-1 y-1]': 'mean_NH3-Nexport_kg/ha/yr',
+            'Unnamed: 88': 'sd_NH3-Nexport_kg/ha/yr',
+            'N2O concentration [µg L-1]': 'mean_N2O_mg/L',
+            'Unnamed: 90': 'sd_N2O_mg/L',
+            'N2O export [kg ha-1 y-1]': 'mean_N2Oexport_kg/ha/yr',
+            'Unnamed: 92': 'sd_N2Oexport_kg/ha/yr',
+            'N2O flux [µg m-2 h-1]': 'mean_N2Oflux_µg/m2/h',
+            'Unnamed: 94': 'sd_N2Oflux_µg/m2/h',
+            'Water temperature [°C]': 'mean_water_temp_C',
+            'Unnamed: 96': 'sd_water_temp_C',
+            'EC [µS cm-1]': 'mean_EC_µS/cm',
+            'Unnamed: 98': 'sd_EC_µS/cm',
+            'DO [mg L-1]': 'mean_DO_mg/L',
+            'Unnamed: 100': 'sd_DO_mg/L',
+            'BOD [mg L-1]': 'mean_BOD_mg/L',
+            'Unnamed: 102': 'sd_BOD_mg/L',
+            'pH [units]': 'mean_pH',
+            'Unnamed: 104': 'sd_pH',
+            'TDS [mg L-1]': 'mean_TDS_mg/L',
+            'Unnamed: 106': 'sd_TDS_mg/L',
+            'Turbidity [NTU]': 'mean_turbidity_NTU',
+            'Unnamed: 108': 'sd_turbidity_NTU',
+            'TSS [mg L-1]': 'mean_TSS_mg/L',
+            'Unnamed: 110': 'sd_TSS_mg/L',
+            'TSS export [t ha-1 y-1]': 'mean_TSSexport_t/ha/yr',
+            'Unnamed: 112': 'sd_TSSexport_t/ha/yr',
+            'Chlorophyll a [µg L-1]': 'mean_Chlorophyll_a_µg/L',
+            'Unnamed: 114': 'sd_Chlorophyll_a_µg/L',
+            'TP concentration [mg L-1]': 'mean_TP_mg/L',
+            'Unnamed: 116': 'sd_TP_mg/L',
+            'TP export [kg ha-1 y-1]': 'mean_TPexport_kg/ha/yr',
+            'Unnamed: 118': 'sd_TPexport_kg/ha/yr',
+            'PO4-P concentration [mg L-1]': 'mean_PO4-P_mg/L',
+            'Unnamed: 120': 'sd_PO4-P_mg/L',
+            'PO4-P export [kg ha-1 y-1]': 'mean_PO4-Pexport_kg/ha/yr',
+            'Unnamed: 122': 'sd_PO4-Pexport_kg/ha/yr',
+            'DOC concentration [mg L-1]': 'mean_DOC_mg/L',
+            'Unnamed: 124': 'sd_DOC_mg/L',
+            'Discharge [m³ s-1]': 'mean_Discharge_m3/s',
+            'Unnamed: 126': 'sd_Discharge_m3/s',
+        }
+
+
+class OhioTurbidity(Datasets):
+    """
+    Turbidity data and storm event characters (runoff, precipitation and antecedent 
+    characteristics) of three urban watersheds in Cuyahoga County, Ohio, USA from 
+    2018 to 2021 at 10 minutes frequency. For more details on data see 
+    `Safdar et al., 2024 <https://doi.org/10.1021/acsestwater.4c00214>`_.
+
+    """
+    url = 'https://www.hydroshare.org/resource/a249f3100f924ad09600c9d3de2183b6/'
+

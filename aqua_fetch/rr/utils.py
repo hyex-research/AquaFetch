@@ -97,11 +97,23 @@ class _RainfallRunoff(Datasets):
                 then the data will be downloaded in this directory. If not provided,
                 then the data will be downloaded in the default directory.
             timestep : str
-
+                This can only be set for datasets which are available at multiple timesteps
+                such as LamaHCE or LamaHIce etc.
+            to_netcdf : bool
+                whether the data should be saved in netCDF format or not
+                If set to true, the data will be saved in netCDF format which
+                can take time for the first time it is created. However, it leads 
+                to faster I/O operations in subsequent accesses.
+            overwrite : bool
+                whether to overwrite existing files or not. If set to True, the data
+                will be redownloaded.
             verbosity : int
-                0: no message will be printed
-            kwargs : dict
-                Any other keyword arguments for the Datasets class
+                This parameter determines the level of verbosity for logging messages.
+                    - 0: no message will be printed
+                    - 1: only important messages will be printed
+                    - >1: any higher value greater than 1 will result in more verbose output
+            kwargs : 
+                Any other keyword arguments for the parent :py:class:`Datasets` class
         """
         super(_RainfallRunoff, self).__init__(path=path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 

@@ -39,10 +39,10 @@ class TestPhotacatalysis(unittest.TestCase):
     def test_dye_removal(self):
 
         data, encoders = dye_removal()
-        assert data.shape == (1527, 36)
+        assert data.shape == (1527, 38)
 
         data, encoders = dye_removal(encoding='le')
-        assert data.shape == (1527, 36), data.shape
+        assert data.shape == (1527, 38), data.shape
         catalysts = encoders['catalyst'].inverse_transform(data.loc[:, 'catalyst'].values)
         assert len(set(catalysts.tolist())) == 18
         dye = encoders['dye'].inverse_transform(data.loc[:, "dye"].values)
@@ -51,7 +51,7 @@ class TestPhotacatalysis(unittest.TestCase):
         set(anions.tolist())
 
         data, encoders = dye_removal(encoding='ohe')
-        assert data.shape == (1527, 59), data.shape
+        assert data.shape == (1527, 61), data.shape
         catalysts = encoders['catalyst'].inverse_transform(data.loc[:, [col for col in data.columns if col.startswith('catalyst')]].values)
         assert len(set(catalysts.tolist())) == 18
         dye = encoders['dye'].inverse_transform(data.loc[:, ["dye_0", "dye_1"]].values)

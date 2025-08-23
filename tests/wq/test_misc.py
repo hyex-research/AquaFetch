@@ -8,7 +8,7 @@ from aqua_fetch import (
     SanFranciscoBay, BuzzardsBay, WhiteClayCreek,
     RiverChemSiberia, SeluneRiver
     )
-
+from aqua_fetch.wq._misc import NinAfrica
 
 def test_SanFranciscoBay():
 
@@ -106,3 +106,10 @@ test_RiverChemSiberia()
 test_SeluneRiver()
 
 print("All tests passed!")
+
+
+dataset = NinAfrica(verbosity=3)
+
+data = dataset.data()
+
+data.shape
