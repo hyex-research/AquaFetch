@@ -24,8 +24,11 @@ class WaterBenchIowa(_RainfallRunoff):
     Rainfall run-off dataset for Iowa (US) following the work of
     `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
     This is hourly dataset of 125 catchments with
-    7 static features and 3 dyanmic features (pcp, et, discharge) for each catchment.
-    The dyanmic features are timeseries from 2011-10-01 12:00 to 2018-09-30 11:00.
+    7 static features and 3 dynamic features (pcp, et, discharge) for each catchment.
+    The dynamic features are timeseries from 2011-10-01 12:00 to 2018-09-30 11:00.
+
+    **Note: ** Currently the coordinates and catchment boundary files are not available
+    for this dataset.
 
     Examples
     --------
@@ -38,23 +41,23 @@ class WaterBenchIowa(_RainfallRunoff):
     ... # keys of dynamic are station names and values are DataFrames
     >>> data = dynamic.popitem()[1]
     >>> data.shape
-    (184032, 5)
+    (61344, 3)
     >>> static.shape
     (5, 7)
-
+    ...
     ... # using another method
     >>> dynamic = ds.fetch_dynamic_features('644', as_dataframe=True)
     >>> dynamic['644'].shape
     (61344, 3)
-
+    ...
     >>> static, dynamic = ds.fetch(stations='644', static_features="all", as_dataframe=True)
     >>> static.shape, dynamic['644'].shape
-    >>> ((1, 7), (184032, 5))
+    >>> ((1, 7), (61344, 3))
     """
     url = "https://zenodo.org/record/7087806#.Y6rW-BVByUk"
 
     def __init__(self, path=None, **kwargs):
-        super(WaterBenchIowa, self).__init__(path=path, **kwargs)
+        super(WaterBenchIowa, self).__init__(path=path, timestep='H', **kwargs)
 
         self._download()
 
@@ -82,47 +85,20 @@ class WaterBenchIowa(_RainfallRunoff):
         return os.path.join(self.path, 'data_time_series', 'data_time_series')
 
     @property
-    def dynamic_features(self) -> List[str]:
-        return [total_precipitation, 'et', observed_streamflow_mm()]
-
-    @property
     def static_features(self)->List[str]:
         return ['travel_time', catchment_area(), slope('perc'), 'loam', 'silt',
                 'sandy_clay_loam', 'silty_clay_loam']
 
     @property
-    def _area(self)->str:
-        return 'area'
-
-    def fetch_station_attributes(
-            self,
-            station: str,
-            dynamic_features: Union[str, list, None] = 'all',
-            static_features: Union[str, list, None] = None,
-            st: Union[str, None] = None,
-            en: Union[str, None] = None,
-            **kwargs
-    ) -> pd.DataFrame:
-
-        """
-
-        Examples
-        --------
-        >>> from aqua_fetch import WaterBenchIowa
-        >>> dataset = WaterBenchIowa()
-        >>> data = dataset.fetch_station_attributes('666')
-        """
-        st, en = self._check_length(st, en)
-        check_attributes(dynamic_features, self.dynamic_features)
-        fname = os.path.join(self.ts_path, f"{station}_data.csv")
-        df = pd.read_csv(fname)
-        df.index = pd.to_datetime(df.pop('datetime'))
-        df = df.loc[st:en]
-        return df
+    def static_map(self)->Dict[str, str]:
+        return {
+            'area': catchment_area(),
+            'slope': slope('perc'),
+        }
 
     def fetch_static_features(
             self,
-            stations: Union[str, List[str]],
+            stations: Union[str, List[str]] = "all",
             static_features:Union[str, List[str]] = "all"
     )->pd.DataFrame:
         """
@@ -164,35 +140,33 @@ class WaterBenchIowa(_RainfallRunoff):
         """
         stations = check_attributes(stations, self.stations())
 
-        features = check_attributes(static_features, self.static_features, 'static_features')
+        static_features = check_attributes(static_features, self.static_features, 'static_features')
 
         dfs = []
         for stn in stations:
             fname = os.path.join(self.ts_path, f"{stn}_data.csv")
             df = pd.read_csv(fname, nrows=1)
-            dfs.append(df[features])
+            dfs.append(df.iloc[0, :].rename(stn))
 
-        return pd.concat(dfs)
+        df = pd.concat(dfs, axis=1).T
 
-    def _read_dynamic(
-            self,
-            stations,
-            dynamic_features,
-            st=None,
-            en=None)->dict:
+        df.rename(columns=self.static_map, inplace=True)
 
-        dyn = dict()
-        for stn in stations:
-            fname = os.path.join(self.ts_path, f"{stn}_data.csv")
-            df = pd.read_csv(fname)
-            df.index = pd.to_datetime(df.pop('datetime'))
-            dyn[stn] = df[self.dynamic_features]
-        return dyn
+        return df.loc[stations, static_features]
+
+    def _read_stn_dyn(self, stn)->pd.DataFrame:
+        fname = os.path.join(self.ts_path, f"{stn}_data.csv")
+        df = pd.read_csv(fname)
+        df.index = pd.to_datetime(df.pop('datetime'))
+        df = df.loc[:, ['precipitation', 'discharge', 'et']]
+
+        df.rename(columns=self.dyn_map, inplace=True)
+        return df
 
     @property
     def start(self):
-        return "20111001 12:00"
+        return pd.Timestamp("20111001 12:00:00")
 
     @property
     def end(self):
-        return "20180930 11:00"
+        return pd.Timestamp("20180930 11:00:00")

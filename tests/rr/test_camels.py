@@ -36,7 +36,15 @@ if __name__ == "__main__":
 
 logger = logging.getLogger(__name__)
 
-from utils import test_dataset
+from utils import test_dataset, test_dynamic_data
+from utils import (
+    test_static_data, test_all_data, test_attributes,
+    test_fetch_dynamic_features, test_fetch_dynamic_multiple_stations,
+    test_fetch_static_feature, test_st_en_with_static_and_dynamic,
+    test_selected_dynamic_features, 
+    test_fetch_station_features,
+    test_area
+)
 
 
 class TestCamels(unittest.TestCase):
@@ -98,33 +106,17 @@ class TestCamels(unittest.TestCase):
 
         dataset = WaterBenchIowa(path=gscad_path)
 
-        _, data = dataset.fetch(static_features=None)
-        assert len(data) == 125
-        for k, v in data.items():
-            assert v.shape == (61344, 3)
-
-        _, dynamic = dataset.fetch(5, as_dataframe=True)
-        assert len(dynamic) == 5
-
-        static, dynamic = dataset.fetch(5, static_features="all", as_dataframe=True)
-        assert static.shape == (5, 7)
-        data = dataset.fetch_dynamic_features('644', as_dataframe=True)
-        assert data['644'].shape == (61344, 3)
-
-        stns = dataset.stations()
-        assert len(stns) == 125
-
-        static_data = dataset.fetch_static_features(stns)
-        assert static_data.shape == (125, 7)
-
-        static_data = dataset.fetch_static_features('592')
-        assert static_data.shape == (1, 7)
-
-        static_data = dataset.fetch_static_features(stns, ['slope', 'area'])
-        assert static_data.shape == (125, 2)
-
-        data = dataset.fetch_static_features('592', static_features=['slope', 'area'])
-        assert data.shape == (1,2)
+        test_dynamic_data(dataset, 'all', 125, 61344)
+        test_static_data(dataset, 'all', 125)
+        test_all_data(dataset, 3, 61344, True)
+        test_attributes(dataset, 7, 3, 125)
+        test_fetch_dynamic_features(dataset, '592', 61344, True)
+        test_fetch_dynamic_multiple_stations(dataset, 3, 61344, True)
+        test_fetch_static_feature(dataset, '592', 125, 7)
+        test_st_en_with_static_and_dynamic(dataset, '592', True, yearly_steps=8737, st='20130101', en='20131231')
+        test_selected_dynamic_features(dataset, 61344, as_dataframe=True)
+        test_fetch_station_features(dataset, 7, 3, 61344)
+        test_area(dataset)
         return
 
     def test_camels_ch(self):
