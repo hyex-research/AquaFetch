@@ -438,8 +438,8 @@ List of datasets
      - `USGS nwis <https://waterdata.usgs.gov/nwis/>`_
    * - ``WaterBenchIowa``
      - :py:class:`aqua_fetch.rr.WaterBenchIowa`
+     - 
      - 125
-     -
      - 3
      - 7
      - 2011 - 2018

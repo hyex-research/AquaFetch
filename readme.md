@@ -205,7 +205,7 @@ mg_data_ohe.shape  # -> (1200, 31)
 | Spain          | 889                    |                         | 27                       | 35                      | 1979 - 2020       | Spain                                       | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [ceh-flumen64](https://ceh-flumen64.cedex.es) |
 | Thailand       | 73                     |                         | 27                       | 35                      | 1980 - 1999       | Thailand                                    | [Peirong et al., 2023](https://doi.org/10.5194/essd-16-1559-2024) & [RID project](https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html) |
 | USGS           | 12004                  | 1541                    | 5                        | 27                      | 1950 - 2018       | USA                                         | [USGS nwis](https://waterdata.usgs.gov/nwis)                                                                |
-| WaterBenchIowa | 125                    |                         | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
+| WaterBenchIowa |                        |  125                    | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
 
 ## Summary of Water Quality Datasets
 
