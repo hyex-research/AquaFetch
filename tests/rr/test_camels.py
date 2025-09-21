@@ -131,7 +131,7 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 1555, 25568, 111, 21)
+        test_dataset(dataset, 1582, 25568, 111, 21)
         return
 
     def test_camels_se(self):

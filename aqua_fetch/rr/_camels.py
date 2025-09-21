@@ -1860,7 +1860,7 @@ class CAMELS_CH(_RainfallRunoff):
 
 class CAMELS_DE(_RainfallRunoff):
     """
-    This is the data from 1555 German catchments following the work of
+    This is the data from 1582 German catchments following the work of
     `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_ .
     The data is downloaded from `zenodo <https://zenodo.org/record/12733968>`_ .
     This data consists of 111 static and 21 dynamic features. The dynamic features
@@ -1879,10 +1879,10 @@ class CAMELS_DE(_RainfallRunoff):
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       1555
+       1582
     ... # get data of 10 % of stations as dataframe
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
-    >>> len(dynamic)  # dynamic has data for 10% of stations (155 out of 1555)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (155 out of 1582)
        155
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
@@ -1926,7 +1926,7 @@ class CAMELS_DE(_RainfallRunoff):
     ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (1555, 2)
+        (1582, 2)
     >>> dataset.stn_coords('DE110260')  # returns coordinates of station whose id is DE110260
         47.925221       8.191595
     >>> dataset.stn_coords(['DE110260', 'DE110250'])  # returns coordinates of two stations
@@ -1939,7 +1939,7 @@ class CAMELS_DE(_RainfallRunoff):
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('DE110260')
     """
-    url = "https://zenodo.org/record/12733968"
+    url = "https://zenodo.org/record/16755906"
 
     def __init__(
             self,
@@ -1999,8 +1999,8 @@ class CAMELS_DE(_RainfallRunoff):
     def dyn_map(self):
         # table 1 in https://essd.copernicus.org/articles/16/5625/2024/#&gid=1&pid=1
         return {
-            'discharge_vol': observed_streamflow_cms(),
-            'discharge_spec': observed_streamflow_mm(),
+            'discharge_vol_obs': observed_streamflow_cms(),
+            'discharge_spec_obs': observed_streamflow_mm(),
             'temperature_min': min_air_temp(),
             'temperature_max': max_air_temp(),
             'temperature_mean': mean_air_temp(),

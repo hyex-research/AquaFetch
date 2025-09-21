@@ -165,7 +165,7 @@ List of datasets
      - 111
      - 1951 - 2020
      - Germany
-     - `Loritz et al., 2024 <https://essd.copernicus.org/preprints/essd-2024-318/>`_
+     - `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_
    * - ``CAMELS_DK``
      - :py:class:`aqua_fetch.rr.CAMELS_DK`
      - 304

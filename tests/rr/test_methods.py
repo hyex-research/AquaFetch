@@ -176,7 +176,7 @@ def test_stations_method():
         'CAMELS_US': 671,
         'HYPE': 564,
         'WaterBenchIowa': 125,
-        'CAMELS_DE': 1555,
+        'CAMELS_DE': 1582,
         'CAMELS_SE': 50,
         'CAMELS_IND': 472,
         'CAMELS_FR': 654,
@@ -224,10 +224,10 @@ def test_stations_method():
         "LamaHIce_d_il": 86
     }
 
-    for ds_name, num_stn in numbers.items():
+    for ds_name, ds in DATASETS.items():
 
         if ds_name not in ['RRLuleaSweden']:
-            test_stations(DATASETS[ds_name], num_stn)
+            test_stations(ds, numbers[ds_name])
     return
 
 
