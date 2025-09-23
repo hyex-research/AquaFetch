@@ -83,12 +83,11 @@ SEP = os.sep
 
 class CAMELS_US(_RainfallRunoff):
     """
-    This is a dataset of 671 US catchments with 59 static features
-    and 8 dyanmic features for each catchment. The dyanmic features are
-    timeseries from 1980-01-01 to 2014-12-31. This class
-    downloads and processes CAMELS dataset of 671 catchments named as CAMELS
-    from `ucar.edu <https://ral.ucar.edu/solutions/products/camels>`_
-    following `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_ ,
+    This is a dataset of 671 US catchments with 59 static catchment features
+    and 8 catchmetn averaged dynamic features for each catchment. The dynamic features are
+    daily timeseries from 1980-01-01 to 2014-12-31. The data is downloaded
+    from its `zenodo repository <https://zenodo.org/records/15529996>`_ . For more details
+    on data refer to `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_ ,
     `Newman et al., 2022 <https://gdex.ucar.edu/dataset/camels.html.>`_ and
     `Addor et al., 2017 <https://hess.copernicus.org/articles/21/5293/2017/>`_.
 
@@ -172,25 +171,25 @@ class CAMELS_US(_RainfallRunoff):
     DATASETS = ['CAMELS_US']
 
     url = {
-        'camels_attributes_v2.0.pdf': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_attributes_v2.0.xlsx': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_clim.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_geol.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_hydro.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_name.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_soil.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_topo.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'camels_vege.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'readme.txt': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'basin_timeseries_v1p2_metForcing_obsFlow.zip': 'https://gdex.ucar.edu/dataset/camels/file/',
-        'basin_set_full_res.zip': 'https://gdex.ucar.edu/dataset/camels/file/',
+        'camels_attributes_v2.0.pdf': 'https://zenodo.org/records/15529996/files/',
+        'camels_attributes_v2.0.xlsx': 'https://zenodo.org/records/15529996/files/',
+        'camels_clim.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_geol.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_hydro.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_name.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_soil.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_topo.txt': 'https://zenodo.org/records/15529996/files/',
+        'camels_vege.txt': 'https://zenodo.org/records/15529996/files/',
+        'readme.txt': 'https://zenodo.org/records/15529996/files/',
+        'basin_timeseries_v1p2_metForcing_obsFlow.zip': 'https://zenodo.org/records/15529996/files/',
+        'basin_set_full_res.zip': 'https://zenodo.org/records/15529996/files/',
     }
 
-    folders = {'basin_mean_daymet': f'basin_mean_forcing{SEP}daymet',
-               'basin_mean_maurer': f'basin_mean_forcing{SEP}maurer',
-               'basin_mean_nldas': f'basin_mean_forcing{SEP}nldas',
-               'basin_mean_v1p15_daymet': f'basin_mean_forcing{SEP}v1p15{SEP}daymet',
-               'basin_mean_v1p15_nldas': f'basin_mean_forcing{SEP}v1p15{SEP}nldas',
+    folders = {'daymet': f'basin_mean_forcing{SEP}daymet',
+               'maurer': f'basin_mean_forcing{SEP}maurer',
+               'nldas': f'basin_mean_forcing{SEP}nldas',
+               'v1p15_daymet': f'basin_mean_forcing{SEP}v1p15{SEP}daymet',
+               'v1p15_nldas': f'basin_mean_forcing{SEP}v1p15{SEP}nldas',
                'elev_bands': f'elev{SEP}daymet',
                'hru': f'hru_forcing{SEP}daymet'}
 
@@ -200,7 +199,7 @@ class CAMELS_US(_RainfallRunoff):
     def __init__(
             self,
             path:Union[str, os.PathLike]=None,
-            data_source: str = 'basin_mean_daymet',
+            data_source: str = 'daymet',
             **kwargs
     ):
 
@@ -214,16 +213,15 @@ class CAMELS_US(_RainfallRunoff):
             calls to this class will not download the data unless
             ``overwrite`` is set to True.
         data_source : str
-            allowed values are
-                - basin_mean_daymet
-                - basin_mean_maurer
-                - basin_mean_nldas
-                - basin_mean_v1p15_daymet
-                - basin_mean_v1p15_nldas
-                - elev_bands
-                - hru
+            source of meteorological timeseries data. Allowed values are
+    
+                - daymet
+                - maurer
+                - nldas
+                - v1p15_daymet
+                - v1p15_nldas
         """
-        assert data_source in self.folders, f'allwed data sources are {self.folders.keys()}'
+        assert data_source in self.folders, f'allowed data sources are {self.folders.keys()}'
         self.data_source = data_source
 
         super().__init__(path=path, name="CAMELS_US", **kwargs)
@@ -290,11 +288,11 @@ class CAMELS_US(_RainfallRunoff):
 
     @property
     def start(self):
-        return "19800101"
+        return pd.Timestamp("19800101")
 
     @property
     def end(self):
-        return "20141231"
+        return pd.Timestamp("20141231")
 
     @property
     def static_features(self)->List[str]:
