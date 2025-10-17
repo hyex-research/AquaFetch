@@ -163,10 +163,14 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_camels_nz(self):
-        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 369, 460928, 39, 5, 
-                     yearly_steps=8760  # this number might not be correct
-                     )
+
+        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'), verbosity=3)
+        test_dataset(dataset, 369, 19208, 40, 5)
+
+        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'), timestep='H', verbosity=4)
+        test_dataset(dataset, 369, 460978, 40, 5, 
+                        yearly_steps=8760  # this number might not be correct
+                        )
         return
 
     def test_camels_lux(self):

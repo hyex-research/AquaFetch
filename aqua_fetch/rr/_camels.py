@@ -84,7 +84,7 @@ SEP = os.sep
 class CAMELS_US(_RainfallRunoff):
     """
     This is a dataset of 671 US catchments with 59 static catchment features
-    and 8 catchmetn averaged dynamic features for each catchment. The dynamic features are
+    and 8 catchment averaged dynamic features for each catchment. The dynamic features are
     daily timeseries from 1980-01-01 to 2014-12-31. The data is downloaded
     from its `zenodo repository <https://zenodo.org/records/15529996>`_ . For more details
     on data refer to `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_ ,
@@ -3348,9 +3348,12 @@ class CAMELS_NZ(_RainfallRunoff):
     """
     Dataset of 369 catchments from New Zealand following the works of
     `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_.
-    The dataset consists of 39 static catchment features and 5 dynamic features.
+    The dataset consists of 40 static catchment features and 5 dynamic features.
     The dynamic features span from 19720101 to 20240802 with hourly timestep.
     The data is downloaded from `figshare <https://doi.org/10.26021/canterburynz.28827644>`_.
+    This data comes with daily and hourly timesteps and the each can be accessed by
+    specifying value of `tiemstep` argument to ``D`` or ``H`` respectively during 
+    initialization.
     
     Examples
     ---------
@@ -3360,7 +3363,7 @@ class CAMELS_NZ(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='74321', as_dataframe=True)
     >>> df = dynamic['74321'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (460928, 5)
+    (19208, 5)
     ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
@@ -3373,7 +3376,7 @@ class CAMELS_NZ(_RainfallRunoff):
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
-        [(460928, 5), (460928, 5), (460928, 5),... (460928, 5), (460928, 5)]
+        [(19208, 5), (19208, 5), (19208, 5),... (19208, 5), (19208, 5)]
     ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
@@ -3385,7 +3388,7 @@ class CAMELS_NZ(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch('74321', as_dataframe=True,
     ...  dynamic_features=['pcp_mm', 'rh_%', 'airtemp_C_mean', 'pet_mm', 'q_cms_obs'])
     >>> dynamic['74321'].shape
-       (460928, 4)
+       (19208, 4)
     ...
     ... # get names of available static features
     >>> dataset.static_features
@@ -3397,7 +3400,7 @@ class CAMELS_NZ(_RainfallRunoff):
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='74321', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['74321'].shape
-    ((1, 39), 1, (460928, 5))
+    ((1, 40), 1, (19208, 5))
     ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
@@ -3405,7 +3408,7 @@ class CAMELS_NZ(_RainfallRunoff):
     xarray.core.dataset.Dataset
     ...
     >>> dynamic.dims
-    FrozenMappingWarningOnValuesAccess({'time': 460928, 'dynamic_features': 5})
+    FrozenMappingWarningOnValuesAccess({'time': 19208, 'dynamic_features': 5})
     ...
     >>> len(dynamic.data_vars)
     10
@@ -3424,15 +3427,26 @@ class CAMELS_NZ(_RainfallRunoff):
     ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('74321')
+    # The hourly data can be accessed by specifyng the timestep to 'H'
+    >>> dataset = CAMELS_NZ(timestep='H')
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='74321', as_dataframe=True)
+    >>> df = dynamic['74321'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (460928, 5)    
     """
-    url = "https://figshare.canterbury.ac.nz/ndownloader/articles/28827644/versions/1"
+    url = "https://figshare.canterbury.ac.nz/ndownloader/articles/28827644/versions/2"
 
     def __init__(self,
                  path:Union[str, os.PathLike]=None,
-                 timestep = 'H',
                  **kwargs):
 
-        super().__init__(name="CAMELS_NZ", path=path, timestep=timestep, **kwargs)
+        super().__init__(name="CAMELS_NZ", path=path, **kwargs)
+
+        if self.timestep == 'H':
+            self.timestep_ = 'hourly'
+        else:
+            self.timestep_ = 'daily'
 
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -3457,7 +3471,7 @@ class CAMELS_NZ(_RainfallRunoff):
     def boundary_file(self)-> os.PathLike:
         return os.path.join(
             self.shapefile_path,
-            "catnz_SpatialJoin.shp"
+            "All_Nested_Catchments.shp"
         )
 
     @property
@@ -3505,27 +3519,27 @@ class CAMELS_NZ(_RainfallRunoff):
 
     @property
     def temp_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Temperature')
+        return os.path.join(self.path, 'camels_nz', f'CAMELS_NZ_{self.timestep_}_Temperature')
     
     @property
     def precip_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Precipitation')
+        return os.path.join(self.path, 'camels_nz', f'CAMELS_NZ_{self.timestep_}_Precipitation')
     
     @property
     def q_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Streamflow')
+        return os.path.join(self.path, 'camels_nz', f'CAMELS_NZ_{self.timestep_}_Streamflow')
     
     @property
     def shapefile_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Catchment_Boundaries')
+        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Shapefiles')
     
     @property
     def pet_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_PET')
+        return os.path.join(self.path, 'camels_nz', f'CAMELS_NZ_{self.timestep_}_PET')
 
     @property
     def rh_path(self) -> os.PathLike:
-        return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Relative_Humidity')
+        return os.path.join(self.path, 'camels_nz', f'CAMELS_NZ_{self.timestep_}_Relative_Humidity')
 
     @property
     def static_path(self) -> os.PathLike:
@@ -3538,7 +3552,7 @@ class CAMELS_NZ(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a :obj:`pandas.DataFrame` of static features of all catchments of shape (369, 39)
+            a :obj:`pandas.DataFrame` of static features of all catchments of shape (369, 40)
         """
 
         dfs = []
@@ -3630,9 +3644,14 @@ class CAMELS_NZ(_RainfallRunoff):
         fname = {
             'Relative_humidity': 'RH'
         }
-        fpath = os.path.join(
-            self._path_map[para_name], f'{fname.get(para_name, para_name)}_station_id_{stn}.csv')
-
+        if self.timestep == 'D':
+            fpath = os.path.join(
+                self._path_map[para_name],
+                f'{self.timestep_}_{fname.get(para_name, para_name)}_station_id_{stn}.csv')
+        else:
+            fpath = os.path.join(
+                self._path_map[para_name], 
+                f'{fname.get(para_name, para_name)}_station_id_{stn}.csv')
         if os.path.exists(fpath):
             if para_name == 'flow' and stn in self._nodata_stns:
                 return stn_q
@@ -3643,10 +3662,17 @@ class CAMELS_NZ(_RainfallRunoff):
                 print(f"Warning: {para_name}_station_id_{stn}.csv is empty. Skipping station {stn}.")
                 return stn_q
 
-            format = '%m/%d/%Y %H:%M'
-            if para_name == 'flow' and stn == '57521':
-                format = '%d/%m/%Y %H:%M'            
+            if self.timestep == 'H':
+                format = '%m/%d/%Y %H:%M'
+                if para_name == 'flow' and stn == '57521':
+                    format = '%d/%m/%Y %H:%M'            
+            else:
+                format = '%m/%d/%Y'
+                if para_name == 'flow' and stn == '57521':
+                    format = '%d/%m/%Y'
+
             stn_q.index = pd.to_datetime(stn_q.index, format=format)
+
 
             stn_q = stn_q[para_name].astype(np.float32).rename(stn)
         else:
@@ -5050,3 +5076,9 @@ class CAMELSH(_RainfallRunoff):
         # rename columns using self.static_map
         df = df.rename(columns=self.static_map)
         return df
+
+
+class HydResponses(_RainfallRunoff):
+    """
+    https://essd.copernicus.org/preprints/essd-2025-383/essd-2025-383.pdf
+    """

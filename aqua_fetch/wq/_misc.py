@@ -657,3 +657,9 @@ class OhioTurbidity(Datasets):
     """
     url = 'https://www.hydroshare.org/resource/a249f3100f924ad09600c9d3de2183b6/'
 
+
+class AtlantaEcoli(Datasets):
+    """
+    E. coli data from urban headwaters in Atlanta, USA from the study of 
+    `Ledford et al., 2025 <https://doi.org/10.1088/3033-4942/adf770>`_.
+    """

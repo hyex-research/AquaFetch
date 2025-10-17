@@ -183,7 +183,7 @@ List of datasets
      - 111
      - 1963 - 2023
      - Finland
-     - `Seppä et al., 2024 <https://doi.org/10.5281/zenodo.16257216>`_
+     - `Seppä et al., 2025 <https://doi.org/10.5281/zenodo.16257216>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -225,7 +225,7 @@ List of datasets
      - 
      - 369
      - 5
-     - 39
+     - 40
      - 1972 - 2024
      - New Zealand
      - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
