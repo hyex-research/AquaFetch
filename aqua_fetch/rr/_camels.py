@@ -735,7 +735,7 @@ class CAMELS_AUS(_RainfallRunoff):
     """
 
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
-    url_v2 = "https://zenodo.org/records/13350616"
+    url_v2 = "https://zenodo.org/records/14289037"
     urls = {1: {
         "01_id_name_metadata.zip": "https://download.pangaea.de/dataset/921850/files/",
         "02_location_boundary_area.zip": "https://download.pangaea.de/dataset/921850/files/",
@@ -747,12 +747,13 @@ class CAMELS_AUS(_RainfallRunoff):
         # "Units_02_AttributeMasterTable.pdf": "https://download.pangaea.de/dataset/921850/files/",
     },
         2: {
-            "01_id_name_metadata.zip": "https://zenodo.org/records/13350616/files/",
-            "02_location_boundary_area.zip": "https://zenodo.org/records/13350616/files/",
-            "03_streamflow.zip": "https://zenodo.org/records/13350616/files/",
-            "04_attributes.zip": "https://zenodo.org/records/13350616/files/",
-            "05_hydrometeorology.zip": "https://zenodo.org/records/13350616/files/",
-            "CAMELS_AUS_Attributes&Indices_MasterTable.csv": "https://zenodo.org/records/13350616/files/",
+            "01_id_name_metadata.zip": "https://zenodo.org/records/14289037/files/",
+            "02_location_boundary_area.zip": "https://zenodo.org/records/14289037/files/",
+            "03_streamflow.zip": "https://zenodo.org/records/14289037/files/",
+            "04_attributes.zip": "https://zenodo.org/records/14289037/files/",
+            "05_hydrometeorology.zip": "https://zenodo.org/records/14289037/files/",
+            "CAMELS_AUS_Attributes&Indices_MasterTable.csv": "https://zenodo.org/records/14289037/files/",
+            "CAMELS_AUS_v2_Data_Description.pdf": "https://zenodo.org/records/14289037/files/",
         }
     }
 
@@ -789,9 +790,9 @@ class CAMELS_AUS(_RainfallRunoff):
         'vp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO',
     },
         2: {
-            'streamflow_MLd': f'03_streamflow{SEP}03_streamflow',
-            'streamflow_MLd_inclInfilled': f'03_streamflow{SEP}03_streamflow',
-            'streamflow_mmd': f'03_streamflow{SEP}03_streamflow',
+            'streamflow_MLd': '03_streamflow',
+            'streamflow_MLd_inclInfilled': '03_streamflow',
+            'streamflow_mmd': '03_streamflow',
 
             'et_morton_actual_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
             'et_morton_point_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries',
