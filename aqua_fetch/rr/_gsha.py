@@ -20,7 +20,7 @@ import pandas as pd
 from .._backend import xarray as xr
 
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from ..utils import merge_shapefiles_fiona
 from .utils import _RainfallRunoff
 
@@ -316,10 +316,10 @@ class GSHA(_RainfallRunoff):
             raise ValueError("Either provide agency or stations not both")
 
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+            stations = validate_attributes(stations, self.stations(), 'stations')
 
         return stations
 
@@ -347,7 +347,7 @@ class GSHA(_RainfallRunoff):
     def stations(self, agency: str = "all") -> List[str]:
         """returns names of stations as list"""
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             return self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         return self.wsAll.index.tolist()
 
@@ -781,10 +781,10 @@ class GSHA(_RainfallRunoff):
             raise ValueError("Either provide agency or stations not both")
 
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+            stations = validate_attributes(stations, self.stations(), 'stations')
 
         meteo_vars = self.meteo_vars_all_stns()
 
@@ -941,7 +941,7 @@ class GSHA(_RainfallRunoff):
 
         stations = self._get_stations(stations, agency)
 
-        features = check_attributes(static_features, self.static_features, 'static_features')
+        features = validate_attributes(static_features, self.static_features, 'static_features')
 
         df = pd.concat([
             self.atlas(stations),
@@ -991,7 +991,7 @@ class GSHA(_RainfallRunoff):
         >>> data.shape
         (16071, 2)
         """
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         st, en = self._check_length(st, en)
 
         out = pd.concat(
@@ -1047,7 +1047,7 @@ class GSHA(_RainfallRunoff):
         # todo : extremely slow even for two stations
         stations = self._get_stations(stations, agency)
 
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         st, en = self._check_length(st, en)
 
@@ -1191,7 +1191,7 @@ class _GSHA(_RainfallRunoff):
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
         daily_q = None
 
@@ -1246,7 +1246,7 @@ class _GSHA(_RainfallRunoff):
         """Fetches static features of station."""
         if self.verbosity > 1:
             print('fetching static features')
-        stations = check_attributes(station, self.stations(), 'stations')
+        stations = validate_attributes(station, self.stations(), 'stations')
         stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
         static_feats = self.gsha.fetch_static_features(stations_, static_features).copy()
         static_feats.index = [stn.split('_')[0] for stn in static_feats.index]
@@ -1286,7 +1286,7 @@ class _GSHA(_RainfallRunoff):
             dimensions. If dynamic features are returned as pandas DataFrame, then
             the first index is `time` and the second index is `dynamic_features`.
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if xr is None:
             if not as_dataframe:

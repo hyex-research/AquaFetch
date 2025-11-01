@@ -174,7 +174,7 @@ def bar(current_size, total_size, width):
     return
 
 
-def check_attributes(
+def validate_attributes(
         attributes:Union[str, List[str]],
         check_against: List[str],
         attribute_name:str = ''

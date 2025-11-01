@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_st_en, check_attributes
+from ..utils import check_st_en, validate_attributes
 from .._geom_utils import laea_to_wgs84
 from .._backend import fiona
 
@@ -155,7 +155,7 @@ class Quadica(Datasets):
 
         wrtds = wrtds[parameters]
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         wrtds = wrtds.loc[wrtds['OBJECTID'].isin(stations)]
 
@@ -254,7 +254,7 @@ class Quadica(Datasets):
 
         pet.index = pd.to_datetime(pet.index)
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         stations = [stn for stn in stations]
         pet = pet[stations]

@@ -5,7 +5,6 @@ from typing import List, Union, Dict
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes
 
 from ._map import (
     catchment_area,

@@ -4,7 +4,7 @@ from typing import Union, List, Dict
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 from ._map import (
     total_precipitation,
@@ -283,7 +283,7 @@ class Caravan_DK(_RainfallRunoff):
         df = df[['gauge_lat', 'gauge_lon']]
         df.columns = ['lat', 'long']
 
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
 
         return df.loc[stations, :]
 
@@ -295,7 +295,7 @@ class Caravan_DK(_RainfallRunoff):
             en=None) -> dict:
         
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features)
+        features = validate_attributes(dynamic_features, self.dynamic_features)
 
         dyn = {stn: self._read_csv(stn).loc[st:en, features] for stn in stations}
 
@@ -323,7 +323,7 @@ class Caravan_DK(_RainfallRunoff):
         --------
             a :obj:`pandas.DataFrame` of shape (308, 196)
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
         df = pd.read_csv(self.hyd_atlas_fpath)
 
         indices = df.pop('gauge_id')
@@ -336,7 +336,7 @@ class Caravan_DK(_RainfallRunoff):
         --------
             a :obj:`pandas.DataFrame` of shape (308, 5)
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
         df = pd.read_csv(self.other_attr_fpath)
         indices = df.pop('gauge_id')
         df.index = [idx[9:] for idx in indices]
@@ -348,7 +348,7 @@ class Caravan_DK(_RainfallRunoff):
         --------
             a :obj:`pandas.DataFrame` of shape (308, 10)
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
         df = pd.read_csv(self.caravan_attr_fpath)
         indices = df.pop('gauge_id')
         df.index = [idx[9:] for idx in indices]

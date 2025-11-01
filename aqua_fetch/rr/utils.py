@@ -12,7 +12,7 @@ from .._datasets import Datasets
 from .._backend import netCDF4
 from .._backend import fiona
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
-from ..utils import check_attributes, get_cpus
+from ..utils import validate_attributes, get_cpus
 from .._geom_utils import (
     _make_boundary_2d
 )
@@ -279,8 +279,8 @@ class _RainfallRunoff(Datasets):
             ) -> Dict[str, pd.DataFrame]:
         
         st, en = self._check_length(st, en)
-        dyn_feats = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         cpus = self.processes or min(get_cpus(), 16)
         start = time.time()
@@ -394,8 +394,8 @@ class _RainfallRunoff(Datasets):
         >>> data.shape
            (1, 2)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        features = check_attributes(static_features, self.static_features, 'static_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        features = validate_attributes(static_features, self.static_features, 'static_features')
         df:pd.DataFrame = self._static_data()
         return df.loc[stations, features]
 
@@ -507,7 +507,7 @@ class _RainfallRunoff(Datasets):
         >>> dataset.area(['2004', '6004'])  # returns area of two stations
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = self.fetch_static_features(static_features=[catchment_area()])
         #df.columns = [catchment_area()]
@@ -725,11 +725,11 @@ class _RainfallRunoff(Datasets):
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if dynamic_features is not None:
 
-            dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+            dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
             if netCDF4 is None or not os.path.exists(self.dyn_fpath):
                 # read from csv files
@@ -1001,7 +1001,7 @@ class _RainfallRunoff(Datasets):
 
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if self._mm_feature_name is None:
             _, q = self.fetch_stations_features(
@@ -1074,7 +1074,7 @@ class _RainfallRunoff(Datasets):
         """
         df = self.fetch_static_features(static_features=[gauge_latitude(), gauge_longitude()])
         #df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = df.loc[stations, :].astype(self.fp)
 

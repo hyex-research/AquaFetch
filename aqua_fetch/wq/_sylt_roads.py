@@ -6,7 +6,7 @@ from typing import Union, List
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_attributes, download_and_unzip
+from ..utils import validate_attributes, download_and_unzip
 
 # todo: entrance and entrace are same
 
@@ -147,7 +147,7 @@ class SyltRoads(Datasets):
         (5710, 3)
         """
 
-        parameters = check_attributes(parameters, self.parameters, 'parameters')
+        parameters = validate_attributes(parameters, self.parameters, 'parameters')
         return self._get_data()[parameters]
     
     def _get_data(self)->pd.DataFrame:

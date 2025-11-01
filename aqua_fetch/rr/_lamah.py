@@ -13,7 +13,7 @@ from .._backend import xarray as xr
 from .._backend import netCDF4
 
 from ..utils import get_cpus
-from ..utils import check_attributes, download, unzip
+from ..utils import validate_attributes, download, unzip
 from .utils import _RainfallRunoff, _handle_dynamic
 from .._geom_utils import laea_to_wgs84, lcc_to_wgs84
 
@@ -456,7 +456,7 @@ class LamaHCE(_RainfallRunoff):
             if self.verbosity>2:
                 print(f'fetching data for {len(dynamic_features)} dynamic features for {len(stations)} stations')
 
-            dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+            dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
             if netCDF4 is None or not self.all_ncs_exist:
                 # read from csv files
@@ -592,8 +592,8 @@ class LamaHCE(_RainfallRunoff):
 
         df = self.static_data()
 
-        static_features = check_attributes(static_features, self.static_features, 'static features')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        static_features = validate_attributes(static_features, self.static_features, 'static features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = df[static_features]
 
@@ -1189,8 +1189,8 @@ class LamaHIce(LamaHCE):
         df = self.static_data()
         df.index = df.index.astype(str)
 
-        static_features = check_attributes(static_features, self.static_features, 'static_features')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        static_features = validate_attributes(static_features, self.static_features, 'static_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = df.loc[stations, static_features]
 
@@ -1224,7 +1224,7 @@ class LamaHIce(LamaHCE):
         else:
             raise ValueError(f"Invalid timestep: {self.timestep}. ")
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         q = self.fetch_q(stations)
         area_m2 = self.area(stations) * 1e6  # area in m2
         q = (q / area_m2) * conversion_factor  # cms to m
@@ -1258,7 +1258,7 @@ class LamaHIce(LamaHCE):
             For daily timestep, the dataframe has shape of 32630 rows and 111 columns
 
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         cpus = self.processes or min(get_cpus(), 16)
         if len(stations)<=10: cpus=1
@@ -1333,7 +1333,7 @@ class LamaHIce(LamaHCE):
         -------
         pd.DataFrame
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         dfs = []
         for stn in stations:

@@ -5,7 +5,7 @@ from typing import List, Union, Dict
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 from ._map import (
     observed_streamflow_cms,
@@ -138,9 +138,9 @@ class WaterBenchIowa(_RainfallRunoff):
            (1, 2)
 
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
 
-        static_features = check_attributes(static_features, self.static_features, 'static_features')
+        static_features = validate_attributes(static_features, self.static_features, 'static_features')
 
         dfs = []
         for stn in stations:

@@ -6,7 +6,7 @@ from typing import Union, Tuple, Any, List, Dict
 import pandas as pd
 
 from ..utils import (
-    check_attributes,
+    validate_attributes,
     LabelEncoder,
     OneHotEncoder,
     maybe_download_and_read_data,

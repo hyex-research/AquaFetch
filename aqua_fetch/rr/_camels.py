@@ -5,8 +5,9 @@ import time
 import shutil
 import zipfile
 import warnings
+from pathlib import Path
 import concurrent.futures as cf
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -14,9 +15,12 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from .._geom_utils import utm_to_lat_lon
 from ..utils import get_cpus, download_and_unzip
-from ..utils import check_attributes, download, unzip
+from ..utils import validate_attributes, download, unzip
 
 from .._backend import netCDF4, xarray as xr
+
+if netCDF4 is not None:
+    from netCDF4 import date2num
 
 from ._map import (
     observed_streamflow_cms,
@@ -984,7 +988,7 @@ class CAMELS_AUS(_RainfallRunoff):
     def _static_data(self, #stations, #features,
                      st=None, en=None):
 
-        #features = check_attributes(features, self.static_features, 'static_features')
+        #features = validate_attributes(features, self.static_features, 'static_features')
         static_fname = 'CAMELS_AUS_Attributes&Indices_MasterTable.csv'
         static_fpath = os.path.join(self.path, static_fname)
         static_df = pd.read_csv(static_fpath, index_col='station_id')
@@ -1007,7 +1011,7 @@ class CAMELS_AUS(_RainfallRunoff):
             ):
 
         st, en = self._check_length(st, en)
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         dyn_attrs = {}
         dyn = {}
@@ -1306,7 +1310,7 @@ class CAMELS_CL(_RainfallRunoff):
         df = pd.read_csv(fpath, sep='\t', index_col='gauge_id')
         df = df.loc[['gauge_lat', 'gauge_lon'], :].transpose()
         df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         df.index = [index.strip() for index in df.index]
         return df.loc[stations, :].astype(self.fp)
 
@@ -1336,11 +1340,11 @@ class CAMELS_CL(_RainfallRunoff):
 
         dyn = {}
         st, en = self._check_length(st, en)
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         assert all(stn in self.stations() for stn in stations)
 
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
+        dynamic_features = validate_attributes(dynamic_features, self.dynamic_features)
 
         # reading all dynnamic features
         dyn_attrs = {}
@@ -2739,7 +2743,7 @@ class CAMELS_DK(_RainfallRunoff):
             en=None) -> dict:
 
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features)
+        features = validate_attributes(dynamic_features, self.dynamic_features)
 
         dyn = {stn: self._read_csv(stn).loc[st:en, features] for stn in stations}
 
@@ -3595,7 +3599,7 @@ class CAMELS_NZ(_RainfallRunoff):
         assert para_name in list(self._path_map.keys())
         cpus = self.processes or min(get_cpus(), 32)
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         start = time.time()
 
@@ -4098,7 +4102,7 @@ class CAMELS_SK(_RainfallRunoff):
         self._unzip_7z_files()
 
     @property
-    def boundary_file(self) -> os.PathLike:
+    def boundary_file(self) -> Union[str, os.PathLike]:
         return os.path.join(
             self.path,
             "shp",
@@ -4120,7 +4124,7 @@ class CAMELS_SK(_RainfallRunoff):
         return pd.Timestamp('2019-12-31 23:59:59')
 
     @property
-    def ts_path(self) -> os.PathLike:
+    def ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "timeseries", "timeseries")
 
     @property
@@ -4444,23 +4448,23 @@ class CAMELS_LUX(_RainfallRunoff):
         return pd.Timestamp('2021-12-31')
         
     @property
-    def ts_path(self) -> os.PathLike:
+    def ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "CAMELS-LUX", "timeseries")
     
     @property
-    def topo_fpath(self) -> os.PathLike:
+    def topo_fpath(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "CAMELS-LUX", "CAMELS_LUX_topographic_attributes.csv")
     
     @property
-    def daily_ts_path(self) -> os.PathLike:
+    def daily_ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.ts_path, "daily")
     
     @property
-    def hourly_ts_path(self) -> os.PathLike:
+    def hourly_ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.ts_path, "hourly")
     
     @property
-    def subhourly_ts_path(self) -> os.PathLike:
+    def subhourly_ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.ts_path, "15Min")
 
     def _static_data(self) -> pd.DataFrame:
@@ -4650,25 +4654,25 @@ class CAMELS_FI(_RainfallRunoff):
         self._maybe_to_netcdf()
 
     @property
-    def data_path(self) -> os.PathLike:
+    def data_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, 
                             "CAMELS-FI", 
                             "CAMELS-FI",
                             "data")
     
     @property
-    def boundary_path(self) -> os.PathLike:
+    def boundary_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.data_path, "CAMELS_FI_catchment_boundaries")
 
     @property
-    def boundary_file(self) -> os.PathLike:
+    def boundary_file(self) -> Union[str, os.PathLike]:
         return os.path.join(
             self.boundary_path,
             "CAMELS_FI_catchment_boundaries.shp"
         )
     
     @property
-    def ts_path(self) -> os.PathLike:
+    def ts_path(self) -> Union[str, os.PathLike]:
         return os.path.join(
             self.data_path,
             "timeseries",
@@ -4925,15 +4929,24 @@ class CAMELSH(_RainfallRunoff):
                  overwrite=False,
                  **kwargs,
     ):
+        
+        assert netCDF4 is not None, "netCDF4 library is required for CAMELSH dataset. Please install it using 'pip install netCDF4'"
+
         super(CAMELSH, self).__init__(
         path=path,
         timestep="H",
         **kwargs)
+
+        assert self.timestep == "H", "CAMELSH dataset only supports hourly timestep."
             
         for fname, url in self.url.items():
+
+            dirname = fname.split('.')[0]
+            dirpath = os.path.join(self.path, dirname)
+            
             fpath = os.path.join(self.path, fname)
 
-            if not os.path.exists(fpath) or overwrite:
+            if not ((os.path.exists(fpath) or os.path.exists(dirpath)) or overwrite):
                 download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
 
             uzipped_dir_path = os.path.join(self.path, fname.split('.')[0])
@@ -4941,6 +4954,7 @@ class CAMELSH(_RainfallRunoff):
                 unzip(self.path, keep_parent_dir=True, verbosity=self.verbosity)
 
         self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+        self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
 
     def stations(self) -> List[str]:
         return self.__stations
@@ -4975,43 +4989,58 @@ class CAMELSH(_RainfallRunoff):
         }
 
     @property
-    def boundary_file(self) -> os.PathLike:
-        return os.path.join(
-            self.path,
-            "shapefiles",
-            "CAMELSH_shapefile.shp"
-        )
-
-    @property
     def boundary_id_map(self) -> str:
         return "GAGE_ID"
 
     @property
-    def h2_path(self) -> os.PathLike:
+    def h2_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "Hourly2", "Hourly2")
     
     @property
-    def attr_path(self) -> os.PathLike:
+    def attr_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "attributes")
     
     @property
-    def sf_path(self) -> os.PathLike:
+    def sf_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "shapefiles")
     
     @property
-    def boundary_file(self) -> os.PathLike:
+    def boundary_file(self) -> Union[str, os.PathLike]:
         return os.path.join(
             self.sf_path,
             "CAMELSH_shapefile.shp"
         )
     
     @property
-    def nonobs_path(self) -> os.PathLike:
+    def nonobs_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "timeseries_nonobs", "Data", "CAMELSH", "timeseries_nonobs")
 
     @property
-    def timeseries_path(self) -> os.PathLike:
+    def timeseries_path(self) -> Union[str, os.PathLike]:
         return os.path.join(self.path, "timeseries", "Data", "CAMELSH", "timeseries")
+
+    @property
+    def all_stn_forcings_path(self) -> Union[str, os.PathLike]:
+        return os.path.join(self.path, 'all_stn_forcings.nc')
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        """
+        Returns a list of dynamic features that are available in the dataset.
+        Since this is a method is called multiple times, it is better to cache the result
+        and return the cached result instead of reading the data again and again
+        or the user implementing this method in the child class in a more efficient way.
+
+        Returns
+        -------
+        List[str]
+            a list of dynamic features that are available in the dataset.
+            The names of the features are the same as the names used in the
+            dataset. The names can be used to fetch the data using
+            :meth:`fetch_dynamic_features`.
+        """
+        # overwriting because _read_stn_dyn in this class returns xarray Dataset
+        return self.__dyn_features
 
     def _read_stn_q(self, stn):
         fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
@@ -5021,7 +5050,66 @@ class CAMELSH(_RainfallRunoff):
         ds = xr.open_dataset(fpath, engine='netcdf4')
         return ds
 
-    def _read_stn_forcing(self, stn):
+    def _read_stn_q1(self, stn):
+        fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f"q data for station {stn} not found in {self.h2_path}")
+        dyn_map = {k:v for k,v in self.dyn_map.items() if k in ['streamflow']}
+        ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
+        return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
+
+    def q(
+            self, 
+            stations:List[str] = "all"
+            ):
+        """
+        Since fetch q from other methods can be slower because of merging with forcing data,
+        this method fetches only observed streamflow data for given stations using multiprocessing.
+
+        Returns
+        --------
+        xr.Dataset
+            xarray Dataset whose data variables are station names and dimensions 
+            are time and dynamic features
+        """
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        all_q_fname = os.path.join(self.path, "all_stations_q.nc")
+        if os.path.exists(all_q_fname) and not self.overwrite:
+            if self.verbosity>1:
+                print(f"Loading all stations q data from {all_q_fname}")
+            # read all_q_fname and return only required stations
+            ds = xr.open_dataset(all_q_fname, engine='netcdf4')
+            return ds[stations]
+    
+        cpus = self.processes or min(32, get_cpus())
+        if self.verbosity>2: print(f"Using {cpus} processes to read q data of {len(stations)} stations")
+
+        st = time.time()
+        with cf.ProcessPoolExecutor(cpus) as executor:
+            results = executor.map(self._read_stn_q1, stations)
+        et = time.time()
+        total = round(et - st, 2)
+        if self.verbosity: print(f"read q for {len(stations)} stations in {total} secs with {cpus} processes")
+
+        results = xr.merge(results)
+
+        if len(stations) == len(self.stations()):
+            # saving it so that next time we don't have to read all stations separately again
+            if self.verbosity>1:
+                print(f"Saving all stations q data to {all_q_fname}")
+            results.to_netcdf(all_q_fname, engine='netcdf4',
+                              encoding={stn: {'dtype': 'float32'} for stn in stations})
+        return results
+
+    def _read_stn_forcing1(self, stn):
+        """
+        Returns
+        -------
+        xr.Dataset
+            xarray Dataset with 'time' and 'dynamic_features' dimensions and 
+            stn as data variable
+        """
         fpath = os.path.join(self.nonobs_path, f"{stn}.nc")
         if not os.path.exists(fpath):
             fpath = os.path.join(self.timeseries_path, f"{stn}.nc")
@@ -5034,16 +5122,83 @@ class CAMELSH(_RainfallRunoff):
         ds = ds.drop_vars("Streamflow", errors="ignore")
 
         ds = ds.rename({'DateTime': 'time'})
-        return ds    
-    
-    def _read_stn_dyn(self, stn:str, nrows=None) -> pd.DataFrame:
-        q = self._read_stn_q(stn)
-        forcing = self._read_stn_forcing(stn)
-        # todo : converting to pandas will make the code extremely slow
-        # conversion should be done after we have fetched data from all stations and if required
-        ds = xr.merge([q, forcing]).to_pandas()
+        return ds.to_array("dynamic_features").transpose().astype('float32').to_dataset(name=stn)
+
+    def _read_stns_forcing(self, stations:List[str]):
+        """retunrs forcings of multiple stations as xarray Dataset."""
+        assert isinstance(stations, list), "stations should be a list of station names/ids"
+
+        all_stn_forcings = self.all_stn_forcings_path
+        if os.path.exists(all_stn_forcings) and not self.overwrite:
+            if self.verbosity>1:
+                print(f"Loading forcing data for {len(stations)} stations from {all_stn_forcings}")
+            ds = xr.open_dataset(all_stn_forcings, engine='netcdf4')
+            new_dyn = [str(self.dyn_map.get(v, v)) for v in ds["dynamic_features"].data]
+            return ds[stations].assign_coords(dynamic_features=("dynamic_features", new_dyn))
         
-        ds.rename(columns=self.dyn_map, inplace=True)
+        cpus = self.processes or min(32, get_cpus())
+        st = time.time()
+
+        if self.verbosity>2: print(f"Using {cpus} processes to read forcing data of {len(stations)} stations")
+
+        with cf.ProcessPoolExecutor(cpus) as executor:
+            results = executor.map(self._read_stn_forcing1, stations)
+        et = time.time()
+        total = round(et - st, 2)
+        if self.verbosity: print(f"read {len(stations)} stations forcing data in {total} secs with {cpus} processes")
+        results = xr.merge(results)
+
+        new_dyn = [str(self.dyn_map.get(v, v)) for v in results["dynamic_features"].data]
+        results = results.assign_coords(dynamic_features=("dynamic_features", new_dyn))
+        return results
+
+    def _read_stn_forcing(self, stn):
+        """prefers reading from all_stn_forcings_path if exists."""
+        assert isinstance(stn, str), "station name/id should be a string"
+    
+        all_stn_forcings = self.all_stn_forcings_path
+        if os.path.exists(all_stn_forcings) and not self.overwrite:
+            if self.verbosity>1:
+                print(f"Loading forcing data for {stn} from {all_stn_forcings}")
+            ds = xr.open_dataset(all_stn_forcings, engine='netcdf4')
+            new_dyn = [str(self.dyn_map.get(v, v)) for v in ds["dynamic_features"].data]
+            return ds[stn].assign_coords(dynamic_features=("dynamic_features", new_dyn)).to_dataset(name=stn)
+
+        fpath = os.path.join(self.nonobs_path, f"{stn}.nc")
+        if not os.path.exists(fpath):
+            fpath = os.path.join(self.timeseries_path, f"{stn}.nc")
+            if not os.path.exists(fpath):
+                raise FileNotFoundError(f"forcing data for station {stn} not found in {self.nonobs_path}")
+        
+        ds = xr.open_dataset(fpath, engine='netcdf4')
+
+        # todo : what is difference between Streamflow in forcing and streamflow in Hourly2 path?
+        ds = ds.drop_vars("Streamflow", errors="ignore")
+
+        ds = ds.rename({'DateTime': 'time'})
+    
+        new_dyn = {k:str(self.dyn_map.get(k, k)) for k in ds.data_vars}
+        return ds.rename(new_dyn).to_array("dynamic_features").transpose().astype('float32').to_dataset(name=stn)
+
+    def _read_stns_dyn(self, stns:List[str]):
+        """
+        Returns
+        -------
+        xr.Dataset
+        """
+        q = self.q(stns)
+        forcing = self._read_stns_forcing(stns)
+
+        ds = xr.concat([q, forcing], dim='dynamic_features')
+
+        return ds
+
+    def _read_stn_dyn(self, stn:str, nrows=None) -> pd.DataFrame:
+        q = self._read_stn_q1(stn)
+        forcing = self._read_stn_forcing(stn)
+
+        ds = xr.concat([q, forcing], dim='dynamic_features')
+
         return ds
 
     def _static_data(self) -> pd.DataFrame:
@@ -5077,6 +5232,314 @@ class CAMELSH(_RainfallRunoff):
         # rename columns using self.static_map
         df = df.rename(columns=self.static_map)
         return df
+
+    def fetch_stations_features(
+            self,
+            stations: Union[str, List[str]],
+            dynamic_features: Union[str, List[str]] = 'all',
+            static_features: Union[str, List[str]] = None,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
+            as_dataframe: bool = False,
+            **kwargs
+              ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
+        """
+        Reads features of more than one stations.
+
+        parameters
+        ----------
+        stations :
+            list of stations for which data is to be fetched.
+        dynamic_features :
+            list of dynamic features to be fetched.
+            if ``all``, then all dynamic features will be fetched.
+        static_features : list of static features to be fetched.
+            If ``all``, then all static features will be fetched. If None,
+            `then no static attribute will be fetched.
+        st :
+            start of data to be fetched.
+        en :
+            end of data to be fetched.
+        as_dataframe :
+            whether to return the dynamic data as pandas dataframe. default
+            is :obj:`xarray.Dataset` object
+        kwargs dict:
+            additional keyword arguments
+
+        Returns
+        -------
+        tuple
+            A tuple of static and dynamic features. Static features are always
+            returned as :obj:`pandas.DataFrame` with shape (stations, staticfeatures).
+            The index of static features is the station/gauge ids while the columns 
+            are the static features. Dynamic features are returned as either
+            :obj:`xarray.Dataset` or a :obj:`dict` with keys as station names and values as
+            :obj:`pandas.DataFrame` depending upon whether `as_dataframe`
+            is True or False and whether the xarray module is installed or not.
+            If dynamic features are xarray Dataset, then it consists of `data_vars`
+            equal to the number of stations and `time` and `dynamic_features` as
+            dimensions.
+
+        Raises:
+            ValueError, if both dynamic_features and static_features are None
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELSH
+        >>> dataset = CAMELSH()
+        ... # find out station ids
+        >>> dataset.stations()
+        ... # get data of selected stations as xarray Dataset
+        >>> dataset.fetch_stations_features(['01141800', '02349900', '11062000'])
+        ... # get data of selected stations as dictionary of pandas DataFrame
+        >>> dataset.fetch_stations_features(['01141800', '02349900', '11062000'],
+        ...  as_dataframe=True)
+        ... # get both dynamic and static features of selected stations
+        >>> dataset.fetch_stations_features(['01141800', '02349900', '11062000'],
+        ... dynamic_features=['q_mm_obs', 'air_temp_C', 'pcp_mm'], static_features=['elev_catch_m'])
+        """
+        # overwriting because _read_stn_dyn in this class returns xarray Dataset
+
+        if xr is None:
+            if not as_dataframe:
+                if self.verbosity: warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                              "Dynamic features will be returned as pandas DataFrame")
+                as_dataframe = True
+
+        st, en = self._check_length(st, en)
+        static, dynamic = None, None
+
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        if dynamic_features is not None:
+
+            dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+
+            dynamic = self._read_dynamic(stations, dynamic_features, st=st, en=en)
+
+            if as_dataframe:
+                # convert xarray Dataset to dictionary of pandas DataFrame
+                dynamic = {stn: dynamic[stn].to_pandas() for stn in stations}
+
+            if static_features is not None:
+                static = self.fetch_static_features(stations, static_features)
+
+        elif static_features is not None:
+
+            return self.fetch_static_features(stations, static_features), dynamic
+
+        else:
+            raise ValueError(f"static features are {static_features} and dynamic features are {dynamic_features}")
+
+        return static, dynamic
+
+    def _read_dynamic(
+            self, 
+            stations, 
+            dynamic_features, 
+            st:Union[str, pd.Timestamp] = None, 
+            en:Union[str, pd.Timestamp] = None
+            ):
+        """
+        Returns
+        -------
+        xr.Dataset
+        """
+        # overwriting because here we  always return xarray Dataset
+
+        st, en = self._check_length(st, en)
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        cpus = self.processes or min(get_cpus(), 16)
+        start = time.time()
+        if len(stations) < cpus:
+            cpus = 1
+        
+        # There can be 3 scenarios
+        if len(dyn_feats) == 1 and dyn_feats[0] == observed_streamflow_cms():
+            # only q is asked
+            results = self.q(stations)
+
+        elif observed_streamflow_cms() not in dyn_feats:
+            # only forcing data is asked
+            results = self._read_stns_forcing(stations)
+        else:
+            # both q and forcing data is asked
+            if len(stations) > 1:
+                results = self._read_stns_dyn(stations)
+            else:
+                results = self._read_stn_dyn(stations[0])
+
+        # select required dynamic features and time range
+        results = results.sel(dynamic_features=dyn_feats, time=slice(st, en))
+        return results
+
+    def collate_forcing_data(self):
+        """
+        Collate forcing data of all stations into a single NetCDF file using multiprocessing.
+
+        """
+        stations = self.stations()
+
+        cpus = self.processes or min(32, get_cpus())
+
+        out_path = self.all_stn_forcings_path
+        out_path = Path(out_path)
+        tmp_path = out_path.with_suffix(out_path.suffix + ".tmp")
+
+        if tmp_path.exists():
+            tmp_path.unlink()
+        if out_path.exists():
+            out_path.unlink()  # start clean; or implement resume logic
+
+        # Launch workers
+        first_result = None
+        results_queue = []
+        st = time.time()
+
+        with cf.ProcessPoolExecutor(max_workers=cpus) as ex:
+            futures = [ex.submit(self._worker, i) for i in stations]
+
+            # We’ll create the .nc after the first finished task (to learn dims/dtypes)
+            for fut in cf.as_completed(futures):
+                run_id, time_int, dyn, arr = fut.result()
+                if first_result is None:
+                    first_result = (run_id, time_int, dyn, arr)
+                    break
+                else:
+                    results_queue.append((run_id, time_int, dyn, arr))
+
+            # Initialize NetCDF using the first result
+            fr_run_id, fr_time, fr_dyn, fr_arr = first_result
+
+            # Create temp file to ensure crash-safety; rename at the end
+            with netCDF4.Dataset(tmp_path, "w", format="NETCDF4") as nc:
+                # Define dimensions
+                T = int(fr_time.shape[0])
+                D = int(fr_dyn.shape[0])
+                nc.createDimension("time", T)
+                nc.createDimension("dynamic_features", D)
+
+                # Coordinate variables
+                v_time = nc.createVariable("time", "f8", ("time",))
+                v_time[:] = fr_time
+                v_time.long_name = "time"
+                v_time.units = "hours since 1970-01-01 00:00:00"
+                v_time.calendar = "proleptic_gregorian"
+
+                # NetCDF4 supports variable-length strings via dtype=str
+                v_dyn = nc.createVariable("dynamic_features", str, ("dynamic_features",))
+                v_dyn[:] = fr_dyn.data
+                v_dyn.long_name = "dynamic feature names"
+
+                # Create **all** data variables up-front (fast metadata, RAM-free)
+                # Compression & chunking recommended
+                chunks_t = min(T, 1024)
+                var_handles = {}
+                for stn in stations:
+                    vname = f"{stn}"
+                    var_handles[stn] = nc.createVariable(
+                        vname,
+                        fr_arr.dtype,
+                        ("time", "dynamic_features"),
+                        zlib=True,
+                        complevel=4,
+                        shuffle=True,
+                        chunksizes=(chunks_t, D),
+                    )
+                    # Optional attrs (for CF/xarray friendliness)
+                    var_handles[stn].coordinates = "dynamic_features time"
+
+                # Write the first result
+                var_handles[fr_run_id][:] = fr_arr
+                nc.sync()
+
+                # Consume already-completed results
+                for run_id, time_f, dyn, arr in results_queue:
+                    _validate_coords(run_id, time_f, dyn, T, D)
+                    var_handles[run_id][:] = arr
+                    nc.sync()
+
+                # Consume the rest as they finish
+                for fut in cf.as_completed(futures):
+                    # Some futures were already consumed; skip them gracefully
+                    try:
+                        run_id, time_f, dyn, arr = fut.result()
+                    except Exception as e:
+                        print(f"[ERROR worker] {e}")
+                        continue
+                    # Skip the one we already wrote
+                    if run_id == fr_run_id:
+                        continue
+                    _validate_coords(run_id, time_f, dyn, T, D)
+                    var_handles[run_id][:] = arr
+                    nc.sync()
+
+            # Atomic finalize
+            os.replace(tmp_path, out_path)
+        et = time.time()
+        total = round(et - st, 2)
+        if self.verbosity: print(f"collated {len(stations)} stations in {total} secs with {cpus} processes")
+        return
+
+    def _worker(self, stn_id: str):
+        out = self._read_stn_forcing1(stn_id)
+        # Return minimal payload; main proc writes to disk
+        return stn_id, _encode_time_for_nc(out["time"].data), out["dynamic_features"], out[stn_id].values
+
+    def q_mm(
+            self,
+            stations: Union[str, List[str]] = "all"
+    ) -> pd.DataFrame:
+        """
+        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
+        by diving ``q``/area
+
+        parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is ``all``, which will return
+            area of all stations
+
+        Returns
+        --------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` whose indices are time-steps and columns
+            are catchment/station ids.
+
+        """
+        # overwriting because we don't want to call fetch, which can be slow
+        # instead we directly call .q method
+
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        q = self.q(stations)
+        q = q.sel(dynamic_features='q_cms_obs').to_pandas().drop(columns=['dynamic_features'], errors='ignore')
+
+        area_m2 = self.area(stations) * 1e6  # area in m2
+
+        time_conversion = 3600  # seconds per hour
+
+        q = (q / area_m2) * time_conversion  # cms to m
+        return q * 1e3  # to mm
+
+
+def _validate_coords(run_id, time_f, dyn, T, D):
+    if time_f.shape[0] != T or dyn.shape[0] != D:
+        raise ValueError(
+            f"Run {run_id} dims differ: got {(time_f.shape[0], dyn.shape[0])}, expected {(T, D)}"
+        )
+
+def _encode_time_for_nc(time64: np.ndarray,
+                       units="hours since 1970-01-01 00:00:00",
+                       calendar="proleptic_gregorian") -> np.ndarray:
+    # convert to Python datetimes (vectorized via pandas)
+    py_dt = pd.to_datetime(time64).to_pydatetime()
+    return date2num(py_dt, units=units, calendar=calendar).astype("float64")
+
+
+
 
 
 class HydResponses(_RainfallRunoff):

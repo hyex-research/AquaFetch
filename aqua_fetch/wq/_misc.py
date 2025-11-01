@@ -13,7 +13,7 @@ from typing import Union, List, Dict
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 
 class SanFranciscoBay(Datasets):
@@ -104,7 +104,7 @@ class SanFranciscoBay(Datasets):
         df.index = df.pop('Station_Number')
         df =  df.dropna()
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         df = df.loc[stations, :]
         return df
 
@@ -126,8 +126,8 @@ class SanFranciscoBay(Datasets):
             DESCRIPTION.
 
         """
-        parameters = check_attributes(parameters, self.parameters(), 'parameters')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        parameters = validate_attributes(parameters, self.parameters(), 'parameters')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         data = self.data()
 
@@ -274,7 +274,7 @@ class BuzzardsBay(Datasets):
         """
         Fetch data for the specified parameters.
         """
-        parameters = check_attributes(parameters, self.parameters(), 'parameters')
+        parameters = validate_attributes(parameters, self.parameters(), 'parameters')
         data = self.data()
         return data.loc[:, parameters]
    

@@ -33,7 +33,7 @@ except (ModuleNotFoundError, ImportError):
 
 from .._backend import xarray as xr
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from .utils import _RainfallRunoff
  
  
@@ -233,10 +233,10 @@ class EStreams(_RainfallRunoff):
             raise ValueError("Either provide countries or stations not both")
 
         if countries != "all":
-            countries = check_attributes(countries, self.countries, 'countries')
+            countries = validate_attributes(countries, self.countries, 'countries')
             stations = self.md[self.md['gauge_country'].isin(countries)].index.tolist()
         else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+            stations = validate_attributes(stations, self.stations(), 'stations')
 
         return stations
 
@@ -292,6 +292,8 @@ class EStreams(_RainfallRunoff):
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity > 1:
                 print(f"Reading from {nc_path}")
+            # todo :with xarray 2025.1.2 it is causing following error
+            # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".                
             return xr.open_dataset(nc_path)
 
         cpus = self.processes or max(get_cpus() - 2, 1)
@@ -378,7 +380,7 @@ class EStreams(_RainfallRunoff):
         >>> camels.fetch_stn_dynamic_features('IEEP0281',
         ... features=['p_mean', 't_mean', 'pet_mean'])
         """
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         st, en = self._check_length(st, en)
 
         return self.meteo_data_station(station).loc[st:en, features]
@@ -422,7 +424,7 @@ class EStreams(_RainfallRunoff):
 
         stations = self._get_stations(countries, stations)
 
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         if len(stations) == 1:
             if as_dataframe:
@@ -536,7 +538,7 @@ class _EStreams(_RainfallRunoff):
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
         daily_q = None
 
@@ -592,7 +594,7 @@ class _EStreams(_RainfallRunoff):
         if self.verbosity > 1:
             print('fetching static features')
 
-        stations = check_attributes(station, self.stations(), 'stations')
+        stations = validate_attributes(station, self.stations(), 'stations')
         # stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
         static_feats = self.estreams.fetch_static_features(stations, static_features).copy()
         # static_feats.index = [stn.split('_')[0] for stn in static_feats.index]
@@ -632,7 +634,7 @@ class _EStreams(_RainfallRunoff):
         >>> stations = dataset.stations()
         >>> features = dataset.fetch_stations_features(stations)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         static, dynamic = None, None
 
         if xr is None:

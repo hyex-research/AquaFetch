@@ -6,7 +6,7 @@ from typing import List
 
 import pandas as pd
 
-from .utils import check_attributes
+from .utils import validate_attributes
 from .utils import _RainfallRunoff
 
 from ._map import (

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes, get_cpus, download, unzip
+from ..utils import validate_attributes, get_cpus, download, unzip
 from ._map import (
     min_air_temp,
     max_air_temp,
@@ -321,7 +321,7 @@ class CAMELS_BR(_RainfallRunoff):
         """
         # todo: better avoid remove this method since parent class has it
 
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
         _, q = self.fetch_stations_features(stations,
                                          dynamic_features=observed_streamflow_mm(),
                                          as_dataframe=True)
@@ -366,7 +366,7 @@ class CAMELS_BR(_RainfallRunoff):
             'gsim': 'area_gsim',
             'ana': 'area_ana'
         }
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         fpath = os.path.join(self.path, '01_CAMELS_BR_attributes',
                              '01_CAMELS_BR_attributes',
@@ -413,7 +413,7 @@ class CAMELS_BR(_RainfallRunoff):
         df.index = df['gauge_id'].astype(str)
         df = df[['gauge_lat', 'gauge_lon']]
         df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         return df.loc[stations, :]
 
@@ -508,7 +508,7 @@ class CAMELS_BR(_RainfallRunoff):
 
         """
 
-        features = check_attributes(attributes, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(attributes, self.dynamic_features, 'dynamic_features')
 
         st, en = self._check_length(st, en)
 
@@ -1244,7 +1244,7 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
     ) -> dict:
 
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         if self.verbosity>1:
             print(f"getting data for {len(dynamic_features)} and for {len(stations)} stations")

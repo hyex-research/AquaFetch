@@ -15,7 +15,7 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from .._backend import netCDF4, xarray as xr
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from ._hysets import HYSETS
 
 from ._map import (
@@ -221,7 +221,7 @@ class USGS(_RainfallRunoff):
         >>> dataset.area('912101A')  # returns area of station whose id is 912101A
         >>> dataset.area(['912101A', '12388200'])  # returns area of two stations
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         area = self.metadata['drain_area_va']
 
@@ -271,7 +271,7 @@ class USGS(_RainfallRunoff):
             # we want Official_ID because that will be used as index later on
             static_features = [static_features, 'Official_ID']
         
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [map_[stn] for stn in stations]        
         static_feats = self.hysets.fetch_static_features(stations, static_features)
@@ -306,7 +306,7 @@ class USGS(_RainfallRunoff):
         >>> dataset.stn_coords('01010000')  # returns coordinates of station whose id is 912101A
         >>> dataset.stn_coords(['01010000', '01010070'])  # returns coordinates of two stations
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         coords = self.metadata.loc[:, ['dec_long_va', 'dec_lat_va']]
         coords.rename(columns={'dec_long_va': 'long', 'dec_lat_va': 'lat'}, inplace=True)
         return coords.loc[stations, :]
@@ -331,7 +331,7 @@ class USGS(_RainfallRunoff):
         >>> stations = dataset.stations()[0:3]
         >>> features = dataset.fetch_stations_features(stations)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         static, dynamic = None, None
 
         if xr is None:
@@ -378,7 +378,7 @@ class USGS(_RainfallRunoff):
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
         if self.verbosity>2:
             print(f"fetching {len(features)} dynamic features for {len(stations)} stations  from {st} to {en}")
@@ -442,7 +442,7 @@ class USGS(_RainfallRunoff):
         """Fetches static features of station."""
         if self.verbosity>1:
             print('fetching static features')
-        stations = check_attributes(station, self.stations(), 'stations')
+        stations = validate_attributes(station, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [map_[stn] for stn in stations]
         static_feats = self.hysets.fetch_static_features(stations, static_features).copy()

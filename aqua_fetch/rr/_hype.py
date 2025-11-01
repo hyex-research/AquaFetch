@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd 
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 
 class HYPE(_RainfallRunoff):
@@ -160,7 +160,7 @@ class HYPE(_RainfallRunoff):
                       en=None,
                                ):
 
-        dynamic_features = check_attributes(features, self.dynamic_features)
+        dynamic_features = validate_attributes(features, self.dynamic_features)
 
         _dynamic_features = []
         for dyn_attr in dynamic_features:
@@ -230,7 +230,7 @@ class HYPE(_RainfallRunoff):
         >>> dataset.stn_coords('2')  # returns area of station whose id is 912101A
         >>> dataset.stn_coords(['2', '605'])  # returns area of two stations
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
 
         fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
 
@@ -275,7 +275,7 @@ class HYPE(_RainfallRunoff):
         >>> dataset.stn_coords(['2', '605'])  # returns coordinates of two stations
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
 
         with open(fpath, 'r') as fp:

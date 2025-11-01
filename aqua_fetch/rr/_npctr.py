@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .._backend import fiona
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from .utils import _RainfallRunoff
 from ._map import(
     observed_streamflow_cms,
@@ -175,7 +175,7 @@ class NPCTRCatchments(_RainfallRunoff):
         elif sensor == 'WSN':
             coords.index = coords.index.astype(str).str.strip('WSN')
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         
         return coords.loc[stations, :]
 
@@ -688,8 +688,8 @@ class NPCTRCatchments(_RainfallRunoff):
             st=None,
             en=None) -> dict:
 
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         st, en = self._check_length(st, en)
 
         if self.timestep == '5min':
@@ -792,8 +792,8 @@ class NPCTRCatchments(_RainfallRunoff):
         ... static_features=['area_km2', 'elev_catch_m', 'slope_%'])
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
-        static_features = check_attributes(static_features, self.static_features, 'static_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        static_features = validate_attributes(static_features, self.static_features, 'static_features')
         df =  self._get_static().loc[stations, static_features]
         return df
 

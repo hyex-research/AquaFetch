@@ -8,7 +8,7 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from ..utils import get_cpus
 from ..utils import check_st_en  # todo check difference with self.check_length
-from ..utils import check_attributes, download, unzip
+from ..utils import validate_attributes, download, unzip
 
 from .._backend import xarray as xr
 
@@ -336,8 +336,8 @@ class GRDCCaravan(_RainfallRunoff):
             st=None,
             en=None) -> dict:
 
-        dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
-        stations = check_attributes(stations, self.stations())
+        dynamic_features = validate_attributes(dynamic_features, self.dynamic_features)
+        stations = validate_attributes(stations, self.stations())
         st, en = self._check_length(st, en)
 
         cpus = self.processes or min(get_cpus(), 64)

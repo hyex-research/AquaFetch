@@ -12,7 +12,7 @@ from aqua_fetch.utils import (
     download_and_unzip, 
     unzip_all_in_dir, 
     download,
-    check_attributes
+    validate_attributes
     )
 
 
@@ -491,10 +491,10 @@ class SWECanada(Datasets):
         stn_id_dict_inv = {v: k for k, v in stn_id_dict.items()}
         stn_ids = [stn_id_dict[i] for i in stations]
 
-        features = check_attributes(features, self.features)
+        features = validate_attributes(features, self.features)
         qflags = []
         if q_flags is not None:
-            qflags = check_attributes(q_flags, self.q_flags)
+            qflags = validate_attributes(q_flags, self.q_flags)
 
         features_to_fetch = features + qflags
 
