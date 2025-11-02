@@ -4927,17 +4927,18 @@ class CAMELSH(_RainfallRunoff):
     def __init__(self,
                  path=None,
                  overwrite=False,
+                 timestep="H",
                  **kwargs,
     ):
-        
+
         assert netCDF4 is not None, "netCDF4 library is required for CAMELSH dataset. Please install it using 'pip install netCDF4'"
 
         super(CAMELSH, self).__init__(
         path=path,
-        timestep="H",
+        timestep=timestep,
         **kwargs)
 
-        assert self.timestep == "H", "CAMELSH dataset only supports hourly timestep."
+        assert self.timestep == "H", f"CAMELSH dataset only supports hourly timestep but got {self.timestep}."
             
         for fname, url in self.url.items():
 
@@ -5027,9 +5028,6 @@ class CAMELSH(_RainfallRunoff):
     def dynamic_features(self) -> List[str]:
         """
         Returns a list of dynamic features that are available in the dataset.
-        Since this is a method is called multiple times, it is better to cache the result
-        and return the cached result instead of reading the data again and again
-        or the user implementing this method in the child class in a more efficient way.
 
         Returns
         -------
@@ -5063,8 +5061,9 @@ class CAMELSH(_RainfallRunoff):
             stations:List[str] = "all"
             ):
         """
-        Since fetch q from other methods can be slower because of merging with forcing data,
-        this method fetches only observed streamflow data for given stations using multiprocessing.
+        Since fetching q from other methods can be slower because of merging with 
+        other dynamic (forcing) features, this method fetches only observed streamflow 
+        data for given stations using multiprocessing.
 
         Returns
         --------
@@ -5493,14 +5492,14 @@ class CAMELSH(_RainfallRunoff):
             stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
-        returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
-        by diving ``q``/area
+        returns streamflow in the units of milimeter per timestep (mm/hour). This is obtained
+        by diving ``q`` by area.
 
         parameters
         ----------
         stations : str/list
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            q_mm of all stations
 
         Returns
         --------

@@ -263,11 +263,12 @@ class _RainfallRunoff(Datasets):
     def stations(self) -> List[str]:
         """
         Names/ids of stations/catchment/gauges or whatever that would
-        be used to index each station in the dataset. Since this is a method,
-        it is called multiple times, it is better to cache the result
-        and return the cached result instead of reading the data again and again
-        The user is recommended to implement this method in the child class in a more efficient way.
+        be used to index each station in the dataset.
         """
+        # Since this is a method,
+        # it is called multiple times, it is better to cache the result
+        # and return the cached result instead of reading the data again and again
+        # The user is recommended to implement this method in the child class in a more efficient way.
         return self._static_data().index.tolist()
 
     def _read_dynamic(
@@ -991,7 +992,7 @@ class _RainfallRunoff(Datasets):
         ----------
         stations : str/list
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            q_mm of all stations
 
         Returns
         --------
@@ -1208,6 +1209,118 @@ class _RainfallRunoff(Datasets):
 
         if show:
             plt.show()
+        return ax
+
+    def plot_num_observations(
+            self,
+            stations: Union[str, List[str]] = 'all',
+            dynamic_features: Union[str, List[str]] = 'all',
+            start: Union[str, pd.Timestamp] = None,
+            end: Union[str, pd.Timestamp] = None,
+            show_constant: bool = False,
+            figsize: Tuple[float, float] = None,
+            ax = None,
+            show: bool = True
+            ):
+        """
+        Plots the number of observations available for different dynamic features
+        as cumulative distribution function (CDF). This plot is not plotted if
+        all stations have same number of observations for a dynamic feature.
+
+        Parameters
+        ----------
+        stations : Union[str, List[str]]
+            The stations to include in the plot. If 'all', all stations will be included.
+        dynamic_features : Union[str, List[str]]
+            The dynamic features to include in the plot. If 'all', all dynamic features will be
+            included.
+        start : Union[str, pd.Timestamp], optional
+            The start date for the data to consider. If None, the start date of the dataset will be used.
+        end : Union[str, pd.Timestamp], optional
+            The end date for the data to consider. If None, the end date of the dataset will be used.
+        show_constant : bool, optional
+            Whether to show features with constant number of observations across stations.
+            If True, these features will be included in the plot as well.
+        figsize : Tuple[float, float], optional
+            The size of the figure to create. If None, a default size will be used.
+        ax : plt.Axes, optional
+            The matplotlib axes to draw the plot. If not given, then
+            new axes will be created.
+        show : bool, optional
+            Whether to display the plot immediately.
+        
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_FI
+        >>> dataset = CAMELS_FI()
+        >>> dataset.plot_num_observations()
+        # plotting for different time periods
+        >>> dataset = RainfallRunoff('CAMELS_COL')
+        >>> _, ax = plt.subplots()
+        >>> for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
+        >>> start, end = period
+        >>> ax = dataset.plot_num_observations(
+        >>>     dynamic_features=['q_cms_obs'],
+        >>>     ax=ax,
+        >>>     start=start, end=end, show=False)
+        >>> ax.lines[idx].set_label(f'{start} to {end}')
+        >>> assert isinstance(ax, plt.Axes)
+        >>> ax.legend()
+        >>> plt.show()
+        """
+        _, dyn = self.fetch(
+            stations,
+            dynamic_features=dynamic_features,
+            as_dataframe=False,
+            st=start, en=end)
+
+        num_points = 100 
+
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize or (7, 7))
+
+        for feature in dyn.dynamic_features.data:
+
+            d = dyn.sel(dynamic_features=feature).to_dataframe().drop(columns=['dynamic_features'], errors='ignore')
+
+            if d.isna().sum().sum() < 10:
+                print(f"Skipping {feature} due to no missing values.")
+                continue
+
+            data = d.count().values.reshape(-1, )
+
+            x = np.linspace(np.min(data), np.max(data), num_points)
+
+            y_values = np.sum(data[:, np.newaxis] <= x, axis=0) #/ data.size
+
+            y_values = y_values.reshape(-1, )
+
+            label = f"{feature} (n={d.count().sum()})"
+
+            # if np.allclose([100.], [y_values.sum()]):
+            if np.all(y_values == y_values[0]):
+                print(f"All stations for {feature} have {int(x[0])} observations.")
+                if show_constant:
+                    easy_mpl.plot(x[0], y_values[0], '*', label=label, ax=ax, show=False)
+                continue
+            
+            #y = np.linspace(0, len(data), num_points).astype(int)
+            easy_mpl.plot(x, y_values, label=label, ax=ax, show=False)
+
+        ax.set_ylabel("Number of stations")
+        ax.set_xlabel("Number of observations")
+        # ax.set_ylabel("Fraction of stations")
+
+        ax.grid()
+
+        if show:
+            plt.show()
+        
         return ax
 
 
