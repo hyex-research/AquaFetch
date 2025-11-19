@@ -6,7 +6,7 @@ Rainfall Runoff datasets
 # https://springernature.figshare.com/articles/dataset/ExtendinG_SUb-DAily_River_Discharge_data_over_INdia_GUARDIAN_/27004282
 
 import os
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Tuple
 
 import pandas as pd
 from .._backend import plt, plt_Axes
@@ -909,3 +909,76 @@ class RainfallRunoff(object):
         >>> dataset.end()
         """
         return self.dataset.end
+
+    def plot_num_observations(
+            self,
+            stations: Union[str, List[str]] = 'all',
+            dynamic_features: Union[str, List[str]] = 'all',
+            start: Union[str, pd.Timestamp] = None,
+            end: Union[str, pd.Timestamp] = None,
+            show_constant: bool = False,
+            figsize: Tuple[float, float] = None,
+            ax = None,
+            show: bool = True
+            ):
+        """
+        Plots the number of observations available for different dynamic features
+        as cumulative distribution function (CDF). This plot is not plotted if
+        all stations have same number of observations for a dynamic feature.
+
+        Parameters
+        ----------
+        stations : Union[str, List[str]]
+            The stations to include in the plot. If 'all', all stations will be included.
+        dynamic_features : Union[str, List[str]]
+            The dynamic features to include in the plot. If 'all', all dynamic features will be
+            included.
+        start : Union[str, pd.Timestamp], optional
+            The start date for the data to consider. If None, the start date of the dataset will be used.
+        end : Union[str, pd.Timestamp], optional
+            The end date for the data to consider. If None, the end date of the dataset will be used.
+        show_constant : bool, optional
+            Whether to show features with constant number of observations across stations.
+            If True, these features will be included in the plot as well.
+        figsize : Tuple[float, float], optional
+            The size of the figure to create. If None, a default size will be used.
+        ax : plt.Axes, optional
+            The matplotlib axes to draw the plot. If not given, then
+            new axes will be created.
+        show : bool, optional
+            Whether to display the plot immediately.
+
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_FI
+        >>> dataset = CAMELS_FI()
+        >>> dataset.plot_num_observations()
+        # plotting for different time periods
+        >>> dataset = RainfallRunoff('CAMELS_COL')
+        >>> _, ax = plt.subplots()
+        >>> for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
+        >>> start, end = period
+        >>> ax = dataset.plot_num_observations(
+        >>>     dynamic_features=['q_cms_obs'],
+        >>>     ax=ax,
+        >>>     start=start, end=end, show=False)
+        >>> ax.lines[idx].set_label(f'{start} to {end}')
+        >>> assert isinstance(ax, plt.Axes)
+        >>> ax.legend()
+        >>> plt.show()
+        """
+        return self.dataset.plot_num_observations(
+            stations=stations,
+            dynamic_features=dynamic_features,
+            start=start,
+            end=end,
+            show_constant=show_constant,
+            figsize=figsize,
+            ax=ax,
+            show=show
+        )

@@ -111,6 +111,23 @@ dataset.plot_catchment(dataset.area().sort_values(ascending=False).index[0], sho
 
 # %%
 
+dataset.plot_num_observations()
+
+# %%
+
+_, ax = plt.subplots()
+for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
+    start, end = period
+    ax = dataset.plot_num_observations(
+        dynamic_features=['q_cms_obs'],
+        ax=ax,
+        start=start, end=end, show=False)
+ax.lines[idx].set_label(f'{start} to {end}')
+assert isinstance(ax, plt.Axes)
+ax.legend()
+
+# %%
+
 lat = coords['lat'].astype(float).values.reshape(-1,)
 long = coords['long'].astype(float).values.reshape(-1,)
 

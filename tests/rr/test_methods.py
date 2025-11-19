@@ -231,6 +231,29 @@ def test_stations_method():
     return
 
 
+def test_plot_num_observations():
+    import matplotlib.pyplot as plt
+
+    dataset = CAMELS_FI(path=gscad_path)
+    ax = dataset.plot_num_observations()
+    assert isinstance(ax, plt.Axes)
+
+    # plotting for different time periods
+    dataset = RainfallRunoff('CAMELS_COL', path=gscad_path)
+    _, ax = plt.subplots()
+    for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
+        start, end = period
+        ax = dataset.plot_num_observations(
+            dynamic_features=['q_cms_obs'],
+            ax=ax,
+            start=start, end=end, show=False)
+    ax.lines[idx].set_label(f'{start} to {end}')
+    assert isinstance(ax, plt.Axes)
+    ax.legend()
+    plt.show()
+
+    return
+
 test_get_boundary()
 
 test_plot_catchment_method()
