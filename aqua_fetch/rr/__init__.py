@@ -62,6 +62,7 @@ from .mtropics import MtropcsThailand
 from .mtropics import MtropicsVietnam
 from ._misc import DraixBleone
 from ._misc import JialingRiverChina
+from ._misc import ShyftNorway
 
 
 DATASETS = {

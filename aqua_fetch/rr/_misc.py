@@ -3,11 +3,16 @@ __all__ = ["DraixBleone", "JialingRiverChina"]
 
 import os
 from typing import List
+import concurrent.futures as cf
 
+import requests
 import pandas as pd
 
 from .utils import validate_attributes
 from .utils import _RainfallRunoff
+from .utils import get_cpus
+from ..utils import merge_shapefiles_fiona
+from .._backend import xarray as xr, fiona
 
 from ._map import (
     observed_streamflow_cms, 
@@ -214,3 +219,306 @@ class HeiheRiverChina:
      `Hu et al., 2023 < https://doi.org/10.1029/2022WR032426>`_.
     """
     url = "https://zenodo.org/records/7067158"
+
+
+class ShyftNorway(_RainfallRunoff):
+    """
+    The dataset contains  observed streamflow data from 111 Norwegian catchments, 
+    as well as catchment boundaries and some catchment specific static data. 
+    For more information on this data see `Silantyeva et al., 2025 <https://doi.org/10.5194/egusphere-2025-4071>`_.
+    Note that currently only streamflow data is included, other dynamic features 
+    may be added in future releases. Also note that observed streamflow data may
+    slightly differ from the data from `seriekart.nve.no <https://seriekart.nve.no/>`_ since
+    data at seriekart is updated regularly based upon updated rating curves.
+
+
+    Examples
+    --------
+    >>> from aqua_fetch import ShyftNorway
+    >>> dataset = ShyftNorway()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='2.11.0', as_dataframe=True)
+    >>> df = dynamic['2.11.0'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (23376, 1)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       111
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (11 out of 111)
+       11
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(23376, 1), (23376, 1), (23376, 1),... (23376, 1), (23376, 1)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+        ['observed_streamflow_cms']
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='2.11.0', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['2.11.0'].shape
+    ((1, 10), 1, (23376, 1))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)   
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 23376, 'dynamic_features': 1})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    # get area of a single station
+    >>> dataset.area('2.11.0')
+    # get coordinates of two stations
+    >>> dataset.area(['2.11.0', '2.28.0'])
+    ...
+    >>> dataset.get_boundary('2.11.0')    
+    
+    """
+    url = "https://gitlab.com/osilan/shyft-hydro-benchmarking/-/tree/main/shyft-data/Data"
+
+    def __init__(
+            self,
+            *args,
+            **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if fiona is None:
+            raise ImportError("fiona is required to read shapefiles. Please install fiona.")
+
+        if not os.path.exists(os.path.join(self.path, 'shapefiles')):
+            if self.verbosity:
+                print("Downloading shapefiles for Norway catchments")
+            download_shapefiles(self.path)
+
+        files_to_merge = ['calibration_catchment_86_all_attributes.shp', 'validation_catchment_26_all_attributes.shp']
+        
+        self.boundary_file = os.path.join(self.path, 'catchment_all_attributes.shp')
+        if not os.path.exists(self.boundary_file):
+                merge_shapefiles_fiona(
+                [os.path.join(self.path, 'shapefiles', f) for f in files_to_merge],
+                self.boundary_file,
+                gauge_id_attribute_name='stID',
+                copy_properties=True
+                )
+
+        self._q = self.get_q(as_dataframe=True)
+        self._stations = self._q.columns.tolist()
+
+    @property
+    def boundary_id_map(self):
+        return 'gauge_id'
+
+    def stations(self):
+        return self._stations
+
+    def get_q(
+            self, 
+            as_dataframe:bool=True,
+            ):
+        """
+        returns the streamflow data of Norway as xarray.Dataset or pandas.DataFrame
+
+        Returns
+        -------
+        xarray.Dataset or pandas.DataFrame. If as_dataframe is True, returns pandas.DataFrame
+        with columns as station codes and index as time. If as_dataframe is False, returns
+        xarray.Dataset with station codes as variables and time as dimension.
+        """
+        fname = 'daily_q.csv' 
+
+        fpath = os.path.join(self.path, fname)
+
+        if not os.path.exists(fpath) or self.overwrite:
+
+            if self.verbosity>1: print(f"Downloading q data at {self.path}")
+
+            q_df = get_shyftnorway_q(outpath=self.path, 
+                                     cpus=self.processes or min(get_cpus() - 2, 8),
+                                     verbosity=self.verbosity-1
+                                     )
+        else:
+            if self.verbosity: print(f"Reading q data from pre-existing file {fpath}")
+            q_df = pd.read_csv(fpath, index_col=0)
+            q_df.index = pd.to_datetime(q_df.index)
+       
+        q_df.index.name = 'time'
+
+        # # because stations are identified by basin_id
+        q_df.columns = ['.'.join(col.split('.', 3)[:3]) for col in q_df.columns.tolist()]
+
+        if as_dataframe:
+            return q_df
+        return xr.Dataset({stn: xr.DataArray(q_df.loc[:, stn]) for stn in q_df.columns})
+
+    def _read_stn_dyn(self, stn:str):
+        
+        stn_df = self._q.loc[:, [stn]]
+        stn_df.rename(columns={stn: observed_streamflow_cms()}, inplace=True)
+        stn_df.columns.name = 'dynamic_features'
+        stn_df.index.name = 'time'
+        return stn_df
+
+    def _static_data(self):
+        with fiona.open(self.boundary_file) as src:
+
+            properties = []
+            for feature in src:
+                prop = feature['properties']
+
+                prop_s = pd.Series({k:v for k,v in prop.items()}, name=prop['gauge_id'])
+
+                properties.append(prop_s)
+            static = pd.DataFrame(properties)
+
+        # drop duplicate indices (keep first)
+        static = static.loc[~static.index.duplicated(keep='first')]
+
+        # drop WTS_ID_F column
+        static.drop(columns=['gauge_id', 'stID',
+                             'reference_', 'Station_1',
+                             'shyft', 'id_12', 'id_1',
+                             'objType', 'stID_1', 'stID2', 
+                             'station', 'ID', 'calibratio',
+                             'ekspType', 'stSamletID', 'regine_are',
+                             'Regulering', 'main_no'], 
+                             inplace=True, errors='ignore')
+
+        static.rename(columns={
+            'areal_km2': catchment_area(),
+            'glacier': 'glacier_%',
+        },
+            inplace=True)
+
+        return static
+
+def get_shyftnorway_q(
+        outpath,
+        cpus:int = None,
+        verbosity:int=1
+):
+
+    project_id=65512664
+    folder_path="shyft-data/Data/Q"
+    ref="main"
+
+    q_path = os.path.join(outpath, "daily_q")
+    os.makedirs(q_path, exist_ok=True)
+    api = "https://gitlab.com/api/v4"
+    params = {
+        "path": folder_path,
+        "ref": ref,
+        "per_page": 200  # > number of files
+    }
+    r = requests.get(f"{api}/projects/{project_id}/repository/tree", params=params)
+    r.raise_for_status()
+    entries = r.json()
+
+    blobs = [e for e in entries if e.get("type") == "blob"]
+    if verbosity: print(f"Found {len(blobs)} files.")
+
+    if cpus == 1:
+        for e in blobs:
+            _download_file(e, q_path, verbosity)
+    else:
+        cpus = cpus or min(get_cpus() - 2, 8)
+        if verbosity:
+            print(f"Downloading using {cpus} cpus")
+        with cf.ProcessPoolExecutor(max_workers=cpus) as executor:
+            futures = [executor.submit(_download_file, e, q_path, verbosity) for e in blobs]
+            for i, future in enumerate(cf.as_completed(futures)):
+                if verbosity and i % 10 == 0:
+                    print(f"Downloaded {i} files")
+    
+    dfs = []
+    for f in os.listdir(q_path):
+        fpath = os.path.join(q_path, f)
+        df = pd.read_csv(fpath, index_col=0, header=None, sep=' ', dtype={1: 'float32'}, 
+                         na_values='-9999.0')
+
+        indexes = []
+        for index in df.index:
+            index = index.split('/')[0]
+            index = pd.Timestamp(index)
+            indexes.append(index)
+        df.index = pd.DatetimeIndex(indexes)
+
+        # find first valid value
+        df = df.iloc[:, 0]
+
+        df = df.loc[df.first_valid_index():df.last_valid_index()]
+
+        df.name = f
+        dfs.append(df)
+    
+    q_df = pd.concat(dfs, axis=1)
+    q_df.to_csv(os.path.join(outpath, "daily_q.csv"), index=True, index_label='date')
+
+    return q_df
+
+
+def _download_file(e, out_dir, verbosity:int=1):
+    ref = "main"
+    rel_path = e["path"]  # includes folder_path/file
+    fname = os.path.basename(rel_path)
+    raw_url = f"https://gitlab.com/osilan/shyft-hydro-benchmarking/-/raw/{ref}/{rel_path}"
+    resp = requests.get(raw_url, timeout=60)
+    if resp.ok:
+        with open(os.path.join(out_dir, fname), "wb") as fh:
+            fh.write(resp.content)
+        if verbosity > 0:
+            print("Downloaded", fname)
+    else:
+        if verbosity > 0:
+            print("Failed", fname, resp.status_code)
+    return
+
+
+def download_shapefiles(outpath):
+
+    project_id=65512664
+    folder_path="shyft-data/Data/GIS"
+    ref="main"
+
+    shp_path = os.path.join(outpath, "shapefiles")
+    os.makedirs(shp_path, exist_ok=True)
+    api = "https://gitlab.com/api/v4"
+    params = {
+        "path": folder_path,
+        "ref": ref,
+        "per_page": 200  # > number of files
+    }
+    r = requests.get(f"{api}/projects/{project_id}/repository/tree", params=params)
+    r.raise_for_status()
+    entries = r.json()
+
+    blobs = [e for e in entries if e.get("type") == "blob"]
+
+    for e in blobs:
+
+        ref = "main"
+        rel_path = e["path"]  # includes folder_path/file
+        fname = os.path.basename(rel_path)
+        raw_url = f"https://gitlab.com/osilan/shyft-hydro-benchmarking/-/raw/{ref}/{rel_path}"
+        resp = requests.get(raw_url, timeout=60)
+        if resp.ok:
+            with open(os.path.join(shp_path, fname), "wb") as fh:
+                fh.write(resp.content)
+    return

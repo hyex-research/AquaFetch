@@ -48,6 +48,7 @@ from .rr import CAMELS_SK
 from .rr import CAMELS_FI
 from .rr import Slovenia
 from .rr import CAMELSH
+from .rr import ShyftNorway
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand

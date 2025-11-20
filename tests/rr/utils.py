@@ -201,22 +201,27 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
 
 def test_selected_dynamic_features(dataset, dyn_data_len:int, as_dataframe=False):
     logger.info(f"test_selected_dynamic_features for {dataset.name}")
-    features = dataset.dynamic_features[0:2]
+
+    if len(dataset.dynamic_features) > 1:
+        num_feats = 2
+    else:
+        num_feats = 1
+    features = dataset.dynamic_features[0:num_feats]
     _, data = dataset.fetch(dataset.stations()[0], dynamic_features=features, as_dataframe=as_dataframe)
 
     if as_dataframe:
-        check_dataframe(dataset, data, 1, dyn_data_len, 2)
+        check_dataframe(dataset, data, 1, dyn_data_len, num_feats)
     else:
-        assert len(data.dynamic_features) == 2, len(data.dynamic_features)
+        assert len(data.dynamic_features) == num_feats, len(data.dynamic_features)
 
     # checking for multiple stations
-    features = dataset.dynamic_features[0:2]
+    features = dataset.dynamic_features[0:num_feats]
     _, data = dataset.fetch(dataset.stations()[0:3], dynamic_features=features, as_dataframe=as_dataframe)
 
     if as_dataframe:
-        check_dataframe(dataset, data, 3, dyn_data_len, 2)
+        check_dataframe(dataset, data, 3, dyn_data_len, num_feats)
     else:
-        assert len(data.dynamic_features) == 2, len(data.dynamic_features)
+        assert len(data.dynamic_features) == num_feats, len(data.dynamic_features)
     return
 
 

@@ -2308,5 +2308,3 @@ def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
         raise e
     
     return yr_df
-
-
