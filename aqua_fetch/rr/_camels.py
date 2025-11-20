@@ -4542,12 +4542,6 @@ class CAMELS_DEBY(_RainfallRunoff):
     """
 
 
-class HYD_Responses(_RainfallRunoff):
-    """
-    `von Matt et al., 2025 <https://doi.org/10.5281/zenodo.14713274>
-    """
-
-
 class CAMELS_ES(_RainfallRunoff):
     """
     """
@@ -5076,7 +5070,7 @@ class CAMELSH(_RainfallRunoff):
         all_q_fname = os.path.join(self.path, "all_stations_q.nc")
         if os.path.exists(all_q_fname) and not self.overwrite:
             if self.verbosity>1:
-                print(f"Loading all stations q data from {all_q_fname}")
+                print(f"Loading q data for {len(stations)} stations from {all_q_fname}")
             # read all_q_fname and return only required stations
             ds = xr.open_dataset(all_q_fname, engine='netcdf4')
             return ds[stations]
@@ -5489,7 +5483,8 @@ class CAMELSH(_RainfallRunoff):
 
     def q_mm(
             self,
-            stations: Union[str, List[str]] = "all"
+            stations: Union[str, List[str]] = "all",
+            as_dataframe: bool = True
     ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per timestep (mm/hour). This is obtained
@@ -5500,10 +5495,13 @@ class CAMELSH(_RainfallRunoff):
         stations : str/list
             name/names of stations. Default is ``all``, which will return
             q_mm of all stations
+        as_dataframe : bool
+            whether to return the data as pandas DataFrame. Default is True.
+            Setting it to False will return xarray Dataset and can be faster.
 
         Returns
         --------
-        pd.DataFrame
+        pd.DataFrame or xr.Dataset
             a :obj:`pandas.DataFrame` whose indices are time-steps and columns
             are catchment/station ids.
 
@@ -5514,7 +5512,9 @@ class CAMELSH(_RainfallRunoff):
         stations = validate_attributes(stations, self.stations(), 'stations')
 
         q = self.q(stations)
-        q = q.sel(dynamic_features='q_cms_obs').to_pandas().drop(columns=['dynamic_features'], errors='ignore')
+        q = q.sel(dynamic_features='q_cms_obs')
+        if as_dataframe:
+            q = q.to_pandas().drop(columns=['dynamic_features'], errors='ignore')
 
         area_m2 = self.area(stations) * 1e6  # area in m2
 
@@ -5538,10 +5538,23 @@ def _encode_time_for_nc(time64: np.ndarray,
     return date2num(py_dt, units=units, calendar=calendar).astype("float64")
 
 
-
-
-
 class HydResponses(_RainfallRunoff):
     """
-    https://essd.copernicus.org/preprints/essd-2025-383/essd-2025-383.pdf
+    See `von Matt et al., 2025 <https://essd.copernicus.org/preprints/essd-2025-383/>`_ .
     """
+    url = "https://zenodo.org/records/14713275/files/HYD_RESPONSES.zip"
+
+
+class ThirdPole(_RainfallRunoff):
+    """
+    Observed streamflow data from from 11 stations of Third Pole region following work of
+    `Liu and Wang (2025) <https://doi.org/10.1080/20964471.2025.2585701>`_ . The data
+    is downloaded from its `zenodo repository <https://zenodo.org/records/15853656>`_ .
+    """
+
+    _stations = ['Asaraghat', 'Benighat', 'Besham', 'Changdu', 'Chatara', 'Chisapani', 
+                 'Devghat', 'Doyain', 'Jiayuqiao', 'Nuxia', 'Yogu']
+    url = {
+        f"Discharge_{stn}_1981-2020.nc": "https://zenodo.org/records/15853656/files/" for stn in _stations
+    }
+    url.update({'basin_info.rar': 'https://zenodo.org/records/15853656/files'})

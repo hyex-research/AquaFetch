@@ -66,6 +66,7 @@ List of datasets
 .. list-table:: Stations per Source
    :widths: 8 13 7 7 10 10 10 10 30
    :header-rows: 1
+   :class: sphinx-datatable
 
    * - Source Name
      - Class
@@ -726,6 +727,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.RRLuleaSweden
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.ShyftNorway
    :members:
    :show-inheritance:
 

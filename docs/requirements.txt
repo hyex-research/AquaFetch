@@ -8,6 +8,7 @@ sphinx-gallery
 sphinx_toggleprompt
 nbsphinx
 ipykernel
+sphinx-datatables
 
 git+https://github.com/AtrCheema/tabulight.git  # for examples
 basemap    # for example scripts
