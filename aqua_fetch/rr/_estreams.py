@@ -86,8 +86,13 @@ class EStreams(_RainfallRunoff):
         self.md = self.gauge_stations()
         self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
-        self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
+
+        self._dynamic_features = self.meteo_data_station('IEEP0281', from_nc=True).columns.tolist()
         self._static_features = self._static_data().columns.tolist()
+
+        self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
+        self.parallels = range(30, 80, 15)
+        self.meridians = range(-30, 60, 20)
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -137,6 +142,10 @@ class EStreams(_RainfallRunoff):
             'swr_mean': solar_radiation(),
             'ws_mean': mean_windspeed()
         }
+
+    @property
+    def nc_path(self):
+        return os.path.join(self.path, 'EStreams', 'meteorology.nc')
 
     def _static_data(self) -> pd.DataFrame:
         """
@@ -246,15 +255,31 @@ class EStreams(_RainfallRunoff):
         stations = self._get_stations(countries, stations)
         return self.md.loc[stations, catchment_area()]
 
-    def meteo_data_station(self, station: str) -> pd.DataFrame:
+    def meteo_data_station(self, station: str, from_nc:bool=False) -> pd.DataFrame:
         """
-        Returns the meteorological data of a station
+        Returns the meteorological data of a single station. If from_nc is True,
+        it reads from netcdf file if it exists.
+
+        Parameters
+        ----------
+            station : str
+                name/id of station of which to extract the data
+            from_nc : bool, optional (default=False)
+                if true, reads from netcdf file if it exists
 
         Returns
         -------
         pd.DataFrame
             a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
+        if from_nc and os.path.exists(self.nc_path):
+            if self.verbosity > 2:
+                print(f"Reading {station} from {self.nc_path}")
+            ds = xr.open_dataset(self.nc_path)
+            df = ds[station].to_pandas()
+            ds.close()
+            return df
+
         df = pd.read_csv(
             os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{station}.csv'),
             index_col='date',
@@ -288,13 +313,13 @@ class EStreams(_RainfallRunoff):
         """
         Returns the meteorological data of all stations
         """
-        nc_path = os.path.join(self.path, 'EStreams', 'meteorology.nc')
-        if self.to_netcdf and os.path.exists(nc_path):
+        
+        if self.to_netcdf and os.path.exists(self.nc_path):
             if self.verbosity > 1:
-                print(f"Reading from {nc_path}")
-            # todo :with xarray 2025.1.2 it is causing following error
+                print(f"Reading from {self.nc_path}")
+            # todo :with xarray 2025.1.2 it is causing following error, however tested successfully with xarray 2025.10.1
             # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".                
-            return xr.open_dataset(nc_path)
+            return xr.open_dataset(self.nc_path)
 
         cpus = self.processes or max(get_cpus() - 2, 1)
         stations = self.stations()
@@ -318,8 +343,8 @@ class EStreams(_RainfallRunoff):
 
             meteo_vars = xr.Dataset(meteo_vars)
 
-            if self.verbosity: print(f"Saving to {nc_path}")
-            meteo_vars.to_netcdf(nc_path, encoding=encoding)
+            if self.verbosity: print(f"Saving to {self.nc_path}")
+            meteo_vars.to_netcdf(self.nc_path, encoding=encoding)
 
         return meteo_vars
 
@@ -443,7 +468,16 @@ class EStreams(_RainfallRunoff):
 
 class _EStreams(_RainfallRunoff):
     """
-    Parent class for those datasets which use static and dynamic data from EStreams.
+    Parent/Helper class for those datasets which use static and dynamic data from EStreams.
+    It handles specifically following classes
+    
+        - :py:class:`aqua_fetch.Finland`
+        - :py:class:`aqua_fetch.Ireland`
+        - :py:class:`aqua_fetch.Italy`
+        - :py:class:`aqua_fetch.Poland`
+        - :py:class:`aqua_fetch.Portugal`
+        - :py:class:`aqua_fetch.Slovenia`
+
     """
 
     def __init__(
@@ -471,7 +505,7 @@ class _EStreams(_RainfallRunoff):
         self._stations = self.estreams.country_stations(self.country_name)
         self.boundary_file = self.estreams.boundary_file
 
-        self.bndry_id_map = self.estreams.bndry_id_map.copy()
+        self.bndry_id_map_ = self.estreams.bndry_id_map_.copy()
 
     @property
     def dynamic_features(self) -> List[str]:
@@ -786,6 +820,10 @@ class Finland(_EStreams):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
 
+        self.bbox = {'llcrnrlat': 59.0, 'urcrnrlat': 70.0, 'llcrnrlon': 19.0, 'urcrnrlon': 31.0}
+        self.parallels = range(59, 70, 2)
+        self.meridians = range(19, 31, 2)
+
     @property
     def country_name(self)->str:
         return 'FI'
@@ -1093,6 +1131,10 @@ class Ireland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+        self.bbox = {'llcrnrlat': 51.0, 'urcrnrlat': 55.5, 'llcrnrlon': -11.0, 'urcrnrlon': -5.0}
+        self.parallels = range(51, 56, 1)
+        self.meridians = range(-11, -5, 2)
 
     @property
     def country_name(self)->str:
@@ -1519,6 +1561,10 @@ class Italy(_EStreams):
 
         self._stations = self.ispra_stations()
 
+        self.bbox = {'llcrnrlat': 35.0, 'llcrnrlon': 6.0, 'urcrnrlat': 48.0, 'urcrnrlon': 19.0}
+        self.parallels = [35, 40, 45]
+        self.meridians = [10, 15]
+
     @property
     def country_name(self)->str:
         return 'IT'
@@ -1682,6 +1728,10 @@ class Poland(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+        self.bbox = {"llcrnrlat": 49.0, "urcrnrlat": 55.0, "llcrnrlon": 14.0, "urcrnrlon": 25.0}
+        self.parallels = range(50, 56, 2)
+        self.meridians = range(14, 26, 2)
 
     @property
     def country_name(self)->str:
@@ -1930,6 +1980,10 @@ class Portugal(_EStreams):
         fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'portugal_stn_codes.csv')
         self.codes = pd.read_csv(fpath, index_col=0)
 
+        self.bbox = {'llcrnrlat': 36.0, 'urcrnrlat': 43.0, 'llcrnrlon': -9, 'urcrnrlon': -6}
+        self.parallels = range(36, 43, 2)
+        self.meridians = range(-9, -6, 1) 
+
     @property
     def country_name(self)->str:
         return 'PT'
@@ -2072,7 +2126,7 @@ def download_stn_data(gauge_code:int)->pd.Series:
 
 class Slovenia(_EStreams):
     """
-    Data of 117 catchments of Portugal.
+    Data of 117 catchments of Slovenia.
     The observed streamflow data is downloaded from https://vode.arso.gov.si .
     The meteorological data, static catchment 
     features and catchment boundaries for the 117 catchments are
@@ -2130,6 +2184,10 @@ class Slovenia(_EStreams):
             **kwargs):
 
         super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+
+        self.bbox = {'llcrnrlat': 45.0, 'urcrnrlat': 47.0, 'llcrnrlon': 13.0, 'urcrnrlon': 17.0}
+        self.parallels = range(45, 47, 1)
+        self.meridians = range(13, 17, 1)
 
     @property
     def end(self) -> pd.Timestamp:
@@ -2255,6 +2313,8 @@ def download_slovenia_q(
         wl_dfs.append(stn_df['water_level_cm'].rename(gauge_id))
 
         wt_dfs.append(stn_df['water_temp_celsius'].rename(gauge_id))
+
+        print(st_yr, en_yr, stn_df.index[0], stn_df.index[-1])
         
         if cpus:
             print(f"Downloaded data for {i+1}/{len(metadata)}: {gauge_id} - {gauge_name}")
