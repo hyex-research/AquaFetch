@@ -13,11 +13,11 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._geom_utils import utm_to_lat_lon
+from .._geom_utils import epsg25832_to_wgs84, epsg2056_point_to_wgs84
 from ..utils import get_cpus, download_and_unzip
 from ..utils import validate_attributes, download, unzip
 
-from .._backend import netCDF4, xarray as xr
+from .._backend import netCDF4, xarray as xr, fiona
 
 if netCDF4 is not None:
     from netCDF4 import date2num
@@ -1350,8 +1350,11 @@ class CAMELS_CL(_RainfallRunoff):
         dyn_attrs = {}
         for attr in self.dynamic_features_:
             fname = [f for f in self._all_dirs if '_' + attr in f][0]
-            fname = os.path.join(self.path, f'{fname}{SEP}{fname}.txt')
-            df = pd.read_csv(fname, sep='\t', index_col=['gauge_id'], na_values=" ")
+            fpath = os.path.join(self.path, f'{fname}{SEP}{fname}.txt')
+            if fname in ['8_CAMELScl_tmin_cr2met']:
+                df = pd.read_csv(fpath, sep='\t', index_col=['gauge_id'], na_values=" ", nrows=11391)
+            else:
+                df = pd.read_csv(fpath, sep='\t', index_col=['gauge_id'], na_values=" ")
             df.index = pd.to_datetime(df.index)
 
             dyn_attrs[attr] = df[st:en]
@@ -1860,6 +1863,26 @@ class CAMELS_CH(_RainfallRunoff):
 
         return df
 
+    # def transform_boundary(self, boundary):
+    #     """
+    #     transforms boundary from EPSG:2056 to EPSG:4326
+    #     """
+    #     assert len(boundary.coordinates) == 1  # only one polygon
+    #     longs, lats = [], []
+    #     for i in range(0, len(boundary.coordinates[0])):
+    #         # assuming that coordinates in fiona.Geometry are in long, lat order
+    #         lat_, long_ = epsg2056_point_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1])
+    #         longs.append(long_)
+    #         lats.append(lat_)
+    #     longs = np.array(longs)
+    #     lats = np.array(lats)
+
+    #     if fiona is not None:
+    #         boundary = fiona.Geometry(type='Polygon', 
+    #                                   coordinates=[list(zip(longs, lats))])
+
+    #     return boundary
+
 
 class CAMELS_DE(_RainfallRunoff):
     """
@@ -1871,8 +1894,8 @@ class CAMELS_DE(_RainfallRunoff):
 
     Examples
     --------
-    >>> from aqua_fetch import CAMELS_DK
-    >>> dataset = CAMELS_DK()
+    >>> from aqua_fetch import CAMELS_DE
+    >>> dataset = CAMELS_DE()
     ... # get data by station id
     >>> _, dynamic = dataset.fetch(stations='DE110260', as_dataframe=True)
     >>> df = dynamic['DE110260'] # dynamic is a dictionary of with keys as station names and values as DataFrames
@@ -2174,8 +2197,8 @@ class CAMELS_SE(_RainfallRunoff):
 
     Examples
     --------
-    >>> from aqua_fetch import CAMELS_DK
-    >>> dataset = CAMELS_DK()
+    >>> from aqua_fetch import CAMELS_SE
+    >>> dataset = CAMELS_SE()
     ... # get data by station id
     >>> _, dynamic = dataset.fetch(stations='5', as_dataframe=True)
     >>> df = dynamic['5'] # dynamic is a dictionary of with keys as station names and values as DataFrames
@@ -2754,17 +2777,31 @@ class CAMELS_DK(_RainfallRunoff):
         ct_m = pd.DataFrame(columns=['lat', 'long'], index=df.index)
         # Test the function using lat, long in c DataFrame
         for i in range(0, len(df)):
-            lat, lon = utm_to_lat_lon(df.iloc[i, 1], df.iloc[i, 0], 32)
+            lat, lon = epsg25832_to_wgs84(df.iloc[i, 1], df.iloc[i, 0], 32)
             ct_m.iloc[i] = [lat, lon]
         
         return ct_m
 
-    def transform_coords(self, coords):
+    def transform_boundary(self, boundary):
         """
         Transforms the coordinates to the required format.
         """
         # from EPSG:25832 - ETRS89 / UTM zone 32N to WGS84
-        return coords
+
+        assert len(boundary.coordinates) == 1  # only one polygon
+        longs, lats = [], []
+        for i in range(0, len(boundary.coordinates[0])):
+            # assuming that coordinates in fiona.Geometry are in long, lat order
+            lat_, long_ = epsg25832_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1], 32)
+            longs.append(long_)
+            lats.append(lat_)
+        longs = np.array(longs)
+        lats = np.array(lats)
+
+        if fiona is not None:
+            boundary = fiona.Geometry(type='Polygon', 
+                                      coordinates=[list(zip(longs, lats))])
+        return boundary
 
 
 class CAMELS_IND(_RainfallRunoff):

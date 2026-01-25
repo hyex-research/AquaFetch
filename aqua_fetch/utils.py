@@ -1001,6 +1001,10 @@ def merge_shapefiles_fiona(
     if 'gauge_id' not in merged_props:
         merged_props['gauge_id'] = 'str:80'
 
+    if not copy_properties:
+        # If not copying properties, only keep gauge_id
+        merged_props = {'gauge_id': merged_props['gauge_id']}
+
     schema = {
         'geometry': geom_type,
         'properties': merged_props

@@ -197,7 +197,7 @@ class Simbi(_RainfallRunoff):
         """
         Returns names/IDs of 24 stations with boundary data.
         """
-        return list(self.bndry_id_map.keys())
+        return list(self.bndry_id_map_.keys())
 
     def static_data_stations(self)->List[str]:
         """

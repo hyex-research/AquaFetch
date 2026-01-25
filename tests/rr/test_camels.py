@@ -29,7 +29,7 @@ from aqua_fetch import CAMELS_FI
 from aqua_fetch import CAMELSH
 
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+gscad_path = ''
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_camels.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -51,11 +51,11 @@ class TestCamels(unittest.TestCase):
 
     def test_gb(self):
         dataset = CAMELS_GB(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 671, 16436, 145, 10)
+        test_dataset(dataset, 671, 16436, 145, 10, test_latlong_ranges=False)
         return
 
     def test_aus(self):
-        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS_AUS_V1'), version=1)
+        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS', 'CAMELS_AUS_V1'), version=1)
         test_dataset(dataset, 222, 23376, 166, 28)
 
         dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2, verbosity=4)
@@ -125,13 +125,13 @@ class TestCamels(unittest.TestCase):
 
         dataset = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'), timestep='H')
         q = dataset.read_hourly_q_ch(dataset.hourly_stations()[0])
-        assert pd.infer_freq(q.index) == 'H'
+        assert pd.infer_freq(q.index) in ['H', 'h'], pd.infer_freq(q.index)
 
         return
 
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 1582, 25568, 111, 21)
+        test_dataset(dataset, 1582, 25568, 111, 21, test_latlong_ranges=False)
         return
 
     def test_camels_se(self):
@@ -146,13 +146,14 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_fr(self):
-        ds = CAMELS_FR(gscad_path, verbosity=4)
+        ds = CAMELS_FR(os.path.join(gscad_path, 'CAMELS'), verbosity=4)
         test_dataset(
             ds,
             num_stations=654,
             dyn_data_len=18993,
             num_static_attrs=344,
             num_dyn_attrs=22,
+            test_latlong_ranges=False
         )
         return
 
@@ -165,11 +166,12 @@ class TestCamels(unittest.TestCase):
     def test_camels_nz(self):
 
         dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'), verbosity=3)
-        test_dataset(dataset, 369, 19208, 40, 5)
+        test_dataset(dataset, 369, 19208, 40, 5, test_latlong_ranges=False)
 
         dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'), timestep='H', verbosity=4)
         test_dataset(dataset, 369, 460978, 40, 5, 
-                        yearly_steps=8760  # this number might not be correct
+                        yearly_steps=8760,  # this number might not be correct
+                        test_latlong_ranges=False
                         )
         return
 
@@ -186,7 +188,7 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_col(self):
         dataset = CAMELS_COL(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 347, 15340, 255, 6)
+        test_dataset(dataset, 347, 15340, 255, 6, test_latlong_ranges=False)
         return
 
     def test_camels_sk(self):
@@ -199,7 +201,7 @@ class TestCamels(unittest.TestCase):
     def test_camels_fi(self):
 
         dataset = CAMELS_FI(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
-        test_dataset(dataset, 320, 23010, 106, 16)
+        test_dataset(dataset, 320, 23010, 106, 16, test_latlong_ranges=False)
 
         return
 

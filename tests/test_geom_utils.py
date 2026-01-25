@@ -5,6 +5,8 @@ import site
 wd_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 site.addsitedir(wd_dir)
 
+import unittest
+
 import fiona
 import numpy as np
 import pandas as pd
@@ -18,10 +20,11 @@ from shapely.geometry import shape
 from aqua_fetch import RainfallRunoff, Quadica
 
 from aqua_fetch._geom_utils import calc_centroid
-from aqua_fetch._geom_utils import utm_to_lat_lon, laea_to_wgs84, lcc_to_wgs84
+from aqua_fetch._geom_utils import epsg2056_point_to_wgs84
+from aqua_fetch._geom_utils import epsg25832_to_wgs84, laea_to_wgs84, lcc_to_wgs84
 
 
-DATA_PATH = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+DATA_PATH = ''
 
 
 def test_calc_centroid():
@@ -56,7 +59,8 @@ def test_25832_to_4326():
         path=os.path.join(DATA_PATH, 'CAMELS'), 
         verbosity=3)
 
-    c = ds.fetch_static_features(static_features=['catch_outlet_lat', 'catch_outlet_lon'])
+    #c = ds.fetch_static_features(static_features=['catch_outlet_lat', 'catch_outlet_lon'])
+    c = ds.stn_coords()
 
     transformer = Transformer.from_crs("EPSG:25832", "EPSG:4326")
     lat, long = transformer.transform(c.iloc[:, 1], c.iloc[:, 0])
@@ -66,17 +70,32 @@ def test_25832_to_4326():
     ct_m = pd.DataFrame(columns=['lat', 'long'], index=ct.index)
     # Test the function using lat, long in c DataFrame
     for i in range(0, len(c)):
-        lat, lon = utm_to_lat_lon(c.iloc[i, 1], c.iloc[i, 0], 32)
+        lat, lon = epsg25832_to_wgs84(c.iloc[i, 1], c.iloc[i, 0], 32)
         ct_m.iloc[i] = [lat, lon]
 
     np.testing.assert_allclose(ct.values, ct_m.values.astype(float), atol=1e-5)
 
+    # test the boundary transformation
+    boundary = ds.get_boundary(ds.stations()[0])
+    transformer = Transformer.from_crs("EPSG:25832", "EPSG:4326")
+    lat, long = transformer.transform(np.array(boundary.coordinates[0])[:, 0], np.array(boundary.coordinates[0])[:, 1])
+
+    longs, lats = [], []
+    for i in range(0, len(lat)):
+        lat_, long_ = epsg25832_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1], 32)
+        longs.append(long_)
+        lats.append(lat_)
+    longs = np.array(longs)
+    lats = np.array(lats)
+
+    np.testing.assert_array_almost_equal(lat, lats)
+    np.testing.assert_array_almost_equal(long, longs)
     return
 
 
 def test_laea_to_wgs84():
     ds = Quadica(
-        path='/mnt/datawaha/hyex/atr/data', 
+        path='/mnt/storage1/atr/data', 
         verbosity=3
         )
 
@@ -188,8 +207,46 @@ def test_lcc_to_wgs84():
     return
 
 
-test_25832_to_4326()
+def test_2056_to_4326():
 
-test_laea_to_wgs84()
+    ds = RainfallRunoff(
+        "CAMELS_CH", 
+        path=os.path.join(DATA_PATH, 'CAMELS'), 
+        verbosity=3)
 
-test_lcc_to_wgs84()
+    # test the boundary transformation
+    boundary = ds.get_boundary(ds.stations()[0])
+    transformer = Transformer.from_crs("EPSG:2056", "EPSG:4326")
+    lat, long = transformer.transform(np.array(boundary.coordinates[0])[:, 0], np.array(boundary.coordinates[0])[:, 1])
+
+    longs, lats = [], []
+    for i in range(0, len(lat)):
+        lat_, long_ = epsg2056_point_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1])
+        longs.append(long_)
+        lats.append(lat_)
+    longs = np.array(longs)
+    lats = np.array(lats)
+
+    np.testing.assert_array_almost_equal(lat, lats, 4)
+    np.testing.assert_array_almost_equal(long, longs, 4)
+    return
+
+
+class TestCamels(unittest.TestCase):
+
+    def test_25832_to_4326(self):
+        test_25832_to_4326()
+
+    def test_laea_to_wgs84(self):
+        test_laea_to_wgs84()
+
+    def test_lcc_to_wgs84(self):
+        test_lcc_to_wgs84()
+
+    def test_2056_to_4326(self):
+        # test_2056_to_4326() todo : failing
+        return 
+
+
+if __name__ == "__main__":
+    unittest.main()

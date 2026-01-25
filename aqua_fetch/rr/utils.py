@@ -255,6 +255,11 @@ class _RainfallRunoff(Datasets):
                 elif self.name == 'Caravan_DK':
                     catch_id = str(feature["properties"][boundary_id_map])
                     catch_id = str(catch_id).split('_')[1]
+                elif self.name == 'CAMELS_US':
+                    # in shapefile, for some stations, 0 is missing at the start
+                    catch_id = str(feature["properties"][boundary_id_map])
+                    if len(str(catch_id)) == 7:
+                        catch_id = f"0{catch_id}"
                 else:
                     # since we are treating catchment/station id as string
                     catch_id = str(feature["properties"][boundary_id_map])
@@ -1105,6 +1110,7 @@ class _RainfallRunoff(Datasets):
     def get_boundary(
             self,
             catchment_id: str,
+            to_wgs84: bool = True
     ):
         """
         returns boundary of a catchment in a required format
@@ -1113,6 +1119,9 @@ class _RainfallRunoff(Datasets):
         ----------
         catchment_id : str
             name/id of catchment
+        to_wgs84 : bool, optional (default=True)
+            if True, then the boundary will be transformed to WGS84 (EPSG:4326)
+            if it is not already in WGS84.
 
         Returns
         -------
@@ -1146,7 +1155,8 @@ class _RainfallRunoff(Datasets):
 
         geometry = bndry_id_map[catchment_id]
 
-        geometry = self.transform_boundary(geometry)
+        if to_wgs84:
+            geometry = self.transform_boundary(geometry)
 
         return geometry
 

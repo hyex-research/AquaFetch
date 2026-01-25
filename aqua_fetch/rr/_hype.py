@@ -190,6 +190,8 @@ class HYPE(_RainfallRunoff):
                 cols.append(col_name)
             stn_df = pd.concat(stn_dfs, axis=1)
             stn_df.columns = cols
+            stn_df.columns.name = 'dynamic_features'
+            stn_df.index.name = 'time'
             stns_dfs[st] = stn_df
 
         return stns_dfs
