@@ -325,6 +325,11 @@ class HYSETS(_RainfallRunoff):
 
         self._maybe_to_netcdf()
 
+        self.bbox = {"llcrnrlat": 18, "urcrnrlat": 80.384358,
+                     "llcrnrlon": -168.0,  "urcrnrlon": -55.0}
+        self.parallels = np.arange(18, 80, 7)
+        self.meridians = np.arange(-168, -55, 12)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path,  
@@ -448,6 +453,12 @@ class HYSETS(_RainfallRunoff):
     @property
     def end(self)->pd.Timestamp:
         return pd.Timestamp("20231231")
+
+    def usgs_stations(self)->List[str]:
+        """Returns the names of stations which are taken from USGS as list"""
+        df = pd.read_csv(os.path.join(self.path, "HYSETS_watershed_properties.txt"),
+                 sep=",")
+        return df.loc[df['Source']=='USGS']['Watershed_ID'].astype(str).tolist()
 
     def area(
             self,

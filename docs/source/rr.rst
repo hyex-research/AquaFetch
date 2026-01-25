@@ -481,7 +481,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr._EStreams
+.. autoclass:: aqua_fetch.rr._estreams._EStreams
    :members:
    :show-inheritance:
 

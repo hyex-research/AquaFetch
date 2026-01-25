@@ -109,6 +109,7 @@ class _RainfallRunoff(Datasets):
                 will be redownloaded.
             verbosity : int
                 This parameter determines the level of verbosity for logging messages.
+            
                     - 0: no message will be printed
                     - 1: only important messages will be printed
                     - >1: any higher value greater than 1 will result in more verbose output
@@ -117,7 +118,7 @@ class _RainfallRunoff(Datasets):
         """
         super(_RainfallRunoff, self).__init__(path=path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
-        self.bndry_id_map = {}
+        self.bndry_id_map_ = {}
         self.timestep = timestep
 
         if netCDF4 is None:
@@ -217,8 +218,11 @@ class _RainfallRunoff(Datasets):
         if fiona is None:
             raise ModuleNotFoundError("fiona module is not installed. Please install it to use boundary file")
 
+        if hasattr(self, 'bndry_id_map_') and self.bndry_id_map_:
+            return self.bndry_id_map_
+
         # Dictionary to hold {CatchID: geometry}
-        self.bndry_id_map = {}
+        self.bndry_id_map_ = {}
 
         assert os.path.exists(self.boundary_file), \
             f"Boundary file {self.boundary_file} does not exist."
@@ -256,9 +260,9 @@ class _RainfallRunoff(Datasets):
                     catch_id = str(feature["properties"][boundary_id_map])
                 geometry = feature["geometry"]
 
-                self.bndry_id_map[catch_id] = geometry
+                self.bndry_id_map_[catch_id] = geometry
 
-        return self.bndry_id_map
+        return self.bndry_id_map_
 
     def stations(self) -> List[str]:
         """
@@ -511,9 +515,8 @@ class _RainfallRunoff(Datasets):
         stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = self.fetch_static_features(static_features=[catchment_area()])
-        #df.columns = [catchment_area()]
 
-        return df.loc[stations, catchment_area()]
+        return df.loc[stations, catchment_area()].astype(self.fp)
 
     def _check_length(self, st, en):
         if st is None:
@@ -871,7 +874,8 @@ class _RainfallRunoff(Datasets):
 
                 if isinstance(dynamic, pd.Series):
                     # when single dynamic feature for a single station
-                    dynamic = pd.DataFrame(dynamic, columns=[dynamic_features])
+                    #dynamic = pd.DataFrame(dynamic, columns=[dynamic_features])
+                    dynamic = dynamic.to_frame(name=dynamic_features)
             
             elif isinstance(dynamic, dict):
                 assert len(dynamic) == 1, f"Expected dynamic dict of length 1, got {len(dynamic)}"
@@ -1090,9 +1094,9 @@ class _RainfallRunoff(Datasets):
         return df
 
 
-    def transform_coords(self, xyz: np.ndarray) -> np.ndarray:
+    def transform_boundary(self, xyz: np.ndarray) -> np.ndarray:
         """
-        transforms coordinates from projected to geographic
+        transforms boundary coordinates from projected to geographic
 
         must be implemented in base classes
         """
@@ -1142,7 +1146,7 @@ class _RainfallRunoff(Datasets):
 
         geometry = bndry_id_map[catchment_id]
 
-        geometry = self.transform_coords(geometry)
+        geometry = self.transform_boundary(geometry)
 
         return geometry
 
@@ -1263,13 +1267,13 @@ class _RainfallRunoff(Datasets):
         >>> dataset = RainfallRunoff('CAMELS_COL')
         >>> _, ax = plt.subplots()
         >>> for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
-        >>> start, end = period
-        >>> ax = dataset.plot_num_observations(
-        >>>     dynamic_features=['q_cms_obs'],
-        >>>     ax=ax,
-        >>>     start=start, end=end, show=False)
-        >>> ax.lines[idx].set_label(f'{start} to {end}')
-        >>> assert isinstance(ax, plt.Axes)
+        >>>     start, end = period
+        >>>     ax = dataset.plot_num_observations(
+        >>>         dynamic_features=['q_cms_obs'],
+        >>>         ax=ax,
+        >>>         start=start, end=end, show=False)
+        >>>     ax.lines[idx].set_label(f'{start} to {end}')
+        >>>     assert isinstance(ax, plt.Axes)
         >>> ax.legend()
         >>> plt.show()
         """

@@ -961,6 +961,8 @@ class RainfallRunoff(object):
         >>> dataset.plot_num_observations()
         # plotting for different time periods
         >>> dataset = RainfallRunoff('CAMELS_COL')
+        ...
+        # plot number of observations for different periods
         >>> _, ax = plt.subplots()
         >>> for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
         >>> start, end = period

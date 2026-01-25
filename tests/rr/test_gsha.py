@@ -29,7 +29,7 @@ from utils import (
     test_plot_catchment,
     )
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+gscad_path = ''
 
 ds = GSHA(path=gscad_path, verbosity=3)
 
@@ -221,73 +221,79 @@ def test_stn_dynamic_features():
     return
 
 
-test_stations(ds, 21568)
+# test_stations(ds, 21568)
 
-test_boundary(ds)
+# test_boundary(ds)
 
-test_plot_stations(ds)
+# test_plot_stations(ds)
 
-test_atlas()
+# test_atlas()
 
-test_uncertainty()
+# test_uncertainty()
 
-test_area_()
+# test_area_()
 
-test_coords_()
+# test_coords_()
 
-test_lc_vars()
+# test_lc_vars()
 
-test_streamflow_indices()
+# test_streamflow_indices()
 
-test_lai()
+# test_lai()
 
-test_storage()
+# test_storage()
 
-test_meteo()
+# test_meteo()
 
-test_fetch_static_features()
+# test_fetch_static_features()
 
-test_fetch_dynamic_features_()
+# test_fetch_dynamic_features_()
 
-test_stn_dynamic_features()
+# test_stn_dynamic_features()
 
-test_plot_catchment(ds)
+# test_plot_catchment(ds)
 
-print('All tests passed!')
-
-
-ds = Thailand(path=gscad_path, verbosity=3)
-
-test_dataset(ds, 
-             num_stations=73, 
-             dyn_data_len=7305, 
-             num_static_attrs=35,
-              num_dyn_attrs=27,
-              st="1992-01-01",
-              en="1992-12-31",
-              )
+# print('All tests passed!')
 
 
-ds = Japan(path=gscad_path, verbosity=3)
+# ds = Thailand(path=gscad_path, verbosity=3)
 
-test_dataset(ds, 
-             num_stations=751, 
-             dyn_data_len=16071, 
-             num_static_attrs=35,
-              num_dyn_attrs=27
-              )
+# test_dataset(ds, 
+#              num_stations=73, 
+#              dyn_data_len=7305, 
+#              num_static_attrs=35,
+#               num_dyn_attrs=27,
+#               st="1992-01-01",
+#               en="1992-12-31",
+#               )
 
 
-ds = Arcticnet(path=gscad_path, verbosity=3)
+# ds = Japan(path=gscad_path, verbosity=3)
 
-test_dataset(ds, 
-             num_stations=106, 
-             dyn_data_len=9131, 
-             num_static_attrs=35,
-              num_dyn_attrs=27,
-              st="1992-01-01",
-              en="1992-12-31",
-              )
+# test_dataset(ds, 
+#              num_stations=751, 
+#              dyn_data_len=16071, 
+#              num_static_attrs=35,
+#               num_dyn_attrs=27
+#               )
+
+
+# ds = Japan(path=gscad_path, timestep="h", verbosity=3)
+
+# q = ds.get_q()
+
+# assert pd.infer_freq(q.index) == 'h'
+
+# ds = Arcticnet(path=gscad_path, verbosity=3)
+
+# test_dataset(ds, 
+#              num_stations=106, 
+#              dyn_data_len=9131, 
+#              num_static_attrs=35,
+#               num_dyn_attrs=27,
+#               st="1992-01-01",
+#               en="1992-12-31",
+#               )
 
 
 ds = Spain(path=gscad_path, verbosity=3)

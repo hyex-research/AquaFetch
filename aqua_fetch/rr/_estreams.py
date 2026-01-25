@@ -87,7 +87,7 @@ class EStreams(_RainfallRunoff):
         self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
 
-        self._dynamic_features = self.meteo_data_station('IEEP0281', from_nc=True).columns.tolist()
+        self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
         self._static_features = self._static_data().columns.tolist()
 
         self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
@@ -255,24 +255,21 @@ class EStreams(_RainfallRunoff):
         stations = self._get_stations(countries, stations)
         return self.md.loc[stations, catchment_area()]
 
-    def meteo_data_station(self, station: str, from_nc:bool=False) -> pd.DataFrame:
+    def meteo_data_station(self, station: str) -> pd.DataFrame:
         """
-        Returns the meteorological data of a single station. If from_nc is True,
-        it reads from netcdf file if it exists.
+        Returns the meteorological data of a single station.
 
         Parameters
         ----------
             station : str
                 name/id of station of which to extract the data
-            from_nc : bool, optional (default=False)
-                if true, reads from netcdf file if it exists
 
         Returns
         -------
         pd.DataFrame
             a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
-        if from_nc and os.path.exists(self.nc_path):
+        if os.path.exists(self.nc_path) and xr is not None:
             if self.verbosity > 2:
                 print(f"Reading {station} from {self.nc_path}")
             ds = xr.open_dataset(self.nc_path)

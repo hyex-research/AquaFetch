@@ -5,6 +5,9 @@ from typing import Dict
 import random
 
 import pandas as pd
+
+from aqua_fetch.rr.utils import _make_boundary_2d
+
 from aqua_fetch._backend import xarray as xr
 
 from aqua_fetch._backend import plt, netCDF4, fiona
@@ -29,6 +32,10 @@ def test_coords(dataset):
     assert isinstance(df, pd.DataFrame)
     assert len(df) == len(stations)
     assert 'lat' in df and 'long' in df
+    # makes sure that lat and long are within valid ranges
+    assert (df['lat'] >= -90).all() and (df['lat'] <= 90).all(), "Latitude values out of range"
+    assert (df['long'] >= -180).all() and (df['long'] <= 180).all(), "Longitude values out of range"
+
     df = dataset.stn_coords(stations[0])  # returns coordinates of station
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 1, len(df)
@@ -113,12 +120,25 @@ def test_q_mm(dataset):
     return
 
 
-def test_boundary(dataset):
+def test_boundary(dataset, test_latlong_ranges: bool = True):
     logger.info(f"testing get_boundary for {dataset.name}")
 
     geometry = dataset.get_boundary(dataset.stations()[0])
 
     assert isinstance(geometry, fiona.Geometry), f"Expected fiona.Geometry, got {type(geometry)}"
+
+    # makes sure that the coordinates are valid i.e. within valid ranges
+
+    rings = _make_boundary_2d(geometry)
+
+    for ring in rings:
+        assert ring.shape[1] == 2, f"Expected 2D coordinates, got shape {ring.shape}"
+        # Check coordinate ranges (example for lat/lon)
+        lons = ring[:, 0]
+        lats = ring[:, 1]
+        if test_latlong_ranges:
+            assert (lons >= -180).all() and (lons <= 180).all(), "Longitude values out of range"
+            assert (lats >= -90).all() and (lats <= 90).all(), "Latitude values out of range"        
 
     return
 
@@ -171,7 +191,7 @@ def test_fetch_dynamic_features(dataset, station, dynamic_data_len, as_dataframe
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len,
                       as_dataframe=False, raise_len_error=True):
-    logger.info(f"test_dynamic_data for {dataset.name}")
+    logger.info(f"test_dynamic_data for {dataset.name} for {stations} stations with dataframe: {as_dataframe}")
 
     if num_stations == 0:
         num_stations = 3
@@ -242,7 +262,14 @@ def test_fetch_station_features(dataset, num_static_attrs, num_dyn_attrs, dyn_le
     assert dynamic is None
 
     # test for single dynamic feature
-    static, dynamic = dataset.fetch_station_features(station, static_features=None, dynamic_features=dataset.dynamic_features[0])
+    dyn_feature = dataset.dynamic_features[0]
+    # because length of q_cms_obs can vary, since its source is different
+    if dyn_feature == 'q_cms_obs':
+        dyn_feature = dataset.dynamic_features[1]
+    static, dynamic = dataset.fetch_station_features(
+        station, 
+        static_features=None, 
+        dynamic_features=dyn_feature)
     assert static is None
     assert len(dynamic.columns) == 1, f"num_dyn_attrs is {len(dynamic.columns)} not {1}"
     assert len(dynamic) == dyn_length, f"length is {len(dynamic)}"
@@ -403,6 +430,7 @@ def test_dataset(dataset,
                  st="20040101", 
                  en="20041231",
                  has_q: bool = True,
+                 test_latlong_ranges: bool = True
                  ):
     
     if netCDF4 is not None:
@@ -477,7 +505,7 @@ def test_dataset(dataset,
         test_q_mm(dataset)
 
     if fiona is not None:
-        test_boundary(dataset)
+        test_boundary(dataset, test_latlong_ranges=test_latlong_ranges)
 
         test_plot_catchment(dataset)
 

@@ -2,6 +2,7 @@
 import gc
 import os
 import warnings
+from pathlib import Path
 from datetime import datetime
 import concurrent.futures as cf
 from typing import Union, List, Dict
@@ -71,6 +72,26 @@ class LamaHCE(_RainfallRunoff):
     url = {
         '1_LamaH-CE_daily_hourly.tar.gz': 'https://zenodo.org/records/5153305/files/1_LamaH-CE_daily_hourly.tar.gz',
         '2_LamaH-CE_daily.tar.gz': 'https://zenodo.org/records/5153305/files/2_LamaH-CE_daily.tar.gz'
+    }
+
+    dirs_to_check = {
+        '1_LamaH-CE_daily_hourly.tar.gz': {
+            'total_upstrm': ['A_basins_total_upstrm', 'D_gauges']},
+        '2_LamaH-CE_daily.tar.gz': {
+            'total_upstrm': 
+                ['A_basins_total_upstrm', 'D_gauges'],
+            'intermediate_all': 
+                ['B_basins_intermediate_all', 'D_gauges'],
+            'intermediate_lowimp':
+                ['C_basins_intermediate_lowimp', 'D_gauges']
+                                    },
+    }
+
+    dirs_to_check1 = {
+        '1_LamaH-CE_daily_hourly.tar.gz': {'total_upstrm': 'total_upstrm_H'},
+        '2_LamaH-CE_daily.tar.gz': {'total_upstrm': 'total_upstrm_D',
+                                    'intermediate_all': 'intermediate_all_D',
+                                    },
     }
 
     _data_types = ['total_upstrm', 'intermediate_all', 'intermediate_lowimp']
@@ -212,6 +233,15 @@ class LamaHCE(_RainfallRunoff):
         for fname, url in self.url.items():
             fpath = os.path.join(self.path, fname)
             if not os.path.exists(fpath):
+
+                # # first we check if the .nc files exist so we don't download again
+                # if os.path.exists(os.path.join(self.path, self.dirs_to_check1[fname][data_type])):
+                #     continue
+
+                # then if the the unzipped folders exist so we don't download again
+                if all([os.path.exists(os.path.join(self.path, folder)) for folder in self.dirs_to_check[fname][data_type]]):
+                    continue
+    
                 if self.verbosity: 
                     print(f'downloading {fname}')
                 download(url, self.path, fname)
@@ -227,6 +257,11 @@ class LamaHCE(_RainfallRunoff):
 
         if not self.all_ncs_exist and to_netcdf:
             self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
+
+        self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5, 
+                        "llcrnrlon": 7.5, "urcrnrlon": 19}
+        self.parallels = range(46, 51, 1)
+        self.meridians = range(7, 19, 2)
 
     @property
     def dyn_fname(self) -> Union[str, os.PathLike]:
@@ -379,7 +414,7 @@ class LamaHCE(_RainfallRunoff):
         lat_0, lon_0 = 52, 10
 
         x, y = laea_to_wgs84(df.loc[:, 'long'], df.loc[:, 'lat'], lon_0, lat_0, false_easting, false_northing)
-
+        # todo : what about index?
         coord_m = pd.concat([x, y], axis=1)
         coord_m.columns = ['lat', 'long']
         return coord_m
@@ -893,6 +928,38 @@ class LamaHIce(LamaHCE):
     
     """
 
+    dirs_to_check1 = {
+        'lamah_ice.zip': {'total_upstrm': 'total_upstrm_D',
+                          'intermediate_all': 'intermediate_all_D',
+                          'intermediate_lowimp': 'intermediate_lowimp_D'
+                          },
+        'lamah_ice_hourly': {
+            'total_upstrm': 'total_upstrm_H',
+            'intermediate_all': 'intermediate_all_H',
+                                    },
+        'Caravan_extension_lamahice.zip': {'total_upstrm': '', 'intermediate_all': '', 'intermediate_lowimp': ''}
+    }
+
+    dirs_to_check = {
+        'lamah_ice.zip': {
+            'total_upstrm': 
+                [os.path.join('lamah_ice', 'lamah_ice', 'A_basins_total_upstrm'), os.path.join('lamah_ice', 'lamah_ice', 'D_gauges')],
+            'intermediate_all': 
+                [os.path.join('lamah_ice', 'lamah_ice', 'B_basins_intermediate_all'), os.path.join('lamah_ice', 'lamah_ice', 'D_gauges')],
+            'intermediate_lowimp': 
+                [os.path.join('lamah_ice', 'lamah_ice', 'C_basins_intermediate_lowimp'), os.path.join('lamah_ice', 'lamah_ice', 'D_gauges')],
+                          },
+        'lamah_ice_hourly.zip': {
+            'total_upstrm': 
+                [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'A_basins_total_upstrm'), os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
+            'intermediate_all': ['intermediate_all_H'],
+                                    },    
+        'Caravan_extension_lamahice.zip': {
+            'total_upstrm': [],
+            'intermediate_all': [],
+            'intermediate_lowimp': []},
+    }
+
     url = {
         'Caravan_extension_lamahice.zip':
             'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/Caravan_extension_lamahice.zip',
@@ -947,6 +1014,10 @@ class LamaHIce(LamaHCE):
                          overwrite=overwrite,
                          to_netcdf=to_netcdf,
                          **kwargs)
+
+        self.bbox = {'llcrnrlat': 63.0, 'urcrnrlat': 67.0, 'llcrnrlon': -25.0, 'urcrnrlon': -13.0}
+        self.parallels = range(63, 67, 1)
+        self.meridians = range(-25, -12, 2)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1050,7 +1121,7 @@ class LamaHIce(LamaHCE):
         lon_0, lat_0, lat_1, lat_2, false_easting, 
         false_northing)
 
-        coords_m = pd.DataFrame({'lat': lat, 'long': lon})
+        coords_m = pd.DataFrame({'lat': lat, 'long': lon}, index=df.index)
         return coords_m
 
     def met_fname(self, station):
