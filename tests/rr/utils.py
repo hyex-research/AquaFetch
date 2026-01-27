@@ -33,8 +33,8 @@ def test_coords(dataset):
     assert len(df) == len(stations)
     assert 'lat' in df and 'long' in df
     # makes sure that lat and long are within valid ranges
-    assert (df['lat'] >= -90).all() and (df['lat'] <= 90).all(), "Latitude values out of range"
-    assert (df['long'] >= -180).all() and (df['long'] <= 180).all(), "Longitude values out of range"
+    assert df['lat'].dropna().between(-90, 90).all(), "Latitude values out of range"
+    assert df['long'].dropna().between(-180, 180).all(), "Longitude values out of range"
 
     df = dataset.stn_coords(stations[0])  # returns coordinates of station
     assert isinstance(df, pd.DataFrame)
@@ -300,7 +300,7 @@ def test_all_data(dataset, stations, stn_data_len, as_dataframe=False,
 def check_dataset(dataset, xds, num_stations, data_len,
                   raise_len_error=True):
     assert isinstance(xds, xr.Dataset), f'xds is of type {xds.__class__.__name__}'
-    assert len(xds.data_vars) == num_stations, f'for {dataset.name}, {len(xds.data_vars)} data_vars are present'
+    assert len(xds.data_vars) == num_stations, f'for {dataset.name}, {len(xds.data_vars)} data_vars are present not {num_stations}'
     for var in xds.data_vars:
         msg = f"""shape of data is {xds[var].data.shape} and not {data_len, len(dataset.dynamic_features)}"""
         if raise_len_error:

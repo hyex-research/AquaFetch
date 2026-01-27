@@ -5,6 +5,7 @@ import time
 import warnings
 import requests
 from io import StringIO
+from datetime import datetime
 from typing import List, Union, Dict, Tuple
 from requests.exceptions import JSONDecodeError
 from concurrent.futures import ProcessPoolExecutor
@@ -17,6 +18,7 @@ from .._backend import netCDF4, xarray as xr
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from ._hysets import HYSETS
+from ._utils import tw_resampler
 
 from ._map import (
     observed_streamflow_cms,
@@ -150,14 +152,19 @@ class USGS(_RainfallRunoff):
             if self.verbosity:
                 print(f"hysets_path is {hysets_path}")
 
-        self.hysets = HYSETS(path = hysets_path, verbosity=verbosity)
+        self.hysets = HYSETS(path = hysets_path, verbosity=verbosity-1)
         self.hysets_path = self.hysets.path
 
         self._stations = self.__stations()
         self.metadata = maybe_make_and_get_metadata(self.path, self.stations())
 
         self._static_features = self.__static_features()
-    
+
+        self.bbox = {"llcrnrlat": 22, "urcrnrlat": 75,
+                     "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
+        self.parallels = np.arange(22, 75, 7)
+        self.meridians = np.arange(-168, -65, 12)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return self.hysets.boundary_file
@@ -480,9 +487,13 @@ class USGS(_RainfallRunoff):
         if ext == 'csv':
             return pd.read_csv(fpath, index_col=0, **read_csv_kwargs)
         else:
+            ds = xr.open_dataset(fpath)
+
             if as_dataframe:
-                return xr.open_dataset(fpath).to_dataframe()
-            return xr.open_dataset(fpath)        
+                return ds['q_cms_obs'].to_pandas()
+            
+            ds = ds['q_cms_obs'].assign_coords(stations=ds['stations']).to_dataset(dim='stations')
+            return ds
 
     def __stations(self)->List[str]:
         if self.verbosity>1:
@@ -492,6 +503,7 @@ class USGS(_RainfallRunoff):
         if isinstance(dataset, xr.Dataset):
             # get names of all variables
             return list(dataset.data_vars.keys())
+            #return [stn for stn in dataset.stations.data]
         else:
             return dataset.columns.tolist()
 
@@ -580,8 +592,12 @@ def make_daily_q(
         path:str,
         sites:List[str], 
         cpus:int,
+        end = None,
         verbosity:int=1
         ):
+
+    if end is None:
+        end = datetime.today().strftime("%Y-%m-%d")
 
     if verbosity: print(f"Downloading daily data for {len(sites)} sites using {cpus} cpus")
 
@@ -591,7 +607,10 @@ def make_daily_q(
 
     start = time.time()
     with ProcessPoolExecutor(max_workers=cpus) as executor:
-        data = executor.map(download_daily_record, sites)
+        data = executor.map(download_daily_record, sites, [end]*len(sites))
+
+    data = pd.concat(list(data), axis=1)
+    data.index = pd.to_datetime(data.index)
 
     total = round((time.time() - start)/60, 2)
     
@@ -602,7 +621,7 @@ def make_daily_q(
         save_daily_q_as_csv(path, data)
     else:
         save_daily_q_as_nc(path, data)
-
+        #save_daily_q_as_csv(path, data)
 
     total = round((time.time() - start)/60, 2)
     print(f"Time taken: to store {total} mins")
@@ -611,43 +630,90 @@ def make_daily_q(
 
 def save_daily_q_as_csv(path, data):
     df = pd.DataFrame(data)
-    df.to_csv(os.path.join(path, 'daily_q.csv'), index=True)
+    df.to_csv(os.path.join(path, 'daily_q.csv'), index=True, index_label='time')
     return
 
-def save_daily_q_as_nc(path, data):
+
+def save_daily_q_as_nc(
+        path, 
+        data
+        ):
     from netCDF4 import Dataset, date2num
 
-    ncfile = Dataset(os.path.join(path, 'daily_q.nc'), mode='w', format='NETCDF4')
+    # ncfile = Dataset(os.path.join(path, 'daily_q.nc'), mode='w', format='NETCDF4')
 
-    _ = ncfile.createDimension('time', None)  # unlimited dimension
+    # _ = ncfile.createDimension('time', None)  # unlimited dimension
 
-    new_idx = pd.date_range(start=DAILY_START, end=DAILY_END, freq='D')
-    time_var = ncfile.createVariable('time', 'f8', ('time',))
-    time_var.units = 'days since 1820-01-01 00:00:00'
-    time_var.calendar = 'gregorian'
-    time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
+    # new_idx = pd.date_range(start=DAILY_START, end=end, freq='D')
+    # time_var = ncfile.createVariable('time', 'f8', ('time',))
+    # time_var.units = 'days since 1820-01-01 00:00:00'
+    # time_var.calendar = 'gregorian'
+    # time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
 
-    for idx, ts in enumerate(data):
-        # create a variable for each column
-        col_var = ncfile.createVariable(str(ts.name), 
-                                        datatype='f4', 
-                                        dimensions=('time',),
-                                        complevel=4, 
-                                        compression='zlib',
-                                        shuffle=True,
-                                        least_significant_digit=4,
-                                        )
-        # ts may have different index than new_idx/tim_demension, so we need to reindex
-        new_ts = ts.reindex(index=new_idx)
+    # for idx, ts in enumerate(data):
+    #     # create a variable for each column
+    #     col_var = ncfile.createVariable(str(ts.name), 
+    #                                     datatype='f4', 
+    #                                     dimensions=('time',),
+    #                                     complevel=2, 
+    #                                     compression='zlib',
+    #                                     shuffle=True,
+    #                                     least_significant_digit=4,
+    #                                     )
+    #     # ts may have different index than new_idx/tim_demension, so we need to reindex
+    #     new_ts = ts.reindex(index=new_idx)
 
-        col_var[:] = new_ts.values
-        col_var.units = "cms"
+    #     col_var[:] = new_ts.values
+    #     col_var.units = "cms"
+    #     col_var.description = "daily discharge"
+
+    #     if idx % 100 == 0:
+    #         print(f"Saved data for {idx} sites in .nc file")
+
+    # ncfile.close()
+
+    # saving as a single variable with stations as dimension (appears to be more efficient i/o wise)
+    out_path = os.path.join(path, 'daily_q.nc')
+    with Dataset(out_path, "w", format="NETCDF4") as nc:
+        # create the dimensions which will be used to create variable
+        _ = nc.createDimension('time', data.shape[0])
+        _ = nc.createDimension('stations', data.shape[1])
+
+        col_var = nc.createVariable(observed_streamflow_cms(),
+                                    datatype=np.float32,
+                                    dimensions=('time', 'stations'),
+                                    complevel=4,
+                                    compression='zlib',
+                                    shuffle=True,
+                                    least_significant_digit=4,
+                                    # chunk size equal to data for one station
+                                    chunksizes=(data.shape[0], 1)
+                                    )
+        
+        col_var[:] = data.values
         col_var.description = "daily discharge"
+        col_var.units = "cms"
 
-        if idx % 100 == 0:
-            print(f"Saved data for {idx} sites in .nc file")
+        station_var = nc.createVariable('stations', str, ('stations',))
+        station_var[:] = np.array(data.columns).astype(str)  
 
-    ncfile.close()
+        # Create time variable with CF-compliant encoding
+        time_var = nc.createVariable('time', 'i4', ('time',))
+        time_var.calendar = 'standard'
+        time_var.long_name = 'time'
+        time_var.standard_name = 'time'
+        time_var.axis = 'T'
+
+        time_strings = data.index.strftime("%Y%j").tolist()
+        # Convert time strings from YYYYJJJ to YYYYMMDD format    
+        datetime_objects = [datetime.strptime(ts, "%Y%j") for ts in time_strings]
+        time_var.units = 'days since 1900-01-01 00:00:00'
+
+        # Convert to days since reference date
+        reference_date = datetime(1900, 1, 1)
+        time_values = [(dt - reference_date).total_seconds() / 86400 for dt in datetime_objects]
+
+        time_var[:] = time_values
 
     return
 
@@ -788,6 +854,7 @@ def download_daily_q_nwis(
 
 def download_daily_record(
         site:str,
+        end:str
         )->pd.Series:
 
     # todo: should we store the data in csv files so that we don't have to download it again?
@@ -800,7 +867,7 @@ def download_daily_record(
 
     site_data = download_daily_q_nwis(site, 
                     start="1820-01-01",  # DAILY_START
-                    end="2024-12-31",    # DAILY_END
+                    end=end,    # DAILY_END
                     )
     if f'00060_Mean' in site_data.columns:
         # get data for stations which have A in 00060_Mean_cd column
@@ -886,6 +953,8 @@ def format_response(
 
 def _read_rdb(rdb):
     """
+    The following code is taken and modified after dataretrieval github repo
+
     Convert NWIS rdb table into a ``pandas.dataframe``.
 
     Parameters
@@ -931,6 +1000,7 @@ def _read_rdb(rdb):
     df = format_response(df)
     return df
 
+
 def _download_metadata(site:str)->pd.DataFrame:
     response = requests.get(
         'https://waterservices.usgs.gov/nwis/site', 
@@ -940,3 +1010,84 @@ def _download_metadata(site:str)->pd.DataFrame:
         )
 
     return _read_rdb(response.text)
+
+
+def download_hourly_q_nwis(
+        site:str = "09246200",
+        start = '1995-08-11', 
+        end='1995-08-12'
+)->pd.DataFrame:
+
+    response = requests.get(
+        "https://waterservices.usgs.gov/nwis/iv", 
+        params={'format': 'json', 
+                'parameterCd': '00060', 
+                'sites': site, 
+                'startDT': start, 
+                'endDT': end, 
+                'multi_index': None,
+                }, 
+        headers={"user-agent": f"python-dataretrieval/1.0.11"}, verify=True)
+
+    if response.status_code in [400, 404, 414]:
+        raise ValueError(f"Bad Request, check that your parameters are correct. URL: {response.url}")
+
+    try:
+        site_data = _read_json(response.json())
+    except JSONDecodeError:
+        site_data = pd.DataFrame()
+        print(f"Site: {site} JSONDecodeError")
+
+    if 'datetime' in site_data.columns: 
+        site_data.index = pd.to_datetime(site_data.pop('datetime'))
+
+    return site_data
+
+
+def download_hourly_record(
+        site:str,
+        path:str,
+        start:str = "1910-01-01",
+        end:str = None,
+        overwrite:bool=False,
+        )->pd.Series:
+
+    fpath = os.path.join(path, f"{site}.csv")
+
+    if os.path.exists(fpath) and not overwrite:
+        site_data = pd.read_csv(fpath, index_col=0, parse_dates=True, dtype={site:'float32'})
+        site_data = site_data[site]
+        site_data.name = site
+        return site_data
+
+    site_data = download_hourly_q_nwis(site, 
+                    start=start, 
+                    end=end,
+                    )
+
+    if len(site_data) == 0:
+        # return empty series
+        site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h')
+                              )    
+    elif isinstance(site_data, pd.DataFrame) and site_data.columns[1] == '00060':
+        site_data = site_data[site_data['00060_cd'].isin(['A, [92]', 'A, [91]', 'A, [93]', 'A, e', 'A'])]
+
+        site_data = site_data['00060'].resample('h').apply(lambda subdata: tw_resampler(subdata, site_data['00060'].sort_index()))
+    else:
+       site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h'))
+    
+    site_data.name = site
+    # site_data for some stations is not tz aware, so we make it tz aware first
+    # and then convert to UTC and remove tz info so that the csv files can be 
+    # joined later without any issues
+    if site_data.index.tzinfo is not None:
+        site_data.index = site_data.index.tz_convert("UTC").tz_localize(None)
+    site_data = site_data * 0.028316847 # convert cfs to cms
+    site_data = site_data.astype('float32')
+
+    site_data = site_data.sort_index()
+
+    site_data.to_csv(fpath, index=True, index_label='time')
+    return site_data

@@ -1160,9 +1160,9 @@ class _GSHA(_RainfallRunoff):
     Parent class for those datasets which uses static and dynamic features from
     GSHA dataset . The following dataset classes are based on this class:
 
-        - py:class:`aqua_fetch.Japan`
-        - py:class:`aqua_fetch.Thailand`
-        - py:class:`aqua_fetch.Spain`
+        - :py:class:`aqua_fetch.Japan`
+        - :py:class:`aqua_fetch.Thailand`
+        - :py:class:`aqua_fetch.Spain`
 
     """
 
@@ -1620,7 +1620,9 @@ class Japan(_GSHA):
 
         if os.path.exists(hourly_file):
             print(f"reading hourly data from {hourly_file}")
-            return pd.read_csv(hourly_file, index_col=0)
+            q = pd.read_csv(hourly_file, index_col=0)
+            q.index = pd.to_datetime(q.index)
+            return q
 
         path = os.path.join(self.path, 'hourly_files')
         if not os.path.exists(path):
@@ -1642,7 +1644,7 @@ class Japan(_GSHA):
         
         q = pd.concat(stn_qs, axis=1)
 
-        q.to_csv(hourly_file)
+        q.to_csv(hourly_file, index=True, index_label='time')
         return q
 
 

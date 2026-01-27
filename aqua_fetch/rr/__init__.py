@@ -43,7 +43,6 @@ from ._gsha import Thailand
 from ._gsha import Spain
 from ._estreams import Ireland
 from ._estreams import Finland
-from ._estreams import Finland
 from ._estreams import Poland
 from ._estreams import Italy
 from ._camels import CAMELS_FR
