@@ -150,6 +150,12 @@ class Bull(_RainfallRunoff):
     """
 
     url = "https://zenodo.org/records/10629809"
+    # todo : why setting a dictionary does not work?
+    # url = {
+    #     "attributes.7z": "https://zenodo.org/record/10629809/files/attributes.7z",
+    #     "shapefiles.zip": "https://zenodo.org/record/10629809/files/shapefiles.zip",
+    #     "timeseries.zip": "https://zenodo.org/record/10629809/files/timeseries.zip",
+    # }
 
     def __init__(
             self,

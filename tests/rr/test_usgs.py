@@ -24,7 +24,7 @@ from aqua_fetch.rr._usgs import download_hourly_q_nwis, download_hourly_record
 from utils import test_dataset
 
 
-gscad_path = ''
+raw_data_path = '/path/to/raw/data'  # replace with actual path
 
 
 class TestUSGS(unittest.TestCase):
@@ -87,7 +87,7 @@ class TestUSGS(unittest.TestCase):
 
     def test_with_camelsh(self):
 
-        dataset = CAMELSH(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+        dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
 
         start = "1995-08-11"
         end = "1996-12-31"
@@ -96,7 +96,7 @@ class TestUSGS(unittest.TestCase):
         q_camelsh = dataset.q([site])[site].sel(dynamic_features=['q_cms_obs']).to_pandas()
 
 
-        path = os.path.join(gscad_path, 'USGS', 'hourly_files')
+        path = os.path.join(raw_data_path, 'USGS', 'hourly_files')
         q_af = download_hourly_record(site, end=end, path=path, start=start)
 
 
@@ -108,7 +108,7 @@ class TestUSGS(unittest.TestCase):
         return
 
     def test_dataset_class(self):
-        dataset = USGS(path=gscad_path, verbosity=2)
+        dataset = USGS(path=raw_data_path, verbosity=2)
         test_dataset(dataset, 12004, 27028, 29, 20)
         return
 

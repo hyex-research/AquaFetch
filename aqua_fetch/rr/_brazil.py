@@ -35,6 +35,8 @@ from ._map import (
     slope
     )
 
+from .._backend import xarray as xr
+
 # directory separator
 SEP = os.sep
 
@@ -174,15 +176,34 @@ class CAMELS_BR(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        for fname, url in self.urls.items():
-            fpath = os.path.join(self.path, fname)
-            if not os.path.exists(fpath) or (os.path.exists(fpath) and self.overwrite):
-                if self.verbosity:
-                    print(f"Downloading {fname} from {url + fname} at {fpath}")
-                download(url + fname, self.path, verbosity=self.verbosity)
-                unzip(self.path, verbosity=self.verbosity)
-            elif self.verbosity>1:
-                print(f"{fpath} already exists")
+        for zipfilename, url in self.urls.items():
+            zip_fpath = os.path.join(self.path, zipfilename)
+
+            if not self.overwrite:
+
+                if os.path.exists(self.path):
+                    if self.verbosity:
+                        print(f"{self.path} already exists. Skipping download.")
+                    continue
+
+                unzipped_fpath = zip_fpath.replace('.zip', '')
+                if os.path.exists(unzipped_fpath):
+                    if self.verbosity:
+                        print(f"{unzipped_fpath} already exists. Skipping download.")
+                    continue
+
+                if self.dyn_fpath_exists and os.path.exists(os.path.join(self.path, 'static_features.csv')):
+                    if self.verbosity:
+                        print(f"All files already exist in {self.path}. Skipping download.")
+                    continue
+
+                #if not os.path.exists(fpath) or (os.path.exists(fpath) and self.overwrite):
+            if self.verbosity:
+                print(f"Downloading {zipfilename} from {url + zipfilename} at {zip_fpath}")
+            download(url + zipfilename, self.path, verbosity=self.verbosity)
+            unzip(self.path, verbosity=self.verbosity)
+            # elif self.verbosity>1:
+            #     print(f"{fpath} already exists")
 
         # todo : dynamic data must be stored for all stations and not only for stations which are common among all attributes
         self._maybe_to_netcdf()
@@ -419,6 +440,13 @@ class CAMELS_BR(_RainfallRunoff):
 
     def all_stations(self, feature: str) -> List[str]:
         """Tells all station ids for which a data of a specific attribute is available."""
+
+        # # first check if static_features.csv is available, if yes then read station ids from there
+        # # because folders may not be available        
+        # fpath = os.path.join(self.path, 'static_features.csv')
+        # if os.path.exists(fpath):
+        #     return pd.read_csv(fpath, usecols=[0], dtype={'gauge_id': str})['gauge_id'].values.tolist()
+
         p = self.folders[feature]
         return [f.split('_')[0] for f in os.listdir(os.path.join(self.path, p, p))]
 
@@ -433,6 +461,9 @@ class CAMELS_BR(_RainfallRunoff):
         >>> dataset = CAMELS_BR()
         >>> stations = dataset.stations()
         """
+        if self.dyn_fpath_exists and xr is not None:
+            return list(xr.open_dataset(self.dyn_fpath).data_vars)
+        
         return self.all_stations('streamflow_mm')
 
     def fetch_raw_streamflow(

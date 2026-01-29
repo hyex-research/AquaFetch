@@ -8,6 +8,7 @@ from io import StringIO
 from datetime import datetime
 from typing import List, Union, Dict, Tuple
 from requests.exceptions import JSONDecodeError
+from requests.exceptions import ContentDecodingError
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -1047,9 +1048,10 @@ def download_hourly_q_nwis(
 def download_hourly_record(
         site:str,
         path:str,
-        start:str = "1910-01-01",
+        start:str = "1979-02-11",
         end:str = None,
         overwrite:bool=False,
+        save_empty_file:bool=False
         )->pd.Series:
 
     fpath = os.path.join(path, f"{site}.csv")
@@ -1060,15 +1062,21 @@ def download_hourly_record(
         site_data.name = site
         return site_data
 
-    site_data = download_hourly_q_nwis(site, 
-                    start=start, 
-                    end=end,
-                    )
+    try:
+        site_data = download_hourly_q_nwis(
+            site, 
+            start=start, 
+            end=end,
+            )
+    except (JSONDecodeError, ContentDecodingError, TypeError):
+        site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h')
+            )
 
     if len(site_data) == 0:
         # return empty series
         site_data = pd.Series(
-            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h')
+            index = pd.date_range(start="2024-01-01", end="2024-01-02", freq='h')
                               )    
     elif isinstance(site_data, pd.DataFrame) and site_data.columns[1] == '00060':
         site_data = site_data[site_data['00060_cd'].isin(['A, [92]', 'A, [91]', 'A, [93]', 'A, e', 'A'])]
@@ -1076,7 +1084,7 @@ def download_hourly_record(
         site_data = site_data['00060'].resample('h').apply(lambda subdata: tw_resampler(subdata, site_data['00060'].sort_index()))
     else:
        site_data = pd.Series(
-            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h'))
+            index = pd.date_range(start="2024-01-01", end="2024-01-02", freq='h'))
     
     site_data.name = site
     # site_data for some stations is not tz aware, so we make it tz aware first
@@ -1085,9 +1093,12 @@ def download_hourly_record(
     if site_data.index.tzinfo is not None:
         site_data.index = site_data.index.tz_convert("UTC").tz_localize(None)
     site_data = site_data * 0.028316847 # convert cfs to cms
+
     site_data = site_data.astype('float32')
 
     site_data = site_data.sort_index()
 
-    site_data.to_csv(fpath, index=True, index_label='time')
+    if len(site_data.dropna()) > 0 or save_empty_file:
+        site_data.to_csv(fpath, index=True, index_label='time')
+
     return site_data
