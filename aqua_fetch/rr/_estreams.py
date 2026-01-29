@@ -86,9 +86,8 @@ class EStreams(_RainfallRunoff):
         self.md = self.gauge_stations()
         self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
         self._stations = self.__stations()
-
-        self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()
-        self._static_features = self._static_data().columns.tolist()
+        self._dynamic_features = None # lazy loading, will be loaded when first accessed
+        self._static_features = None # lazy loading, will be loaded when first accessed
 
         self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
         self.parallels = range(30, 80, 15)
@@ -106,10 +105,14 @@ class EStreams(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
+        if self._dynamic_features is None:
+            self._dynamic_features = self.meteo_data_station('IEEP0281').columns.tolist()    
         return self._dynamic_features
 
     @property
     def static_features(self):
+        if self._static_features is None:
+            self._static_features = self._static_data().columns.tolist()
         return self._static_features
 
     @property

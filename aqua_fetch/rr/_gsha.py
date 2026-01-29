@@ -150,10 +150,8 @@ class GSHA(_RainfallRunoff):
         wsAll.columns = ['station_id', 'lat', 'long', 'area', 'agency']
         wsAll.index = wsAll.pop('station_id')
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
-
-        self._daily_dynamic_features = self.__daily_dynamic_features()
-        self._yearly_dynamic_features = self.__yearly_dynamic_features()
-
+        self._daily_dynamic_features = None # lazy initialization, computed when accessed
+        self._yearly_dynamic_features = None # lazy initialization, computed when accessed
         self._static_features = self.__static_features()
 
     @property
@@ -188,10 +186,14 @@ class GSHA(_RainfallRunoff):
 
     @property
     def daily_dynamic_features(self) -> List[str]:
+        if self._daily_dynamic_features is None:
+            self._daily_dynamic_features = self.__daily_dynamic_features()
         return self._daily_dynamic_features
 
     @property
     def yearly_dynamic_features(self) -> List[str]:
+        if self._yearly_dynamic_features is None:
+            self._yearly_dynamic_features = self.__yearly_dynamic_features()
         return self._yearly_dynamic_features
 
     @property

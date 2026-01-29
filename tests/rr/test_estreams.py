@@ -1,5 +1,4 @@
 
-import math
 import os
 import site
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,9 +35,9 @@ from utils import (
     test_plot_catchment,
     )
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+raw_data_path = '/path/to/your/raw/data'  # change this path accordingly
 
-ds = EStreams(path=gscad_path, verbosity=3)
+ds = EStreams(path=raw_data_path, verbosity=3)
 
 assert ds.md.shape == (17130, 29), ds.md.shape
 
@@ -131,7 +130,7 @@ test_plot_catchment(ds)
 print('All tests passed!')
 
 
-ds = Ireland(path=gscad_path, verbosity=3)
+ds = Ireland(path=raw_data_path, verbosity=3)
 
 ds.basin_id_gauge_id_map()['IEOP0126'] == '20002'
 ds.gauge_id_basin_id_map()['20002'] == 'IEOP0126'
@@ -147,7 +146,7 @@ _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
 pd.concat(list(dynamic.values()), axis=1).count().sum() >= 3303345
 
 
-ds = Finland(path=gscad_path, processes=1, 
+ds = Finland(path=raw_data_path, processes=1, 
              verbosity=3)
 
 test_dataset(ds, 
@@ -161,7 +160,7 @@ test_dataset(ds,
 _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
 pd.concat(list(dynamic.values()), axis=1).count().sum() >= 814277
 
-ds = Italy(path=gscad_path, verbosity=3)
+ds = Italy(path=raw_data_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=294, 
@@ -172,7 +171,7 @@ test_dataset(ds,
 
 
 
-ds = Poland(path=gscad_path, verbosity=3)
+ds = Poland(path=raw_data_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=1287, 
@@ -188,7 +187,7 @@ q = ds.get_q()
 
 assert q.shape[1]>1287
 
-ds = Portugal(path=gscad_path, verbosity=3)
+ds = Portugal(path=raw_data_path, verbosity=3)
 
 q = ds.get_q()
 
@@ -209,7 +208,7 @@ test_dataset(ds,
 
 ## Slovenia
 
-ds = Slovenia(path=gscad_path, verbosity=3)
+ds = Slovenia(path=raw_data_path, verbosity=3)
 
 q = ds.get_q()
 
