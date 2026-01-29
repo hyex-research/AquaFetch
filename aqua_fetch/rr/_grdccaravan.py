@@ -54,7 +54,7 @@ from ._map import (
 class GRDCCaravan(_RainfallRunoff):
     """
     This is a dataset of 5357 catchments from around the globe following the works of
-    `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_ . The dataset consists of 39
+    `Faerber et al., 2023 <https://zenodo.org/records/15349031>`_ . The dataset consists of 39
     dynamic (timeseries) features and 211 static features. The dynamic (timeseries) data
     spands from 1950-01-02 to 2019-05-19.
 
@@ -137,10 +137,10 @@ class GRDCCaravan(_RainfallRunoff):
     """
 
     url = {
-        'caravan-grdc-extension-nc.tar.gz':
-            "https://zenodo.org/records/10074416/files/caravan-grdc-extension-nc.tar.gz?download=1",
-        'caravan-grdc-extension-csv.tar.gz':
-            "https://zenodo.org/records/10074416/files/caravan-grdc-extension-csv.tar.gz?download=1"
+        'GRDC_Caravan_extension_nc.zip':
+            "https://zenodo.org/records/15349031/files/GRDC_Caravan_extension_nc.zip?download=1",
+        'GRDC_Caravan_extension_csv.zip':
+            "https://zenodo.org/records/15349031/files/GRDC_Caravan_extension_csv.zip?download=1"
     }
 
     def __init__(
@@ -153,12 +153,12 @@ class GRDCCaravan(_RainfallRunoff):
 
         if xr is None:
             self.ftype = 'csv'
-            if "caravan-grdc-extension-nc.tar.gz" in self.url:
-                self.url.pop("caravan-grdc-extension-nc.tar.gz")
+            if "GRDC_Caravan_extension_nc.zip" in self.url:
+                self.url.pop("GRDC_Caravan_extension_nc.zip") # 
         else:
             self.ftype = 'netcdf'
-            if "caravan-grdc-extension-csv.tar.gz" in self.url:
-                self.url.pop("caravan-grdc-extension-csv.tar.gz")
+            if "GRDC_Caravan_extension_csv.zip" in self.url:
+                self.url.pop("GRDC_Caravan_extension_csv.zip")
 
         super().__init__(path=path, verbosity=verbosity, **kwargs)
 
@@ -168,6 +168,16 @@ class GRDCCaravan(_RainfallRunoff):
             os.makedirs(self.path)
 
         for _file, url in self.url.items():
+            
+            fpath = os.path.join(self.path, _file[:-4])
+            if os.path.exists(fpath) and not overwrite:
+                if self.verbosity > 0:
+                    print(f"{_file} at {self.path} already exists")
+                
+                # zip file is present but is not extracted
+                unzip(self.path)
+                continue
+
             fpath = os.path.join(self.path, _file)
             if not os.path.exists(fpath) and not overwrite:
                 if self.verbosity > 0:
@@ -181,6 +191,10 @@ class GRDCCaravan(_RainfallRunoff):
         self._stations = self.other_attributes().index.to_list()
         self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_stn_dyn(self.stations()[0]).columns.tolist()
+
+        self.bbox = {"llcrnrlat": -90, "urcrnrlat": 90, "llcrnrlon": -180, "urcrnrlon": 180}
+        self.parallels = range(-90, 90, 30)
+        self.meridians = range(-180, 180, 30)
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -224,26 +238,32 @@ class GRDCCaravan(_RainfallRunoff):
     @property
     def shapefiles_path(self):
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
+            return os.path.join(self.path, 'GRDC_Caravan_extension_csv',
+                                'GRDC_Caravan_extension_csv',
                                 'shapefiles', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
+        return os.path.join(self.path, 'GRDC_Caravan_extension_nc',
+                            'GRDC_Caravan_extension_nc',
                             'shapefiles', 'grdc')
 
     @property
     def attrs_path(self):
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
+            return os.path.join(self.path, 'GRDC_Caravan_extension_csv',
+                                'GRDC_Caravan_extension_csv',
                                 'attributes', 'grdc')
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
+        return os.path.join(self.path, 'GRDC_Caravan_extension_nc',
+                            'GRDC_Caravan_extension_nc',
                             'attributes', 'grdc')
 
     @property
     def ts_path(self) -> os.PathLike:
         if self.ftype == 'csv':
-            return os.path.join(self.path, 'GRDC-Caravan-extension-csv',
-                                'timeseries', 'grdc')
+            return os.path.join(self.path, 'GRDC_Caravan_extension_csv',
+                                'GRDC_Caravan_extension_csv',
+                                'timeseries', self.ftype, 'grdc')
 
-        return os.path.join(self.path, 'GRDC-Caravan-extension-nc',
+        return os.path.join(self.path, 'GRDC_Caravan_extension_nc',
+                            'GRDC_Caravan_extension_nc',
                             'timeseries', self.ftype, 'grdc')
 
     def stations(self) -> List[str]:
@@ -340,11 +360,11 @@ class GRDCCaravan(_RainfallRunoff):
         stations = validate_attributes(stations, self.stations())
         st, en = self._check_length(st, en)
 
-        cpus = self.processes or min(get_cpus(), 64)
+        cpus = self.processes or min(get_cpus() - 2, 64)
 
         if len(stations) > 10 and cpus>1:
             
-            if self.verbosity > 0:
+            if self.verbosity > 1:
                 print(f"Using {cpus} cpus to read dynamic features for {len(stations)} stations")
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
@@ -353,7 +373,7 @@ class GRDCCaravan(_RainfallRunoff):
                 )
             dyn = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         else:
-            if self.verbosity > 0:
+            if self.verbosity > 1:
                 print(f"Using single cpu to read dynamic features for {len(stations)} stations")
             dyn = {}
             for idx, stn in enumerate(stations):

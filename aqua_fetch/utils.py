@@ -197,7 +197,7 @@ def validate_attributes(
     return attributes
 
 
-def sanity_check(dataset_name, path, url=None):
+def sanity_check(dataset_name, path, url=None, verbosity=1):
     if dataset_name in DATA_FILES:
         if dataset_name == 'CAMELS-GB':
             if not os.path.exists(os.path.join(path, 'data')):
@@ -207,13 +207,14 @@ def sanity_check(dataset_name, path, url=None):
                 for file in DATA_FILES[dataset_name]:
                     if not os.path.exists(os.path.join(data_path, file)):
                         raise FileNotFoundError(f"File {file} must exist inside {data_path}")
-    _maybe_not_all_files_downloaded(path, url)
+    _maybe_not_all_files_downloaded(path, url, verbosity=verbosity)
     return
 
 
 def _maybe_not_all_files_downloaded(
         path:str,
-        url:Union[str, list, dict]
+        url:Union[str, list, dict],
+        verbosity=1,
 ):
     if isinstance(url, dict):
         available_files = os.listdir(path)
@@ -221,7 +222,7 @@ def _maybe_not_all_files_downloaded(
         for fname, link in url.items():
             if fname not in available_files:
                 print(f"file {fname} is not available so downloading it now.")
-                download_and_unzip(path, {fname:link})
+                download_and_unzip(path, {fname:link}, verbosity=verbosity)
 
     return
 
@@ -311,7 +312,7 @@ def maybe_download(
         Not downloading the data since the directory 
         {path} already exists.
         Use overwrite=True to remove previously saved files and download again""")
-            sanity_check(name, path, url)
+            sanity_check(name, path, url, verbosity=verbosity)
     else:
         download_and_unzip(path, url=url, include=include,
                            verbosity=verbosity,

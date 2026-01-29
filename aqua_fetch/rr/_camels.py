@@ -4988,6 +4988,11 @@ class CAMELSH(_RainfallRunoff):
         self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
         self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
 
+        self.bbox = {"llcrnrlat": 22, "urcrnrlat": 75,
+                     "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
+        self.parallels = np.arange(22, 75, 7)
+        self.meridians = np.arange(-168, -65, 12)
+
     def stations(self) -> List[str]:
         return self.__stations
 
