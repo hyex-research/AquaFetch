@@ -1197,6 +1197,8 @@ class Ireland(_EStreams):
 
             data = pd.concat([epa_df, opw_df], axis=1)
             data.index.name = 'time'
+            data.index = pd.to_datetime(data.index)
+            assert data.index.tz is None, "timezone info found in index"
             data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
 
             if ext == '.csv':
@@ -1320,8 +1322,7 @@ class Ireland(_EStreams):
         opw_df = [df for df in opw_dfs]
         opw_df = pd.concat(opw_df, axis=1).astype('float32')
 
-        if self.timestep in ("D", "daily"):
-            opw_df.index = opw_df.index.tz_localize(None)
+        assert opw_df.index.tz is None, "opw_df index is not tz naive"
 
         if self.verbosity:
             print(f"Downloaded total opw dfs: {len(opw_dfs)}")
@@ -1374,8 +1375,7 @@ class Ireland(_EStreams):
         opw_dfs1 = [df for df in opw_dfs if len(df)>0]
         opw_df = pd.concat(opw_dfs1, axis=1).astype('float32')
 
-        #if self.timestep in ("D", "daily"):
-        opw_df.index = opw_df.index.tz_localize(None)
+        assert opw_df.index.tz is None, "opw_df index is not tz naive"
 
         if self.verbosity:
             print(f"Saving opw data {opw_df.shape} to {all_opw_data_file}")
@@ -1480,7 +1480,8 @@ def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
         df = pd.Series(name=stn)
 
     df.index = pd.to_datetime(df.pop('timestamp'))
-    df.index = df.index.tz_localize(None)  
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
 
     # considering quality codes as given here https://waterlevel.ie/hydro-data/#/html/qualitycodes
     # df['q_code'] has following values : 36, 46, 31, 56, 96, 225, 101, 32, 99, 254
@@ -1800,6 +1801,7 @@ class Poland(_EStreams):
 
         if self.verbosity:
             print(f"Downloading zip files using {cpus} cpus")
+            print(f"Total files to download: {len(years)}")
 
         start = time.time()
         with cf.ProcessPoolExecutor(max_workers=cpus) as executor:
@@ -1873,8 +1875,9 @@ def download_single_file(year, month:str):
     # as per documentation, 99999.999 is missing value
     df.replace(99999.999, np.nan, inplace=True)
 
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
 
-    df.index = df.index.tz_localize(None)
     df.sort_index(inplace=True)
     return df
 
@@ -1910,7 +1913,8 @@ def download_data_2023(year):
     except Exception:
         raise Exception(f"Failed to convert index to datetime for {year}")
 
-    df.index = df.index.tz_localize(None)
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
     return df
 
 

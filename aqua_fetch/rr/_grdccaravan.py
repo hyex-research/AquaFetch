@@ -175,7 +175,7 @@ class GRDCCaravan(_RainfallRunoff):
                     print(f"{_file} at {self.path} already exists")
                 
                 # zip file is present but is not extracted
-                unzip(self.path)
+                unzip(self.path, verbosity=verbosity)
                 continue
 
             fpath = os.path.join(self.path, _file)
@@ -183,7 +183,7 @@ class GRDCCaravan(_RainfallRunoff):
                 if self.verbosity > 0:
                     print(f"Downloading {_file} from {url + _file}")
                 download(url + _file, outdir=self.path, fname=_file, )
-                unzip(self.path)
+                unzip(self.path, verbosity=verbosity)
             elif self.verbosity > 0:
                 print(f"{_file} at {self.path} already exists")
 

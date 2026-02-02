@@ -150,7 +150,7 @@ class USGS(_RainfallRunoff):
             hysets_path = os.path.dirname(self.path)
             # if os.path.exists(hysets_path):
             #     self.hysets_path = hysets_path
-            if self.verbosity:
+            if self.verbosity> 1:
                 print(f"hysets_path is {hysets_path}")
 
         self.hysets = HYSETS(path = hysets_path, verbosity=verbosity-1)
@@ -501,12 +501,14 @@ class USGS(_RainfallRunoff):
             print('getting stations')
         dataset = self._q(read_csv_kwargs=dict(nrows=2))
 
-        if isinstance(dataset, xr.Dataset):
-            # get names of all variables
-            return list(dataset.data_vars.keys())
-            #return [stn for stn in dataset.stations.data]
-        else:
-            return dataset.columns.tolist()
+        if xr is not None:
+            if isinstance(dataset, xr.Dataset):
+                # get names of all variables
+                return list(dataset.data_vars.keys())
+                #return [stn for stn in dataset.stations.data]
+            else:
+                return dataset.columns.tolist()
+        return dataset.columns.tolist()
 
     def _make_csv(
             self,
@@ -525,8 +527,8 @@ class USGS(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         
-        make_daily_q(self.path, sites, cpus)
-        print(f"Downloaded daily data and stored in {self.path}/daily_q.nc")
+        make_daily_q(self.path, sites, cpus=cpus)
+        if self.verbosity: print(f"Downloaded daily data and stored at {self.path}/daily_q.nc")
 
         #make_hourly_q(self.path, sites[9000:10000], cpus=cpus)
         #print(f"Downloaded hourly data and stored in {self.path}/hourly_q.nc")
@@ -592,41 +594,68 @@ def maybe_make_and_get_metadata(
 def make_daily_q(
         path:str,
         sites:List[str], 
-        cpus:int,
+        start = "1900-01-01",
         end = None,
+        cpus:int=None,
+        out_fname:str = "daily_q",
+        # dron't drop stations with all nans by default
+        # because self.stations() or self.stn_coords() may fail
+        drop_all_nan_stns:bool=False,
+        save_stns_as_data_vars:bool=False,
         verbosity:int=1
         ):
+
+    if netCDF4 is None:
+        out_fname += '.csv'
+    else:
+        out_fname += '.nc'
+
+    assert os.path.exists(path), f"{path} does not exist"
+
+    if cpus is None:
+        cpus = max(get_cpus()-2, 1)
 
     if end is None:
         end = datetime.today().strftime("%Y-%m-%d")
 
+    out_fpath = os.path.join(path, out_fname)
+
     if verbosity: print(f"Downloading daily data for {len(sites)} sites using {cpus} cpus")
+    if verbosity: print(f"Final file will be stored in {out_fpath}")
 
-    daily_files_path = os.path.join(path, 'daily_files')
-    if not os.path.exists(daily_files_path):
-        os.makedirs(daily_files_path)
-
-    start = time.time()
+    start_c = time.time()
     with ProcessPoolExecutor(max_workers=cpus) as executor:
-        data = executor.map(download_daily_record, sites, [end]*len(sites))
+        data = executor.map(download_daily_record, 
+                            sites, 
+                            [start]*len(sites), 
+                            [end]*len(sites))
 
     data = pd.concat(list(data), axis=1)
     data.index = pd.to_datetime(data.index)
+    data.index.name = 'time'
 
-    total = round((time.time() - start)/60, 2)
+    total = round((time.time() - start_c)/60, 2)
     
     if verbosity: print(f"Time taken to download data: {total} mins with {cpus} cpus")
-    start = time.time()
+
+    # find out columns with all nans
+    all_nan_cols = data.columns[data.isna().all()].tolist()
+    if len(all_nan_cols) > 0:
+        print(f"found {len(all_nan_cols)} stations with all nans")
+        if drop_all_nan_stns:
+            data = data.drop(columns=all_nan_cols)
+
+    start_c = time.time()
 
     if netCDF4 is None:
-        save_daily_q_as_csv(path, data)
+        save_daily_q_as_csv(path, data, out_fname=out_fname)
     else:
-        save_daily_q_as_nc(path, data)
+        save_daily_q_as_nc(path, data, out_fname, save_stns_as_data_vars)
         #save_daily_q_as_csv(path, data)
 
-    total = round((time.time() - start)/60, 2)
-    print(f"Time taken: to store {total} mins")
-    return
+    total = round((time.time() - start_c)/60, 2)
+    print(f"Time taken: to write {total} mins for {data.shape[1]} stations")
+    return data
 
 
 def save_daily_q_as_csv(path, data):
@@ -637,84 +666,91 @@ def save_daily_q_as_csv(path, data):
 
 def save_daily_q_as_nc(
         path, 
-        data
+        data:pd.DataFrame,
+        out_fname:str = "daily_q.nc",
+        save_stns_as_data_vars:bool=False,
         ):
     from netCDF4 import Dataset, date2num
 
-    # ncfile = Dataset(os.path.join(path, 'daily_q.nc'), mode='w', format='NETCDF4')
+    start_yr = data.index[0].year
 
-    # _ = ncfile.createDimension('time', None)  # unlimited dimension
+    if save_stns_as_data_vars:
+        ncfile = Dataset(os.path.join(path, out_fname), mode='w', format='NETCDF4')
 
-    # new_idx = pd.date_range(start=DAILY_START, end=end, freq='D')
-    # time_var = ncfile.createVariable('time', 'f8', ('time',))
-    # time_var.units = 'days since 1820-01-01 00:00:00'
-    # time_var.calendar = 'gregorian'
-    # time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
+        _ = ncfile.createDimension('time', None)  # unlimited dimension
 
-    # for idx, ts in enumerate(data):
-    #     # create a variable for each column
-    #     col_var = ncfile.createVariable(str(ts.name), 
-    #                                     datatype='f4', 
-    #                                     dimensions=('time',),
-    #                                     complevel=2, 
-    #                                     compression='zlib',
-    #                                     shuffle=True,
-    #                                     least_significant_digit=4,
-    #                                     )
-    #     # ts may have different index than new_idx/tim_demension, so we need to reindex
-    #     new_ts = ts.reindex(index=new_idx)
+        new_idx = pd.date_range(start=data.index[0], end=data.index[-1], freq='D')
+        time_var = ncfile.createVariable('time', 'f8', ('time',))
+        time_var.units = f'days since {start_yr}-01-01 00:00:00'
+        time_var.calendar = 'gregorian'
+        time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
 
-    #     col_var[:] = new_ts.values
-    #     col_var.units = "cms"
-    #     col_var.description = "daily discharge"
+        for idx, ts in enumerate(data):
+            # create a variable for each column
+            col_var = ncfile.createVariable(str(ts.name), 
+                                            datatype='f4', 
+                                            dimensions=('time',),
+                                            complevel=2, 
+                                            compression='zlib',
+                                            shuffle=True,
+                                            least_significant_digit=4,
+                                            chunksizes=(data.shape[0],)
+                                            )
+            # ts may have different index than new_idx/tim_demension, so we need to reindex
+            new_ts = ts.reindex(index=new_idx)
 
-    #     if idx % 100 == 0:
-    #         print(f"Saved data for {idx} sites in .nc file")
+            col_var[:] = new_ts.values
+            col_var.units = "cms"
+            col_var.description = "daily discharge"
 
-    # ncfile.close()
+            if idx % 100 == 0:
+                print(f"Saved data for {idx} sites in .nc file")
 
-    # saving as a single variable with stations as dimension (appears to be more efficient i/o wise)
-    out_path = os.path.join(path, 'daily_q.nc')
-    with Dataset(out_path, "w", format="NETCDF4") as nc:
-        # create the dimensions which will be used to create variable
-        _ = nc.createDimension('time', data.shape[0])
-        _ = nc.createDimension('stations', data.shape[1])
+        ncfile.close()
 
-        col_var = nc.createVariable(observed_streamflow_cms(),
-                                    datatype=np.float32,
-                                    dimensions=('time', 'stations'),
-                                    complevel=4,
-                                    compression='zlib',
-                                    shuffle=True,
-                                    least_significant_digit=4,
-                                    # chunk size equal to data for one station
-                                    chunksizes=(data.shape[0], 1)
-                                    )
-        
-        col_var[:] = data.values
-        col_var.description = "daily discharge"
-        col_var.units = "cms"
+    else:
+        # saving as a single variable with stations as dimension (appears to be more efficient i/o wise)
+        out_path = os.path.join(path, out_fname)
+        with Dataset(out_path, "w", format="NETCDF4") as nc:
+            # create the dimensions which will be used to create variable
+            _ = nc.createDimension('time', data.shape[0])
+            _ = nc.createDimension('stations', data.shape[1])
 
-        station_var = nc.createVariable('stations', str, ('stations',))
-        station_var[:] = np.array(data.columns).astype(str)  
+            col_var = nc.createVariable(observed_streamflow_cms(),
+                                        datatype=np.float32,
+                                        dimensions=('time', 'stations'),
+                                        complevel=4,
+                                        compression='zlib',
+                                        shuffle=True,
+                                        least_significant_digit=4,
+                                        # chunk size equal to data for one station
+                                        chunksizes=(data.shape[0], 1)
+                                        )
+            
+            col_var[:] = data.values
+            col_var.description = "daily discharge"
+            col_var.units = "cms"
 
-        # Create time variable with CF-compliant encoding
-        time_var = nc.createVariable('time', 'i4', ('time',))
-        time_var.calendar = 'standard'
-        time_var.long_name = 'time'
-        time_var.standard_name = 'time'
-        time_var.axis = 'T'
+            station_var = nc.createVariable('stations', str, ('stations',))
+            station_var[:] = np.array(data.columns).astype(str)  
 
-        time_strings = data.index.strftime("%Y%j").tolist()
-        # Convert time strings from YYYYJJJ to YYYYMMDD format    
-        datetime_objects = [datetime.strptime(ts, "%Y%j") for ts in time_strings]
-        time_var.units = 'days since 1900-01-01 00:00:00'
+            # Create time variable with CF-compliant encoding
+            time_var = nc.createVariable('time', 'i4', ('time',))
+            time_var.calendar = 'standard'
+            time_var.long_name = 'time'
+            time_var.standard_name = 'time'
+            time_var.axis = 'T'
 
-        # Convert to days since reference date
-        reference_date = datetime(1900, 1, 1)
-        time_values = [(dt - reference_date).total_seconds() / 86400 for dt in datetime_objects]
+            time_strings = data.index.strftime("%Y%j").tolist()
+            # Convert time strings from YYYYJJJ to YYYYMMDD format    
+            datetime_objects = [datetime.strptime(ts, "%Y%j") for ts in time_strings]
+            time_var.units = f'days since {start_yr}-01-01 00:00:00'
 
-        time_var[:] = time_values
+            # Convert to days since reference date
+            reference_date = datetime(start_yr, 1, 1)
+            time_values = [(dt - reference_date).total_seconds() / 86400 for dt in datetime_objects]
+
+            time_var[:] = time_values
 
     return
 
@@ -829,7 +865,7 @@ def _read_json(json):
 
 def download_daily_q_nwis(
         site:str = '14105700', 
-        start = '1820-01-01', 
+        start = '1900-01-01', 
         end='2024-12-31'
         )->pd.DataFrame:
 
@@ -855,7 +891,8 @@ def download_daily_q_nwis(
 
 def download_daily_record(
         site:str,
-        end:str
+        start = "1900-01-01",
+        end:str = None,
         )->pd.Series:
 
     # todo: should we store the data in csv files so that we don't have to download it again?
@@ -867,8 +904,8 @@ def download_daily_record(
     #     return pd.read_csv(fpath, index_col=0)
 
     site_data = download_daily_q_nwis(site, 
-                    start="1820-01-01",  # DAILY_START
-                    end=end,    # DAILY_END
+                    start=start, 
+                    end=end,    
                     )
     if f'00060_Mean' in site_data.columns:
         # get data for stations which have A in 00060_Mean_cd column
@@ -901,7 +938,8 @@ def download_daily_record(
                             )
     
     site_data.name = site
-    site_data.index = site_data.index.tz_localize(None)
+    if site_data.index.tz is not None:
+        site_data.index = site_data.index.tz_convert("UTC").tz_localize(None)
     return site_data * 0.028316847 # convert cfs to cms
 
 

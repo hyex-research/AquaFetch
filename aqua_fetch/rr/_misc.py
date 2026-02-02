@@ -522,3 +522,17 @@ def download_shapefiles(outpath):
             with open(os.path.join(shp_path, fname), "wb") as fh:
                 fh.write(resp.content)
     return
+
+
+class NamalValleyPakistan:
+    """
+    Dataset containing hydrological and meteorological data for the Namal Valley catchment 
+    in Pakistan. For more information on this data see `Sheraz et al., 2025 <https://doi.org/10.1038/s41597-025-05310-3>`_.
+    The data consists of observations of precipitation (from 14 sensors) and water level (from 8 sensors) from 
+    2022 to 2024 at 10 minutes intervals.
+
+    The dataset is available at `Figshare link <https://doi.org/10.6084/m9.figshare.28359608>`_.
+
+    """
+
+    url = "https://springernature.figshare.com/ndownloader/articles/28359608/versions/1"
