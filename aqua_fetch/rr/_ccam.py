@@ -172,6 +172,11 @@ class CCAM(_RainfallRunoff):
         if fiona is not None:
             merge_shapefiles_fiona(shp_files, boundaries)
 
+
+        self.bbox = {'llcrnrlat': 20.0, 'urcrnrlat': 50.0, 'llcrnrlon': 70.0, 'urcrnrlon': 140.0}
+        self.parallels = range(20, 50, 5)
+        self.meridians = range(70, 140, 10)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(

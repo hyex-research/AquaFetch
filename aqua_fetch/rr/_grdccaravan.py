@@ -192,10 +192,6 @@ class GRDCCaravan(_RainfallRunoff):
         self._static_attributes = self._static_data().columns.tolist()
         self._dynamic_attributes = self._read_stn_dyn(self.stations()[0]).columns.tolist()
 
-        self.bbox = {"llcrnrlat": -90, "urcrnrlat": 90, "llcrnrlon": -180, "urcrnrlon": 180}
-        self.parallels = range(-90, 90, 30)
-        self.meridians = range(-180, 180, 30)
-
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(

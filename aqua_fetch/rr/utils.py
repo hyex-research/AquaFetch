@@ -128,6 +128,10 @@ class _RainfallRunoff(Datasets):
             to_netcdf = False
         self.to_netcdf = to_netcdf
 
+        self.bbox = {"llcrnrlat": -90, "urcrnrlat": 90, "llcrnrlon": -180, "urcrnrlon": 180}
+        self.parallels = range(-90, 90, 30)
+        self.meridians = range(-180, 180, 30)
+
     @property
     def dyn_map(self) -> Dict[str, str]:
         """A dictionary that maps dynamic features to their names in the dataset."""

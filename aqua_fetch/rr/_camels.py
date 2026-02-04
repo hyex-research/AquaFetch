@@ -2004,6 +2004,10 @@ class CAMELS_DE(_RainfallRunoff):
         # if to_netcdf:
         self._maybe_to_netcdf()
 
+        self.bbox = {'llcrnrlat': 47.0, 'urcrnrlat': 55.0, 'llcrnrlon': 5.0, 'urcrnrlon': 16.0}
+        self.parallels = range(47, 55, 2)
+        self.meridians = range(5, 16, 2)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path,
