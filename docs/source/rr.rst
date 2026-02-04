@@ -121,7 +121,7 @@ List of datasets
      - 166, 187
      - 1900 - 2018
      - Australia
-     - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
+     - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_ , `Flower et al., 2024 <https://essd.copernicus.org/articles/17/4079/2025/>`_
    * - ``CAMELS_BR``
      - :py:class:`aqua_fetch.rr.CAMELS_BR`
      - 897
@@ -446,6 +446,39 @@ List of datasets
      - 2011 - 2018
      - Iowa (USA)
      - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
+
+
+.. _dup_table:
+Duplicate Datasets
+==================
+For some regions/coutries, there are multiple datasets available. These datasets may have
+different number of stations, temporal coverage, static and dynamic features.
+The following table lists the duplicate datasets available in AquaFetch.
+.. list-table:: Duplicate Datasets
+   :widths: 15 30 30 30
+   :header-rows: 1
+   :class: sphinx-datatable
+
+   * - Country/Region
+     - First Dataset
+     - Second Dataset
+     - Third Dataset     
+   * - ``USA``
+     - :py:class:`aqua_fetch.rr.CAMELS_US`
+     - :py:class:`aqua_fetch.rr.HYSETS`
+     - :py:class:`aqua_fetch.rr.USGS`
+   * - ``Denmark``
+     - :py:class:`aqua_fetch.rr.CAMELS_DK`
+     - :py:class:`aqua_fetch.rr.Caravan_DK`
+     - 
+   * - ``Brazil``
+     - :py:class:`aqua_fetch.rr.CAMELS_BR`
+     - :py:class:`aqua_fetch.rr.CABra`
+     - 
+   * - ``Spain``
+     - :py:class:`aqua_fetch.Bull`
+     - :py:class:`aqua_fetch.rr.Spain`
+     - 
 
 
 High Level API

@@ -16,6 +16,8 @@ results/
 *.log
 *.nc
 
+*.sh
+
 *junk.py
 
 *dist/
