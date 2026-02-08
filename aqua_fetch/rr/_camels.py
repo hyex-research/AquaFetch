@@ -3850,10 +3850,10 @@ class CAMELS_COL(_RainfallRunoff):
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
-        
-    @property
-    def bbox(self) -> Dict[str, float]:
-        return dict(llcrnrlon=-80, llcrnrlat=-5, urcrnrlon=-65, urcrnrlat=12)
+
+        self.bbox = {'llcrnrlat': -5.0, 'urcrnrlat': 15.0, 'llcrnrlon': -80.0, 'urcrnrlon': -65.0}
+        self.parallels = range(-5, 15, 5)
+        self.meridians = range(5, 6, 1),
 
     @property
     def boundary_file(self) -> os.PathLike:

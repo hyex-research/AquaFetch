@@ -315,7 +315,8 @@ class Simbi(_RainfallRunoff):
         Read the monthly average flow values.
         """
         fpath = os.path.join(self.monthly_clim_sig_path, 'average.csv')
-        df = pd.read_csv(fpath, parse_dates=True, index_col=0)
+        df = pd.read_csv(fpath, #parse_dates=True, 
+                         index_col=0)
         df.index = [i.split('-')[1] for i in df.index]
         df.columns = [f"{i}_mon_avg" for i in df.columns]
         return df

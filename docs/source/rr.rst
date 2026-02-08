@@ -454,6 +454,7 @@ Duplicate Datasets
 For some regions/coutries, there are multiple datasets available. These datasets may have
 different number of stations, temporal coverage, static and dynamic features.
 The following table lists the duplicate datasets available in AquaFetch.
+
 .. list-table:: Duplicate Datasets
    :widths: 15 30 30 30
    :header-rows: 1
