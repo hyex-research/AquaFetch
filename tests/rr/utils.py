@@ -137,8 +137,8 @@ def test_boundary(dataset, test_latlong_ranges: bool = True):
         lons = ring[:, 0]
         lats = ring[:, 1]
         if test_latlong_ranges:
-            assert (lons >= -180).all() and (lons <= 180).all(), "Longitude values out of range"
-            assert (lats >= -90).all() and (lats <= 90).all(), "Latitude values out of range"        
+            assert (lons >= -180).all() and (lons <= 180).all(), f"Longitude values out of range for {dataset.name}"
+            assert (lats >= -90).all() and (lats <= 90).all(), f"Latitude values out of range for {dataset.name}"        
 
     return
 

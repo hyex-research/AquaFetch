@@ -183,13 +183,13 @@ test_dataset(ds,
 _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
 pd.concat(list(dynamic.values()), axis=1).count().sum() >= 16319627
 
-q = ds.get_q()
+q = ds.fetch_q()
 
 assert q.shape[1]>1287
 
 ds = Portugal(path=raw_data_path, verbosity=3)
 
-q = ds.get_q()
+q = ds.fetch_q()
 
 assert q.shape == (18628, 280)
 
@@ -210,7 +210,7 @@ test_dataset(ds,
 
 ds = Slovenia(path=raw_data_path, verbosity=3)
 
-q = ds.get_q()
+q = ds.fetch_q()
 
 assert q.shape == (27028, 117)
 

@@ -577,7 +577,7 @@ class _EStreams(_RainfallRunoff):
         daily_q = None
 
         if observed_streamflow_cms() in features:
-            daily_q = self.get_q(as_dataframe)
+            daily_q = self.fetch_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
@@ -844,7 +844,7 @@ class Finland(_EStreams):
         # 'FI000001' -> '5902650'
         return self.md['gauge_id'].to_dict()
     
-    def get_q(self, as_dataframe:bool=True, overwrite:bool=False):
+    def fetch_q(self, as_dataframe:bool=True, overwrite:bool=False):
         """
         downloads (if not already downloaded) and returns the daily streamflow data of Finland.
         either as :obj:`pandas.DataFrame` or as xarray dataset.
@@ -1174,7 +1174,7 @@ class Ireland(_EStreams):
         # 'IEEP0281' -> '18118'
         return self.md['gauge_id'].to_dict()
 
-    def get_q(
+    def fetch_q(
             self, 
             as_dataframe:bool=True,
             overwrite:bool=False, 
@@ -1585,7 +1585,7 @@ class Italy(_EStreams):
     def all_stations(self)->List[str]:
         return self.estreams.country_stations("IT")
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         fpath = os.path.join(self.path, 'daily_q.csv')
 
         if not os.path.exists(fpath) or self.overwrite:
@@ -1760,7 +1760,7 @@ class Poland(_EStreams):
         """path where csv (obtained after extracting zip files) files will be stored"""
         return os.path.join(self.path, 'csv_files')
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
 
         fpath = os.path.join(self.path, 'daily_q.csv')
 
@@ -2058,7 +2058,7 @@ class Portugal(_EStreams):
 
         return pd.concat(data, axis=1)
 
-    def get_q(
+    def fetch_q(
             self, 
             as_dataframe:bool=True,
             ):
@@ -2201,7 +2201,7 @@ class Slovenia(_EStreams):
     def country_name(self) -> str:
         return 'SI'
 
-    def get_q(
+    def fetch_q(
             self, 
             as_dataframe:bool=True,
             ):

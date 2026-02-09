@@ -280,7 +280,7 @@ test_dataset(ds,
 
 ds = Japan(path=raw_data_path, timestep="h", verbosity=3)
 
-q = ds.get_q()
+q = ds.fetch_q()
 
 assert pd.infer_freq(q.index) == 'h'
 

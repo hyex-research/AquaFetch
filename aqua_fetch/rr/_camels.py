@@ -5096,7 +5096,7 @@ class CAMELSH(_RainfallRunoff):
         ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
         return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
 
-    def q(
+    def fetch_q(
             self, 
             stations:List[str] = "all"
             ):
@@ -5225,7 +5225,7 @@ class CAMELSH(_RainfallRunoff):
         -------
         xr.Dataset
         """
-        q = self.q(stns)
+        q = self.fetch_q(stns)
         forcing = self._read_stns_forcing(stns)
 
         ds = xr.concat([q, forcing], dim='dynamic_features')
@@ -5398,7 +5398,7 @@ class CAMELSH(_RainfallRunoff):
         # There can be 3 scenarios
         if len(dyn_feats) == 1 and dyn_feats[0] == observed_streamflow_cms():
             # only q is asked
-            results = self.q(stations)
+            results = self.fetch_q(stations)
 
         elif observed_streamflow_cms() not in dyn_feats:
             # only forcing data is asked
@@ -5557,7 +5557,7 @@ class CAMELSH(_RainfallRunoff):
 
         stations = validate_attributes(stations, self.stations(), 'stations')
 
-        q = self.q(stations)
+        q = self.fetch_q(stations)
         q = q.sel(dynamic_features='q_cms_obs')
         if as_dataframe:
             q = q.to_pandas().drop(columns=['dynamic_features'], errors='ignore')

@@ -1232,7 +1232,7 @@ class _GSHA(_RainfallRunoff):
         daily_q = None
 
         if observed_streamflow_cms() in features:
-            daily_q = self.get_q(as_dataframe)
+            daily_q = self.fetch_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
@@ -1592,7 +1592,7 @@ class Japan(_GSHA):
     #         merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
     #     return
 
-    def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
+    def fetch_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single
         file named data.csv. If data.csv is already present, then it is read
         and its contents are returned as dataframe.
@@ -1926,7 +1926,7 @@ class Arcticnet(_GSHA):
             df = pd.read_csv(metadata_path, index_col=0)
         return df
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         nc_path = os.path.join(self.path, "daily_q.nc")
 
         if os.path.exists(nc_path):
@@ -2097,7 +2097,7 @@ class Spain(_GSHA):
         df.columns = ['stations', 'height_m', "q_cms"]
         return df
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         """
         returns daily q of all stations
 
@@ -2220,7 +2220,7 @@ class Thailand(_GSHA):
     def end(self)->pd.Timestamp:
         return pd.Timestamp('1999-12-31')
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         """reads q"""
 
         fpath = os.path.join(self.path, 'daily_q.csv')

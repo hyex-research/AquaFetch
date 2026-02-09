@@ -319,7 +319,7 @@ class ShyftNorway(_RainfallRunoff):
                 copy_properties=True
                 )
 
-        self._q = self.get_q(as_dataframe=True)
+        self._q = self.fetch_q(as_dataframe=True)
         self._stations = self._q.columns.tolist()
 
     @property
@@ -329,7 +329,7 @@ class ShyftNorway(_RainfallRunoff):
     def stations(self):
         return self._stations
 
-    def get_q(
+    def fetch_q(
             self, 
             as_dataframe:bool=True,
             ):
