@@ -7,7 +7,7 @@ import logging
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+raw_data_path = '/path/to/raw/data'
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_grdccaravan.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,5 +18,6 @@ from aqua_fetch import GRDCCaravan
 
 from utils import test_dataset
 
-dataset = GRDCCaravan(path=gscad_path)
-test_dataset(dataset, 5357, 26800, 211, 40)
+dataset = GRDCCaravan(path=raw_data_path, verbosity=4)
+
+test_dataset(dataset, 5356, 26800, 215, 41)

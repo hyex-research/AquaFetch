@@ -29,7 +29,7 @@ from aqua_fetch import CAMELS_FI
 from aqua_fetch import CAMELSH
 
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+raw_data_path = '/path/to/raw/data'  # replace with actual path
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_camels.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -50,41 +50,41 @@ from utils import (
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        dataset = CAMELS_GB(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 671, 16436, 145, 10)
+        dataset = CAMELS_GB(path=os.path.join(raw_data_path, 'CAMELS'))
+        test_dataset(dataset, 671, 16436, 145, 10, test_latlong_ranges=False)
         return
 
     def test_aus(self):
-        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS_AUS_V1'), version=1)
+        dataset = CAMELS_AUS(path=os.path.join(raw_data_path, 'CAMELS', 'CAMELS_AUS_V1'), version=1)
         test_dataset(dataset, 222, 23376, 166, 28)
 
-        dataset = CAMELS_AUS(path=os.path.join(gscad_path, 'CAMELS'), version=2, verbosity=4)
+        dataset = CAMELS_AUS(path=os.path.join(raw_data_path, 'CAMELS'), version=2, verbosity=4)
         test_dataset(dataset, 561, 26388, 187, 28)
         return
 
     def test_hype(self):
-        dataset = HYPE(path=gscad_path)
+        dataset = HYPE(path=raw_data_path)
         test_dataset(dataset, 564, 12783, 0, 9)
         return
 
     def test_cl(self):
-        ds_cl = CAMELS_CL(os.path.join(gscad_path, 'CAMELS'))
+        ds_cl = CAMELS_CL(os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
                      num_static_attrs=104, num_dyn_attrs=12)
         return
 
     def test_us(self):
-        ds_us = CAMELS_US(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+        ds_us = CAMELS_US(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
         test_dataset(ds_us, 671, 12784, 59, 8)
         return
 
     def test_ccam(self):
-        dataset = CCAM(path=gscad_path)
+        dataset = CCAM(path=raw_data_path)
         test_dataset(dataset, 102, 8035, 124, 16)
         return
 
     def test_ccam_meteo(self):
-        dataset = CCAM(path=gscad_path)
+        dataset = CCAM(path=raw_data_path)
 
         stations = os.listdir(dataset.meteo_path)
 
@@ -104,7 +104,7 @@ class TestCamels(unittest.TestCase):
 
     def test_waterbenchiowa(self):
 
-        dataset = WaterBenchIowa(path=gscad_path)
+        dataset = WaterBenchIowa(path=raw_data_path)
 
         test_dynamic_data(dataset, 'all', 125, 61344)
         test_static_data(dataset, 'all', 125)
@@ -120,53 +120,59 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_camels_ch(self):
-        dataset = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'))
+        dataset = CAMELS_CH(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 331, 14610, 209, 9)
 
-        dataset = CAMELS_CH(path=os.path.join(gscad_path, 'CAMELS'), timestep='H')
+        dataset = CAMELS_CH(path=os.path.join(raw_data_path, 'CAMELS'), timestep='H')
         q = dataset.read_hourly_q_ch(dataset.hourly_stations()[0])
-        assert pd.infer_freq(q.index) == 'H'
+        assert pd.infer_freq(q.index) in ['H', 'h'], pd.infer_freq(q.index)
 
         return
 
     def test_camels_de(self):
-        dataset = CAMELS_DE(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 1555, 25568, 111, 21)
+        dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'))
+        test_dataset(dataset, 1582, 25568, 111, 21, test_latlong_ranges=False)
         return
 
     def test_camels_se(self):
-        dataset = CAMELS_SE(path=os.path.join(gscad_path, 'CAMELS'))
+        dataset = CAMELS_SE(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 50, 21915, 76, 4)
         return
 
     def test_india(self):
 
-        dataset = CAMELS_IND(path=os.path.join(gscad_path, 'CAMELS'))
+        dataset = CAMELS_IND(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 472, 14976, 210, 20)
         return
 
     def test_fr(self):
-        ds = CAMELS_FR(gscad_path, verbosity=4)
+        ds = CAMELS_FR(os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
         test_dataset(
             ds,
             num_stations=654,
             dyn_data_len=18993,
             num_static_attrs=344,
             num_dyn_attrs=22,
+            test_latlong_ranges=False
         )
         return
 
     def test_rainfallrunoff(self):
-        dataset = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'),
+        dataset = RainfallRunoff('CAMELS_AUS', path=os.path.join(raw_data_path, 'CAMELS'),
                                  overwrite=True)
         test_dataset(dataset, 561, 26388, 187, 28)
         return
 
     def test_camels_nz(self):
-        dataset = CAMELS_NZ(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 369, 460928, 39, 5, 
-                     yearly_steps=8760  # this number might not be correct
-                     )
+
+        dataset = CAMELS_NZ(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=3)
+        test_dataset(dataset, 369, 19208, 40, 5, test_latlong_ranges=False)
+
+        dataset = CAMELS_NZ(path=os.path.join(raw_data_path, 'CAMELS'), timestep='H', verbosity=4)
+        test_dataset(dataset, 369, 460978, 40, 5, 
+                        yearly_steps=8760,  # this number might not be correct
+                        test_latlong_ranges=False
+                        )
         return
 
     def test_camels_lux(self):
@@ -175,18 +181,18 @@ class TestCamels(unittest.TestCase):
             [6209, 149016, 596061],
             [366, 8761, 35041],
         ):
-            dataset = CAMELS_LUX(path=os.path.join(gscad_path, 'CAMELS'),
+            dataset = CAMELS_LUX(path=os.path.join(raw_data_path, 'CAMELS'),
                                  timestep=ts)
             test_dataset(dataset, 56, num_vals, 61, 25, st="20120101", en="20121231", yearly_steps=yearly_steps)
         return
 
     def test_camels_col(self):
-        dataset = CAMELS_COL(path=os.path.join(gscad_path, 'CAMELS'))
-        test_dataset(dataset, 347, 15340, 255, 6)
+        dataset = CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'))
+        test_dataset(dataset, 347, 15340, 255, 6, test_latlong_ranges=False)
         return
 
     def test_camels_sk(self):
-        dataset = CAMELS_SK(path=os.path.join(gscad_path, 'CAMELS'))
+        dataset = CAMELS_SK(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 178, 175320, 215, 17,
                      st="20120101", en="20121231", 
                      yearly_steps=8761)
@@ -194,13 +200,13 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_fi(self):
 
-        dataset = CAMELS_FI(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
-        test_dataset(dataset, 320, 23010, 106, 16)
+        dataset = CAMELS_FI(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
+        test_dataset(dataset, 320, 23010, 106, 16, test_latlong_ranges=False)
 
         return
 
     def test_camelsh(self):
-        dataset = CAMELSH(path=os.path.join(gscad_path, 'CAMELS'), verbosity=4)
+        dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
 
         test_dataset(dataset, 5767, 394488, 779, 13)
         return

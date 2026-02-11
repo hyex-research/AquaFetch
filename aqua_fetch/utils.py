@@ -174,7 +174,7 @@ def bar(current_size, total_size, width):
     return
 
 
-def check_attributes(
+def validate_attributes(
         attributes:Union[str, List[str]],
         check_against: List[str],
         attribute_name:str = ''
@@ -197,7 +197,7 @@ def check_attributes(
     return attributes
 
 
-def sanity_check(dataset_name, path, url=None):
+def sanity_check(dataset_name, path, url=None, verbosity=1):
     if dataset_name in DATA_FILES:
         if dataset_name == 'CAMELS-GB':
             if not os.path.exists(os.path.join(path, 'data')):
@@ -207,13 +207,14 @@ def sanity_check(dataset_name, path, url=None):
                 for file in DATA_FILES[dataset_name]:
                     if not os.path.exists(os.path.join(data_path, file)):
                         raise FileNotFoundError(f"File {file} must exist inside {data_path}")
-    _maybe_not_all_files_downloaded(path, url)
+    _maybe_not_all_files_downloaded(path, url, verbosity=verbosity)
     return
 
 
 def _maybe_not_all_files_downloaded(
         path:str,
-        url:Union[str, list, dict]
+        url:Union[str, list, dict],
+        verbosity=1,
 ):
     if isinstance(url, dict):
         available_files = os.listdir(path)
@@ -221,7 +222,7 @@ def _maybe_not_all_files_downloaded(
         for fname, link in url.items():
             if fname not in available_files:
                 print(f"file {fname} is not available so downloading it now.")
-                download_and_unzip(path, {fname:link})
+                download_and_unzip(path, {fname:link}, verbosity=verbosity)
 
     return
 
@@ -311,7 +312,7 @@ def maybe_download(
         Not downloading the data since the directory 
         {path} already exists.
         Use overwrite=True to remove previously saved files and download again""")
-            sanity_check(name, path, url)
+            sanity_check(name, path, url, verbosity=verbosity)
     else:
         download_and_unzip(path, url=url, include=include,
                            verbosity=verbosity,
@@ -940,9 +941,14 @@ def get_cpus()->int:
         return len(os.sched_getaffinity(0))
 
 
-def merge_shapefiles_fiona(shp_files, output_path):
+def merge_shapefiles_fiona(
+        shp_files:List[os.PathLike], 
+        output_path: os.PathLike,
+        gauge_id_attribute_name = None,
+        copy_properties: bool = False
+        ):
     """
-    merges shapefiles into one shapefile using fiona
+    merges shapefiles into one shapefile using fiona and keeps all attributes
     """
 
     if os.path.exists(output_path):
@@ -952,37 +958,93 @@ def merge_shapefiles_fiona(shp_files, output_path):
 
     print(f"Merging {len(shp_files)} shapefiles into {output_path}")
 
-    # Read schema and CRS from the first shapefile
-    with fiona.open(shp_files[0], 'r') as first:
-        schema = first.schema
-        crs = first.crs
-        geom_type = first.schema['geometry']
+    # Build a unified schema (union of all properties), adopt CRS and geometry from the first file
+    crs = None
+    geom_type = None
+    merged_props: dict = {}
 
-    # Define schema with one string property: the shapefile name
+    def base_type(t: str) -> str:
+        return t.split(':')[0] if isinstance(t, str) else str(t)
+
+    def str_width(t: str) -> int:
+        parts = t.split(':')
+        return int(parts[1]) if len(parts) > 1 and parts[0] == 'str' else 80
+
+    def merged_type(t1: str, t2: str) -> str:
+        b1, b2 = base_type(t1), base_type(t2)
+        if b1 == b2:
+            if b1 == 'str':
+                w = max(str_width(t1), str_width(t2))
+                return f"str:{w}"
+            return t1
+        if {b1, b2} <= {'int', 'float'}:
+            return 'float'
+        # Fallback to string for incompatible types
+        return f"str:{max(str_width(t1), str_width(t2), 80)}"
+
+    for shp in shp_files:
+        with fiona.open(shp, 'r') as src:
+            if crs is None:
+                crs = src.crs
+            elif src.crs and crs and src.crs != crs:
+                warnings.warn(f"CRS for {shp} differs from the first shapefile; no reprojection will be performed.")
+
+            if geom_type is None:
+                geom_type = src.schema['geometry']
+
+            for name, t in src.schema['properties'].items():
+                if name in merged_props:
+                    merged_props[name] = merged_type(merged_props[name], t)
+                else:
+                    merged_props[name] = t
+
+    # Ensure gauge_id exists in output schema
+    if 'gauge_id' not in merged_props:
+        merged_props['gauge_id'] = 'str:80'
+
+    if not copy_properties:
+        # If not copying properties, only keep gauge_id
+        merged_props = {'gauge_id': merged_props['gauge_id']}
+
     schema = {
         'geometry': geom_type,
-        'properties': {'gauge_id': 'str'}
+        'properties': merged_props
     }
 
     # Write merged output
     with fiona.open(output_path, 'w', driver='ESRI Shapefile', crs=crs, schema=schema) as output:
         for idx, shp in enumerate(shp_files):
-
             base_name = os.path.splitext(os.path.basename(shp))[0]
 
             with fiona.open(shp, 'r') as src:
                 for feature in src:
-                    new_feature = {
-                        'geometry': feature['geometry'],
-                        'properties': {'gauge_id': base_name}
-                    }
-                    output.write(new_feature)
 
-            if idx % 1000 == 0:
+                    if copy_properties:
+                        # Start with all properties set to None
+                        props = {k: None for k in merged_props.keys()}
+
+                        # Copy existing properties
+                        for k, v in feature['properties'].items():
+                            if k in props:
+                                props[k] = v
+                    else:
+                        props = {}
+
+                    # Set/override gauge_id
+                    if gauge_id_attribute_name is None:
+                        props['gauge_id'] = base_name
+                    else:
+                        props['gauge_id'] = feature['properties'].get(gauge_id_attribute_name, base_name)
+
+                    output.write({
+                        'geometry': feature['geometry'],
+                        'properties': props
+                    })
+
+            if (idx + 1) % 1000 == 0 or (idx + 1) == len(shp_files):
                 print(f"Processed {idx + 1}/{len(shp_files)} shapefiles...")
 
     print(f"Merged {len(shp_files)} shapefiles into {output_path}")
-
     return
 
 

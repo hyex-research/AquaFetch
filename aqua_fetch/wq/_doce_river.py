@@ -5,7 +5,7 @@ from typing import Union, List, Tuple
 
 
 from .._datasets import Datasets
-from ..utils import check_attributes, sanity_check, check_st_en
+from ..utils import sanity_check, check_st_en
 
 
 class DoceRiver(Datasets):

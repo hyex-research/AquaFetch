@@ -38,6 +38,9 @@ extensions = [
 'sphinx_copybutton',
 'nbsphinx',
 'sphinx_gallery.load_style',
+# New extension for sortable tables
+"sphinxcontrib.jquery",
+"sphinx_datatables",
 ]
 
 # These projects are also used for the sphinx_codeautolink extension:

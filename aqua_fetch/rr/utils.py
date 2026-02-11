@@ -12,7 +12,7 @@ from .._datasets import Datasets
 from .._backend import netCDF4
 from .._backend import fiona
 from .._backend import xarray as xr, plt, easy_mpl, plt_Axes
-from ..utils import check_attributes, get_cpus
+from ..utils import validate_attributes, get_cpus
 from .._geom_utils import (
     _make_boundary_2d
 )
@@ -109,6 +109,7 @@ class _RainfallRunoff(Datasets):
                 will be redownloaded.
             verbosity : int
                 This parameter determines the level of verbosity for logging messages.
+            
                     - 0: no message will be printed
                     - 1: only important messages will be printed
                     - >1: any higher value greater than 1 will result in more verbose output
@@ -117,7 +118,7 @@ class _RainfallRunoff(Datasets):
         """
         super(_RainfallRunoff, self).__init__(path=path, verbosity=verbosity, overwrite=overwrite, **kwargs)
 
-        self.bndry_id_map = {}
+        self.bndry_id_map_ = {}
         self.timestep = timestep
 
         if netCDF4 is None:
@@ -126,6 +127,10 @@ class _RainfallRunoff(Datasets):
                 warnings.warn(msg, UserWarning)
             to_netcdf = False
         self.to_netcdf = to_netcdf
+
+        self.bbox = {"llcrnrlat": -90, "urcrnrlat": 90, "llcrnrlon": -180, "urcrnrlon": 180}
+        self.parallels = range(-90, 90, 30)
+        self.meridians = range(-180, 180, 30)
 
     @property
     def dyn_map(self) -> Dict[str, str]:
@@ -217,8 +222,11 @@ class _RainfallRunoff(Datasets):
         if fiona is None:
             raise ModuleNotFoundError("fiona module is not installed. Please install it to use boundary file")
 
+        if hasattr(self, 'bndry_id_map_') and self.bndry_id_map_:
+            return self.bndry_id_map_
+
         # Dictionary to hold {CatchID: geometry}
-        self.bndry_id_map = {}
+        self.bndry_id_map_ = {}
 
         assert os.path.exists(self.boundary_file), \
             f"Boundary file {self.boundary_file} does not exist."
@@ -251,23 +259,29 @@ class _RainfallRunoff(Datasets):
                 elif self.name == 'Caravan_DK':
                     catch_id = str(feature["properties"][boundary_id_map])
                     catch_id = str(catch_id).split('_')[1]
+                elif self.name == 'CAMELS_US':
+                    # in shapefile, for some stations, 0 is missing at the start
+                    catch_id = str(feature["properties"][boundary_id_map])
+                    if len(str(catch_id)) == 7:
+                        catch_id = f"0{catch_id}"
                 else:
                     # since we are treating catchment/station id as string
                     catch_id = str(feature["properties"][boundary_id_map])
                 geometry = feature["geometry"]
 
-                self.bndry_id_map[catch_id] = geometry
+                self.bndry_id_map_[catch_id] = geometry
 
-        return self.bndry_id_map
+        return self.bndry_id_map_
 
     def stations(self) -> List[str]:
         """
         Names/ids of stations/catchment/gauges or whatever that would
-        be used to index each station in the dataset. Since this is a method,
-        it is called multiple times, it is better to cache the result
-        and return the cached result instead of reading the data again and again
-        The user is recommended to implement this method in the child class in a more efficient way.
+        be used to index each station in the dataset.
         """
+        # Since this is a method,
+        # it is called multiple times, it is better to cache the result
+        # and return the cached result instead of reading the data again and again
+        # The user is recommended to implement this method in the child class in a more efficient way.
         return self._static_data().index.tolist()
 
     def _read_dynamic(
@@ -279,8 +293,8 @@ class _RainfallRunoff(Datasets):
             ) -> Dict[str, pd.DataFrame]:
         
         st, en = self._check_length(st, en)
-        dyn_feats = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
-        stations = check_attributes(stations, self.stations(), 'stations')
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         cpus = self.processes or min(get_cpus(), 16)
         start = time.time()
@@ -394,8 +408,8 @@ class _RainfallRunoff(Datasets):
         >>> data.shape
            (1, 2)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
-        features = check_attributes(static_features, self.static_features, 'static_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        features = validate_attributes(static_features, self.static_features, 'static_features')
         df:pd.DataFrame = self._static_data()
         return df.loc[stations, features]
 
@@ -507,12 +521,11 @@ class _RainfallRunoff(Datasets):
         >>> dataset.area(['2004', '6004'])  # returns area of two stations
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = self.fetch_static_features(static_features=[catchment_area()])
-        #df.columns = [catchment_area()]
 
-        return df.loc[stations, catchment_area()]
+        return df.loc[stations, catchment_area()].astype(self.fp)
 
     def _check_length(self, st, en):
         if st is None:
@@ -725,11 +738,11 @@ class _RainfallRunoff(Datasets):
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if dynamic_features is not None:
 
-            dynamic_features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+            dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
             if netCDF4 is None or not os.path.exists(self.dyn_fpath):
                 # read from csv files
@@ -870,7 +883,8 @@ class _RainfallRunoff(Datasets):
 
                 if isinstance(dynamic, pd.Series):
                     # when single dynamic feature for a single station
-                    dynamic = pd.DataFrame(dynamic, columns=[dynamic_features])
+                    #dynamic = pd.DataFrame(dynamic, columns=[dynamic_features])
+                    dynamic = dynamic.to_frame(name=dynamic_features)
             
             elif isinstance(dynamic, dict):
                 assert len(dynamic) == 1, f"Expected dynamic dict of length 1, got {len(dynamic)}"
@@ -991,7 +1005,7 @@ class _RainfallRunoff(Datasets):
         ----------
         stations : str/list
             name/names of stations. Default is ``all``, which will return
-            area of all stations
+            q_mm of all stations
 
         Returns
         --------
@@ -1001,7 +1015,7 @@ class _RainfallRunoff(Datasets):
 
         """
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if self._mm_feature_name is None:
             _, q = self.fetch_stations_features(
@@ -1074,7 +1088,7 @@ class _RainfallRunoff(Datasets):
         """
         df = self.fetch_static_features(static_features=[gauge_latitude(), gauge_longitude()])
         #df.columns = ['lat', 'long']
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         df = df.loc[stations, :].astype(self.fp)
 
@@ -1089,9 +1103,9 @@ class _RainfallRunoff(Datasets):
         return df
 
 
-    def transform_coords(self, xyz: np.ndarray) -> np.ndarray:
+    def transform_boundary(self, xyz: np.ndarray) -> np.ndarray:
         """
-        transforms coordinates from projected to geographic
+        transforms boundary coordinates from projected to geographic
 
         must be implemented in base classes
         """
@@ -1100,6 +1114,7 @@ class _RainfallRunoff(Datasets):
     def get_boundary(
             self,
             catchment_id: str,
+            to_wgs84: bool = True
     ):
         """
         returns boundary of a catchment in a required format
@@ -1108,6 +1123,9 @@ class _RainfallRunoff(Datasets):
         ----------
         catchment_id : str
             name/id of catchment
+        to_wgs84 : bool, optional (default=True)
+            if True, then the boundary will be transformed to WGS84 (EPSG:4326)
+            if it is not already in WGS84.
 
         Returns
         -------
@@ -1141,7 +1159,8 @@ class _RainfallRunoff(Datasets):
 
         geometry = bndry_id_map[catchment_id]
 
-        geometry = self.transform_coords(geometry)
+        if to_wgs84:
+            geometry = self.transform_boundary(geometry)
 
         return geometry
 
@@ -1208,6 +1227,118 @@ class _RainfallRunoff(Datasets):
 
         if show:
             plt.show()
+        return ax
+
+    def plot_num_observations(
+            self,
+            stations: Union[str, List[str]] = 'all',
+            dynamic_features: Union[str, List[str]] = 'all',
+            start: Union[str, pd.Timestamp] = None,
+            end: Union[str, pd.Timestamp] = None,
+            show_constant: bool = False,
+            figsize: Tuple[float, float] = None,
+            ax = None,
+            show: bool = True
+            ):
+        """
+        Plots the number of observations available for different dynamic features
+        as cumulative distribution function (CDF). This plot is not plotted if
+        all stations have same number of observations for a dynamic feature.
+
+        Parameters
+        ----------
+        stations : Union[str, List[str]]
+            The stations to include in the plot. If 'all', all stations will be included.
+        dynamic_features : Union[str, List[str]]
+            The dynamic features to include in the plot. If 'all', all dynamic features will be
+            included.
+        start : Union[str, pd.Timestamp], optional
+            The start date for the data to consider. If None, the start date of the dataset will be used.
+        end : Union[str, pd.Timestamp], optional
+            The end date for the data to consider. If None, the end date of the dataset will be used.
+        show_constant : bool, optional
+            Whether to show features with constant number of observations across stations.
+            If True, these features will be included in the plot as well.
+        figsize : Tuple[float, float], optional
+            The size of the figure to create. If None, a default size will be used.
+        ax : plt.Axes, optional
+            The matplotlib axes to draw the plot. If not given, then
+            new axes will be created.
+        show : bool, optional
+            Whether to display the plot immediately.
+        
+        Returns
+        -------
+        plt.Axes
+            The matplotlib axes containing the plot.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_FI
+        >>> dataset = CAMELS_FI()
+        >>> dataset.plot_num_observations()
+        # plotting for different time periods
+        >>> dataset = RainfallRunoff('CAMELS_COL')
+        >>> _, ax = plt.subplots()
+        >>> for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
+        >>>     start, end = period
+        >>>     ax = dataset.plot_num_observations(
+        >>>         dynamic_features=['q_cms_obs'],
+        >>>         ax=ax,
+        >>>         start=start, end=end, show=False)
+        >>>     ax.lines[idx].set_label(f'{start} to {end}')
+        >>>     assert isinstance(ax, plt.Axes)
+        >>> ax.legend()
+        >>> plt.show()
+        """
+        _, dyn = self.fetch(
+            stations,
+            dynamic_features=dynamic_features,
+            as_dataframe=False,
+            st=start, en=end)
+
+        num_points = 100 
+
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize or (7, 7))
+
+        for feature in dyn.dynamic_features.data:
+
+            d = dyn.sel(dynamic_features=feature).to_dataframe().drop(columns=['dynamic_features'], errors='ignore')
+
+            if d.isna().sum().sum() < 10:
+                print(f"Skipping {feature} due to no missing values.")
+                continue
+
+            data = d.count().values.reshape(-1, )
+
+            x = np.linspace(np.min(data), np.max(data), num_points)
+
+            y_values = np.sum(data[:, np.newaxis] <= x, axis=0) #/ data.size
+
+            y_values = y_values.reshape(-1, )
+
+            label = f"{feature} (n={d.count().sum()})"
+
+            # if np.allclose([100.], [y_values.sum()]):
+            if np.all(y_values == y_values[0]):
+                print(f"All stations for {feature} have {int(x[0])} observations.")
+                if show_constant:
+                    easy_mpl.plot(x[0], y_values[0], '*', label=label, ax=ax, show=False)
+                continue
+            
+            #y = np.linspace(0, len(data), num_points).astype(int)
+            easy_mpl.plot(x, y_values, label=label, ax=ax, show=False)
+
+        ax.set_ylabel("Number of stations")
+        ax.set_xlabel("Number of observations")
+        # ax.set_ylabel("Fraction of stations")
+
+        ax.grid()
+
+        if show:
+            plt.show()
+        
         return ax
 
 

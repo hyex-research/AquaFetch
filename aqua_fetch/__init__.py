@@ -48,6 +48,7 @@ from .rr import CAMELS_SK
 from .rr import CAMELS_FI
 from .rr import Slovenia
 from .rr import CAMELSH
+from .rr import ShyftNorway
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -280,4 +281,4 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     return df[inputs + target]
 
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"

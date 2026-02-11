@@ -11,6 +11,7 @@ __all__ = [
 import os
 import time
 import warnings
+from datetime import datetime
 import concurrent.futures as cf
 from typing import List, Union, Dict, Tuple
 
@@ -20,7 +21,7 @@ import pandas as pd
 from .._backend import xarray as xr
 
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from ..utils import merge_shapefiles_fiona
 from .utils import _RainfallRunoff
 
@@ -149,10 +150,8 @@ class GSHA(_RainfallRunoff):
         wsAll.columns = ['station_id', 'lat', 'long', 'area', 'agency']
         wsAll.index = wsAll.pop('station_id')
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
-
-        self._daily_dynamic_features = self.__daily_dynamic_features()
-        self._yearly_dynamic_features = self.__yearly_dynamic_features()
-
+        self._daily_dynamic_features = None # lazy initialization, computed when accessed
+        self._yearly_dynamic_features = None # lazy initialization, computed when accessed
         self._static_features = self.__static_features()
 
     @property
@@ -187,10 +186,14 @@ class GSHA(_RainfallRunoff):
 
     @property
     def daily_dynamic_features(self) -> List[str]:
+        if self._daily_dynamic_features is None:
+            self._daily_dynamic_features = self.__daily_dynamic_features()
         return self._daily_dynamic_features
 
     @property
     def yearly_dynamic_features(self) -> List[str]:
+        if self._yearly_dynamic_features is None:
+            self._yearly_dynamic_features = self.__yearly_dynamic_features()
         return self._yearly_dynamic_features
 
     @property
@@ -304,7 +307,7 @@ class GSHA(_RainfallRunoff):
         if not os.path.exists(out_shapefile):
             shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if
                          filename.endswith('.shp')]
-            merge_shapefiles_fiona(shp_files, out_shapefile)
+            merge_shapefiles_fiona(shp_files, out_shapefile, copy_properties=True)
         return
 
     def _get_stations(
@@ -316,10 +319,10 @@ class GSHA(_RainfallRunoff):
             raise ValueError("Either provide agency or stations not both")
 
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+            stations = validate_attributes(stations, self.stations(), 'stations')
 
         return stations
 
@@ -347,7 +350,7 @@ class GSHA(_RainfallRunoff):
     def stations(self, agency: str = "all") -> List[str]:
         """returns names of stations as list"""
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             return self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         return self.wsAll.index.tolist()
 
@@ -634,6 +637,14 @@ class GSHA(_RainfallRunoff):
         pd.Series
             a :obj:`pandas.Series` of shape (14571,) where 14571 is the number of days
         """
+
+        nc_fpath = os.path.join(self.path, 'lai.nc')
+        if os.path.exists(nc_fpath) and xr is not None:
+            ds = xr.open_dataset(nc_fpath)
+            ser = ds[stn].to_pandas()
+            ds.close()
+            return ser
+
         return lai_stn(self.path, stn)
 
     def fetch_lai(
@@ -703,7 +714,10 @@ class GSHA(_RainfallRunoff):
         """
         return self.meteo_vars_stn('1001_arcticnet').columns.tolist()
 
-    def meteo_vars_stn(self, stn: str) -> pd.DataFrame:
+    def meteo_vars_stn(
+            self, 
+            stn: str
+            ) -> pd.DataFrame:
         """
         Daily meteorological variables from 1979-01-01 to 2022-12-31 for a given station.
 
@@ -712,6 +726,15 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (16071, 19) where n is the number of days
         """
+
+        nc_path = os.path.join(self.path, 'meteo_vars.nc')
+        if os.path.exists(nc_path) and xr is not None:
+            # even if the files exist, we may not have xarray installed
+            ds = xr.open_dataset(nc_path)
+            df = ds[stn].to_pandas()
+            ds.close()
+            return df
+
         path = os.path.join(
             self.path,
             METEO_MAP[self.agency_of_stn(stn)],
@@ -781,10 +804,10 @@ class GSHA(_RainfallRunoff):
             raise ValueError("Either provide agency or stations not both")
 
         if agency != "all":
-            agency = check_attributes(agency, self.agencies, 'agency')
+            agency = validate_attributes(agency, self.agencies, 'agency')
             stations = self.wsAll[self.wsAll['agency'].isin(agency)].index.tolist()
         else:
-            stations = check_attributes(stations, self.stations(), 'stations')
+            stations = validate_attributes(stations, self.stations(), 'stations')
 
         meteo_vars = self.meteo_vars_all_stns()
 
@@ -793,7 +816,10 @@ class GSHA(_RainfallRunoff):
         else:
             return {stn: meteo_vars[stn] for stn in stations}
 
-    def storage_vars_stn(self, stn: str) -> pd.DataFrame:
+    def storage_vars_stn(
+            self, 
+            stn: str
+            ) -> pd.DataFrame:
         """
         Daily Water storage term variables from 1979-01-01 to 2021-12-31 for a given station.
 
@@ -809,6 +835,13 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (15706, 6) where n is the number of days
         """
+        nc_path = os.path.join(self.path, 'storage.nc')
+        if os.path.exists(nc_path) and xr is not None:
+            ds = xr.open_dataset(nc_path)
+            df = ds[stn].to_pandas()
+            ds.close()
+            return df
+    
         path = os.path.join(
             self.path,
             "Storage",
@@ -941,7 +974,7 @@ class GSHA(_RainfallRunoff):
 
         stations = self._get_stations(stations, agency)
 
-        features = check_attributes(static_features, self.static_features, 'static_features')
+        features = validate_attributes(static_features, self.static_features, 'static_features')
 
         df = pd.concat([
             self.atlas(stations),
@@ -991,7 +1024,7 @@ class GSHA(_RainfallRunoff):
         >>> data.shape
         (16071, 2)
         """
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         st, en = self._check_length(st, en)
 
         out = pd.concat(
@@ -1047,7 +1080,7 @@ class GSHA(_RainfallRunoff):
         # todo : extremely slow even for two stations
         stations = self._get_stations(stations, agency)
 
-        features = check_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
         st, en = self._check_length(st, en)
 
@@ -1129,9 +1162,9 @@ class _GSHA(_RainfallRunoff):
     Parent class for those datasets which uses static and dynamic features from
     GSHA dataset . The following dataset classes are based on this class:
 
-        - py:class:`aqua_fetch.Japan`
-        - py:class:`aqua_fetch.Thailand`
-        - py:class:`aqua_fetch.Spain`
+        - :py:class:`aqua_fetch.Japan`
+        - :py:class:`aqua_fetch.Thailand`
+        - :py:class:`aqua_fetch.Spain`
 
     """
 
@@ -1190,13 +1223,16 @@ class _GSHA(_RainfallRunoff):
             as_dataframe=False,
     ):
         """Fetches dynamic features of station."""
+
+        # todo : setting as_dataframe=True is too slow for 500 stations
+
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
         daily_q = None
 
         if observed_streamflow_cms() in features:
-            daily_q = self.get_q(as_dataframe)
+            daily_q = self.fetch_q(as_dataframe)
             if isinstance(daily_q, xr.Dataset):
                 daily_q = daily_q.sel(time=slice(st, en))[stations]
             else:
@@ -1246,7 +1282,7 @@ class _GSHA(_RainfallRunoff):
         """Fetches static features of station."""
         if self.verbosity > 1:
             print('fetching static features')
-        stations = check_attributes(station, self.stations(), 'stations')
+        stations = validate_attributes(station, self.stations(), 'stations')
         stations_ = [f"{stn}_{self.agency_name}" for stn in stations]
         static_feats = self.gsha.fetch_static_features(stations_, static_features).copy()
         static_feats.index = [stn.split('_')[0] for stn in static_feats.index]
@@ -1286,7 +1322,7 @@ class _GSHA(_RainfallRunoff):
             dimensions. If dynamic features are returned as pandas DataFrame, then
             the first index is `time` and the second index is `dynamic_features`.
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         if xr is None:
             if not as_dataframe:
@@ -1378,6 +1414,7 @@ def streamflow_indices_stn(
         ds_path: Union[str, os.PathLike],
         stn: str
 ) -> pd.DataFrame:
+
     fpath = os.path.join(
         ds_path,
         "StreamflowIndices_yearly",
@@ -1416,6 +1453,15 @@ def streamflow_indices_stn(
 
 
 def lc_variable_stn(ds_path, stn: str) -> pd.DataFrame:
+
+    nc_path = os.path.join(ds_path, 'lc_variables.nc')
+
+    if os.path.exists(nc_path) and xr is not None:
+        ds = xr.open_dataset(nc_path)
+        df = ds[stn].to_pandas()
+        ds.close()
+        return df
+
     fpath = os.path.join(
         ds_path,
         "Landcover",
@@ -1443,6 +1489,13 @@ def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
         "Reservoir",
         "Reservoir",
         f'{stn}.csv')
+
+    nc_path = os.path.join(ds_path, 'reservoir_variables.nc')
+    if os.path.exists(nc_path) and xr is not None:
+        ds = xr.open_dataset(nc_path)
+        df = ds[stn].to_pandas()
+        ds.close()
+        return df
 
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"{ds_path} for station {stn} not found")
@@ -1482,7 +1535,7 @@ def lai_stn(ds_path, stn: str) -> pd.Series:
 
 # the dates for data to be downloaded 
 START_YEAR = 1979
-END_YEAR = 2024
+END_YEAR = datetime.now().year
 
 
 class Japan(_GSHA):
@@ -1506,6 +1559,10 @@ class Japan(_GSHA):
     
         if not os.path.exists(self.path):
             os.makedirs(self.path)
+
+        self.bbox = {'llcrnrlat': 30, 'urcrnrlat': 45, 'llcrnrlon': 128, 'urcrnrlon':149}
+        self.parallels = range(30, 45, 2)
+        self.meridians = range(128, 149, 3)
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1535,13 +1592,13 @@ class Japan(_GSHA):
     #         merge_shapefiles(shp_files, out_shp_file, add_new_field=True)
     #     return
 
-    def get_q(self, as_dataframe:bool=True)->pd.DataFrame:
+    def fetch_q(self, as_dataframe:bool=True)->pd.DataFrame:
         """reads daily streamflow for all stations and puts them in a single
         file named data.csv. If data.csv is already present, then it is read
         and its contents are returned as dataframe.
         """
 
-        if self.timestep in ('daily', 'D'):
+        if self.timestep.lower() in ('daily', 'd'):
             df = download_daily_data(
                 self.stations(), 
                 self.path, 
@@ -1565,15 +1622,23 @@ class Japan(_GSHA):
 
         if os.path.exists(hourly_file):
             print(f"reading hourly data from {hourly_file}")
-            return pd.read_csv(hourly_file, index_col=0)
+            q = pd.read_csv(hourly_file, index_col=0)
+            q.index = pd.to_datetime(q.index)
+            return q
 
         path = os.path.join(self.path, 'hourly_files')
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        cpus = cpus or max(get_cpus() - 2, 1)
         
         if self.verbosity>0: print(f"preparing hourly data using {cpus} cpus")
 
         stn_qs = []
         for idx, stn in enumerate(self.stations()):
-            stn_q = download_hourly_stn(path, stn=stn, cpus=cpus, verbosity=self.verbosity)
+            stn_q = download_hourly_stn(path, stn=stn, cpus=cpus, 
+                                        en_yr=datetime.now().year+1,
+                                        verbosity=self.verbosity)
 
             if self.verbosity>0: print(f"{idx} {stn}, {len(stn_q)}, {stn_q.index[0]}")
             
@@ -1581,7 +1646,7 @@ class Japan(_GSHA):
         
         q = pd.concat(stn_qs, axis=1)
 
-        q.to_csv(hourly_file)
+        q.to_csv(hourly_file, index=True, index_label='time')
         return q
 
 
@@ -1720,7 +1785,7 @@ def download_hourly_stn_day(
     """download hourly data for a single day for a single station"""
     url = f"http://www1.river.go.jp/cgi-bin/SrchSiteSuiData2.exe?SUIKEI=90336000&BGNDATE={st}&ENDDATE={en}&ID={stn}:0202;"
     
-    data = pd.read_html(url)[0]       
+    data = pd.read_html(url, encoding='EUC-JP')[0]       
     df = data.iloc[7:]
     df.columns = ['date', 'time', stn]
 
@@ -1731,7 +1796,7 @@ def download_hourly_stn_day(
         df.pop(stn)
         df.insert(2, stn, [np.nan for _ in range(24)])
 
-    df.index = pd.date_range(pd.Timestamp(st), periods=24, freq="H")
+    df.index = pd.date_range(pd.Timestamp(st), periods=24, freq="h")
 
     return df[stn]
 
@@ -1744,7 +1809,7 @@ def download_hourly_stn(
         cpus:int=64,
         verbosity:int = 1
         )->pd.Series:
-    
+    """downlaod Japanese hourly data for a station from st_yr to en_yr"""
     fpath = os.path.join(path, f"{stn}.csv")
     if os.path.exists(fpath):
         if verbosity>0: print(f"{stn} already exists")
@@ -1820,6 +1885,10 @@ class Arcticnet(_GSHA):
 
         self._static_features = self.gsha.static_features
 
+        self.bbox = {'llcrnrlat': 50.0, 'urcrnrlat': 80.0, 'llcrnrlon': 25.0, 'urcrnrlon': 130.0}
+        self.parallels = range(50, 80, 7)
+        self.meridians = range(25, 130, 10)
+
     @property
     def static_map(self) -> Dict[str, str]:
         return {
@@ -1857,7 +1926,7 @@ class Arcticnet(_GSHA):
             df = pd.read_csv(metadata_path, index_col=0)
         return df
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         nc_path = os.path.join(self.path, "daily_q.nc")
 
         if os.path.exists(nc_path):
@@ -1979,6 +2048,11 @@ class Spain(_GSHA):
             "SEGURA", "TAJO"
         ]
 
+        self.bbox = {"llcrnrlat": 36.0, "urcrnrlat": 44.0, 
+                     "llcrnrlon": -10.0, "urcrnrlon": 4.0}
+        self.parallels = np.arange(36.0, 44.0, 2.0)
+        self.meridians = np.arange(-10.0, 4.0, 2.0)
+
     @property
     def static_map(self) -> Dict[str, str]:
         return {
@@ -2023,7 +2097,7 @@ class Spain(_GSHA):
         df.columns = ['stations', 'height_m', "q_cms"]
         return df
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         """
         returns daily q of all stations
 
@@ -2122,6 +2196,10 @@ class Thailand(_GSHA):
 
         self._download(overwrite=overwrite)
 
+        self.bbox = {'llcrnrlat': 5.5, 'urcrnrlat': 21.5, 'llcrnrlon': 97.5, 'urcrnrlon':105.5}
+        self.parallels = range(5, 22, 2)
+        self.meridians = range(97, 106, 2)
+
     @property
     def static_map(self) -> Dict[str, str]:
         return {
@@ -2142,7 +2220,7 @@ class Thailand(_GSHA):
     def end(self)->pd.Timestamp:
         return pd.Timestamp('1999-12-31')
 
-    def get_q(self, as_dataframe:bool=True):
+    def fetch_q(self, as_dataframe:bool=True):
         """reads q"""
 
         fpath = os.path.join(self.path, 'daily_q.csv')

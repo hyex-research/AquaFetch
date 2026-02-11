@@ -5,7 +5,7 @@ from typing import Union, List, Dict
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from ._map import (
     water_temperature,
     electrical_conductivity,
@@ -224,8 +224,8 @@ class CamelsChem(Datasets):
 
         # todo : why atmospheric deposition data is not included here?
 
-        parameters = check_attributes(parameters, self.parameters, 'parameters')
-        stations = check_attributes(stations, self.stations())
+        parameters = validate_attributes(parameters, self.parameters, 'parameters')
+        stations = validate_attributes(stations, self.stations())
 
         out = {}
 
@@ -319,8 +319,8 @@ class CamelsChem(Datasets):
         >>> data = ds.fetch_atm_dep()
         >>> print(len(data))  # 671
         """
-        parameters = check_attributes(parameters, self.atm_dep_parameters)
-        stations = check_attributes(stations, self.stations())
+        parameters = validate_attributes(parameters, self.atm_dep_parameters)
+        stations = validate_attributes(stations, self.stations())
 
         out = {}
 
@@ -527,7 +527,7 @@ class CamelsCHChem(Datasets):
         >>> print(data['2009'].shape)  # (209, 32)
         >>> print(data['2011'].shape)  # (209, 32)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         data = {}
         for stn in stations:
@@ -592,7 +592,7 @@ class CamelsCHChem(Datasets):
         >>> data = ds.fetch_wq_ts('2009')['2009']
         >>> print(data.shape)  # (14610, 4)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         subfolder = 'hourly' if timestep == 'H' else 'daily'
 
@@ -623,7 +623,7 @@ class CamelsCHChem(Datasets):
             category: str = "isot"
             )->Dict[str, pd.DataFrame]:
 
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         data = {}
         for stn in stations:

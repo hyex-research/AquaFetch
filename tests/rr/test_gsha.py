@@ -29,9 +29,9 @@ from utils import (
     test_plot_catchment,
     )
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+raw_data_path = '/path/to/your/raw/data'  # change this path accordingly
 
-ds = GSHA(path=gscad_path, verbosity=3)
+ds = GSHA(path=raw_data_path, verbosity=3)
 
 assert ds.wsAll.shape == (21568, 4), ds.wsAll.shape
 
@@ -103,7 +103,7 @@ def test_lc_vars():
 
 
 def test_streamflow_indices():
-    ds1 = GSHA(path=gscad_path, to_netcdf=False, verbosity=3)
+    ds1 = GSHA(path=raw_data_path, to_netcdf=False, verbosity=3)
     assert ds1.streamflow_indices_stn('1001_arcticnet').shape[1] == 16
     out = ds1.streamflow_indices()
     assert isinstance(out, dict), type(out)
@@ -256,7 +256,7 @@ test_plot_catchment(ds)
 print('All tests passed!')
 
 
-ds = Thailand(path=gscad_path, verbosity=3)
+ds = Thailand(path=raw_data_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=73, 
@@ -268,7 +268,7 @@ test_dataset(ds,
               )
 
 
-ds = Japan(path=gscad_path, verbosity=3)
+ds = Japan(path=raw_data_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=751, 
@@ -278,7 +278,13 @@ test_dataset(ds,
               )
 
 
-ds = Arcticnet(path=gscad_path, verbosity=3)
+ds = Japan(path=raw_data_path, timestep="h", verbosity=3)
+
+q = ds.fetch_q()
+
+assert pd.infer_freq(q.index) == 'h'
+
+ds = Arcticnet(path=raw_data_path, verbosity=3)
 
 test_dataset(ds, 
              num_stations=106, 
@@ -290,7 +296,7 @@ test_dataset(ds,
               )
 
 
-ds = Spain(path=gscad_path, verbosity=3)
+ds = Spain(path=raw_data_path, verbosity=3)
 
 test_dataset(ds,
              num_stations=889,

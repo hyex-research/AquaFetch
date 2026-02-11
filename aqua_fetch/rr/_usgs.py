@@ -5,8 +5,10 @@ import time
 import warnings
 import requests
 from io import StringIO
+from datetime import datetime
 from typing import List, Union, Dict, Tuple
 from requests.exceptions import JSONDecodeError
+from requests.exceptions import ContentDecodingError
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -15,8 +17,9 @@ import pandas as pd
 from .utils import _RainfallRunoff
 from .._backend import netCDF4, xarray as xr
 from ..utils import get_cpus
-from ..utils import check_attributes
+from ..utils import validate_attributes
 from ._hysets import HYSETS
+from ._utils import tw_resampler
 
 from ._map import (
     observed_streamflow_cms,
@@ -147,17 +150,22 @@ class USGS(_RainfallRunoff):
             hysets_path = os.path.dirname(self.path)
             # if os.path.exists(hysets_path):
             #     self.hysets_path = hysets_path
-            if self.verbosity:
+            if self.verbosity> 1:
                 print(f"hysets_path is {hysets_path}")
 
-        self.hysets = HYSETS(path = hysets_path, verbosity=verbosity)
+        self.hysets = HYSETS(path = hysets_path, verbosity=verbosity-1)
         self.hysets_path = self.hysets.path
 
         self._stations = self.__stations()
         self.metadata = maybe_make_and_get_metadata(self.path, self.stations())
 
         self._static_features = self.__static_features()
-    
+
+        self.bbox = {"llcrnrlat": 22, "urcrnrlat": 75,
+                     "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
+        self.parallels = np.arange(22, 75, 7)
+        self.meridians = np.arange(-168, -65, 12)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return self.hysets.boundary_file
@@ -221,7 +229,7 @@ class USGS(_RainfallRunoff):
         >>> dataset.area('912101A')  # returns area of station whose id is 912101A
         >>> dataset.area(['912101A', '12388200'])  # returns area of two stations
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
 
         area = self.metadata['drain_area_va']
 
@@ -271,7 +279,7 @@ class USGS(_RainfallRunoff):
             # we want Official_ID because that will be used as index later on
             static_features = [static_features, 'Official_ID']
         
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [map_[stn] for stn in stations]        
         static_feats = self.hysets.fetch_static_features(stations, static_features)
@@ -306,7 +314,7 @@ class USGS(_RainfallRunoff):
         >>> dataset.stn_coords('01010000')  # returns coordinates of station whose id is 912101A
         >>> dataset.stn_coords(['01010000', '01010070'])  # returns coordinates of two stations
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         coords = self.metadata.loc[:, ['dec_long_va', 'dec_lat_va']]
         coords.rename(columns={'dec_long_va': 'long', 'dec_lat_va': 'lat'}, inplace=True)
         return coords.loc[stations, :]
@@ -331,7 +339,7 @@ class USGS(_RainfallRunoff):
         >>> stations = dataset.stations()[0:3]
         >>> features = dataset.fetch_stations_features(stations)
         """
-        stations = check_attributes(stations, self.stations(), 'stations')
+        stations = validate_attributes(stations, self.stations(), 'stations')
         static, dynamic = None, None
 
         if xr is None:
@@ -378,7 +386,7 @@ class USGS(_RainfallRunoff):
     ):
         """Fetches dynamic features of station."""
         st, en = self._check_length(st, en)
-        features = check_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
+        features = validate_attributes(dynamic_features, self.dynamic_features.copy(), 'dynamic_features')
 
         if self.verbosity>2:
             print(f"fetching {len(features)} dynamic features for {len(stations)} stations  from {st} to {en}")
@@ -442,7 +450,7 @@ class USGS(_RainfallRunoff):
         """Fetches static features of station."""
         if self.verbosity>1:
             print('fetching static features')
-        stations = check_attributes(station, self.stations(), 'stations')
+        stations = validate_attributes(station, self.stations(), 'stations')
         map_ = self.hysets.OfficialID_WatershedID_map
         stations = [map_[stn] for stn in stations]
         static_feats = self.hysets.fetch_static_features(stations, static_features).copy()
@@ -480,20 +488,27 @@ class USGS(_RainfallRunoff):
         if ext == 'csv':
             return pd.read_csv(fpath, index_col=0, **read_csv_kwargs)
         else:
+            ds = xr.open_dataset(fpath)
+
             if as_dataframe:
-                return xr.open_dataset(fpath).to_dataframe()
-            return xr.open_dataset(fpath)        
+                return ds['q_cms_obs'].to_pandas()
+            
+            ds = ds['q_cms_obs'].assign_coords(stations=ds['stations']).to_dataset(dim='stations')
+            return ds
 
     def __stations(self)->List[str]:
         if self.verbosity>1:
             print('getting stations')
         dataset = self._q(read_csv_kwargs=dict(nrows=2))
 
-        if isinstance(dataset, xr.Dataset):
-            # get names of all variables
-            return list(dataset.data_vars.keys())
-        else:
-            return dataset.columns.tolist()
+        if xr is not None:
+            if isinstance(dataset, xr.Dataset):
+                # get names of all variables
+                return list(dataset.data_vars.keys())
+                #return [stn for stn in dataset.stations.data]
+            else:
+                return dataset.columns.tolist()
+        return dataset.columns.tolist()
 
     def _make_csv(
             self,
@@ -512,8 +527,8 @@ class USGS(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         
-        make_daily_q(self.path, sites, cpus)
-        print(f"Downloaded daily data and stored in {self.path}/daily_q.nc")
+        make_daily_q(self.path, sites, cpus=cpus)
+        if self.verbosity: print(f"Downloaded daily data and stored at {self.path}/daily_q.nc")
 
         #make_hourly_q(self.path, sites[9000:10000], cpus=cpus)
         #print(f"Downloaded hourly data and stored in {self.path}/hourly_q.nc")
@@ -579,75 +594,163 @@ def maybe_make_and_get_metadata(
 def make_daily_q(
         path:str,
         sites:List[str], 
-        cpus:int,
+        start = "1900-01-01",
+        end = None,
+        cpus:int=None,
+        out_fname:str = "daily_q",
+        # dron't drop stations with all nans by default
+        # because self.stations() or self.stn_coords() may fail
+        drop_all_nan_stns:bool=False,
+        save_stns_as_data_vars:bool=False,
         verbosity:int=1
         ):
 
+    if netCDF4 is None:
+        out_fname += '.csv'
+    else:
+        out_fname += '.nc'
+
+    assert os.path.exists(path), f"{path} does not exist"
+
+    if cpus is None:
+        cpus = max(get_cpus()-2, 1)
+
+    if end is None:
+        end = datetime.today().strftime("%Y-%m-%d")
+
+    out_fpath = os.path.join(path, out_fname)
+
     if verbosity: print(f"Downloading daily data for {len(sites)} sites using {cpus} cpus")
+    if verbosity: print(f"Final file will be stored in {out_fpath}")
 
-    daily_files_path = os.path.join(path, 'daily_files')
-    if not os.path.exists(daily_files_path):
-        os.makedirs(daily_files_path)
-
-    start = time.time()
+    start_c = time.time()
     with ProcessPoolExecutor(max_workers=cpus) as executor:
-        data = executor.map(download_daily_record, sites)
+        data = executor.map(download_daily_record, 
+                            sites, 
+                            [start]*len(sites), 
+                            [end]*len(sites))
 
-    total = round((time.time() - start)/60, 2)
+    data = pd.concat(list(data), axis=1)
+    data.index = pd.to_datetime(data.index)
+    data.index.name = 'time'
+
+    total = round((time.time() - start_c)/60, 2)
     
     if verbosity: print(f"Time taken to download data: {total} mins with {cpus} cpus")
-    start = time.time()
+
+    # find out columns with all nans
+    all_nan_cols = data.columns[data.isna().all()].tolist()
+    if len(all_nan_cols) > 0:
+        print(f"found {len(all_nan_cols)} stations with all nans")
+        if drop_all_nan_stns:
+            data = data.drop(columns=all_nan_cols)
+
+    start_c = time.time()
 
     if netCDF4 is None:
-        save_daily_q_as_csv(path, data)
+        save_daily_q_as_csv(path, data, out_fname=out_fname)
     else:
-        save_daily_q_as_nc(path, data)
+        save_daily_q_as_nc(path, data, out_fname, save_stns_as_data_vars)
+        #save_daily_q_as_csv(path, data)
 
-
-    total = round((time.time() - start)/60, 2)
-    print(f"Time taken: to store {total} mins")
-    return
+    total = round((time.time() - start_c)/60, 2)
+    print(f"Time taken: to write {total} mins for {data.shape[1]} stations")
+    return data
 
 
 def save_daily_q_as_csv(path, data):
     df = pd.DataFrame(data)
-    df.to_csv(os.path.join(path, 'daily_q.csv'), index=True)
+    df.to_csv(os.path.join(path, 'daily_q.csv'), index=True, index_label='time')
     return
 
-def save_daily_q_as_nc(path, data):
+
+def save_daily_q_as_nc(
+        path, 
+        data:pd.DataFrame,
+        out_fname:str = "daily_q.nc",
+        save_stns_as_data_vars:bool=False,
+        ):
     from netCDF4 import Dataset, date2num
 
-    ncfile = Dataset(os.path.join(path, 'daily_q.nc'), mode='w', format='NETCDF4')
+    start_yr = data.index[0].year
 
-    _ = ncfile.createDimension('time', None)  # unlimited dimension
+    if save_stns_as_data_vars:
+        ncfile = Dataset(os.path.join(path, out_fname), mode='w', format='NETCDF4')
 
-    new_idx = pd.date_range(start=DAILY_START, end=DAILY_END, freq='D')
-    time_var = ncfile.createVariable('time', 'f8', ('time',))
-    time_var.units = 'days since 1820-01-01 00:00:00'
-    time_var.calendar = 'gregorian'
-    time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
+        _ = ncfile.createDimension('time', None)  # unlimited dimension
 
-    for idx, ts in enumerate(data):
-        # create a variable for each column
-        col_var = ncfile.createVariable(str(ts.name), 
-                                        datatype='f4', 
-                                        dimensions=('time',),
-                                        complevel=4, 
+        new_idx = pd.date_range(start=data.index[0], end=data.index[-1], freq='D')
+        time_var = ncfile.createVariable('time', 'f8', ('time',))
+        time_var.units = f'days since {start_yr}-01-01 00:00:00'
+        time_var.calendar = 'gregorian'
+        time_var[:] = date2num(new_idx.to_pydatetime(), units=time_var.units, calendar=time_var.calendar)
+
+        for idx, ts in enumerate(data):
+            # create a variable for each column
+            col_var = ncfile.createVariable(str(ts.name), 
+                                            datatype='f4', 
+                                            dimensions=('time',),
+                                            complevel=2, 
+                                            compression='zlib',
+                                            shuffle=True,
+                                            least_significant_digit=4,
+                                            chunksizes=(data.shape[0],)
+                                            )
+            # ts may have different index than new_idx/tim_demension, so we need to reindex
+            new_ts = ts.reindex(index=new_idx)
+
+            col_var[:] = new_ts.values
+            col_var.units = "cms"
+            col_var.description = "daily discharge"
+
+            if idx % 100 == 0:
+                print(f"Saved data for {idx} sites in .nc file")
+
+        ncfile.close()
+
+    else:
+        # saving as a single variable with stations as dimension (appears to be more efficient i/o wise)
+        out_path = os.path.join(path, out_fname)
+        with Dataset(out_path, "w", format="NETCDF4") as nc:
+            # create the dimensions which will be used to create variable
+            _ = nc.createDimension('time', data.shape[0])
+            _ = nc.createDimension('stations', data.shape[1])
+
+            col_var = nc.createVariable(observed_streamflow_cms(),
+                                        datatype=np.float32,
+                                        dimensions=('time', 'stations'),
+                                        complevel=4,
                                         compression='zlib',
                                         shuffle=True,
                                         least_significant_digit=4,
+                                        # chunk size equal to data for one station
+                                        chunksizes=(data.shape[0], 1)
                                         )
-        # ts may have different index than new_idx/tim_demension, so we need to reindex
-        new_ts = ts.reindex(index=new_idx)
+            
+            col_var[:] = data.values
+            col_var.description = "daily discharge"
+            col_var.units = "cms"
 
-        col_var[:] = new_ts.values
-        col_var.units = "cms"
-        col_var.description = "daily discharge"
+            station_var = nc.createVariable('stations', str, ('stations',))
+            station_var[:] = np.array(data.columns).astype(str)  
 
-        if idx % 100 == 0:
-            print(f"Saved data for {idx} sites in .nc file")
+            # Create time variable with CF-compliant encoding
+            time_var = nc.createVariable('time', 'i4', ('time',))
+            time_var.calendar = 'standard'
+            time_var.long_name = 'time'
+            time_var.standard_name = 'time'
+            time_var.axis = 'T'
 
-    ncfile.close()
+            time_strings = data.index.strftime("%Y%j").tolist()
+            # Convert time strings from YYYYJJJ to YYYYMMDD format    
+            datetime_objects = [datetime.strptime(ts, "%Y%j") for ts in time_strings]
+            time_var.units = f'days since {start_yr}-01-01 00:00:00'
+
+            # Convert to days since reference date
+            reference_date = datetime(start_yr, 1, 1)
+            time_values = [(dt - reference_date).total_seconds() / 86400 for dt in datetime_objects]
+
+            time_var[:] = time_values
 
     return
 
@@ -762,7 +865,7 @@ def _read_json(json):
 
 def download_daily_q_nwis(
         site:str = '14105700', 
-        start = '1820-01-01', 
+        start = '1900-01-01', 
         end='2024-12-31'
         )->pd.DataFrame:
 
@@ -788,6 +891,8 @@ def download_daily_q_nwis(
 
 def download_daily_record(
         site:str,
+        start = "1900-01-01",
+        end:str = None,
         )->pd.Series:
 
     # todo: should we store the data in csv files so that we don't have to download it again?
@@ -799,8 +904,8 @@ def download_daily_record(
     #     return pd.read_csv(fpath, index_col=0)
 
     site_data = download_daily_q_nwis(site, 
-                    start="1820-01-01",  # DAILY_START
-                    end="2024-12-31",    # DAILY_END
+                    start=start, 
+                    end=end,    
                     )
     if f'00060_Mean' in site_data.columns:
         # get data for stations which have A in 00060_Mean_cd column
@@ -833,7 +938,8 @@ def download_daily_record(
                             )
     
     site_data.name = site
-    site_data.index = site_data.index.tz_localize(None)
+    if site_data.index.tz is not None:
+        site_data.index = site_data.index.tz_convert("UTC").tz_localize(None)
     return site_data * 0.028316847 # convert cfs to cms
 
 
@@ -886,6 +992,8 @@ def format_response(
 
 def _read_rdb(rdb):
     """
+    The following code is taken and modified after dataretrieval github repo
+
     Convert NWIS rdb table into a ``pandas.dataframe``.
 
     Parameters
@@ -931,6 +1039,7 @@ def _read_rdb(rdb):
     df = format_response(df)
     return df
 
+
 def _download_metadata(site:str)->pd.DataFrame:
     response = requests.get(
         'https://waterservices.usgs.gov/nwis/site', 
@@ -940,3 +1049,94 @@ def _download_metadata(site:str)->pd.DataFrame:
         )
 
     return _read_rdb(response.text)
+
+
+def download_hourly_q_nwis(
+        site:str = "09246200",
+        start = '1995-08-11', 
+        end='1995-08-12'
+)->pd.DataFrame:
+
+    response = requests.get(
+        "https://waterservices.usgs.gov/nwis/iv", 
+        params={'format': 'json', 
+                'parameterCd': '00060', 
+                'sites': site, 
+                'startDT': start, 
+                'endDT': end, 
+                'multi_index': None,
+                }, 
+        headers={"user-agent": f"python-dataretrieval/1.0.11"}, verify=True)
+
+    if response.status_code in [400, 404, 414]:
+        raise ValueError(f"Bad Request, check that your parameters are correct. URL: {response.url}")
+
+    try:
+        site_data = _read_json(response.json())
+    except JSONDecodeError:
+        site_data = pd.DataFrame()
+        print(f"Site: {site} JSONDecodeError")
+
+    if 'datetime' in site_data.columns: 
+        site_data.index = pd.to_datetime(site_data.pop('datetime'))
+
+    return site_data
+
+
+def download_hourly_record(
+        site:str,
+        path:str,
+        start:str = "1979-02-11",
+        end:str = None,
+        overwrite:bool=False,
+        save_empty_file:bool=False
+        )->pd.Series:
+
+    fpath = os.path.join(path, f"{site}.csv")
+
+    if os.path.exists(fpath) and not overwrite:
+        site_data = pd.read_csv(fpath, index_col=0, parse_dates=True, dtype={site:'float32'})
+        site_data = site_data[site]
+        site_data.name = site
+        return site_data
+
+    try:
+        site_data = download_hourly_q_nwis(
+            site, 
+            start=start, 
+            end=end,
+            )
+    except (JSONDecodeError, ContentDecodingError, TypeError):
+        site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-30", freq='h')
+            )
+
+    if len(site_data) == 0:
+        # return empty series
+        site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-02", freq='h')
+                              )    
+    elif isinstance(site_data, pd.DataFrame) and site_data.columns[1] == '00060':
+        site_data = site_data[site_data['00060_cd'].isin(['A, [92]', 'A, [91]', 'A, [93]', 'A, e', 'A'])]
+
+        site_data = site_data['00060'].resample('h').apply(lambda subdata: tw_resampler(subdata, site_data['00060'].sort_index()))
+    else:
+       site_data = pd.Series(
+            index = pd.date_range(start="2024-01-01", end="2024-01-02", freq='h'))
+    
+    site_data.name = site
+    # site_data for some stations is not tz aware, so we make it tz aware first
+    # and then convert to UTC and remove tz info so that the csv files can be 
+    # joined later without any issues
+    if site_data.index.tzinfo is not None:
+        site_data.index = site_data.index.tz_convert("UTC").tz_localize(None)
+    site_data = site_data * 0.028316847 # convert cfs to cms
+
+    site_data = site_data.astype('float32')
+
+    site_data = site_data.sort_index()
+
+    if len(site_data.dropna()) > 0 or save_empty_file:
+        site_data.to_csv(fpath, index=True, index_label='time')
+
+    return site_data

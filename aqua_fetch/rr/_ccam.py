@@ -10,7 +10,7 @@ from .utils import _RainfallRunoff
 from .._backend import fiona
 from .._backend import xarray as xr
 from ..utils import merge_shapefiles_fiona
-from ..utils import check_attributes, dateandtime_now
+from ..utils import validate_attributes, dateandtime_now
 
 from ._map import (
     observed_streamflow_cms,
@@ -171,6 +171,11 @@ class CCAM(_RainfallRunoff):
 
         if fiona is not None:
             merge_shapefiles_fiona(shp_files, boundaries)
+
+
+        self.bbox = {'llcrnrlat': 20.0, 'urcrnrlat': 50.0, 'llcrnrlon': 70.0, 'urcrnrlon': 140.0}
+        self.parallels = range(20, 50, 5)
+        self.meridians = range(70, 140, 10)
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -358,8 +363,8 @@ class CCAM(_RainfallRunoff):
         >>> xds = dataset.fetch_meteo(features=features, st=st, en=en)
         """
         def_features = ['PRE', 'TEM', 'PRS', 'RHU', 'EVP', 'WIN', 'SSD', 'GST', 'PET']
-        features = check_attributes(features, def_features)
-        stations = check_attributes(station, self.meteo_stations)
+        features = validate_attributes(features, def_features)
+        stations = validate_attributes(station, self.meteo_stations)
         if xr is None:
             raise ModuleNotFoundError(f"xarray must be installed")
         else:
@@ -404,7 +409,7 @@ class CCAM(_RainfallRunoff):
             en=None)->dict:
         """reads dynamic data of one or more catchments located along Yellow River basin
         """
-        attributes = check_attributes(dynamic_features, self.dynamic_features)
+        attributes = validate_attributes(dynamic_features, self.dynamic_features)
 
         dyn = {stn: self._read_yr_dynamic_from_csv(stn).loc["19990101": "20201231", attributes] for stn in stations}
 

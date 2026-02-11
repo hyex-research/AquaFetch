@@ -7,7 +7,7 @@ import numpy as np
 
 def _make_boundary_2d(geometry)-> List[np.ndarray]:
     """
-    Converts a geometry object to a list of 2D polygons (NumPy arrays).
+    Converts a fiona.Geometry object to a list of 2D polygons (NumPy arrays).
     """
     def make_polygon_2d(polygon):
         """
@@ -137,7 +137,10 @@ def calc_centroid(geometry)->Tuple[float, float]:
         raise ValueError("Unsupported geometry type for centroid calculation.")
 
 
-def utm_to_lat_lon(easting, northing, zone:int):
+def epsg25832_to_wgs84(
+        easting,  # longitude like but in projected coordinate
+        northing,  # latitude like but in projected coordinate
+        zone:int):
     # Constants
     a = 6378137.0  # WGS 84 major axis
     # Eccentricity : how much the ellipsoid deviates from being a perfect sphere
@@ -266,3 +269,48 @@ def lcc_to_wgs84(x, y, lon_0, lat_0, lat_1, lat_2, false_easting, false_northing
     lon = theta / n + lon_0_rad
 
     return np.rad2deg(phi), np.rad2deg(lon)
+
+
+def _lv03_to_wgs84_vec(east, north):
+    """
+    Vectorized conversion LV03 (EPSG:21781) -> WGS84 (EPSG:4326)
+    east, north: scalar or numpy array (east = y, north = x in LV03 notation)
+    returns (lon, lat)
+    """
+    east = np.asarray(east, dtype=float)
+    north = np.asarray(north, dtype=float)
+
+    y_aux = (east - 600000.0) / 1e6
+    x_aux = (north - 200000.0) / 1e6
+
+    lat = (16.9023892
+           + 3.238272 * x_aux
+           - 0.270978 * (y_aux**2)
+           - 0.002528 * (x_aux**2)
+           - 0.0447   * (y_aux**2) * x_aux
+           - 0.0140   * (x_aux**3))
+
+    lon = (2.6779094
+           + 4.728982 * y_aux
+           + 0.791484 * y_aux * x_aux
+           + 0.1306   * y_aux * (x_aux**2)
+           - 0.0436   * (y_aux**3))
+
+    # convert from sexagesimal seconds to degrees
+    lat = lat * 100.0 / 36.0
+    lon = lon * 100.0 / 36.0
+
+    return lon, lat
+
+
+def epsg2056_point_to_wgs84(easting, northing):
+    """
+    EPSG:2056 (LV95) -> WGS84 lon/lat
+    LV95 -> LV03 shift: easting - 2,000,000 ; northing - 1,000,000
+    """
+    # convert to LV03
+    e_lv03 = np.asarray(easting, dtype=float) - 2_000_000.0
+    n_lv03 = np.asarray(northing, dtype=float) - 1_000_000.0
+    lon, lat = _lv03_to_wgs84_vec(e_lv03, n_lv03)
+
+    return lat, lon

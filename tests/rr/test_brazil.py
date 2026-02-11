@@ -7,7 +7,7 @@ import logging
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+raw_data_path = '/path/to/raw/data'  # replace with actual path
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_brazil.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,9 +22,9 @@ from utils import (
 
 
 for source in ['era5', 'ref', 'ens']:
-    dataset = CABra(path=gscad_path, met_src=source, verbosity=4)
+    dataset = CABra(path=raw_data_path, met_src=source, verbosity=4)
     test_dataset(dataset, 735, 10957, 87, 13)
 
 
-ds_br = CAMELS_BR(path=os.path.join(gscad_path, 'CAMELS'), verbosity=3)
+ds_br = CAMELS_BR(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=3)
 test_dataset(ds_br, 897, 14245, 67, 11)

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ..utils import (
-    check_attributes,
+    validate_attributes,
     LabelEncoder,
     OneHotEncoder,
     maybe_download_and_read_data,
@@ -168,7 +168,7 @@ def ec_removal_biochar(
         'final_concentration'
     ]
 
-    parameters = check_attributes(parameters, def_paras, 'parameters')
+    parameters = validate_attributes(parameters, def_paras, 'parameters')
 
     data = data[parameters]
 
@@ -276,7 +276,7 @@ def po4_removal_biochar(
     data['feedstock'] = data['feedstock'].replace(np.nan, 'None')
     data['ion_type'] = data['ion_type'].replace(np.nan, 'None')
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -391,7 +391,7 @@ def cr_removal(
 
     def_paras = list(columns.values()) + ['adsorption_capacity', 'removal_efficiency']
 
-    parameters = check_attributes(parameters, def_paras, 'parameters')
+    parameters = validate_attributes(parameters, def_paras, 'parameters')
 
     data = data[parameters]
 
@@ -492,7 +492,7 @@ def heavy_metal_removal(
 
     def_paras = list(columns.values())
 
-    parameters = check_attributes(parameters, def_paras, 'parameters')
+    parameters = validate_attributes(parameters, def_paras, 'parameters')
 
     data = data[parameters]
 
@@ -593,7 +593,7 @@ def heavy_metal_removal_Shen(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -715,7 +715,7 @@ def industrial_dye_removal(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -779,7 +779,7 @@ def P_recovery(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -844,7 +844,7 @@ def N_recovery(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -963,7 +963,7 @@ def As_recovery(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 

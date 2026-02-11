@@ -8,6 +8,7 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 site.addsitedir(wd_dir)
 
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+gscad_path = '/mnt/storage1/atr/data/gscad_database/raw'
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_lamah.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,14 +29,16 @@ for idx, dt in enumerate(['total_upstrm',
 
     logger.info(f'testing for {dt} at daily timestep')
 
-    dataset = LamaHCE(timestep='D', data_type=dt, path=os.path.join(gscad_path, 'LamaHCE_daily'), verbosity=4)
+    dataset = LamaHCE(timestep='D', data_type=dt, path=gscad_path, verbosity=4)
 
     test_dataset(dataset,
                  stations[idx],
                     14244,
                     num_static_attrs=static[idx],
                     num_dyn_attrs=22,
-                    yearly_steps=366)
+                    yearly_steps=366,
+                    test_latlong_ranges=False
+                    )
 
 for idx, dt in enumerate(['total_upstrm',
                           'intermediate_all', 
@@ -51,7 +54,8 @@ for idx, dt in enumerate(['total_upstrm',
                     341856,
                     static[idx],
                     num_dyn_attrs=16,
-                    yearly_steps=8761)
+                    yearly_steps=8761,
+                    test_latlong_ranges=False)
 
 ##  **** LamaHIce ****
 
@@ -72,7 +76,8 @@ for idx, data_type in enumerate(['total_upstrm',
                     dyn_data_len = 412848, 
                     num_static_attrs = num_static[idx], 
                     num_dyn_attrs = 28,
-                    yearly_steps = 8761
+                    yearly_steps = 8761,
+                    test_latlong_ranges=False
                     )
 
 
@@ -84,7 +89,7 @@ for idx, data_type in enumerate(['total_upstrm',
         
     logger.info(f'testing for {data_type}, at daily timestep')
 
-    dataset = LamaHIce(path=os.path.join(gscad_path, 'LamaHIce_daily'), 
+    dataset = LamaHIce(path=gscad_path, 
                        timestep='D', data_type=data_type, 
                        verbosity=4)
 
@@ -93,5 +98,6 @@ for idx, data_type in enumerate(['total_upstrm',
                     26298, 
                     num_static[idx], 
                     36,
-                    yearly_steps=366
+                    yearly_steps=366,
+                    test_latlong_ranges=False
                     )

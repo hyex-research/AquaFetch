@@ -31,8 +31,7 @@ from utils import (
     test_plot_catchment,
 )
 
-
-gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
+gscad_path = ''
 
 
 dataset = HYSETS(path=gscad_path, verbosity=5)

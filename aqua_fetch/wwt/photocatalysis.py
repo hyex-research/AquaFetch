@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from ..utils import (
-    check_attributes,
+    validate_attributes,
     LabelEncoder,
     OneHotEncoder,
     maybe_download_and_read_data,
@@ -119,7 +119,7 @@ def mg_degradation(
                       'ini_conc_mg/l', 'final_conc_mg/l', 'catalyst_type', 'anions',
                       ] + ['Efficiency (%)', 'k_first', 'k_2nd']
 
-    parameters = check_attributes(parameters, def_paras, "parameters")
+    parameters = validate_attributes(parameters, def_paras, "parameters")
 
     data = data[parameters]
 
@@ -296,7 +296,7 @@ def dye_removal(
 
     default_paras = list(columns.values()) + ['k_1st', 'k_2nd', "efficiency_%"]
 
-    parameters = check_attributes(parameters, default_paras, 'parameters')
+    parameters = validate_attributes(parameters, default_paras, 'parameters')
 
     df = df[parameters]
 
@@ -400,7 +400,7 @@ def dichlorophenoxyacetic_acid_removal(
 
     default_parameters = list(columns.values())
 
-    parameters = check_attributes(parameters, default_parameters, 'parameters')
+    parameters = validate_attributes(parameters, default_parameters, 'parameters')
 
     data = data[parameters]
 
@@ -532,7 +532,7 @@ def pms_removal(
 
     default_parameters = list(columns.values())
 
-    parameters = check_attributes(parameters, default_parameters, 'parameters')
+    parameters = validate_attributes(parameters, default_parameters, 'parameters')
 
     data = data[parameters]
 
@@ -619,7 +619,7 @@ def tetracycline_degradation(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -683,7 +683,7 @@ def tio2_degradation(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 
@@ -794,7 +794,7 @@ def photodegradation_Jiang(
 
     data.rename(columns=columns, inplace=True)
 
-    parameters = check_attributes(parameters, list(columns.values()), 'parameters')
+    parameters = validate_attributes(parameters, list(columns.values()), 'parameters')
 
     data = data[parameters]
 

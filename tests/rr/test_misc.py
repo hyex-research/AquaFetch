@@ -7,12 +7,14 @@ site.addsitedir(wd_dir)
 import logging
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='test_estreams.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename='test_misc.log', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from aqua_fetch.rr import DraixBleone
 from aqua_fetch.rr import JialingRiverChina
+from aqua_fetch.rr import ShyftNorway
 
 from utils import test_fetch_dynamic_features
+from utils import test_dataset
 
 
 def test_jilingriverchina():
@@ -42,3 +44,8 @@ for stn in ds.stations():
     assert len(df.shape) == 2
 
 # df = ds._read_q_stn(ds.stations()[0])
+
+# %%
+dataset = ShyftNorway(verbosity=3)
+
+test_dataset(dataset, 111, 23376, 10, 1)

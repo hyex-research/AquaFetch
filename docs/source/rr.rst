@@ -66,6 +66,7 @@ List of datasets
 .. list-table:: Stations per Source
    :widths: 8 13 7 7 10 10 10 10 30
    :header-rows: 1
+   :class: sphinx-datatable
 
    * - Source Name
      - Class
@@ -120,7 +121,7 @@ List of datasets
      - 166, 187
      - 1900 - 2018
      - Australia
-     - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_
+     - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_ , `Flower et al., 2024 <https://essd.copernicus.org/articles/17/4079/2025/>`_
    * - ``CAMELS_BR``
      - :py:class:`aqua_fetch.rr.CAMELS_BR`
      - 897
@@ -165,7 +166,7 @@ List of datasets
      - 111
      - 1951 - 2020
      - Germany
-     - `Loritz et al., 2024 <https://essd.copernicus.org/preprints/essd-2024-318/>`_
+     - `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_
    * - ``CAMELS_DK``
      - :py:class:`aqua_fetch.rr.CAMELS_DK`
      - 304
@@ -183,7 +184,7 @@ List of datasets
      - 111
      - 1963 - 2023
      - Finland
-     - `Seppä et al., 2024 <https://doi.org/10.5281/zenodo.16257216>`_
+     - `Seppä et al., 2025 <https://doi.org/10.5281/zenodo.16257216>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -225,7 +226,7 @@ List of datasets
      - 
      - 369
      - 5
-     - 39
+     - 40
      - 1972 - 2024
      - New Zealand
      - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
@@ -447,6 +448,40 @@ List of datasets
      - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
 
 
+.. _dup_table:
+Duplicate Datasets
+==================
+For some regions/coutries, there are multiple datasets available. These datasets may have
+different number of stations, temporal coverage, static and dynamic features.
+The following table lists the duplicate datasets available in AquaFetch.
+
+.. list-table:: Duplicate Datasets
+   :widths: 15 30 30 30
+   :header-rows: 1
+   :class: sphinx-datatable
+
+   * - Country/Region
+     - First Dataset
+     - Second Dataset
+     - Third Dataset     
+   * - ``USA``
+     - :py:class:`aqua_fetch.rr.CAMELS_US`
+     - :py:class:`aqua_fetch.rr.HYSETS`
+     - :py:class:`aqua_fetch.rr.USGS`
+   * - ``Denmark``
+     - :py:class:`aqua_fetch.rr.CAMELS_DK`
+     - :py:class:`aqua_fetch.rr.Caravan_DK`
+     - 
+   * - ``Brazil``
+     - :py:class:`aqua_fetch.rr.CAMELS_BR`
+     - :py:class:`aqua_fetch.rr.CABra`
+     - 
+   * - ``Spain``
+     - :py:class:`aqua_fetch.Bull`
+     - :py:class:`aqua_fetch.rr.Spain`
+     - 
+
+
 High Level API
 ==============
 The :py:class:`aqua_fetch.rr.RainfallRunoff` class represents high level API
@@ -480,7 +515,7 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.rr._misc._EStreams
+.. autoclass:: aqua_fetch.rr._estreams._EStreams
    :members:
    :show-inheritance:
 
@@ -726,6 +761,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.RRLuleaSweden
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.ShyftNorway
    :members:
    :show-inheritance:
 

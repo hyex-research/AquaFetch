@@ -1,6 +1,6 @@
 
 requests
-pandas<=2.1.4
+pandas<=2.3.3
 numpy
 
 # Python >=3.6 and <= 3.12 required

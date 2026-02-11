@@ -13,7 +13,7 @@ except (ModuleNotFoundError, ImportError):
 
 from .utils import _RainfallRunoff
 from .._backend import xarray as xr
-from ..utils import check_attributes, download, unzip
+from ..utils import validate_attributes, download, unzip
 
 from ._map import (
     observed_streamflow_cms,
@@ -325,6 +325,11 @@ class HYSETS(_RainfallRunoff):
 
         self._maybe_to_netcdf()
 
+        self.bbox = {"llcrnrlat": 18, "urcrnrlat": 80.384358,
+                     "llcrnrlon": -168.0,  "urcrnrlon": -55.0}
+        self.parallels = np.arange(18, 80, 7)
+        self.meridians = np.arange(-168, -55, 12)
+
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.path,  
@@ -449,6 +454,12 @@ class HYSETS(_RainfallRunoff):
     def end(self)->pd.Timestamp:
         return pd.Timestamp("20231231")
 
+    def usgs_stations(self)->List[str]:
+        """Returns the names of stations which are taken from USGS as list"""
+        df = pd.read_csv(os.path.join(self.path, "HYSETS_watershed_properties.txt"),
+                 sep=",")
+        return df.loc[df['Source']=='USGS']['Watershed_ID'].astype(str).tolist()
+
     def area(
             self,
             stations: Union[str, List[str]] = 'all',
@@ -479,7 +490,7 @@ class HYSETS(_RainfallRunoff):
         >>> dataset.area('92')  # returns area of station whose id is 912101A
         >>> dataset.area(['92', '142'])  # returns area of two stations
         """
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
 
         SRC_MAP = {
             'gsim': 'Drainage_Area_GSIM_km2',
@@ -518,7 +529,7 @@ class HYSETS(_RainfallRunoff):
                               "Dynamic features will be returned as pandas DataFrame")
                 as_dataframe = True
 
-        stations = check_attributes(stations, self.stations())
+        stations = validate_attributes(stations, self.stations())
         stations_int = [int(stn) for stn in stations]
 
         static, dynamic = None, None
@@ -589,7 +600,7 @@ class HYSETS(_RainfallRunoff):
 
         stations_1 = np.subtract(stations, 1).astype(str).tolist()
         st, en = self._check_length(st, en)
-        attrs = check_attributes(dynamic_features, self.dynamic_features)
+        attrs = validate_attributes(dynamic_features, self.dynamic_features)
 
         dyn_map_ = {v:k for k,v in self.dyn_map.items()}
 

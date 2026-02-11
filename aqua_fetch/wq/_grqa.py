@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .._datasets import Datasets
-from ..utils import check_st_en, check_attributes
+from ..utils import check_st_en
 
 
 DTYPES = {

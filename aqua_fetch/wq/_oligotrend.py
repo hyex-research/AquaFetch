@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 from .._datasets import Datasets
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 
 class Oligotrend(Datasets):
@@ -193,8 +193,8 @@ class Oligotrend(Datasets):
 
         df = self.l1_data()
 
-        stns = check_attributes(stns, self.stations(), 'stns')
-        parameters = check_attributes(parameters, self.parameters(), 'parameters')
+        stns = validate_attributes(stns, self.stations(), 'stns')
+        parameters = validate_attributes(parameters, self.parameters(), 'parameters')
 
         cond1 = df['id'].isin(stns)
         cond2 = df['variable'].isin(parameters)
@@ -230,9 +230,9 @@ class Oligotrend(Datasets):
 
         df = self.l1_data()
 
-        stn = check_attributes(stn, self.stations(), 'stn')
+        stn = validate_attributes(stn, self.stations(), 'stn')
 
-        parameters = check_attributes(parameters, self.parameters(), 'parameters')
+        parameters = validate_attributes(parameters, self.parameters(), 'parameters')
 
         cond1 = df['id'].isin(stn)
 

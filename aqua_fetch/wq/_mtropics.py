@@ -6,7 +6,7 @@ import pandas as pd
 
 from .._datasets import maybe_download
 
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 
 def ecoli_mekong(
@@ -230,7 +230,7 @@ def _fetch_ecoli(path, overwrite, url, station_name, parameters, st, en, _name):
     # River is not a representative name
     df = df.rename(columns={"River": "station_name", "LAT": "lat", "LONG": "long"})
 
-    features = check_attributes(parameters, df.columns.tolist(), 'parameters')
+    features = validate_attributes(parameters, df.columns.tolist(), 'parameters')
     df = df[features]
 
     df = df.sort_index()

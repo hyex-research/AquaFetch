@@ -13,7 +13,7 @@ from .._backend import xarray as xr, fiona, shapefile
 
 from .._datasets import Datasets
 
-from ..utils import check_attributes, check_st_en, find_records, Resampler
+from ..utils import validate_attributes, check_st_en, find_records, Resampler
 
 
 class MtropicsLaos(Datasets):
@@ -225,7 +225,7 @@ class MtropicsLaos(Datasets):
             else:
                 _features = self.physio_chem_features[features]
 
-        features = check_attributes(_features, list(self.physio_chem_features.values()))
+        features = validate_attributes(_features, list(self.physio_chem_features.values()))
 
         fname = os.path.join(self.path, 'ecoli_data.csv')
         df = pd.read_csv(fname, sep='\t')
@@ -307,7 +307,7 @@ class MtropicsLaos(Datasets):
             else:
                 _features = available_features[features]
 
-        features = check_attributes(_features, list(available_features.values()))
+        features = validate_attributes(_features, list(available_features.values()))
 
         if remove_duplicates:
             df = df[~df.index.duplicated(keep='first')]
@@ -741,7 +741,7 @@ class MtropicsLaos(Datasets):
             'Ecoli_mpn100': 400
         }
 
-        target: list = check_attributes(output_features, self.target)
+        target: list = validate_attributes(output_features, self.target)
 
         data = self._make_ml_problem(input_features, target, st, en, freq)
 
@@ -829,8 +829,8 @@ class MtropicsLaos(Datasets):
             self, input_features, output_features, st, en, freq,
             replace_zeros_in_target:bool = True
     ):
-        inputs = check_attributes(input_features, self.inputs)
-        target = check_attributes(output_features, self.target)
+        inputs = validate_attributes(input_features, self.inputs)
+        target = validate_attributes(output_features, self.target)
         features_to_fetch = inputs + target
 
         pcp = self.fetch_pcp(st=st, en=en, freq=freq)

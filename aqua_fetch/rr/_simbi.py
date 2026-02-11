@@ -5,7 +5,6 @@ from typing import List, Union, Dict
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from ..utils import check_attributes
 
 from ._map import (
     catchment_area,
@@ -198,7 +197,7 @@ class Simbi(_RainfallRunoff):
         """
         Returns names/IDs of 24 stations with boundary data.
         """
-        return list(self.bndry_id_map.keys())
+        return list(self.bndry_id_map_.keys())
 
     def static_data_stations(self)->List[str]:
         """
@@ -316,7 +315,8 @@ class Simbi(_RainfallRunoff):
         Read the monthly average flow values.
         """
         fpath = os.path.join(self.monthly_clim_sig_path, 'average.csv')
-        df = pd.read_csv(fpath, parse_dates=True, index_col=0)
+        df = pd.read_csv(fpath, #parse_dates=True, 
+                         index_col=0)
         df.index = [i.split('-')[1] for i in df.index]
         df.columns = [f"{i}_mon_avg" for i in df.columns]
         return df

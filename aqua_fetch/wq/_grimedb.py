@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from .._datasets import Datasets
-from ..utils import check_attributes
+from ..utils import validate_attributes
 
 
 class GRiMeDB(Datasets):
@@ -122,10 +122,10 @@ class GRiMeDB(Datasets):
                         na_values={'pH': '.'})
 
         if stations != "all":
-            stations = check_attributes(stations, self._stations, 'stations')
+            stations = validate_attributes(stations, self._stations, 'stations')
             df = df[df['Site_ID'].isin(stations)]
         elif streams != "all":
-            streams = check_attributes(streams, self.streams, 'streams')
+            streams = validate_attributes(streams, self.streams, 'streams')
             sites = self.sites()
             stations = sites.loc[sites['Stream_Name'].isin(streams), 'Site_ID'].values.astype(int).tolist()
             df = df[df['Site_ID'].isin(stations)]
@@ -152,7 +152,7 @@ class GRiMeDB(Datasets):
         df = pd.read_csv(fpath)
 
         if stations != "all":
-            stations = check_attributes(stations, self._stations, 'stations')
+            stations = validate_attributes(stations, self._stations, 'stations')
             df = df[df['Site_ID'].isin(stations)]
         return df
     
