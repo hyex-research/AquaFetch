@@ -35,7 +35,7 @@ from .._backend import xarray as xr
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from .utils import _RainfallRunoff
- 
+from ._utils import tw_resampler
  
 from ._map import (
     catchment_area,
@@ -1235,9 +1235,13 @@ class Ireland(_EStreams):
         ---------
         >>> epa_df = download_epa_data()
         """
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_epa_path, 'H': self.hourly_epa_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
 
-        all_epa_data_file = os.path.join(self.path, f"epa_{folder}.csv")
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+
+        all_epa_data_file = os.path.join(self.path, f"epa_{fname}.csv")
         if os.path.exists(all_epa_data_file):
             if self.verbosity>1: print(f"{all_epa_data_file} already exists")
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
@@ -1251,7 +1255,7 @@ class Ireland(_EStreams):
 
         for idx, stn in enumerate(self.epa_stations):
 
-            fpath = os.path.join(self.path, "EPA", folder, f"{stn}.csv")
+            fpath = os.path.join(folder, f"{stn}.csv")
 
             print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
 
@@ -1273,16 +1277,19 @@ class Ireland(_EStreams):
         if cpus is None:
             cpus = self.processes or max(get_cpus() - 2, 1)
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_epa_path, 'H': self.hourly_epa_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_epa_data_file = os.path.join(self.path, f"epa_{folder}.csv")
+        all_epa_data_file = os.path.join(self.path, f"epa_{fname}.csv")
         if os.path.exists(all_epa_data_file):
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
             print(f"{all_epa_data_file} already exists")  
             return df
 
         timesteps = [self.timestep] * len(self.epa_stations)
-        fpaths = [os.path.join(self.path, "EPA", folder, f"{stn}.csv") for stn in self.epa_stations]
+        fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.epa_stations]
 
         print(f"Downloading {len(fpaths)} EPA stations using {cpus} cpus at {os.path.join(self.path, 'EPA', folder)}")
 
@@ -1303,18 +1310,21 @@ class Ireland(_EStreams):
     
     def download_opw_data_parallel(self, cpus=None):
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_opw_path, 'H': self.hourly_opw_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_opw_data_file = os.path.join(self.path, f"opw_{folder}.csv")
+        all_opw_data_file = os.path.join(self.path, f"opw_{fname}.csv")
         if os.path.exists(all_opw_data_file):
             df = pd.read_csv(all_opw_data_file, index_col=0, parse_dates=True)
             print(f"{all_opw_data_file} already exists")  
             return df
 
-        fpaths = [os.path.join(self.path, "OPW", folder, f"{stn}.csv") for stn in self.opw_stations]
+        fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.opw_stations]
 
         if self.verbosity:
-            print(f"Downloading {len(fpaths)} OPW stations using {cpus} cpus at {os.path.join(self.path, 'OPW', folder)}")
+            print(f"Downloading {len(fpaths)} OPW stations using {cpus} cpus at {folder}")
 
         with ProcessPoolExecutor(cpus) as executor:
             opw_dfs = list(executor.map(_download_opw_stn_data, fpaths, [self.timestep]*len(self.opw_stations)))
@@ -1337,6 +1347,30 @@ class Ireland(_EStreams):
 
         return opw_df
 
+    @property
+    def raw_opw_path(self):
+        return os.path.join(self.path, "OPW")
+
+    @property
+    def daily_opw_path(self):
+        return os.path.join(self.raw_opw_path, "daily")
+
+    @property
+    def hourly_opw_path(self):
+        return os.path.join(self.raw_opw_path, "hourly")
+
+    @property
+    def raw_epa_path(self):
+        return os.path.join(self.path, "EPA")
+    
+    @property
+    def daily_epa_path(self):
+        return os.path.join(self.raw_epa_path, "daily")
+    
+    @property
+    def hourly_epa_path(self):
+        return os.path.join(self.raw_epa_path, "hourly")
+
     def download_opw_data_seq(self):
         """
         Examples
@@ -1344,9 +1378,12 @@ class Ireland(_EStreams):
         >>> opw_df = download_opw_data()
         """
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_opw_path, 'H': self.hourly_opw_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_opw_data_file = os.path.join(self.path, f"opw_{folder}.csv")
+        all_opw_data_file = os.path.join(self.path, f"opw_{fname}.csv")
         if os.path.exists(all_opw_data_file):
             df = pd.read_csv(all_opw_data_file, index_col=0, parse_dates=True)
             if self.verbosity: print(f"{all_opw_data_file} already exists")  
@@ -1358,7 +1395,7 @@ class Ireland(_EStreams):
         opw_dfs = []
         for idx, stn in enumerate(self.opw_stations):
 
-            fpath = os.path.join(self.path, "OPW", folder, f"{stn}.csv")
+            fpath = os.path.join(folder, f"{stn}.csv")
 
             print(f"{idx}/{len(self.opw_stations)} Downloading {stn}")
 
@@ -1384,9 +1421,20 @@ class Ireland(_EStreams):
         return opw_df
 
 
-def _download_epa_stn_data(fpath, timestep="D")->pd.Series:
+def _download_epa_stn_data(
+        fpath, 
+        timestep="D",
+        overwrite:bool=False
+        )->tuple[pd.Series, int]:
+
     stn = os.path.basename(fpath).split('.')[0]
-    if timestep in ("D", 'daily'):
+
+    if os.path.exists(fpath) and not overwrite:
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True)
+        df.index.name = 'timestamp'
+        return df.loc[:, stn], 0
+
+    if timestep.lower().startswith("d"):
         fname = "daymean.zip"
     else:
         fname = "15min.zip"
@@ -1444,26 +1492,53 @@ def _download_epa_stn_data(fpath, timestep="D")->pd.Series:
 
     df.index = pd.to_datetime(df.pop('timestamp'))
 
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
+
     # considering quality codes https://epawebapp.epa.ie/Hydronet/#FAQ
     # Quality codes: Good, nan, Suspect, Extrapolated, Unchecked, Excellent, Estimated
 
     df = df.loc[~df['qflag'].isin(['Unchecked'])]
     
-    if timestep == "D":
-        return df[stn], epa_failiures
+    if timestep.lower().startswith("d"):
+        daily_data = df[stn]
+        # since we are downloading the daily file, we don't need hourly information
+        daily_data.index = daily_data.index.normalize()
+        daily_data.to_csv(fpath, index_label="timestamp")
+        return daily_data, epa_failiures
 
-    return df[stn].resample(timestep).mean(), epa_failiures
+    # return df[stn].resample(timestep).mean(), epa_failiures
+    hourly_q = df[stn].resample(timestep).apply(lambda subdata: tw_resampler(subdata, df[stn].sort_index(), timestep))
+    hourly_q.name = stn
+    hourly_q.to_csv(fpath, index_label="timestamp")
+    return hourly_q, epa_failiures
 
 
-def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
+def _download_opw_stn_data(
+        fpath, 
+        timestep="D",
+        overwrite:bool=False
+        )->pd.Series:
+    """
+    Uses the high resolution (15 min) data of daily discharge.
+    For daily timestep, this data is resampled to daily timestep. Ideally
+    we should be able to directly download daily mean data from the OPW website
+    which means we would not need to resample the data ourselves. But the link
+    for daily mean files is not available ATM.
+    For hourly timestep, 15 data is resampled to hourly timestep. 
+    """
+
     stn = os.path.basename(fpath).split('.')[0]
-    # we don't/can't download daily data 
-    if timestep == "daily":
+
+    if os.path.exists(fpath) and not overwrite:
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True)
+        df.index.name = 'timestamp'
+        return df.loc[:, stn]
+
+    if timestep.lower().startswith('d'):
         timestep = "D"
-    elif timestep == "hourly":
+    elif timestep.lower().startswith('h'):
         timestep = "H"
-    elif timestep == "D":
-        pass
     else:
         raise ValueError(f"timestep should be either 'D' or 'H' but it is {timestep}")
 
@@ -1490,10 +1565,14 @@ def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
 
     # get rows where q_code is not 96 or 254
     df = df.loc[~df['q_code'].isin([96, 254])]
-    
+
     stn_data = df[stn]
-    #stn_data = stn_data.resample(timestep).apply(lambda subdata: tw_resampler(subdata, stn_data.sort_index(), timestep))    
-    stn_data = stn_data.resample(timestep).mean()
+    stn_data = stn_data.resample(timestep).apply(lambda subdata: tw_resampler(subdata, stn_data.sort_index(), timestep))    
+    #stn_data = stn_data.resample(timestep).mean()
+
+    stn_data.name = stn
+    stn_data.to_csv(fpath, index_label="timestamp")
+
     return stn_data
 
 
