@@ -233,22 +233,43 @@ class CAMELS_US(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
+        # An archive is satisfied (not needed) when *any* of these alternatives
+        # exists on disk: the archive itself, its extracted sibling folder, or a
+        # consolidated cache that fully captures its content. The third entry
+        # is what allows free_disk_space("redundant") to delete the per-station
+        # tree without triggering a re-download next time.
+        satisfied_by_cache = {
+            'basin_timeseries_v1p2_metForcing_obsFlow.zip': self.dyn_fpath,
+        }
+
         for fname, url in self.url.items():
 
             fpath = os.path.join(self.path, fname)
             furl = f"{url}{fname}"
 
-            if not os.path.exists(fpath) or self.overwrite:
+            if fname.endswith('.zip'):
+                extracted = os.path.join(self.path, fname[:-len('.zip')])
+                cache = satisfied_by_cache.get(fname)
+                already_have = (
+                    os.path.exists(fpath)
+                    or os.path.exists(extracted)
+                    or (cache is not None and os.path.exists(cache))
+                )
+            else:
+                already_have = os.path.exists(fpath)
 
-                if self.verbosity:
-                    print(f"downloading {fname} from {url}")
+            if already_have and not self.overwrite:
+                continue
 
-                download(furl, self.path, fname, verbosity=self.verbosity)
+            if self.verbosity:
+                print(f"downloading {fname} from {url}")
 
-                unzip(self.path, verbosity=self.verbosity)
+            download(furl, self.path, fname, verbosity=self.verbosity)
+
+            unzip(self.path, verbosity=self.verbosity)
 
         self.dataset_dir = os.path.join(
-            self.path, 
+            self.path,
             f'basin_timeseries_v1p2_metForcing_obsFlow{SEP}basin_dataset_public_v1p2')
 
         self._static_features = self._static_data().columns.tolist()
@@ -307,16 +328,44 @@ class CAMELS_US(_RainfallRunoff):
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     def stations(self) -> list:
-        stns = []
-        for _dir in os.listdir(os.path.join(self.dataset_dir, 'usgs_streamflow')):
-            cat = os.path.join(self.dataset_dir, f'usgs_streamflow{SEP}{_dir}')
-            stns += [fname.split('_')[0] for fname in os.listdir(cat)]
+        streamflow_dir = os.path.join(self.dataset_dir, 'usgs_streamflow')
+        if os.path.exists(streamflow_dir):
+            stns = []
+            for _dir in os.listdir(streamflow_dir):
+                cat = os.path.join(streamflow_dir, _dir)
+                stns += [fname.split('_')[0] for fname in os.listdir(cat)]
+        else:
+            # Fallback when the per-station tree has been removed by
+            # free_disk_space("redundant"): read station ids from the cached
+            # static_features.csv, which contains them as the gauge_id index.
+            static_fpath = os.path.join(self.path, 'static_features.csv')
+            df = pd.read_csv(static_fpath, dtype={'gauge_id': str}, usecols=['gauge_id'])
+            stns = df['gauge_id'].astype(str).tolist()
 
         # remove stations for which static values are not available
         for stn in ['06775500', '06846500', '09535100']:
-            stns.remove(stn)
+            if stn in stns:
+                stns.remove(stn)
 
         return stns
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        """
+        The per-station forcing and streamflow text files inside
+        ``basin_timeseries_v1p2_metForcing_obsFlow/`` become redundant once
+        ``camels_us_D.nc`` exists, since all dynamic data is baked into that
+        consolidated NetCDF.
+
+        Caveat: the cache reflects whichever ``data_source`` was selected when
+        it was first built. Once ``free_disk_space("redundant")`` removes the
+        per-station tree, switching ``data_source`` (e.g. ``daymet`` →
+        ``nldas``) requires re-downloading the source archive to rebuild the
+        cache. Run cleanup only after settling on a data source.
+        """
+        return [
+            (os.path.join(self.path, 'basin_timeseries_v1p2_metForcing_obsFlow'),
+             self.dyn_fpath),
+        ]
 
     def _read_stn_dyn(
             self,
@@ -3497,18 +3546,27 @@ class CAMELS_NZ(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        if not os.path.exists(os.path.join(self.path, 'camels_nz.zip')) and not self.overwrite:
+        zip_path = os.path.join(self.path, 'camels_nz.zip')
+        unzipped_dir = os.path.join(self.path, 'camels_nz')
+
+        # Download only if neither the archive nor the extracted folder exists.
+        # This way, deleting camels_nz.zip after extraction does not re-trigger
+        # a download on subsequent class instantiation.
+        if not (os.path.exists(zip_path) or os.path.exists(unzipped_dir)) and not self.overwrite:
             download(
-            outdir=self.path,
-            url=self.url,
-            fname="camels_nz.zip",
-            verbosity=self.verbosity,
-        )
+                outdir=self.path,
+                url=self.url,
+                fname="camels_nz.zip",
+                verbosity=self.verbosity,
+            )
 
-        unzip(self.path, verbosity=self.verbosity)
+        # Outer extract: only if the unzipped folder is not already there.
+        if not os.path.exists(unzipped_dir):
+            unzip(self.path, verbosity=self.verbosity)
 
-        # unzip the .zip files which are inside the camels_nz folder
-        unzip(os.path.join(self.path, 'camels_nz'), verbosity=self.verbosity)
+        # Inner extract: idempotent when no inner .zip files remain.
+        if os.path.exists(unzipped_dir):
+            unzip(unzipped_dir, verbosity=self.verbosity)
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
@@ -3590,6 +3648,23 @@ class CAMELS_NZ(_RainfallRunoff):
     @property
     def static_path(self) -> os.PathLike:
         return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Catchment_Atrributes')
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        # The five per-feature folders for each timestep become redundant once
+        # the corresponding consolidated NetCDF (camels_nz_D.nc / camels_nz_H.nc)
+        # exists. Both timesteps are listed regardless of self.timestep so that
+        # cleanup works whichever instance the user invokes free_disk_space on.
+        inner = os.path.join(self.path, 'camels_nz')
+        name_lc = self.name.lower()
+        pairs: List[Tuple[str, str]] = []
+        for ts_code, ts_word in (("D", "daily"), ("H", "hourly")):
+            cache = os.path.join(self.path, f"{name_lc}_{ts_code}.nc")
+            for feat in ("Temperature", "Precipitation", "Streamflow",
+                         "PET", "Relative_Humidity"):
+                pairs.append(
+                    (os.path.join(inner, f"CAMELS_NZ_{ts_word}_{feat}"), cache)
+                )
+        return pairs
 
     def _static_data(self, nrows:int = None) -> pd.DataFrame:
         """
@@ -4394,12 +4469,23 @@ class CAMELS_LUX(_RainfallRunoff):
         assert timestep in ['D', 'H', '15Min'], "timestep must be one of ['D', 'H', '15Min']"
 
         super(CAMELS_LUX, self).__init__(
-            path=path, 
+            path=path,
             timestep=timestep,
-            to_netcdf=to_netcdf, 
+            to_netcdf=to_netcdf,
             **kwargs)
-        
-        self._download(overwrite=overwrite)
+
+        # Skip download if any proof-of-data is already on disk: the original
+        # CAMELS-LUX folder, OR any of the per-timestep consolidated NetCDF
+        # caches (camels_lux_{D,H,15Min}.nc). The presence of any .nc proves
+        # the source archive was once successfully extracted, which is what
+        # the download is for.
+        lux_dir = os.path.join(self.path, "CAMELS-LUX")
+        name_lc = self.name.lower()
+        nc_files = [os.path.join(self.path, f"{name_lc}_{ts}.nc")
+                    for ts in ('D', 'H', '15Min')]
+        already_have = os.path.exists(lux_dir) or any(os.path.exists(f) for f in nc_files)
+        if not already_have or overwrite:
+            self._download(overwrite=overwrite)
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
@@ -4410,8 +4496,19 @@ class CAMELS_LUX(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        df = self._read_stn_dyn(self.stations()[0], nrows=2)
-        return df.columns.to_list()
+        ts_path = {
+            'D': self.daily_ts_path,
+            'H': self.hourly_ts_path,
+            '15Min': self.subhourly_ts_path,
+        }[self.timestep]
+        if os.path.exists(ts_path):
+            df = self._read_stn_dyn(self.stations()[0], nrows=2)
+            return df.columns.to_list()
+        # Fallback when the per-station csv folder has been removed by
+        # free_disk_space("redundant"): read feature names from the
+        # consolidated NetCDF for the current timestep.
+        with netCDF4.Dataset(self.dyn_fpath, "r") as ds:
+            return [str(s) for s in ds.variables["dynamic_features"][:]]
 
     def stations(self) -> List[str]:
         """
@@ -4423,6 +4520,26 @@ class CAMELS_LUX(_RainfallRunoff):
             index_col=0,
             dtype={0: str}
         ).index.to_list()
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        """
+        The per-station csv files under ``timeseries/<timestep>/`` become
+        redundant once the consolidated NetCDF for that timestep exists.
+
+        All three timesteps are listed regardless of the current instance's
+        ``self.timestep``: the parent's per-pair guard skips any folder
+        whose backing ``.nc`` cache is missing, so a single
+        ``free_disk_space("redundant")`` call cleans up every timestep that
+        has been consolidated. After all three NetCDFs are present and
+        cleanup runs, the outer ``CAMELS-LUX/timeseries/`` directory will
+        be left as empty timestep subdirs (which can be removed manually).
+        """
+        name_lc = self.name.lower()
+        pairs: List[Tuple[str, str]] = []
+        for ts_code, ts_word in (('D', 'daily'), ('H', 'hourly'), ('15Min', '15Min')):
+            cache = os.path.join(self.path, f"{name_lc}_{ts_code}.nc")
+            pairs.append((os.path.join(self.ts_path, ts_word), cache))
+        return pairs
 
     @property
     def boundary_file(self):
@@ -4974,23 +5091,55 @@ class CAMELSH(_RainfallRunoff):
         **kwargs)
 
         assert self.timestep == "H", f"CAMELSH dataset only supports hourly timestep but got {self.timestep}."
-            
+
+        # For each remote resource, declare the on-disk paths that fully satisfy
+        # it. If any of these exists, the archive is not needed and we skip
+        # download + unzip. This prevents re-acquiring data that free_disk_space()
+        # (or the user) has deleted because a consolidated NetCDF cache
+        # (all_stations_q.nc / all_stn_forcings.nc) covers the same content.
+        satisfied_by = {
+            "Hourly2.zip":          [self.h2_path,         self.all_stations_q_path],
+            "timeseries_nonobs.7z": [self.nonobs_path,     self.all_stn_forcings_path],
+            "timeseries.7z":        [self.timeseries_path, self.all_stn_forcings_path],
+            "attributes.7z":        [self.attr_path],
+            "shapefiles.7z":        [self.sf_path],
+            "info.csv":             [os.path.join(self.path, "info.csv")],
+        }
+
         for fname, url in self.url.items():
+
+            if not overwrite and any(os.path.exists(p) for p in satisfied_by.get(fname, [])):
+                continue
 
             dirname = fname.split('.')[0]
             dirpath = os.path.join(self.path, dirname)
-            
+
             fpath = os.path.join(self.path, fname)
 
             if not ((os.path.exists(fpath) or os.path.exists(dirpath)) or overwrite):
                 download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
 
             uzipped_dir_path = os.path.join(self.path, fname.split('.')[0])
-            if not os.path.exists(uzipped_dir_path):
+            if fname.endswith(('.zip', '.7z')) and not os.path.exists(uzipped_dir_path):
                 unzip(self.path, keep_parent_dir=True, verbosity=self.verbosity)
 
-        self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
-        self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
+        # Discover stations and dynamic features. Prefer the per-station files
+        # when Hourly2/ is present; otherwise fall back to the consolidated nc
+        # caches. The fallback uses netCDF4 directly (one open per file) instead
+        # of xarray, which is much faster for metadata-only lookups when the
+        # consolidated file has thousands of data variables.
+        if os.path.exists(self.h2_path):
+            self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+            self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
+        else:
+            with netCDF4.Dataset(self.all_stations_q_path, "r") as _ncq:
+                self.__stations = [v for v in _ncq.variables if v not in _ncq.dimensions]
+                q_feats_raw = [str(s) for s in _ncq.variables["dynamic_features"][:]]
+            with netCDF4.Dataset(self.all_stn_forcings_path, "r") as _ncf:
+                f_feats_raw = [str(s) for s in _ncf.variables["dynamic_features"][:]]
+            q_feats = [str(self.dyn_map.get(v, v)) for v in q_feats_raw]
+            f_feats = [str(self.dyn_map.get(v, v)) for v in f_feats_raw]
+            self.__dyn_features = q_feats + f_feats
 
         self.bbox = {"llcrnrlat": 22, "urcrnrlat": 75,
                      "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
@@ -5065,6 +5214,10 @@ class CAMELSH(_RainfallRunoff):
         return os.path.join(self.path, 'all_stn_forcings.nc')
 
     @property
+    def all_stations_q_path(self) -> Union[str, os.PathLike]:
+        return os.path.join(self.path, 'all_stations_q.nc')
+
+    @property
     def dynamic_features(self) -> List[str]:
         """
         Returns a list of dynamic features that are available in the dataset.
@@ -5090,11 +5243,20 @@ class CAMELSH(_RainfallRunoff):
 
     def _read_stn_q1(self, stn):
         fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
-        if not os.path.exists(fpath):
-            raise FileNotFoundError(f"q data for station {stn} not found in {self.h2_path}")
-        dyn_map = {k:v for k,v in self.dyn_map.items() if k in ['streamflow']}
-        ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
-        return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
+        if os.path.exists(fpath):
+            dyn_map = {k:v for k,v in self.dyn_map.items() if k in ['streamflow']}
+            ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
+            return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
+
+        # Fall back to consolidated cache if the per-station file is gone
+        if os.path.exists(self.all_stations_q_path):
+            ds = xr.open_dataset(self.all_stations_q_path, engine='netcdf4')
+            return ds[[stn]]
+
+        raise FileNotFoundError(
+            f"q data for station {stn} not found in {self.h2_path} "
+            f"nor in {self.all_stations_q_path}"
+        )
 
     def fetch_q(
             self, 
@@ -5113,7 +5275,7 @@ class CAMELSH(_RainfallRunoff):
         """
         stations = validate_attributes(stations, self.stations(), 'stations')
 
-        all_q_fname = os.path.join(self.path, "all_stations_q.nc")
+        all_q_fname = self.all_stations_q_path
         if os.path.exists(all_q_fname) and not self.overwrite:
             if self.verbosity>1:
                 print(f"Loading q data for {len(stations)} stations from {all_q_fname}")
@@ -5400,7 +5562,7 @@ class CAMELSH(_RainfallRunoff):
             # only q is asked
             results = self.fetch_q(stations)
 
-        elif observed_streamflow_cms() not in dyn_feats:
+        elif observed_streamflow_cms() not in dyn_feats and 'water_level' not in dyn_feats:
             # only forcing data is asked
             results = self._read_stns_forcing(stations)
         else:
@@ -5568,6 +5730,13 @@ class CAMELSH(_RainfallRunoff):
 
         q = (q / area_m2) * time_conversion  # cms to m
         return q * 1e3  # to mm
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        return [
+            (os.path.join(self.path, "Hourly2"),           self.all_stations_q_path),
+            (os.path.join(self.path, "timeseries"),        self.all_stn_forcings_path),
+            (os.path.join(self.path, "timeseries_nonobs"), self.all_stn_forcings_path),
+        ]
 
 
 def _validate_coords(run_id, time_f, dyn, T, D):

@@ -40,6 +40,8 @@ extra_requires = [
 
 all_requirements = min_requirements + extra_requires
 
+wwt_requires = min_requirements = ['openpyxl']
+
 setup(
 
     name='aqua_fetch',
@@ -93,5 +95,6 @@ setup(
 
     extras_require={
         'all': extra_requires,
+        'wwt': wwt_requires,
     }
 )

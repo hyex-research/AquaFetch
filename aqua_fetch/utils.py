@@ -935,7 +935,7 @@ def print_info(
 
 
 def get_cpus()->int:
-    if os.name == "nt":
+    if os.name in  ["nt", "posix"]:
         return os.cpu_count()
     else:
         return len(os.sched_getaffinity(0))

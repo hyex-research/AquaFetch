@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import shutil
 import warnings
 import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
@@ -182,6 +183,8 @@ class _RainfallRunoff(Datasets):
 
     def mm_to_cms(self, q_mm: pd.Series) -> pd.Series:
         """converts discharge from mm/timestep to cms"""
+
+        assert isinstance(q_mm, pd.Series), f"q_mm must be a pandas Series, but got {type(q_mm)}"
 
         if self.timestep.lower().startswith('d'):
             conversion_factor = 86400
@@ -426,6 +429,120 @@ class _RainfallRunoff(Datasets):
         static features.
         """
         raise NotImplementedError(f"Must be implemented in the child class")
+
+    # File extensions treated as archive files by free_disk_space().
+    _ARCHIVE_EXTS: Tuple[str, ...] = (
+        ".zip", ".7z", ".tar", ".tar.gz", ".tgz", ".gz", ".bz2",
+    )
+
+    def _archive_files(self) -> List[str]:
+        """
+        Archive files anywhere inside ``self.path`` whose content is already
+        on disk. An archive qualifies only when a sibling folder with the
+        matching stem exists alongside it — proving its content has been
+        extracted and the archive is safe to drop.
+        """
+        if not os.path.isdir(self.path):
+            return []
+        out: List[str] = []
+        for root, dirs, files in os.walk(self.path):
+            dir_set = set(dirs)
+            for f in files:
+                if not f.endswith(self._ARCHIVE_EXTS):
+                    continue
+                stem = _archive_stem(f, self._ARCHIVE_EXTS)
+                if stem in dir_set:
+                    out.append(os.path.join(root, f))
+        return out
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        """
+        Per-class declaration of folders that become redundant once a
+        consolidated NetCDF cache is built. Each entry is
+        ``(folder_path, cache_path)``: the folder is safe to delete only if the
+        cache exists.
+
+        Default is empty; classes that consolidate per-station data into a
+        single NetCDF file (e.g. CAMELSH) should override.
+        """
+        return []
+
+    def free_disk_space(
+            self,
+            level: str = "archives",
+            dry_run: bool = True,
+    ) -> Dict[str, int]:
+        """
+        Free disk space by removing files/folders inside ``self.path`` that
+        are no longer needed.
+
+        Parameters
+        ----------
+        level : str
+            - ``"archives"`` (default): delete only archive files
+              (``*.zip``, ``*.7z``, ``*.tar.gz``, ...). Their content has
+              already been extracted, so this is always safe and never triggers
+              a re-download on subsequent class instantiation.
+            - ``"redundant"``: in addition to archives, delete the per-class
+              folders declared in :meth:`_redundant_after_consolidation` whose
+              content is captured in a consolidated cache. Folders without a
+              backing cache are skipped with a warning. For classes that don't
+              override that hook, this level behaves like ``"archives"``.
+            - ``"all"``: equivalent to running both.
+        dry_run : bool
+            If True, report what would be removed without deleting anything.
+
+        Returns
+        -------
+        dict
+            Mapping ``{path: size_in_bytes}`` of items successfully removed
+            (or that would be removed when ``dry_run=True``).
+        """
+        if level not in ("archives", "redundant", "all"):
+            raise ValueError(
+                f"level must be one of 'archives', 'redundant', 'all'; got {level!r}"
+            )
+
+        targets: List[str] = []
+
+        if level in ("archives", "all"):
+            targets.extend(self._archive_files())
+
+        if level in ("redundant", "all"):
+            for folder, cache in self._redundant_after_consolidation():
+                if not os.path.exists(folder):
+                    continue
+                if not os.path.exists(cache):
+                    warnings.warn(
+                        f"skipping {folder} because the consolidated cache "
+                        f"{cache} does not exist; generate it first"
+                    )
+                    continue
+                targets.append(folder)
+
+        report: Dict[str, int] = {}
+        for p in targets:
+            size = _path_size(p)
+            label = "[dry-run] would remove" if dry_run else "removing"
+            if self.verbosity:
+                print(f"{label} {p} ({size / 1e9:.2f} GB)")
+            if dry_run:
+                report[p] = size
+                continue
+            try:
+                if os.path.isdir(p) and not os.path.islink(p):
+                    shutil.rmtree(p)
+                else:
+                    os.remove(p)
+                report[p] = size
+            except OSError as e:
+                warnings.warn(f"failed to remove {p}: {e}")
+
+        if self.verbosity:
+            total = sum(report.values())
+            prefix = "[dry-run] would free" if dry_run else "freed"
+            print(f"{prefix} {total / 1e9:.2f} GB across {len(report)} item(s)")
+        return report
 
     @property
     def start(self) -> pd.Timestamp:  # start of data
@@ -1343,7 +1460,7 @@ class _RainfallRunoff(Datasets):
 
 
 def _handle_dynamic(
-        dyn, 
+        dyn,
         as_dataframe: bool
         ) -> Union[Dict[str, pd.DataFrame], "Dataset"]:
     if as_dataframe and isinstance(dyn, dict) and isinstance(list(dyn.values())[0], pd.DataFrame):
@@ -1355,3 +1472,31 @@ def _handle_dynamic(
         # dyn is a dictionary of key, DataFames and we have to return xr Dataset
         dyn = xr.Dataset(dyn)
     return dyn
+
+
+def _path_size(path: str) -> int:
+    """Total size in bytes of a file or directory tree."""
+    if os.path.isfile(path):
+        return os.path.getsize(path)
+    total = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            fp = os.path.join(root, f)
+            try:
+                total += os.path.getsize(fp)
+            except OSError:
+                pass
+    return total
+
+
+def _archive_stem(fname: str, exts: Tuple[str, ...]) -> str:
+    """Return ``fname`` with its archive extension stripped. Handles compound
+    suffixes like ``.tar.gz`` and ``.tar.bz2`` before falling back to a plain
+    ``os.path.splitext``."""
+    for ext in (".tar.gz", ".tar.bz2"):
+        if ext in exts and fname.endswith(ext):
+            return fname[:-len(ext)]
+    base, ext = os.path.splitext(fname)
+    if ext in exts:
+        return base
+    return fname
