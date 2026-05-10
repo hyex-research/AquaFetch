@@ -29,8 +29,10 @@ for idx, dt in enumerate(['total_upstrm',
 
     logger.info(f'testing for {dt} at daily timestep')
 
-    dataset = LamaHCE(timestep='D', data_type=dt, path=gscad_path, verbosity=4)
-
+    dataset = LamaHCE(timestep='D', data_type=dt, 
+                      path=os.path.join(gscad_path, 'LamaHCE_daily'),
+                      verbosity=4)
+    
     test_dataset(dataset,
                  stations[idx],
                     14244,
@@ -47,7 +49,8 @@ for idx, dt in enumerate(['total_upstrm',
 
     logger.info(f'testing for {dt} at hourly timestep')
 
-    ds_eu = LamaHCE(timestep='H', data_type=dt, path=gscad_path, verbosity=4)
+    ds_eu = LamaHCE(timestep='H', data_type=dt, path=os.path.join(gscad_path, 'LamaHCE_hourly'), 
+                    verbosity=4)
 
     test_dataset(ds_eu,
                  stations[idx],
@@ -69,7 +72,8 @@ for idx, data_type in enumerate(['total_upstrm',
         
     logger.info(f'testing for {data_type}, at hourly timestep')
 
-    dataset = LamaHIce(path=gscad_path, timestep="H", data_type=data_type, verbosity=4)
+    dataset = LamaHIce(path=os.path.join(gscad_path, 'LamaHIce_hourly'),
+                       timestep="H", data_type=data_type, verbosity=4)
 
     test_dataset(dataset, 
                     num_stations = stations[idx], 
@@ -89,7 +93,7 @@ for idx, data_type in enumerate(['total_upstrm',
         
     logger.info(f'testing for {data_type}, at daily timestep')
 
-    dataset = LamaHIce(path=gscad_path, 
+    dataset = LamaHIce(path=os.path.join(gscad_path, 'LamaHIce_daily'),
                        timestep='D', data_type=data_type, 
                        verbosity=4)
 
