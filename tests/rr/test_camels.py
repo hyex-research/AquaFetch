@@ -132,6 +132,23 @@ class TestCamels(unittest.TestCase):
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 1582, 25568, 111, 21, test_latlong_ranges=False)
+
+        # hourly (CAMELS-DE-1h) data. The 109 static attributes come from the 7
+        # attribute files (the modelled simulation_benchmark file is excluded);
+        # all 26 observed + meteo-forcing timeseries columns are kept.
+        # test_latlong_ranges=True here (unlike daily) validates that the hourly
+        # boundaries are reprojected from EPSG:3035 to WGS84.
+        dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'),
+                            timestep='H', verbosity=4)
+        test_dataset(dataset, 1611, 210383, 109, 26,
+                     yearly_steps=8760,
+                     test_latlong_ranges=True)
+
+        # the hourly index must be a regular hourly series
+        _, dyn = dataset.fetch(stations='DE110000', dynamic_features='q_cms_obs',
+                               as_dataframe=True)
+        assert pd.infer_freq(dyn['DE110000'].index) in ['H', 'h'], \
+            pd.infer_freq(dyn['DE110000'].index)
         return
 
     def test_camels_se(self):

@@ -27,6 +27,11 @@ def observed_streamflow_mm()->str:
     return "q_mm_obs"
 
 
+def observed_water_level_cm()->str:
+    """observed water level (gauge stage) in centimeters"""
+    return "wl_cm_obs"
+
+
 # %% precpiation
 
 def total_precipitation()->str:

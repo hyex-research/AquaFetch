@@ -272,8 +272,11 @@ class RainfallRunoff(object):
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`
+            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS`,
+            ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`, or ``timestep``
+            (``'D'`` daily or ``'H'`` hourly) for datasets available at multiple
+            timesteps such as :py:class:`aqua_fetch.rr.LamaHCE` and
+            :py:class:`aqua_fetch.rr.CAMELS_DE`
         """
 
         if dataset not in DATASETS:

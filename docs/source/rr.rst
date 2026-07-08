@@ -160,13 +160,13 @@ List of datasets
      - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
-     - 1555
-     - 
-     - 21
-     - 111
-     - 1951 - 2020
+     - 1582
+     - 1611
+     - 21, 26
+     - 111, 109
+     - 1951 - 2020, 2001 - 2024
      - Germany
-     - `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_
+     - `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_; hourly: `Dolich et al., 2026 <https://doi.org/10.5194/essd-2026-289>`_
    * - ``CAMELS_DK``
      - :py:class:`aqua_fetch.rr.CAMELS_DK`
      - 304
