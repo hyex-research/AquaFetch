@@ -668,6 +668,7 @@ class _RainfallRunoff(Datasets):
               st: Union[None, str] = None,
               en: Union[None, str] = None,
               as_dataframe: bool = False,
+              seed: Union[int, None] = None,
               **kwargs
               ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
@@ -690,8 +691,13 @@ class _RainfallRunoff(Datasets):
                 returned from where it is available.
             en : end date of data to be returned. If None, then the data will be
                 returned till the date data is available.
-            as_dataframe : whether to return dynamic features as :obj:`pandas.DataFrame` 
+            as_dataframe : whether to return dynamic features as :obj:`pandas.DataFrame`
                 or as :obj:`xarray.Dataset`.
+            seed : seed for reproducible random selection of stations. It is only
+                used when ``stations`` is an ``int`` or a ``float``. If None (default),
+                the selection is non-deterministic. Passing an integer returns the
+                same set of stations on every call. The global random state is left
+                untouched.
             kwargs : keyword arguments to read the files
 
         Returns
@@ -730,9 +736,12 @@ class _RainfallRunoff(Datasets):
         >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
+        # a local RNG keeps sampling reproducible (when ``seed`` is given) without
+        # mutating the global random state that the caller's program may rely on
+        rng = random.Random(seed)
         if isinstance(stations, int):
             # the user has asked to randomly provide data for some specified number of stations
-            stations = random.sample(self.stations(), stations)
+            stations = rng.sample(self.stations(), stations)
         elif isinstance(stations, list):
             pass
         elif isinstance(stations, str):
@@ -742,7 +751,7 @@ class _RainfallRunoff(Datasets):
                 stations = [stations]
         elif isinstance(stations, float):
             num_stations = int(len(self.stations()) * stations)
-            stations = random.sample(self.stations(), num_stations)
+            stations = rng.sample(self.stations(), num_stations)
         elif stations is None:
             # fetch for all stations
             stations = self.stations()
