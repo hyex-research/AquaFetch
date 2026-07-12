@@ -26,6 +26,7 @@ from aqua_fetch import CAMELS_LUX
 from aqua_fetch import CAMELS_COL
 from aqua_fetch import CAMELS_SK
 from aqua_fetch import CAMELS_FI
+from aqua_fetch import CAMELS_PL
 from aqua_fetch import CAMELSH
 
 
@@ -226,6 +227,13 @@ class TestCamels(unittest.TestCase):
         dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
 
         test_dataset(dataset, 5767, 394488, 779, 13)
+        return
+
+    def test_pl(self):
+        dataset = CAMELS_PL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
+        # ~51 sec
+        test_dataset(dataset, 354, 27029, 74, 13,
+                     yearly_steps=366, st="20040101", en="20041231")
         return
 
 

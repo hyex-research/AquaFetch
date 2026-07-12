@@ -230,6 +230,15 @@ List of datasets
      - 1972 - 2024
      - New Zealand
      - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
+   * - ``CAMELS_PL``
+     - :py:class:`aqua_fetch.rr.CAMELS_PL`
+     - 354
+     -
+     - 13
+     - 74
+     - 1951 - 2024
+     - Poland
+     - `Brzezińska et al., 2026 <https://doi.org/10.5281/zenodo.20133183>`_
    * - ``CAMELS_SE``
      - :py:class:`aqua_fetch.rr.CAMELS_SE`
      - 50
@@ -635,6 +644,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_NZ
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_PL
    :members:
    :show-inheritance:
 
