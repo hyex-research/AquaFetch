@@ -3,4 +3,4 @@ requests
 pandas<=2.3.3
 numpy
 
-# Python >=3.6 and <= 3.12 required
+# Python >=3.6 and <= 3.13 required
