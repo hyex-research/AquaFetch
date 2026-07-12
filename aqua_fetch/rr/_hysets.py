@@ -455,10 +455,22 @@ class HYSETS(_RainfallRunoff):
         return pd.Timestamp("20231231")
 
     def usgs_stations(self)->List[str]:
-        """Returns the names of stations which are taken from USGS as list"""
+        """Returns the Watershed_IDs of (12004) stations which are taken from USGS as list"""
         df = pd.read_csv(os.path.join(self.path, "HYSETS_watershed_properties.txt"),
                  sep=",")
         return df.loc[df['Source']=='USGS']['Watershed_ID'].astype(str).tolist()
+
+    def canada_stations(self)->List[str]:
+        """Returns the Watershed_IDs of (2375) stations which are taken from Canada (HYDAT) as list"""
+        df = pd.read_csv(os.path.join(self.path, "HYSETS_watershed_properties.txt"),
+                 sep=",")
+        return df.loc[df['Source']=='HYDAT']['Watershed_ID'].astype(str).tolist()
+
+    def mexico_stations(self)->List[str]:
+        """Returns the Watershed_IDs of (46) stations which are taken from Mexico as list"""
+        df = pd.read_csv(os.path.join(self.path, "HYSETS_watershed_properties.txt"),
+                 sep=",")
+        return df.loc[df['Source']=='Mexico']['Watershed_ID'].astype(str).tolist()
 
     def area(
             self,

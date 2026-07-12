@@ -31,10 +31,46 @@ from utils import (
     test_plot_catchment,
 )
 
-gscad_path = ''
+gscad_path = '/path/to/raw/data'  # replace with actual path
 
 
 dataset = HYSETS(path=gscad_path, verbosity=5)
+
+
+def test_canada_stations(dataset):
+    """canada_stations() returns the 2375 Watershed_IDs sourced from HYDAT."""
+    logging.info(f"test_canada_stations for {dataset.name}")
+    stations = dataset.canada_stations()
+
+    assert isinstance(stations, list)
+    assert len(stations) == 2375, f"expected 2375 canada stations, got {len(stations)}"
+    assert all(isinstance(stn, str) for stn in stations)
+    # no duplicate ids
+    assert len(set(stations)) == len(stations)
+    # every canada station is a valid station of the dataset
+    assert set(stations).issubset(set(dataset.stations()))
+    return
+
+
+def test_mexico_stations(dataset):
+    """mexico_stations() returns the 46 Watershed_IDs sourced from Mexico."""
+    logging.info(f"test_mexico_stations for {dataset.name}")
+    stations = dataset.mexico_stations()
+
+    assert isinstance(stations, list)
+    assert len(stations) == 46, f"expected 46 mexico stations, got {len(stations)}"
+    assert all(isinstance(stn, str) for stn in stations)
+    # no duplicate ids
+    assert len(set(stations)) == len(stations)
+    # every mexico station is a valid station of the dataset
+    assert set(stations).issubset(set(dataset.stations()))
+    # canada and mexico sources must be disjoint
+    assert set(stations).isdisjoint(set(dataset.canada_stations()))
+    return
+
+
+test_canada_stations(dataset)
+test_mexico_stations(dataset)
 
 # because it takes very long time, we don't test with all the data
 test_dynamic_data(dataset, 0.1, int(14425 * 0.1), 27028)
