@@ -1127,10 +1127,15 @@ class Ireland(_EStreams):
             self, 
             path:Union[str, os.PathLike] = None,
             estreams_path:Union[str, os.PathLike] = None,
+            timestep:str='D',
             verbosity:int=1,
             **kwargs):
 
-        super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+        super().__init__(
+            path=path, 
+            estreams_path=estreams_path,
+            timestep=timestep,
+            verbosity=verbosity, **kwargs)
 
         self.bbox = {'llcrnrlat': 51.0, 'urcrnrlat': 55.5, 'llcrnrlon': -11.0, 'urcrnrlon': -5.0}
         self.parallels = range(51, 56, 1)
@@ -1424,9 +1429,12 @@ class Ireland(_EStreams):
 def _download_epa_stn_data(
         fpath, 
         timestep="D",
-        overwrite:bool=False
+        overwrite:bool=False,
+        save_raw = False,
         )->tuple[pd.Series, int]:
-
+    """
+    For hourly timestep, 15 min data is first downloaded and then resampled to hourly timestep.
+    """
     stn = os.path.basename(fpath).split('.')[0]
 
     if os.path.exists(fpath) and not overwrite:
@@ -1438,6 +1446,7 @@ def _download_epa_stn_data(
         fname = "daymean.zip"
     else:
         fname = "15min.zip"
+        raw_fpath = os.path.join(os.path.dirname(fpath), f"{stn}_15min.csv")
 
     epa_failiures = 0
 
@@ -1507,6 +1516,12 @@ def _download_epa_stn_data(
         daily_data.to_csv(fpath, index_label="timestamp")
         return daily_data, epa_failiures
 
+    df = df.sort_index()
+
+    if save_raw:
+        df[stn].to_csv(raw_fpath, index_label="timestamp")
+
+    print(f"Resampling {stn} data to hourly timestep")
     # return df[stn].resample(timestep).mean(), epa_failiures
     hourly_q = df[stn].resample(timestep).apply(lambda subdata: tw_resampler(subdata, df[stn].sort_index(), timestep))
     hourly_q.name = stn
