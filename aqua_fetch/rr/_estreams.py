@@ -1567,10 +1567,28 @@ def _download_opw_stn_data(
                         )
     except HTTPError:
         warnings.warn(f"Failed to download {stn}", UserWarning)
-        df = pd.Series(name=stn)
+        # an empty but DatetimeIndex-ed series, so that callers can still concat it
+        # along axis=1 without degrading the index, and spot the failure via len()==0.
+        # fpath is deliberately not written, so that a later run retries the download.
+        return pd.Series(
+            name=stn,
+            dtype='float32',
+            index=pd.DatetimeIndex([], name='timestamp')
+        )
 
     df.index = pd.to_datetime(df.pop('timestamp'))
-    if df.index.tz is not None:
+
+    # waterlevel.ie serves ISO-8601 UTC stamps e.g. '1973-07-10T12:00:00.000Z'. Without an
+    # offset, UTC is indistinguishable from Irish local time (UTC+1 during DST), so hourly
+    # values would be silently mislabelled by an hour for most of the year.
+    if getattr(df.index, 'tz', None) is None:
+        if timestep == "H":
+            raise ValueError(
+                f"Timestamps of OPW station {stn} were parsed as timezone-naive "
+                f"(first value: {df.index[0]}). Hourly data requires timezone-aware "
+                f"timestamps so that the conversion to UTC is correct."
+            )
+    else:
         df.index = df.index.tz_convert("UTC").tz_localize(None)
 
     # considering quality codes as given here https://waterlevel.ie/hydro-data/#/html/qualitycodes
