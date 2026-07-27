@@ -3,7 +3,8 @@ Tests for the CAMELS_PE (Peru, 136 catchments) dataset.
 
 The tests verify that the class
 
-    * exposes the correct number of stations (136), dynamic (10) and static (78)
+    * exposes the correct number of stations (136), dynamic (9, i.e. the observed
+      variables only, excluding the model-simulated streamflow) and static (78)
       features,
     * fetches the hydro-meteorological time series and static attributes
       **without changing the values or their units** (compared against a fresh,
@@ -57,19 +58,21 @@ CAMELS_PE_PATH = '/home/atr/AquaFetch/data_staging/test_data'
 
 NUM_STATIONS = 136
 NUM_STATIC = 78
-NUM_DYNAMIC = 10
+NUM_DYNAMIC = 9   # the model-simulated streamflow (flow_sim) is excluded
 DYN_LEN = 16436  # daily steps 1981-01-01 .. 2025-12-31
 
-# the exact, order-preserving set of standardised dynamic feature names
+# the exact, order-preserving set of standardised dynamic feature names.
+# NOTE: raw ``flow_sim`` (simulated streamflow) is deliberately NOT presented.
 EXPECTED_DYN_FEATURES = [
-    'pcp_mm', 'prec_var', 'q_mm_obs', 'q_mm_sim', 'pet_mm',
+    'pcp_mm', 'prec_var', 'q_mm_obs', 'pet_mm',
     'airtemp_C_min', 'airtemp_C_mean', 'airtemp_C_max', 'srad', 'vp_hpa',
 ]
 
-# raw time-series column -> standardised dynamic feature name
+# raw time-series column -> standardised dynamic feature name (``flow_sim`` is
+# intentionally absent: simulated data is not presented)
 RAW_TO_STD = {
     'prec': 'pcp_mm', 'prec_var': 'prec_var', 'flow_obs': 'q_mm_obs',
-    'flow_sim': 'q_mm_sim', 'pet': 'pet_mm', 'tmin': 'airtemp_C_min',
+    'pet': 'pet_mm', 'tmin': 'airtemp_C_min',
     'tmean': 'airtemp_C_mean', 'tmax': 'airtemp_C_max', 'srad': 'srad',
     'vprp': 'vp_hpa',
 }
@@ -99,7 +102,7 @@ def test_registration():
 
 
 def test_feature_names():
-    """dynamic feature names are exactly the 10 expected ones and the
+    """dynamic feature names are exactly the 9 expected ones and the
     unit-ambiguous ``srad``/``prec_var`` are kept with their raw names."""
     logger.info("test_feature_names")
     assert dataset.dynamic_features == EXPECTED_DYN_FEATURES, dataset.dynamic_features
@@ -108,15 +111,33 @@ def test_feature_names():
     assert 'srad' in dataset.dynamic_features
     assert 'prec_var' in dataset.dynamic_features
     # canonical names that DO match units must be present
-    for f in ('pcp_mm', 'q_mm_obs', 'q_mm_sim', 'pet_mm', 'vp_hpa',
+    for f in ('pcp_mm', 'q_mm_obs', 'pet_mm', 'vp_hpa',
               'airtemp_C_min', 'airtemp_C_mean', 'airtemp_C_max'):
         assert f in dataset.dynamic_features
+    # the model-simulated streamflow must NOT be presented (observational-only)
+    assert 'q_mm_sim' not in dataset.dynamic_features
+    assert 'flow_sim' not in dataset.dynamic_features
 
     assert len(dataset.static_features) == NUM_STATIC
     assert len(set(dataset.static_features)) == NUM_STATIC, "duplicate static names"
     # the standardised names needed by area()/stn_coords() must be present
     for f in ('area_km2', 'lat', 'long', 'elev_gauge_m', 'elev_catch_m'):
         assert f in dataset.static_features, f
+    return
+
+
+def test_simulated_flow_excluded():
+    """the raw files DO ship a model-simulated streamflow column (``flow_sim``),
+    but the class must not present it as a dynamic feature (observational-data-
+    only policy). This confirms the exclusion is real (we are dropping an
+    existing column, not a no-op) and would catch a regression that re-adds it."""
+    logger.info("test_simulated_flow_excluded")
+    stn = dataset.stations()[0]
+    raw = _raw_ts(dataset, stn)
+    assert 'flow_sim' in raw.columns, "raw source unexpectedly has no flow_sim column"
+    df = dataset._read_stn_dyn(stn)
+    assert 'flow_sim' not in df.columns and 'q_mm_sim' not in df.columns
+    assert df.shape[1] == NUM_DYNAMIC == 9, df.shape
     return
 
 
@@ -202,9 +223,10 @@ def test_static_fidelity():
     stn = random.choice(dataset.stations())
     # renamed: area -> area_km2
     assert np.isclose(sf.loc[stn, 'area_km2'], topo.loc[stn, 'area'])
-    # kept raw: elev_median (med helper collides with max, so left raw)
-    assert 'elev_median' in sf.columns
-    assert np.isclose(sf.loc[stn, 'elev_median'], topo.loc[stn, 'elev_median'])
+    # renamed: elev_median -> elev_catch_med_m (canonical median-elevation name)
+    assert 'elev_catch_med_m' in sf.columns
+    assert 'elev_median' not in sf.columns
+    assert np.isclose(sf.loc[stn, 'elev_catch_med_m'], topo.loc[stn, 'elev_median'])
     # categorical string attribute preserved verbatim
     assert sf.loc[stn, 'soil_dominant_class'] == soil.loc[stn, 'soil_dominant_class']
     return
@@ -404,6 +426,7 @@ if __name__ == "__main__":
     # dataset-specific checks
     test_registration()
     test_feature_names()
+    test_simulated_flow_excluded()
     test_returns_copies()
     test_read_stn_dyn_transform_fidelity()
     test_dynamic_fidelity()

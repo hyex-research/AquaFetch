@@ -25,7 +25,6 @@ if netCDF4 is not None:
 from ._map import (
     observed_streamflow_cms,
     observed_streamflow_mm,
-    simulated_streamflow_mm,
     observed_water_level_cm,
     cloud_cover,
     mean_air_temp,
@@ -5676,17 +5675,23 @@ class CAMELS_PE(_RainfallRunoff):
     is downloaded from its
     `zenodo repository <https://zenodo.org/records/21195425>`_ .
 
-    The dataset provides 10 daily dynamic features and 78 static features for
+    The dataset provides 9 daily dynamic features and 78 static features for
     each catchment. The dynamic (time series) features span from 1981-01-01 to
     2025-12-31 with a daily timestep (16436 steps), although individual
     variables retain the temporal coverage of their source product (observed
     streamflow is gauge-dependent and mostly incomplete, PET ends in 2016, air
     temperature ends in 2020) with the remaining dates filled with ``NaN``.
-    Observed streamflow is provided by SENAMHI while the meteorological forcing
-    is derived from the PISCO (PISCOp v2.1, PISCOt v1.2, PISCOeo_pm v1.0) and
-    ERA5-Land gridded products. Both the observed streamflow (``q_mm_obs``) and
-    the process-based simulated streamflow from PISCO-ARNOVIC v1.1
-    (``q_mm_sim``) are expressed as catchment-averaged runoff depth in mm/day.
+    Observed streamflow (``q_mm_obs``, catchment-averaged runoff depth in mm/day)
+    is provided by SENAMHI while the meteorological forcing is derived from the
+    PISCO (PISCOp v2.1, PISCOt v1.2, PISCOeo_pm v1.0) and ERA5-Land gridded
+    products.
+
+    .. note::
+        The source dataset also ships a model-simulated streamflow series
+        (``flow_sim``, from PISCO-ARNOVIC v1.1). Following the library's
+        observational-data-only policy, this simulated series is **not** presented
+        as a dynamic feature, so ``CAMELS_PE`` exposes 9 dynamic features rather
+        than the 10 documented in the paper.
 
     The 78 static features comprise 64 thematic catchment attributes (7
     topography, 10 climatic indices, 13 hydrological signatures, 8 land cover, 7
@@ -5701,7 +5706,7 @@ class CAMELS_PE(_RainfallRunoff):
     provided as GeoPackage files in WGS84 (EPSG:4326).
 
     On a typical machine the one-time download (~121 MB), extraction and netCDF
-    cache build take ~45 s; thereafter fetching all 136 stations (all 10 dynamic
+    cache build take ~45 s; thereafter fetching all 136 stations (all 9 dynamic
     features) from the cache takes ~0.2 s.
 
     .. note::
@@ -5718,7 +5723,7 @@ class CAMELS_PE(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='PE_204617', as_dataframe=True)
     >>> df = dynamic['PE_204617'] # dynamic is a dictionary with keys as station names and values as DataFrames
     >>> df.shape
-    (16436, 10)
+    (16436, 9)
     ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
@@ -5731,7 +5736,7 @@ class CAMELS_PE(_RainfallRunoff):
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
-        [(16436, 10), (16436, 10), ... (16436, 10)]
+        [(16436, 9), (16436, 9), ... (16436, 9)]
     ...
     ... # get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
@@ -5755,7 +5760,7 @@ class CAMELS_PE(_RainfallRunoff):
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='PE_204617', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['PE_204617'].shape
-    ((1, 78), 1, (16436, 10))
+    ((1, 78), 1, (16436, 9))
     ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
@@ -5922,14 +5927,16 @@ class CAMELS_PE(_RainfallRunoff):
         raw and standardised names are identical so no unit conversion is
         required.
 
-        ``prec_var`` (mm2 day-2) and ``srad`` (MJ m-2 day-1) are deliberately
-        left unmapped: no aqua_fetch canonical name carries those exact units,
-        so renaming them would misrepresent the units.
+        The raw ``flow_sim`` column (model-simulated streamflow from
+        PISCO-ARNOVIC v1.1) is intentionally omitted here and dropped in
+        :meth:`_read_stn_dyn`, following the library's observational-data-only
+        policy (simulated data is not presented). ``prec_var`` (mm2 day-2) and
+        ``srad`` (MJ m-2 day-1) are left unmapped because no aqua_fetch canonical
+        name carries those exact units, so renaming would misrepresent them.
         """
         return {
             'prec': total_precipitation(),                   # mm day-1
             'flow_obs': observed_streamflow_mm(),            # mm day-1 (observed, SENAMHI)
-            'flow_sim': simulated_streamflow_mm(),           # mm day-1 (PISCO-ARNOVIC v1.1 simulation)
             'pet': total_potential_evapotranspiration(),     # mm day-1
             'tmin': min_air_temp(),                          # deg C
             'tmean': mean_air_temp(),                        # deg C
@@ -5944,10 +5951,6 @@ class CAMELS_PE(_RainfallRunoff):
         name (and are needed by :meth:`area`, :meth:`stn_coords` etc.) are
         renamed; the remaining CAMELS-PE attributes keep their original,
         already CAMELS-standard names.
-
-        ``elev_median`` keeps its raw name because the
-        ``med_catchment_elevation_meters`` helper currently collides with the
-        catchment-maximum-elevation name.
         """
         return {
             'area': catchment_area(),                        # km2
@@ -5958,6 +5961,7 @@ class CAMELS_PE(_RainfallRunoff):
             'elev_mean': catchment_elevation_meters(),       # m a.s.l
             'elev_min': min_catchment_elevation_meters(),    # m a.s.l
             'elev_max': max_catchment_elevation_meters(),    # m a.s.l
+            'elev_median': med_catchment_elevation_meters(), # m a.s.l
             'slope_mean': slope('mkm-1'),                    # m km-1
         }
 
@@ -6066,6 +6070,11 @@ class CAMELS_PE(_RainfallRunoff):
 
         df = pd.read_csv(fpath, index_col='date', parse_dates=True)
         df.index.name = 'time'
+
+        # simulated streamflow (raw ``flow_sim``, PISCO-ARNOVIC v1.1) is model
+        # output, not an observation, so it is not presented as a dynamic feature
+        # (library observational-data-only policy). Drop it before renaming.
+        df = df.drop(columns=['flow_sim'], errors='ignore')
 
         df.rename(columns=self.dyn_map, inplace=True)
 

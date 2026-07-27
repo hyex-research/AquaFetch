@@ -27,6 +27,12 @@ def observed_streamflow_mm()->str:
     return "q_mm_obs"
 
 
+def simulated_streamflow_mm()->str:
+    """simulated (model) streamflow expressed as catchment-equivalent runoff
+    depth in mm/timestep"""
+    return "q_mm_sim"
+
+
 def observed_water_level_cm()->str:
     """observed water level (gauge stage) in centimeters"""
     return "wl_cm_obs"
@@ -505,7 +511,7 @@ def max_catchment_elevation_meters()->str:
 
 def med_catchment_elevation_meters()->str:
     """median elevation of the catchment in meters"""
-    return "elev_catch_max_m"
+    return "elev_catch_med_m"
 
 
 def urban_fraction()->str:

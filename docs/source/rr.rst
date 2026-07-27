@@ -243,7 +243,7 @@ List of datasets
      - :py:class:`aqua_fetch.rr.CAMELS_PE`
      - 136
      -
-     - 10
+     - 9
      - 78
      - 1981 - 2025
      - Peru
