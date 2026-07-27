@@ -25,7 +25,7 @@ features include constant parameters such as land use, soil, topography, and oth
 physiographical characteristics, along with catchment boundaries. This submodule not 
 only provides access to established rainfall-runoff datasets such as CAMELS and LamaH 
 but also introduces new datasets compiled for the first time from publicly accessible 
-online data sources. The `wq` submodule offers access to `16 surface water quality datasets <https://aquafetch.readthedocs.io/en/latest/wq.html#list-of-datasets>`_, 
+online data sources. The `wq` submodule offers access to `17 surface water quality datasets <https://aquafetch.readthedocs.io/en/latest/wq.html#list-of-datasets>`_,
 each containing various water quality parameters measured across different spaces 
 and times. The `wwt` submodule provides access to over 20,000 experimental measurements 
 related to wastewater treatment techniques such as adsorption, photocatalysis, 

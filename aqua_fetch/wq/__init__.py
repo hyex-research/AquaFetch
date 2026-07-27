@@ -40,3 +40,7 @@ from ._misc import WhiteClayCreek
 from ._river_chem_siberia import RiverChemSiberia
 from ._camels_chem import CamelsCHChem
 from ._oligotrend import Oligotrend
+from .caravan_qual import CaravanQual
+
+
+# https://doi.org/10.1038/s41597-026-07625-1

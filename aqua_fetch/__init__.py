@@ -103,6 +103,7 @@ from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
 from .wq import CamelsCHChem
 from .wq import Oligotrend
+from .wq import CaravanQual
 
 # *** Miscellaneous ***
 
@@ -206,7 +207,8 @@ ALL_DATASETS = [
     RiverChemSiberia.__class__.__name__,
     CamelsCHChem.__class__.__name__,
     Oligotrend.__class__.__name__,
-    
+    CaravanQual.__name__,
+
     ec_removal_biochar.__name__,
     cr_removal.__name__,
     po4_removal_biochar.__name__,

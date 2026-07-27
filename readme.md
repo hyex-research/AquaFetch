@@ -215,6 +215,7 @@ mg_data_ohe.shape  # -> (1200, 31)
 | Buzzards Bay              | 64                |                    | 1992 - 2018       | Buzzards Bay (USA)        | [Jakuba et al., 2021](https://doi.org/10.1038/s41597-021-00856-4)            |
 | CamelsChem                | 28                |     671            | 1980 - 2018       | Conterminous USA          | [Sterle et al., 2024](https://doi.org/10.5194/hess-28-611-2024)              |
 | CamelsCHChem            | 40                |     115            | 1980 - 2020       | Swtizerland               | [Nascimento et al., 2025](https://eartharxiv.org/repository/view/9046/)      |
+| CaravanQual               | 100               |     151859         | 1894 - 2025       | Global                    | [Jones et al., 2026](https://doi.org/10.1038/s41597-026-07352-7)             |
 | Ecoli Mekong River        | 10                |                    | 2011 - 2021       | Mekong river (Houay Pano) | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Mekong River (Laos) | 10                |                    | 2011 - 2021       | Mekong River (Laos)       | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |
 | Ecoli Houay Pano (Laos)   | 10                |                    | 2011 - 2021       | Houay Pano (Laos)         | [Boithias et al., 2022](https://essd.copernicus.org/articles/14/2883/2022/)  |

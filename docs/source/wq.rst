@@ -1,7 +1,7 @@
 Water Quality
 *************
 The `wq` submodule contains datasets that represent surface water chemistry at 
-various locations worldwide. Currently, it includes 16 water quality datasets, 
+various locations worldwide. Currently, it includes 17 water quality datasets,
 but we anticipate this number will increase in the future. The spatial and temporal 
 coverage of these datasets are detailed in following table.
 
@@ -41,6 +41,12 @@ List of datasets
      - 1980 - 2020
      - Swtizerland
      - `Nascimento et al., 2025 <https://eartharxiv.org/repository/view/9046/>`_
+   * - CaravanQual
+     - :py:class:`aqua_fetch.CaravanQual`
+     - 100
+     - 1894 - 2025
+     - Global
+     - `Jones et al., 2026 <https://doi.org/10.1038/s41597-026-07352-7>`_
    * - Surface Water Chemistry
      - :py:class:`aqua_fetch.SWatCh`
      - 24
@@ -145,6 +151,13 @@ Functions and Classes
 
 
 .. autoclass:: aqua_fetch.CamelsCHChem
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.CaravanQual
    :members:
    :show-inheritance:
 

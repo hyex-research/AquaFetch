@@ -3,11 +3,13 @@
 __pycache__/
 .idea/
 .vscode/
+.claude/
 
 # private stuff
 results/
 
 *catboost_info/
+aqua_fetch.egg-info/
 
 *.png
 *.jpg
