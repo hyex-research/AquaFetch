@@ -5,6 +5,8 @@ Rainfall Runoff datasets
 # ExtendinG SUb-DAily River Discharge data over INdia (GUARDIAN)
 # https://springernature.figshare.com/articles/dataset/ExtendinG_SUb-DAily_River_Discharge_data_over_INdia_GUARDIAN_/27004282
 
+# UKFlow15 https://essd.copernicus.org/preprints/essd-2026-152/
+
 import os
 from typing import Dict, Union, List, Tuple
 
@@ -53,6 +55,7 @@ from ._camels import CAMELS_COL
 from ._camels import CAMELS_SK
 from ._camels import CAMELS_FI
 from ._camels import CAMELS_PL
+from ._camels import CAMELS_PE
 from ._estreams import Slovenia
 from ._camels import CAMELSH
 # following are not available with RainfallRunoff class yet
@@ -109,6 +112,7 @@ DATASETS = {
     'CAMELS_SK': CAMELS_SK,
     'CAMELS_FI': CAMELS_FI,
     'CAMELS_PL': CAMELS_PL,
+    'CAMELS_PE': CAMELS_PE,
     'Slovenia': Slovenia,
 }
 
@@ -247,6 +251,7 @@ class RainfallRunoff(object):
             - ``LamaHCE``
             - ``LamaHIce``
             - ``CAMELS_PL``
+            - ``CAMELS_PE``
             - ``Poland``
             - ``Portugal``
             - ``RRLuleaSweden``

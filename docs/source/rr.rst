@@ -239,6 +239,15 @@ List of datasets
      - 1951 - 2024
      - Poland
      - `Brzezińska et al., 2026 <https://doi.org/10.5281/zenodo.20133183>`_
+   * - ``CAMELS_PE``
+     - :py:class:`aqua_fetch.rr.CAMELS_PE`
+     - 136
+     -
+     - 10
+     - 78
+     - 1981 - 2025
+     - Peru
+     - `Llauca et al., 2026 <https://doi.org/10.5281/zenodo.21195425>`_
    * - ``CAMELS_SE``
      - :py:class:`aqua_fetch.rr.CAMELS_SE`
      - 50
@@ -651,6 +660,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_PL
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_PE
    :members:
    :show-inheritance:
 
