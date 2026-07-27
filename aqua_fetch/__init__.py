@@ -49,6 +49,7 @@ from .rr import CAMELS_FI
 from .rr import CAMELS_PL
 from .rr import CAMELS_PE
 from .rr import Slovenia
+from .rr import UKFlow15
 from .rr import CAMELSH
 from .rr import ShyftNorway
 
@@ -187,6 +188,7 @@ ALL_DATASETS = [
     CAMELS_PL.__class__.__name__,
     CAMELS_PE.__name__,
     Slovenia.__class__.__name__,
+    UKFlow15.__name__,
     CAMELSH.__class__.__name__,
 
     Quadica.__class__.__name__,

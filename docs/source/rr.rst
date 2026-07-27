@@ -446,6 +446,15 @@ List of datasets
      - 1980 - 1999
      - Thailand
      - `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_
+   * - ``UKFlow15``
+     - :py:class:`aqua_fetch.rr.UKFlow15`
+     -
+     - 1369
+     - 3
+     - 11
+     - 1948 - 2023
+     - United Kingdom
+     - `Coxon et al., 2026 <https://doi.org/10.5194/essd-2026-152>`_
    * - ``USGS``
      - :py:class:`aqua_fetch.rr.USGS`
      - 12004
@@ -828,6 +837,12 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.Thailand
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+.. autoclass:: aqua_fetch.rr.UKFlow15
    :members:
    :show-inheritance:
 

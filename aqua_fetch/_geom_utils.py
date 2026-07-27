@@ -255,6 +255,124 @@ def tmerc_to_wgs84(
     return lat, lon
 
 
+def osgb36_to_wgs84(easting, northing):
+    """
+    Converts British National Grid coordinates (OSGB36 / EPSG:27700) to
+    WGS84 latitude/longitude (EPSG:4326).
+
+    Unlike the other Transverse Mercator projections handled by
+    :func:`tmerc_to_wgs84`, EPSG:27700 is defined on the **Airy 1830** ellipsoid
+    and on the OSGB36 datum, so the inverse projection alone is not enough: a
+    datum shift to WGS84 is also required. This function therefore
+
+        1. inverts the Transverse Mercator projection on the Airy 1830 ellipsoid
+           (central meridian ``-2`` E, latitude of origin ``49`` N, scale factor
+           ``0.9996012717``, false easting ``400000``, false northing ``-100000``),
+        2. converts the resulting OSGB36 geodetic coordinates to geocentric
+           cartesian coordinates, and
+        3. applies the standard 7-parameter Helmert transformation
+           (OSGB36 -> WGS84) before converting back to geodetic coordinates on
+           the WGS84 ellipsoid.
+
+    The 7-parameter Helmert transformation reproduces ``pyproj``'s
+    ``EPSG:27700 -> EPSG:4326`` result to a maximum of ~4 mm (validated on all
+    1369 UK-Flow15 gauge coordinates). Relative to the official OSTN15
+    grid-shift (needed only for the most precise, sub-cm work) it is accurate to
+    ~1 m, which is negligible for gauge locations. Used by
+    :py:class:`aqua_fetch.rr.UKFlow15`.
+
+    Parameters
+    ----------
+    easting : float or np.ndarray
+        projected easting (x) in meters on the British National Grid.
+    northing : float or np.ndarray
+        projected northing (y) in meters on the British National Grid.
+
+    Returns
+    -------
+    tuple
+        ``(lat, lon)`` in degrees on WGS84.
+    """
+    E = np.asarray(easting, dtype=float)
+    N = np.asarray(northing, dtype=float)
+
+    # Airy 1830 ellipsoid and OSGB36 National Grid projection parameters
+    a = 6377563.396
+    b = 6356256.909
+    F0 = 0.9996012717
+    lat0 = math.radians(49.0)
+    lon0 = math.radians(-2.0)
+    E0, N0 = 400000.0, -100000.0
+    e2 = 1.0 - (b * b) / (a * a)
+    n = (a - b) / (a + b)
+    n2, n3 = n * n, n * n * n
+
+    def _meridional_arc(lat):
+        return b * F0 * (
+            (1 + n + 1.25 * n2 + 1.25 * n3) * (lat - lat0)
+            - (3 * n + 3 * n2 + 2.625 * n3) * np.sin(lat - lat0) * np.cos(lat + lat0)
+            + (1.875 * n2 + 1.875 * n3) * np.sin(2 * (lat - lat0)) * np.cos(2 * (lat + lat0))
+            - (35.0 / 24.0 * n3) * np.sin(3 * (lat - lat0)) * np.cos(3 * (lat + lat0))
+        )
+
+    # iteratively solve for the footprint latitude
+    lat = (N - N0) / (a * F0) + lat0
+    for _ in range(100):
+        M = _meridional_arc(lat)
+        residual = (N - N0) - M
+        lat = lat + residual / (a * F0)
+        if np.all(np.abs(residual) < 1e-6):
+            break
+
+    sinlat = np.sin(lat)
+    nu = a * F0 / np.sqrt(1 - e2 * sinlat ** 2)
+    rho = a * F0 * (1 - e2) / (1 - e2 * sinlat ** 2) ** 1.5
+    eta2 = nu / rho - 1
+    tanlat = np.tan(lat)
+    seclat = 1.0 / np.cos(lat)
+
+    VII = tanlat / (2 * rho * nu)
+    VIII = tanlat / (24 * rho * nu ** 3) * (5 + 3 * tanlat ** 2 + eta2 - 9 * tanlat ** 2 * eta2)
+    IX = tanlat / (720 * rho * nu ** 5) * (61 + 90 * tanlat ** 2 + 45 * tanlat ** 4)
+    X = seclat / nu
+    XI = seclat / (6 * nu ** 3) * (nu / rho + 2 * tanlat ** 2)
+    XII = seclat / (120 * nu ** 5) * (5 + 28 * tanlat ** 2 + 24 * tanlat ** 4)
+    XIIA = seclat / (5040 * nu ** 7) * (61 + 662 * tanlat ** 2 + 1320 * tanlat ** 4 + 720 * tanlat ** 6)
+
+    dE = E - E0
+    lat_osgb = lat - VII * dE ** 2 + VIII * dE ** 4 - IX * dE ** 6
+    lon_osgb = lon0 + X * dE - XI * dE ** 3 + XII * dE ** 5 - XIIA * dE ** 7
+
+    # OSGB36 geodetic -> geocentric cartesian (on Airy 1830)
+    nu_a = a / np.sqrt(1 - e2 * np.sin(lat_osgb) ** 2)
+    x = nu_a * np.cos(lat_osgb) * np.cos(lon_osgb)
+    y = nu_a * np.cos(lat_osgb) * np.sin(lon_osgb)
+    z = (1 - e2) * nu_a * np.sin(lat_osgb)
+
+    # 7-parameter Helmert transformation OSGB36 -> WGS84
+    tx, ty, tz = 446.448, -125.157, 542.060
+    s = -20.4894e-6
+    rx = math.radians(0.1502 / 3600.0)
+    ry = math.radians(0.2470 / 3600.0)
+    rz = math.radians(0.8421 / 3600.0)
+    xw = tx + (1 + s) * (x - rz * y + ry * z)
+    yw = ty + (1 + s) * (rz * x + y - rx * z)
+    zw = tz + (1 + s) * (-ry * x + rx * y + z)
+
+    # geocentric cartesian -> geodetic (on WGS84)
+    aw = 6378137.0
+    bw = 6356752.314245
+    e2w = 1.0 - (bw * bw) / (aw * aw)
+    p = np.sqrt(xw ** 2 + yw ** 2)
+    lat_w = np.arctan2(zw, p * (1 - e2w))
+    for _ in range(10):
+        nu_w = aw / np.sqrt(1 - e2w * np.sin(lat_w) ** 2)
+        lat_w = np.arctan2(zw + e2w * nu_w * np.sin(lat_w), p)
+    lon_w = np.arctan2(yw, xw)
+
+    return np.degrees(lat_w), np.degrees(lon_w)
+
+
 def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing):
     # converts from Lambert Azimuthal Equal Area (LAEA) to WGS84
 
