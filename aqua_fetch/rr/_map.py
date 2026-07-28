@@ -38,6 +38,13 @@ def observed_water_level_cm()->str:
     return "wl_cm_obs"
 
 
+def observed_water_level_ft()->str:
+    """observed water level in feet. The reference datum is station-specific
+    (e.g. stage above the local streambed/ground for stream gauges, or
+    instantaneous surface level for a lake/reservoir gauge)."""
+    return "wl_ft_obs"
+
+
 # %% precpiation
 
 def total_precipitation()->str:

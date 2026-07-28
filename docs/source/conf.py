@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'AquaFetch'
-copyright = '2025, Ather Abbas'
+copyright = '2026, Ather Abbas'
 author = 'Ather Abbas'
 
 release = "1.0.1"

@@ -209,6 +209,15 @@ mg_data_ohe.shape  # -> (1200, 31)
 | USGS           | 12004                  | 1541                    | 5                        | 27                      | 1950 - 2018       | USA                                         | [USGS nwis](https://waterdata.usgs.gov/nwis)                                                                |
 | WaterBenchIowa |                        |  125                    | 3                        | 7                       | 2011 - 2018       | Iowa (USA)                                  | [Demir et al., 2022](https://doi.org/10.5194/essd-14-5605-2022)                                             |
 
+### Other Rainfall-Runoff Datasets
+
+The following are additional rainfall-runoff datasets that fall outside the standardized collection above. They are small or region-specific and do not ship catchment boundaries or catchment areas (so `area()` and `get_boundary()` are not available). The observed variables differ between them, as summarized below.
+
+| Name                | Num. of stations | Variables                                                           | Temporal Coverage | Spatial Coverage           | Ref.                                                               |
+|---------------------|------------------|---------------------------------------------------------------------|-------------------|----------------------------|--------------------------------------------------------------------|
+| JialingRiverChina   | 11               | daily weather variables and runoff/streamflow (43 dynamic features) | 2010 - 2022       | Jialing River basin, China | [Wang et al., 2024](https://doi.org/10.1016/j.envsoft.2024.106091) |
+| NamalValleyPakistan | 14               | 10-min precipitation (`pcp_mm`, 14) and water level (`wl_ft_obs`, 8) | 2020 - 2024       | Pakistan (Namal Valley)    | [Sheraz et al., 2025](https://doi.org/10.1038/s41597-025-05310-3)  |
+
 ## Summary of Water Quality Datasets
 
 | Name                      | Variables Covered | Number of Stations | Temporal Coverage | Spatial Coverage          | Ref.                                                                         |

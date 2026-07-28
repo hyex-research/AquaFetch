@@ -52,6 +52,7 @@ from .rr import Slovenia
 from .rr import UKFlow15
 from .rr import CAMELSH
 from .rr import ShyftNorway
+from .rr import NamalValleyPakistan
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -190,6 +191,7 @@ ALL_DATASETS = [
     Slovenia.__class__.__name__,
     UKFlow15.__name__,
     CAMELSH.__class__.__name__,
+    NamalValleyPakistan.__name__,
 
     Quadica.__class__.__name__,
     GRQA.__class__.__name__,

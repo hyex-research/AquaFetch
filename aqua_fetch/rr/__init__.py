@@ -65,6 +65,7 @@ from .mtropics import MtropicsVietnam
 from ._misc import DraixBleone
 from ._misc import JialingRiverChina
 from ._misc import ShyftNorway
+from ._misc import NamalValleyPakistan
 
 
 DATASETS = {
@@ -114,6 +115,7 @@ DATASETS = {
     'CAMELS_PE': CAMELS_PE,
     'Slovenia': Slovenia,
     'UKFlow15': UKFlow15,
+    'NamalValleyPakistan': NamalValleyPakistan,
 }
 
 

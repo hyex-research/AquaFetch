@@ -376,7 +376,7 @@ List of datasets
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
    * - ``NPCTR Catchments``
      - :py:class:`aqua_fetch.rr.NPCTRCatchments`
-     - 
+     -
      - 7
      - 14
      - 14
@@ -466,13 +466,50 @@ List of datasets
      - `USGS nwis <https://waterdata.usgs.gov/nwis/>`_
    * - ``WaterBenchIowa``
      - :py:class:`aqua_fetch.rr.WaterBenchIowa`
-     - 
+     -
      - 125
      - 3
      - 7
      - 2011 - 2018
      - Iowa (USA)
      - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
+
+
+.. _other_rr:
+Other Rainfall-Runoff Datasets
+==============================
+The following are additional rainfall-runoff datasets that fall outside the large
+standardized collection above. They are small and do not ship
+catchment boundaries or catchment areas, so ``area()`` and ``get_boundary()`` are not
+available for them. The observed variables differ between them, as summarized in the
+*Variables* column.
+
+.. list-table:: Other Rainfall-Runoff Datasets
+   :widths: 16 24 8 32 10 12 22
+   :header-rows: 1
+   :class: sphinx-datatable
+
+   * - Source Name
+     - Class
+     - Number of Stations
+     - Variables
+     - Temporal Coverage
+     - Spatial Coverage
+     - Reference
+   * - ``JialingRiverChina``
+     - :py:class:`aqua_fetch.rr.JialingRiverChina`
+     - 11
+     - daily weather variables and runoff/streamflow (43 dynamic features)
+     - 2010 - 2022
+     - Jialing River basin, China
+     - `Wang et al., 2024 <https://doi.org/10.1016/j.envsoft.2024.106091>`_
+   * - ``NamalValleyPakistan``
+     - :py:class:`aqua_fetch.rr.NamalValleyPakistan`
+     - 14
+     - 10-min precipitation (``pcp_mm``, 14 stations) and water level (``wl_ft_obs``, 8 stations)
+     - 2020 - 2024
+     - Pakistan (Namal Valley)
+     - `Sheraz et al., 2025 <https://doi.org/10.1038/s41597-025-05310-3>`_
 
 
 .. _dup_table:
@@ -766,6 +803,13 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
+.. autoclass:: aqua_fetch.rr.JialingRiverChina
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. autoclass:: aqua_fetch.rr.LamaHCE
    :members:
    :show-inheritance:
@@ -774,6 +818,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.LamaHIce
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.NamalValleyPakistan
    :members:
    :show-inheritance:
 

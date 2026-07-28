@@ -1,11 +1,17 @@
 
-__all__ = ["DraixBleone", "JialingRiverChina"]
+__all__ = [
+    "DraixBleone", 
+    "JialingRiverChina", 
+    "NamalValleyPakistan"
+    ]
 
 import os
-from typing import List
+import warnings
+from typing import Dict, List, Union
 import concurrent.futures as cf
 
 import requests
+import numpy as np
 import pandas as pd
 
 from .utils import validate_attributes
@@ -15,12 +21,13 @@ from ..utils import merge_shapefiles_fiona
 from .._backend import xarray as xr, fiona
 
 from ._map import (
-    observed_streamflow_cms, 
-    snow_depth, 
+    observed_streamflow_cms,
+    snow_depth,
     snow_water_equivalent,
     mean_windspeed,
     total_precipitation,
     mean_dewpoint_temperature,
+    observed_water_level_ft,
     )
 
 from ._map import (
@@ -524,15 +531,433 @@ def download_shapefiles(outpath):
     return
 
 
-class NamalValleyPakistan:
+class NamalValleyPakistan(_RainfallRunoff):
     """
-    Dataset containing hydrological and meteorological data for the Namal Valley catchment 
-    in Pakistan. For more information on this data see `Sheraz et al., 2025 <https://doi.org/10.1038/s41597-025-05310-3>`_.
-    The data consists of observations of precipitation (from 14 sensors) and water level (from 8 sensors) from 
-    2022 to 2024 at 10 minutes intervals.
+    Hydro-meteorological sensor network of the Namal Valley watershed, Pakistan,
+    following `Sheraz et al., 2025 <https://doi.org/10.1038/s41597-025-05310-3>`_.
+    The data is available at `figshare <https://doi.org/10.6084/m9.figshare.28359608>`_
+    under a CC-BY-4.0 licence.
 
-    The dataset is available at `Figshare link <https://doi.org/10.6084/m9.figshare.28359608>`_.
+    The network has 14 stations. All 14 record **precipitation** and 8 of them
+    additionally record **water level**. The two dynamic (time series) features,
+    both at a 10-minute time step and kept in their original units, are
 
+        - ``pcp_mm``    : precipitation depth per 10-min interval (mm), 14 stations
+        - ``wl_ft_obs`` : water level in feet, 8 stations
+
+    The 8 water-level stations comprise 7 stream gauges (BW, DB, KB, LW, RK, GB, SF)
+    reporting stream stage above the local ground/bed, and the Namal Dam gauge (ND)
+    reporting the instantaneous lake surface level. Both are in feet but referenced
+    to a station-specific datum, so absolute values are not comparable across the
+    lake and the streams. This dataset provides no discharge/streamflow, no catchment
+    boundaries and no catchment areas (the stations are point sensors, not gauged
+    catchments), so :meth:`area`, :meth:`q_mm` and :meth:`get_boundary` are not
+    available.
+
+    The 10-minute data spans 2020-11-25 to 2024-09-30. ``pcp_mm`` is the observed
+    precipitation depth per 10-minute interval. In the source this incremental
+    series is distributed as a "Rate" sheet alongside an equivalent running
+    daily-cumulative sheet (``pcp_mm`` is the incremental representation of the same
+    measurement) and alongside coarser hourly/daily/monthly aggregates. Only this
+    10-minute incremental series and the 10-minute water level are exposed; the
+    coarser temporal aggregates are not read. Missing observations (a sensor out of
+    service, or gaps in the record) are preserved as NaN, never filled or dropped.
+
+    Each station's series is indexed on the union of that station's precipitation
+    and water-level timestamps; rainfall-only stations carry an all-NaN
+    ``wl_ft_obs`` column so every station shares the same two-column schema.
+
+    Static features are the published station inventory: ``lat``, ``long``,
+    ``elev_gauge_m`` (altitude), the full station name, station type (``R`` for
+    rainfall only, ``R, WL`` for rainfall and water level) and operational status.
+
+    Fetching the two dynamic features of all 14 stations (~5.7 million values)
+    takes about 1 second.
+
+    Examples
+    --------
+    >>> from aqua_fetch import NamalValleyPakistan
+    >>> ds = NamalValleyPakistan()
+    >>> len(ds.stations())
+    14
+    >>> ds.dynamic_features
+    ['pcp_mm', 'wl_ft_obs']
+    >>> ds.static_features
+    ['station_name', 'station_type', 'lat', 'long', 'elev_gauge_m', 'deploy_date', 'status']
+    ... # dynamic data is returned as a dict {station_id: DataFrame}
+    >>> _, dyn = ds.fetch('ND', as_dataframe=True)
+    >>> dyn['ND'].shape
+    (202464, 2)
+    ... # only precipitation of two stations
+    >>> _, dyn = ds.fetch(['BS', 'LW'], dynamic_features='pcp_mm', as_dataframe=True)
+    >>> dyn['BS'].shape
+    (202464, 1)
+    ... # coordinates of all stations
+    >>> ds.stn_coords().shape
+    (14, 2)
     """
 
-    url = "https://springernature.figshare.com/ndownloader/articles/28359608/versions/1"
+    url = {
+        "Namal_Catchment_Precipitation_Data.xlsx":
+            "https://ndownloader.figshare.com/files/52177559",
+        "Namal_Catchment_Stream_Levels_Data.xlsx":
+            "https://ndownloader.figshare.com/files/52177562",
+        "Namal_Catchment_Lake_Level_Data.xlsx":
+            "https://ndownloader.figshare.com/files/52177556",
+        "Network_Metadata-Namal.xlsx":
+            "https://ndownloader.figshare.com/files/54388085",
+    }
+
+    # source excel file / sheet holding the observed 10-minute series
+    _PRECIP_XLSX = "Namal_Catchment_Precipitation_Data.xlsx"
+    _PRECIP_SHEET = "10- minute precipitation Rate"   # incremental mm per 10-min
+    _STREAM_XLSX = "Namal_Catchment_Stream_Levels_Data.xlsx"
+    _STREAM_SHEET = "10-minutes Stream Level"
+    _LAKE_XLSX = "Namal_Catchment_Lake_Level_Data.xlsx"
+    _LAKE_SHEET = "10-minutes Lake Level"
+    _META_XLSX = "Network_Metadata-Namal.xlsx"
+    _LAKE_STATION = "ND"
+
+    def __init__(
+            self,
+            path: str = None,
+            to_netcdf: bool = False,
+            overwrite: bool = False,
+            verbosity: int = 1,
+            **kwargs):
+        """
+        parameters
+        ----------
+        path : str
+            directory in which the data is/will be stored. If it already contains
+            the dataset, it will not be downloaded again.
+        to_netcdf : bool (default=False)
+            kept for API compatibility with other rainfall-runoff datasets; the
+            10-minute data is served from csv files and is not converted to netcdf.
+        overwrite : bool (default=False)
+            if True, previously downloaded/processed files are removed and the
+            data is downloaded and processed afresh.
+        verbosity : int (default=1)
+        """
+        super().__init__(path=path, timestep='10min', to_netcdf=to_netcdf,
+                         overwrite=overwrite, verbosity=verbosity, **kwargs)
+
+        self._static_df = None
+        self._precip = self._stream = self._lake = None  # lazy dynamic caches
+
+        # gate on the presence of the *processed* csv (not the source xlsx): once
+        # the csv exist, reads need only pandas, so we neither re-download nor
+        # re-read the excel files (and, if remove_zip, the source xlsx are gone).
+        if self.overwrite or not all(os.path.exists(f) for f in self._processed_files):
+            self._download(overwrite=self.overwrite)
+            self._process(overwrite=self.overwrite)
+            if self.remove_zip:
+                self._remove_source_files()
+
+    # ------------------------------------------------------------------ #
+    # paths of the processed (csv) files
+    # ------------------------------------------------------------------ #
+    @property
+    def _precip_csv(self) -> str:
+        return os.path.join(self.path, "precipitation_mm_10min.csv")
+
+    @property
+    def _stream_csv(self) -> str:
+        return os.path.join(self.path, "stream_level_ft_10min.csv")
+
+    @property
+    def _lake_csv(self) -> str:
+        return os.path.join(self.path, "lake_level_ft_10min.csv")
+
+    @property
+    def _static_csv(self) -> str:
+        return os.path.join(self.path, "static.csv")
+
+    @property
+    def _daterange_txt(self) -> str:
+        return os.path.join(self.path, "date_range.txt")
+
+    @property
+    def _processed_files(self) -> List[str]:
+        return [self._precip_csv, self._stream_csv, self._lake_csv,
+                self._static_csv, self._daterange_txt]
+
+    # ------------------------------------------------------------------ #
+    # one-time conversion of the source .xlsx files to .csv
+    # ------------------------------------------------------------------ #
+    def _process(self, overwrite: bool = False):
+        """converts the observed 10-minute sheets of the source excel files into
+        csv files so that subsequent reads use only the minimal requirements
+        (pandas). Reading the excel files needs ``openpyxl`` which is why this is
+        done only once."""
+
+        if overwrite:
+            for f in self._processed_files:
+                if os.path.exists(f):
+                    os.remove(f)
+
+        if all(os.path.exists(f) for f in self._processed_files):
+            if self.verbosity > 1:
+                print(f"processed csv files already exist in {self.path}")
+            return
+
+        try:
+            import openpyxl  # noqa: F401
+        except (ImportError, ModuleNotFoundError):
+            raise ImportError(
+                "openpyxl is required to read the source .xlsx files of "
+                "NamalValleyPakistan for the (one-time) conversion to csv. "
+                "Please install it with `pip install openpyxl`.")
+
+        if self.verbosity:
+            print("converting Namal Valley excel files to csv (one-time)")
+
+        precip = self._read_10min_sheet(self._PRECIP_XLSX, self._PRECIP_SHEET)
+        stream = self._read_10min_sheet(self._STREAM_XLSX, self._STREAM_SHEET)
+        lake = self._read_10min_sheet(self._LAKE_XLSX, self._LAKE_SHEET)
+        static = self._read_metadata()
+
+        # write atomically (temp file + os.replace) so an interrupted conversion
+        # cannot leave a half-written csv that later passes the "exists" gate.
+        self._atomic_to_csv(precip, self._precip_csv, "Timestamp")
+        self._atomic_to_csv(stream, self._stream_csv, "Timestamp")
+        self._atomic_to_csv(lake, self._lake_csv, "Timestamp")
+        self._atomic_to_csv(static, self._static_csv, "station")
+
+        # global temporal extent, derived from the data itself. Written last so
+        # its presence signals a complete conversion.
+        start = min(precip.index.min(), stream.index.min(), lake.index.min())
+        end = max(precip.index.max(), stream.index.max(), lake.index.max())
+        tmp = self._daterange_txt + ".tmp"
+        with open(tmp, "w") as fh:
+            fh.write(f"{start.isoformat()}\n{end.isoformat()}\n")
+        os.replace(tmp, self._daterange_txt)
+        return
+
+    @staticmethod
+    def _atomic_to_csv(df: pd.DataFrame, fpath: str, index_label: str):
+        tmp = fpath + ".tmp"
+        df.to_csv(tmp, index_label=index_label)
+        os.replace(tmp, fpath)
+
+    @staticmethod
+    def _warn_flat_series(precip: pd.DataFrame):
+        """warns (unconditionally) about precipitation gauges whose entire record
+        is zero or missing (e.g. a dead/uncalibrated gauge). The data is kept
+        unchanged; this only flags it so the user is not misled."""
+        flat = []
+        for col in precip.columns:
+            s = precip[col].dropna()
+            if len(s) == 0 or (s == 0).all():
+                flat.append(col)
+        if flat:
+            warnings.warn(
+                f"precipitation for station(s) {sorted(flat)} is entirely "
+                f"zero or missing; the values are kept unchanged.", UserWarning)
+
+    def _remove_source_files(self):
+        """removes the source .xlsx once the csv cache is built (remove_zip)."""
+        for fname in self.url:
+            fpath = os.path.join(self.path, fname)
+            if os.path.exists(fpath):
+                os.remove(fpath)
+        return
+
+    def _read_10min_sheet(self, fname: str, sheet: str) -> pd.DataFrame:
+        """reads a 10-minute sheet whose first data column is the timestamp and
+        whose first three rows below the header carry latitude, longitude and the
+        measurement unit."""
+        df = pd.read_excel(os.path.join(self.path, fname), sheet_name=sheet, header=0)
+        # rows 0,1,2 hold Latitude, Longitude, Unit (verified against the file)
+        assert str(df.iloc[0, 0]).strip().lower() == "latitude", \
+            f"unexpected layout in {fname}:{sheet}"
+        df = df.iloc[3:].copy()
+        df = df.rename(columns={df.columns[0]: "Timestamp"})
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"])
+        df = df.set_index("Timestamp")
+        # measurement values are kept at full (float64) precision
+        df = df.apply(pd.to_numeric, errors="coerce")
+        df = df[~df.index.duplicated(keep="first")].sort_index()
+        return df
+
+    def _read_metadata(self) -> pd.DataFrame:
+        """parses the station inventory (14 stations) from the metadata file."""
+        import re
+        meta = pd.read_excel(os.path.join(self.path, self._META_XLSX),
+                             sheet_name="metadata", header=None)
+        rows = []
+        # station table occupies rows 3..16, columns 1..9 (verified)
+        for r in range(3, 17):
+            name = meta.iat[r, 2]
+            if pd.isna(name):
+                continue
+            m = re.search(r"\(([^)]+)\)", str(name))
+            code = m.group(1).strip()
+            rows.append({
+                "station": code,
+                "station_name": str(name).strip(),
+                "station_type": str(meta.iat[r, 3]).strip(),
+                gauge_latitude(): float(meta.iat[r, 4]),
+                gauge_longitude(): float(meta.iat[r, 5]),
+                gauge_elevation_meters(): float(meta.iat[r, 6]),
+                "deploy_date": str(meta.iat[r, 7]).strip(),
+                "status": str(meta.iat[r, 9]).strip(),
+            })
+        static = pd.DataFrame(rows).set_index("station")
+        self._warn_duplicates(static)
+        return static
+
+    @staticmethod
+    def _warn_duplicates(static: pd.DataFrame):
+        """warns (without excluding) about stations sharing name + rounded
+        coordinates. Cheap: only 14 stations."""
+        key = list(zip(static["station_name"],
+                       static[gauge_latitude()].round(4),
+                       static[gauge_longitude()].round(4)))
+        seen, dups = set(), set()
+        for k in key:
+            if k in seen:
+                dups.add(k[0])
+            seen.add(k)
+        if dups:
+            warnings.warn(f"Duplicate stations (name + coordinates) found: {sorted(dups)}",
+                          UserWarning)
+
+    # ------------------------------------------------------------------ #
+    # static data
+    # ------------------------------------------------------------------ #
+    def _static_data(self) -> pd.DataFrame:
+        if self._static_df is None:
+            df = pd.read_csv(self._static_csv, index_col="station")
+            df.index = df.index.astype(str)
+            self._static_df = df
+        return self._static_df.copy()
+
+    def stations(self) -> List[str]:
+        return self._static_data().index.tolist()
+
+    @property
+    def static_features(self) -> List[str]:
+        return self._static_data().columns.tolist()
+
+    # ------------------------------------------------------------------ #
+    # dynamic data
+    # ------------------------------------------------------------------ #
+    @property
+    def dynamic_features(self) -> List[str]:
+        return [total_precipitation(), observed_water_level_ft()]
+
+    @staticmethod
+    def _load_csv(fpath: str) -> pd.DataFrame:
+        df = pd.read_csv(fpath, index_col="Timestamp")
+        # the source is 10-min aligned except for a couple of off-grid sensor
+        # timestamps (e.g. ``2024-03-31 23:49:59.995``) which are preserved as-is
+        df.index = pd.to_datetime(df.index, format="ISO8601")
+        df.index.name = "time"
+        return df
+
+    # each big csv is parsed once and cached; per-station reads then slice a
+    # single column (avoids re-parsing the ~200k-row timestamp index per station)
+    @property
+    def _precip_df(self) -> pd.DataFrame:
+        if self._precip is None:
+            self._precip = self._load_csv(self._precip_csv)
+            # surface the advisory on first use, so it is seen on the common
+            # cached-read path too (not only during the one-time conversion)
+            self._warn_flat_series(self._precip)
+        return self._precip
+
+    @property
+    def _stream_df(self) -> pd.DataFrame:
+        if self._stream is None:
+            self._stream = self._load_csv(self._stream_csv)
+        return self._stream
+
+    @property
+    def _lake_df(self) -> pd.DataFrame:
+        if self._lake is None:
+            self._lake = self._load_csv(self._lake_csv)
+        return self._lake
+
+    @property
+    def _stream_stations(self) -> List[str]:
+        # water-level stream stations, derived from the stream-level csv columns
+        return self._stream_df.columns.tolist()
+
+    def _read_stn_dyn(self, stn: str) -> pd.DataFrame:
+        pcp = self._precip_df[[stn]].copy()
+        pcp.columns = [total_precipitation()]
+
+        if stn == self._LAKE_STATION:
+            wl = self._lake_df[[stn]].copy()
+        elif stn in self._stream_stations:
+            wl = self._stream_df[[stn]].copy()
+        else:
+            wl = None
+
+        if wl is not None:
+            wl.columns = [observed_water_level_ft()]
+            df = pcp.join(wl, how="outer").sort_index()
+        else:
+            df = pcp
+            df[observed_water_level_ft()] = np.nan
+
+        df = df[[total_precipitation(), observed_water_level_ft()]]
+        df.index.name = "time"
+        df.columns.name = "dynamic_features"
+        return df
+
+    def _read_dynamic(
+            self,
+            stations,
+            dynamic_features,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
+    ) -> Dict[str, pd.DataFrame]:
+        """reads the dynamic data of the given stations. Overridden to slice the
+        (cached, in-memory) per-variable tables serially: for this small 14-station
+        network a bulk read is faster than a process pool, and it avoids pickling
+        the cached tables to worker processes."""
+        st, en = self._check_length(st, en)
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features,
+                                        'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        dyn = {}
+        for stn in stations:
+            stn_df = self._read_stn_dyn(stn).loc[st:en, dyn_feats]
+            stn_df.columns.name = 'dynamic_features'
+            stn_df.index.name = 'time'
+            dyn[stn] = stn_df
+        return dyn
+
+    # ------------------------------------------------------------------ #
+    # temporal extent (derived from the data during processing)
+    # ------------------------------------------------------------------ #
+    @property
+    def start(self) -> pd.Timestamp:
+        with open(self._daterange_txt) as fh:
+            return pd.Timestamp(fh.readline().strip())
+
+    @property
+    def end(self) -> pd.Timestamp:
+        with open(self._daterange_txt) as fh:
+            fh.readline()
+            return pd.Timestamp(fh.readline().strip())
+
+    # ------------------------------------------------------------------ #
+    # unavailable for this point-sensor network (no catchments)
+    # ------------------------------------------------------------------ #
+    def area(self, stations: Union[str, List[str]] = 'all') -> pd.Series:
+        raise NotImplementedError(
+            "NamalValleyPakistan is a point-sensor network with no catchment "
+            "areas.")
+
+    def q_mm(self, stations: Union[str, List[str]] = "all") -> pd.DataFrame:
+        raise NotImplementedError(
+            "NamalValleyPakistan provides water level (ft), not discharge, so "
+            "q_mm is unavailable.")
+
+    def get_boundary(self, catchment_id: str, to_wgs84: bool = True):
+        raise NotImplementedError(
+            "NamalValleyPakistan provides no catchment boundaries.")
