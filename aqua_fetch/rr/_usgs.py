@@ -1119,7 +1119,9 @@ def download_hourly_record(
     elif isinstance(site_data, pd.DataFrame) and site_data.columns[1] == '00060':
         site_data = site_data[site_data['00060_cd'].isin(['A, [92]', 'A, [91]', 'A, [93]', 'A, e', 'A'])]
 
-        site_data = site_data['00060'].resample('h').apply(lambda subdata: tw_resampler(subdata, site_data['00060'].sort_index()))
+        # time-weighted average to hourly in a single vectorised pass (avoids
+        # re-sorting the whole series once per bucket like resample().apply)
+        site_data = tw_resampler(site_data['00060'], 'H')
     else:
        site_data = pd.Series(
             index = pd.date_range(start="2024-01-01", end="2024-01-02", freq='h'))

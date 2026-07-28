@@ -1523,7 +1523,8 @@ def _download_epa_stn_data(
 
     print(f"Resampling {stn} data to hourly timestep")
     # return df[stn].resample(timestep).mean(), epa_failiures
-    hourly_q = df[stn].resample(timestep).apply(lambda subdata: tw_resampler(subdata, df[stn].sort_index(), timestep))
+    # vectorised time-weighted resampling in a single pass (see tw_resampler)
+    hourly_q = tw_resampler(df[stn], timestep)
     hourly_q.name = stn
     hourly_q.to_csv(fpath, index_label="timestamp")
     return hourly_q, epa_failiures
@@ -1600,7 +1601,8 @@ def _download_opw_stn_data(
     df = df.loc[~df['q_code'].isin([96, 254])]
 
     stn_data = df[stn]
-    stn_data = stn_data.resample(timestep).apply(lambda subdata: tw_resampler(subdata, stn_data.sort_index(), timestep))    
+    # vectorised time-weighted resampling in a single pass (see tw_resampler)
+    stn_data = tw_resampler(stn_data, timestep)
     #stn_data = stn_data.resample(timestep).mean()
 
     stn_data.name = stn
