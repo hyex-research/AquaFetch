@@ -99,6 +99,10 @@ sphinx_gallery_conf = {
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
+# Custom CSS to widen the content area (the RTD theme caps it at 800px, which
+# leaves empty space on wide screens and makes wide tables scroll horizontally).
+html_css_files = ['custom.css']
+
 # List of arguments to be passed to the kernel that executes the notebooks:
 nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",

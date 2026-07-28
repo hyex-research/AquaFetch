@@ -1,0 +1,18 @@
+/* Custom overrides for the sphinx_rtd_theme */
+
+/* The RTD theme caps the content area at 800px. On wide screens this leaves a
+   large empty band on the right and forces wide tables (e.g. the dataset
+   summary tables in rr.rst / wq.rst / wwt.rst) to overflow horizontally.
+   Widen the content area so it uses the available width.
+   Use `none` instead of a pixel value to fill the window edge-to-edge. */
+.wy-nav-content {
+    max-width: 1200px;
+}
+
+/* By default the theme sets `white-space: nowrap` on table cells, which makes
+   long cells (e.g. the Reference column) blow the table past the page width
+   and trigger a horizontal scrollbar. Let those cells wrap instead. */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
