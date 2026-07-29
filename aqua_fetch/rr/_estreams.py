@@ -32,6 +32,8 @@ except (ModuleNotFoundError, ImportError):
     ET = None
 
 from .._backend import xarray as xr
+from .._backend import netCDF4
+from .._backend import fiona
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from .utils import _RainfallRunoff
@@ -59,6 +61,18 @@ from ._map import (
 
 
 # todo : a lot of methods in subclasses of _EStreams are redundant
+
+# Process-wide, read-only handles to meteorology.nc keyed by its absolute path.
+# The parent EStreams and every country class' internal EStreams resolve to the
+# SAME meteorology.nc, so they share one handle that is opened once and kept open
+# for the life of the process. This is deliberate: with netCDF4/HDF5 in this
+# environment, opening a second handle to the file while a previous one is being
+# torn down (e.g. when one EStreams instance is garbage-collected as another is
+# created) crashes the interpreter (use-after-free in the HDF5 C library). A
+# single shared handle that is never closed mid-process removes that race.
+_SHARED_METEO_NC = {}   # nc_path -> netCDF4.Dataset  (single-station reads)
+_SHARED_METEO_XR = {}   # nc_path -> xarray.Dataset   (all-stations accessor)
+
 
 class EStreams(_RainfallRunoff):
     """
@@ -88,6 +102,10 @@ class EStreams(_RainfallRunoff):
         self._stations = self.__stations()
         self._dynamic_features = None # lazy loading, will be loaded when first accessed
         self._static_features = None # lazy loading, will be loaded when first accessed
+        self._static_data_cache = None # assembled static table, cached on first use
+        # the meteorology.nc file handles are shared process-wide (see the module
+        # level _SHARED_METEO_* dicts); only the cheap decoded axes are per-instance
+        self._meteo_axes_cache = None # shared (time index, column names) of meteo.nc
 
         self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
         self.parallels = range(30, 80, 15)
@@ -152,8 +170,14 @@ class EStreams(_RainfallRunoff):
 
     def _static_data(self) -> pd.DataFrame:
         """
-        Returns a dataframe with static attributes of catchments
+        Returns a dataframe with static attributes of catchments. The assembled
+        table (concatenation of several csv files) is cached on first use, since
+        area(), stn_coords(), q_mm() and fetch_static_features() all request it
+        repeatedly and rebuilding it each time dominated the runtime.
         """
+        if self._static_data_cache is not None:
+            return self._static_data_cache
+
         static_path = os.path.join(self.path2, 'attributes', 'static_attributes')
 
         dfs = [self.hydro_clim_sigs(), self.md.copy()]
@@ -168,6 +192,7 @@ class EStreams(_RainfallRunoff):
 
         df.columns.name = 'static_features'
         df.index.name = 'station_id'
+        self._static_data_cache = df
         return df
 
     def gauge_stations(self) -> pd.DataFrame:
@@ -272,13 +297,10 @@ class EStreams(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
-        if os.path.exists(self.nc_path) and xr is not None:
+        if os.path.exists(self.nc_path) and netCDF4 is not None:
             if self.verbosity > 2:
                 print(f"Reading {station} from {self.nc_path}")
-            ds = xr.open_dataset(self.nc_path)
-            df = ds[station].to_pandas()
-            ds.close()
-            return df
+            return self._meteo_station_from_nc(station)
 
         df = pd.read_csv(
             os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{station}.csv'),
@@ -291,6 +313,65 @@ class EStreams(_RainfallRunoff):
         df.rename(columns=self.dyn_map, inplace=True)
 
         return df
+
+    def _meteo_handle(self):
+        """
+        Returns the process-wide, read-only :obj:`netCDF4.Dataset` handle to
+        ``meteorology.nc``, opened once on first use and shared across all
+        EStreams instances pointing at the same file. Reading via netCDF4
+        directly (rather than re-opening with :func:`xarray.open_dataset`) avoids
+        xarray's global file-handle cache whose teardown segfaults; sharing one
+        handle avoids opening a second one while a first is being torn down.
+        """
+        handle = _SHARED_METEO_NC.get(self.nc_path)
+        if handle is None:
+            handle = netCDF4.Dataset(self.nc_path)
+            _SHARED_METEO_NC[self.nc_path] = handle
+        return handle
+
+    def _meteo_axes(self):
+        """
+        Returns the ``(time index, column names)`` shared by every station
+        variable in ``meteorology.nc``. Decoded once and cached: ``num2date``
+        over the 26844 timestamps (and the column decode) is identical for every
+        station, and recomputing it per station dominated bulk reads.
+        """
+        if self._meteo_axes_cache is None:
+            nc = self._meteo_handle()
+            t = nc.variables['time']
+            # "days since 1950-01-01 00:00:00" / proleptic_gregorian -> timestamps
+            times = netCDF4.num2date(
+                t[:], t.units, getattr(t, 'calendar', 'standard'),
+                only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+            index = pd.DatetimeIndex(times, name='time')
+            cols = [c.decode() if isinstance(c, bytes) else str(c)
+                    for c in nc.variables['dynamic_features'][:]]
+            self._meteo_axes_cache = (index, cols)
+        return self._meteo_axes_cache
+
+    def _meteo_station_from_nc(self, station: str) -> pd.DataFrame:
+        """
+        Reads a single station's meteorological data from ``meteorology.nc`` using
+        the cached netCDF4 handle. Produces the same DataFrame (values, time index,
+        column/index names) that ``xr.open_dataset(nc)[station].to_pandas()`` did.
+        """
+        nc = self._meteo_handle()
+        # read at full precision; do not downcast measurement values
+        data = np.asarray(nc.variables[station][:])  # (time, dynamic_features)
+        index, cols = self._meteo_axes()
+        df = pd.DataFrame(data, index=index, columns=cols)
+        df.columns.name = 'dynamic_features'
+        return df
+
+    def close(self):
+        """Closes the shared ``meteorology.nc`` handles for this file, if open."""
+        xds = _SHARED_METEO_XR.pop(self.nc_path, None)
+        if xds is not None:
+            xds.close()
+        handle = _SHARED_METEO_NC.pop(self.nc_path, None)
+        if handle is not None:
+            handle.close()
+        self._meteo_axes_cache = None
 
     def meteo_data(
             self,
@@ -315,11 +396,17 @@ class EStreams(_RainfallRunoff):
         """
         
         if self.to_netcdf and os.path.exists(self.nc_path):
-            if self.verbosity > 1:
-                print(f"Reading from {self.nc_path}")
-            # todo :with xarray 2025.1.2 it is causing following error, however tested successfully with xarray 2025.10.1
-            # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".                
-            return xr.open_dataset(self.nc_path)
+            # open once and share process-wide; re-opening the same file makes
+            # xarray share/tear-down one global netCDF4/HDF5 handle -> segfault
+            xds = _SHARED_METEO_XR.get(self.nc_path)
+            if xds is None:
+                if self.verbosity > 1:
+                    print(f"Reading from {self.nc_path}")
+                # todo :with xarray 2025.1.2 it is causing following error, however tested successfully with xarray 2025.10.1
+                # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".
+                xds = xr.open_dataset(self.nc_path)
+                _SHARED_METEO_XR[self.nc_path] = xds
+            return xds
 
         cpus = self.processes or max(get_cpus() - 2, 1)
         stations = self.stations()
@@ -507,6 +594,10 @@ class _EStreams(_RainfallRunoff):
 
         self.bndry_id_map_ = self.estreams.bndry_id_map_.copy()
 
+        # cache for the streamflow table so repeated fetch() calls (which pull q
+        # for every requested station) do not re-read the multi-hundred-MB csv
+        self._q_df_cache = None
+
     @property
     def dynamic_features(self) -> List[str]:
         return [observed_streamflow_cms()] + self.estreams.dynamic_features
@@ -561,6 +652,60 @@ class _EStreams(_RainfallRunoff):
         '1060' -> 'SI000001'
         """
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
+
+    def _create_boundary_id_map(self):
+        """
+        Builds the ``{basin_id: geometry}`` map for this country only.
+
+        The boundary shapefile is the shared EStreams file holding all ~17130
+        catchments, but a country class needs only its own (e.g. 464 for
+        Ireland). Reading just the features whose geometry intersects the
+        country bounding box is ~25x faster than scanning every catchment. A
+        full scan is used as a fallback should the bbox miss any station, so the
+        result is always complete. The map is cached after the first build.
+        """
+        if fiona is None:
+            raise ModuleNotFoundError(
+                "fiona module is not installed. Please install it to use boundary file")
+
+        if self.bndry_id_map_:
+            return self.bndry_id_map_
+
+        wanted = set(self.stations())
+
+        b = getattr(self, 'bbox', None)
+        bbox = None
+        if b is not None:
+            bbox = (b['llcrnrlon'], b['llcrnrlat'], b['urcrnrlon'], b['urcrnrlat'])
+
+        bndry = self._read_bndry_map(wanted, bbox)
+        if bbox is not None and wanted - set(bndry):
+            # bbox missed some station(s); rebuild from a full scan to be safe
+            bndry = self._read_bndry_map(wanted, None)
+
+        self.bndry_id_map_ = bndry
+        return self.bndry_id_map_
+
+    def _read_bndry_map(self, wanted: set, bbox):
+        """reads geometries of the ``wanted`` stations from the boundary file,
+        optionally restricted to features intersecting ``bbox``."""
+        assert os.path.exists(self.boundary_file), \
+            f"Boundary file {self.boundary_file} does not exist."
+
+        bndry = {}
+        with fiona.open(self.boundary_file, "r") as src:
+            id_attr = self.boundary_id_map
+            if id_attr is None:
+                id_attr = list(src.schema['properties'].keys())[0]
+                if self.verbosity:
+                    print(f"Using attribute '{id_attr}' as default for boundary ID mapping.")
+
+            features = src.filter(bbox=bbox) if bbox is not None else src
+            for feature in features:
+                catch_id = str(feature["properties"][id_attr])
+                if catch_id in wanted:
+                    bndry[catch_id] = feature["geometry"]
+        return bndry
 
     def _fetch_dynamic_features(
             self,
@@ -1186,53 +1331,46 @@ class Ireland(_EStreams):
             ):
         fname = 'daily_q' if self.timestep in ["D", 'daily'] else 'hourly_q'
         ext = '.csv'
-    
+
         fpath = os.path.join(self.path, fname + ext)
 
-        if not os.path.exists(fpath) or overwrite:
+        # reuse the already-loaded streamflow table; fetch()/q_mm() ask for q on
+        # every call, and re-reading the (up to ~900 MB) csv each time dominated
+        # the runtime. overwrite bypasses the cache to force a fresh download.
+        data = None if overwrite else self._q_df_cache
 
-            cpus = self.processes or max(get_cpus() - 2, 1)
+        if data is None:
+            if not os.path.exists(fpath) or overwrite:
 
-            if cpus > 1:
-                epa_df = self.download_epa_data_parallel(cpus=cpus)
-                opw_df = self.download_opw_data_parallel(cpus=cpus)
-            else:
-                epa_df = self.download_epa_data_seq()
-                opw_df = self.download_opw_data_seq()
+                cpus = self.processes or max(get_cpus() - 2, 1)
 
-            data = pd.concat([epa_df, opw_df], axis=1)
-            data.index.name = 'time'
-            data.index = pd.to_datetime(data.index)
-            assert data.index.tz is None, "timezone info found in index"
-            data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+                if cpus > 1:
+                    epa_df = self.download_epa_data_parallel(cpus=cpus)
+                    opw_df = self.download_opw_data_parallel(cpus=cpus)
+                else:
+                    epa_df = self.download_epa_data_seq()
+                    opw_df = self.download_opw_data_seq()
 
-            if ext == '.csv':
+                data = pd.concat([epa_df, opw_df], axis=1)
+                data.index.name = 'time'
+                data.index = pd.to_datetime(data.index)
+                assert data.index.tz is None, "timezone info found in index"
+                data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+
                 data.to_csv(fpath, index_label="index")
-            else:
-                data = xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
-                data.to_netcdf(fpath)
 
-        else:
-            if self.verbosity > 1: print(f"Reading from pre-exising {fpath}")
-            if ext == '.csv':
+            else:
+                if self.verbosity > 1: print(f"Reading from pre-exising {fpath}")
                 data = pd.read_csv(fpath, index_col="index")
                 data.index = pd.to_datetime(data.index)
                 data.index.name = 'time'
                 data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
-            else:
-                data = xr.open_dataset(fpath)
-                if self.verbosity > 1: print(f"opened {fpath}")
 
-        if isinstance(data, pd.DataFrame):
-            if as_dataframe:
-                return data
-            return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
-        else:
-            if as_dataframe:
-                data = data.to_dataframe()
-                data.index.name = 'time'
-                return data
+            self._q_df_cache = data
+
+        if as_dataframe:
             return data
+        return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
 
     def download_epa_data_seq(self):
         """

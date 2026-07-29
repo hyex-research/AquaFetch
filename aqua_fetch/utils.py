@@ -181,7 +181,10 @@ def validate_attributes(
         ) -> List[str]:
 
     if isinstance(attributes, str) and attributes == 'all':
-        attributes = check_against
+        # 'all' expands to check_against itself, so every element is valid by
+        # construction; return early to avoid the O(n*m) membership scan below
+        # (which was ~n^2 for the 17130-station EStreams id space).
+        return check_against
     elif not isinstance(attributes, list):
         assert isinstance(attributes, str), f"unknown type {type(attributes)} for {attribute_name}"
         assert attributes in check_against, f"invalid value {attributes} for {attribute_name}"
@@ -189,7 +192,10 @@ def validate_attributes(
     else:
         assert isinstance(attributes, list), f'unknown attributes {attributes}'
 
-    if not all(elem in check_against for elem in attributes):
+    # validate membership against a set (O(1) per element) instead of a list
+    # (O(n) per element); the returned list keeps the caller's order untouched.
+    check_against_set = set(check_against)
+    if not all(elem in check_against_set for elem in attributes):
         print(f"Allowed {attribute_name} are {check_against}")
         print(f"Given {attribute_name} are {attributes}")
         raise ValueError(f"The names of some {attribute_name} are not valid/allowed")

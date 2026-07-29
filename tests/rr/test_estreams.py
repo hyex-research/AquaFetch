@@ -146,6 +146,10 @@ _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
 pd.concat(list(dynamic.values()), axis=1).count().sum() >= 3303345
 
 
+ds = Ireland(path=raw_data_path, verbosity=3, processes=32, timestep='H')
+
+h_q = ds.fetch_q()
+
 ds = Finland(path=raw_data_path, processes=1, 
              verbosity=3)
 
