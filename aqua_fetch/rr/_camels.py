@@ -3843,11 +3843,11 @@ class CAMELS_NZ(_RainfallRunoff):
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       347
+       369
     ... # get data of 10 % of stations as dataframe
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
-    >>> len(dynamic)  # dynamic has data for 10% of stations (34 out of 347)
-       34
+    >>> len(dynamic)  # dynamic has data for 10% of stations (36 out of 369)
+       36
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
@@ -3890,7 +3890,7 @@ class CAMELS_NZ(_RainfallRunoff):
     ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (347, 2)
+        (369, 2)
     >>> dataset.stn_coords('74321')  # returns coordinates of station whose id is 74321
         -45.945599      170.101486
     >>> dataset.stn_coords(['74321', '802'])  # returns coordinates of two stations
@@ -3908,7 +3908,7 @@ class CAMELS_NZ(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='74321', as_dataframe=True)
     >>> df = dynamic['74321'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (460928, 5)    
+    (460978, 5)    
     """
     url = "https://figshare.canterbury.ac.nz/ndownloader/articles/28827644/versions/2"
 

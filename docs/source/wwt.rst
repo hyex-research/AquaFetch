@@ -16,6 +16,7 @@ List of datasets
 .. list-table:: Summary of datasets
    :widths: 10 15 10 15 10 15
    :header-rows: 1
+   :class: sphinx-datatable
 
    * - Treatment Process
      - Function Name

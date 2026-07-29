@@ -64,7 +64,7 @@ are still obtained from HYSETS.
 List of datasets
 ================
 .. list-table:: Stations per Source
-   :widths: 8 13 7 7 10 10 10 10 30
+   :widths: 8 13 7 7 10 10 5 5 10 30
    :header-rows: 1
    :class: sphinx-datatable
 
@@ -74,7 +74,8 @@ List of datasets
      - Number of Hourly Stations
      - Dynamic features
      - Static features
-     - Temporal Coverage
+     - Start Year
+     - End Year
      - Spatial Coverage
      - Reference
    * - ``Arcticnet``
@@ -83,7 +84,8 @@ List of datasets
      - 
      - 27
      - 35
-     - 1979 - 2003
+     - 1979
+     - 2003
      - Arctic (Russia)
      - `R-Arcticnet <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_
    * - ``Bull``
@@ -92,7 +94,8 @@ List of datasets
      -
      - 55
      - 214
-     - 1990 - 2020
+     - 1990
+     - 2020
      - Spain
      - `Aparicio et al., 2024 <https://doi.org/10.1038/s41597-024-03594-5>`_
    * - ``CABra``
@@ -101,7 +104,8 @@ List of datasets
      - 
      - 12
      - 97
-     - 1980 - 2010
+     - 1980
+     - 2010
      - Brazil
      - `Almagro et al., 2021 <https://doi.org/10.5194/hess-25-3105-2021>`_ 
    * - ``CAMELSH``
@@ -110,7 +114,8 @@ List of datasets
      - 5667
      - 13
      - 799
-     - 1900 - 2018
+     - 1900
+     - 2018
      - United States of America
      - `Tran et al., (2025) <https://doi.org/10.1038/s41597-025-05612-6>`_
    * - ``CAMELS_AUS``
@@ -119,7 +124,8 @@ List of datasets
      - 
      - 26
      - 166, 187
-     - 1900 - 2018
+     - 1900
+     - 2018
      - Australia
      - `Flower et al., 2021 <https://doi.org/10.5194/essd-13-3847-2021>`_ , `Flower et al., 2024 <https://essd.copernicus.org/articles/17/4079/2025/>`_
    * - ``CAMELS_BR``
@@ -128,7 +134,8 @@ List of datasets
      - 
      - 10
      - 67
-     - 1920 - 2019
+     - 1920
+     - 2019
      - Brazil
      - `Chagas et al., 2020 <https://doi.org/10.5194/essd-12-2075-2020>`_
    * - ``CAMELS_CH``
@@ -137,7 +144,8 @@ List of datasets
      - 
      - 9
      - 209
-     - 1981 - 2020
+     - 1981
+     - 2020
      - Switzerland
      - `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_
    * - ``CAMELS_CL``
@@ -146,7 +154,8 @@ List of datasets
      - 
      - 12
      - 104
-     - 1913 - 2018
+     - 1913
+     - 2018
      - Chile
      - `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_
    * - ``CAMELS_COL``
@@ -155,7 +164,8 @@ List of datasets
      - 
      - 6
      - 255
-     - 1981 - 2022
+     - 1981
+     - 2022
      - Columbia
      - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
    * - ``CAMELS_DE``
@@ -164,7 +174,8 @@ List of datasets
      - 1611
      - 21, 26
      - 111, 109
-     - 1951 - 2020, 2001 - 2024
+     - 1951, 2001
+     - 2020, 2024
      - Germany
      - `Loritz et al., 2024 <https://doi.org/10.5194/essd-16-5625-2024>`_; hourly: `Dolich et al., 2026 <https://doi.org/10.5194/essd-2026-289>`_
    * - ``CAMELS_DK``
@@ -173,7 +184,8 @@ List of datasets
      - 
      - 13
      - 119
-     - 1989 - 2023
+     - 1989
+     - 2023
      - Denmark
      - `Liu et al., 2024 <https://doi.org/10.5194/essd-2024-292>`_
    * - ``CAMELS_FI``
@@ -182,7 +194,8 @@ List of datasets
      - 
      - 16
      - 111
-     - 1963 - 2023
+     - 1963
+     - 2023
      - Finland
      - `Seppä et al., 2025 <https://doi.org/10.5281/zenodo.16257216>`_
    * - ``CAMELS_FR``
@@ -191,7 +204,8 @@ List of datasets
      - 
      - 22
      - 344
-     - 1970 - 2021
+     - 1970
+     - 2021
      - France
      - `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_
    * - ``CAMELS_GB``
@@ -200,7 +214,8 @@ List of datasets
      - 
      - 10
      - 145
-     - 1970 - 2015
+     - 1970
+     - 2015
      - Britain
      - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_
    * - ``CAMELS_IND``
@@ -209,7 +224,8 @@ List of datasets
      -
      - 20
      - 210
-     - 1980 - 2020
+     - 1980
+     - 2020
      - Republic of India
      - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
    * - ``CAMELS_LUX``
@@ -218,16 +234,18 @@ List of datasets
      - 56
      - 25
      - 61
-     - 2004 - 2021
+     - 2004
+     - 2021
      - Luxumbourg
      - `Nijzink et al., 2025 <https://doi.org/10.5194/essd-2024-482>`_
    * - ``CAMELS_NZ``
      - :py:class:`aqua_fetch.rr.CAMELS_NZ`
-     - 
+     - 369
      - 369
      - 5
      - 40
-     - 1972 - 2024
+     - 1972
+     - 2024
      - New Zealand
      - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
    * - ``CAMELS_PL``
@@ -236,7 +254,8 @@ List of datasets
      -
      - 13
      - 74
-     - 1951 - 2024
+     - 1951
+     - 2024
      - Poland
      - `Brzezińska et al., 2026 <https://doi.org/10.5281/zenodo.20133183>`_
    * - ``CAMELS_PE``
@@ -245,7 +264,8 @@ List of datasets
      -
      - 9
      - 78
-     - 1981 - 2025
+     - 1981
+     - 2025
      - Peru
      - `Llauca et al., 2026 <https://doi.org/10.5281/zenodo.21195425>`_
    * - ``CAMELS_SE``
@@ -254,7 +274,8 @@ List of datasets
      -
      - 4
      - 76
-     - 1961 - 2020
+     - 1961
+     - 2020
      - Sweden
      - `Teutschbein et al., 2024 <https://doi.org/10.1002/gdj3.239>`_
    * - ``CAMELS_SK``
@@ -263,7 +284,8 @@ List of datasets
      - 178
      - 17
      - 215
-     - 2000 - 2019
+     - 2000
+     - 2019
      - South Korea
      - `Kim et al., 2025 <https://doi.org/10.5281/zenodo.15073263>`_
    * - ``CAMELS_US``
@@ -272,7 +294,8 @@ List of datasets
      - 
      - 8
      - 59
-     - 1980 - 2014
+     - 1980
+     - 2014
      - United States
      - `Newman et al., 2014 <https://gdex.ucar.edu/dataset/camels.html>`_
    * - ``Caravan_DK``
@@ -281,7 +304,8 @@ List of datasets
      - 
      - 38
      - 211
-     - 1981 - 2020
+     - 1981
+     - 2020
      - Denmark
      - `Koch 2022 <https://doi.org/10.5281/zenodo.7962379>`_     
    * - ``CCAM``
@@ -290,7 +314,8 @@ List of datasets
      -
      - 16
      - 124
-     - 1990 - 2020
+     - 1990
+     - 2020
      - China
      - `Hao et al., 2021 <https://doi.org/10.5194/essd-13-5591-2021>`_
    * - ``Finland``
@@ -299,7 +324,8 @@ List of datasets
      -
      - 27
      - 35
-     - 2012 - 2023
+     - 2012
+     - 2023
      - Finland
      - `ymparisto.fi <https://wwwi3.ymparisto.fi>`_
    * - ``GRDCCaravan``
@@ -308,17 +334,19 @@ List of datasets
      -
      - 39
      - 211
-     - 1950 - 2023
+     - 1950
+     - 2023
      - Global
      - `Faerber et al., 2023 <https://zenodo.org/records/10074416>`_
    * - ``HYPE``
      - :py:class:`aqua_fetch.rr.HYPE`
      - 561
-     - 
      -
-     - 
-     - 
-     - 
+     -
+     -
+     -
+     -
+     -
      - `Arciniega-Esparza and Birkel, 2020 <https://zenodo.org/records/4029572>`_     
    * - ``HYSETS``
      - :py:class:`aqua_fetch.rr.HYSETS`
@@ -326,7 +354,8 @@ List of datasets
      -
      - 5
      - 28
-     - 1950 - 2018
+     - 1950
+     - 2018
      - North America (Mexico, Canada, USA)
      - `Arsenault et al., 2020 <https://doi.org/10.1038/s41597-020-00583-2>`_
    * - ``Ireland``
@@ -335,7 +364,8 @@ List of datasets
      -
      - 27
      - 35
-     - 1992 - 2020
+     - 1992
+     - 2020
      - Ireland
      - `EPA Ireland <https://epawebapp.epa.ie>`_  
    * - ``Italy``
@@ -344,7 +374,8 @@ List of datasets
      -
      - 37
      - 35
-     - 1992 - 2020
+     - 1992
+     - 2020
      - Italy
      - `EPA Ireland <https://epawebapp.epa.ie>`_  
    * - ``Japan``
@@ -353,7 +384,8 @@ List of datasets
      - 696
      - 27
      - 35
-     - 1979 - 2022
+     - 1979
+     - 2022
      - Japan
      - `river.go.jp <http://www1.river.go.jp>`_           
    * - ``LamaHCE``
@@ -362,7 +394,8 @@ List of datasets
      - 859
      - 22
      - 80
-     - 1981 - 2019
+     - 1981
+     - 2019
      - Central Europe
      - `Klingler et al., 2021 <https://doi.org/10.5194/essd-13-4529-2021>`_
    * - ``LamaHIce``
@@ -371,7 +404,8 @@ List of datasets
      - 111
      - 36
      - 154
-     - 1950 - 2021
+     - 1950
+     - 2021
      - Iceland
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
    * - ``NPCTR Catchments``
@@ -380,7 +414,8 @@ List of datasets
      - 7
      - 14
      - 14
-     - 2013 - 2019
+     - 2013
+     - 2019
      - Canada
      - `Korver et al., (2024) <https://doi.org/10.5194/essd-14-4231-2022>`_
    * - ``Poland``
@@ -389,7 +424,8 @@ List of datasets
      -
      - 27
      - 35
-     - 1992 - 2020
+     - 1992
+     - 2020
      - Poland
      - `imgw.pl <https://danepubliczne.imgw.pl>`_     
    * - ``Portugal``
@@ -398,7 +434,8 @@ List of datasets
      -
      - 27
      - 35
-     - 1992 - 2020
+     - 1992
+     - 2020
      - Portugal
      - `snirh <https://snirh.apambiente.pt>`_       
    * - ``RRLuleaSweden``
@@ -407,7 +444,8 @@ List of datasets
      - 
      - 2
      - 0
-     - 2016 - 2019
+     - 2016
+     - 2019
      - Lulea (Sweden)
      - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
    * - ``Simbi``
@@ -416,7 +454,8 @@ List of datasets
      -
      - 3
      - 232
-     - 1920 - 1940
+     - 1920
+     - 1940
      - Haiti
      - `Bathelemy et al., 2024 <https://doi.org/10.23708/02POK6>`_
    * - ``Slovenia``
@@ -425,7 +464,8 @@ List of datasets
      -
      - 3
      - 10
-     - 1950 - 2023
+     - 1950
+     - 2023
      - Slovenia
      - `vode.arso.gov.si <https://vode.arso.gov.si>`_
    * - ``Spain``
@@ -434,7 +474,8 @@ List of datasets
      -
      - 27
      - 35
-     - 1979 - 2020
+     - 1979
+     - 2020
      - Spain
      - `ceh-flumen64 <https://ceh-flumen64.cedex.es>`_
    * - ``Thailand``
@@ -443,7 +484,8 @@ List of datasets
      -
      - 27
      - 35
-     - 1980 - 1999
+     - 1980
+     - 1999
      - Thailand
      - `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_
    * - ``UKFlow15``
@@ -452,7 +494,8 @@ List of datasets
      - 1369
      - 3
      - 11
-     - 1948 - 2023
+     - 1948
+     - 2023
      - United Kingdom
      - `Coxon et al., 2026 <https://doi.org/10.5194/essd-2026-152>`_
    * - ``USGS``
@@ -461,7 +504,8 @@ List of datasets
      -
      - 5
      - 27
-     - 1950 - 2018
+     - 1950
+     - 2018
      - United States
      - `USGS nwis <https://waterdata.usgs.gov/nwis/>`_
    * - ``WaterBenchIowa``
@@ -470,7 +514,8 @@ List of datasets
      - 125
      - 3
      - 7
-     - 2011 - 2018
+     - 2011
+     - 2018
      - Iowa (USA)
      - `Demir et al., 2022 <https://doi.org/10.5194/essd-14-5605-2022>`_
 
@@ -485,7 +530,7 @@ available for them. The observed variables differ between them, as summarized in
 *Variables* column.
 
 .. list-table:: Other Rainfall-Runoff Datasets
-   :widths: 16 24 8 32 10 12 22
+   :widths: 16 24 8 32 5 5 12 22
    :header-rows: 1
    :class: sphinx-datatable
 
@@ -493,21 +538,24 @@ available for them. The observed variables differ between them, as summarized in
      - Class
      - Number of Stations
      - Variables
-     - Temporal Coverage
+     - Start Year
+     - End Year
      - Spatial Coverage
      - Reference
    * - ``JialingRiverChina``
      - :py:class:`aqua_fetch.rr.JialingRiverChina`
      - 11
      - daily weather variables and runoff/streamflow (43 dynamic features)
-     - 2010 - 2022
+     - 2010
+     - 2022
      - Jialing River basin, China
      - `Wang et al., 2024 <https://doi.org/10.1016/j.envsoft.2024.106091>`_
    * - ``NamalValleyPakistan``
      - :py:class:`aqua_fetch.rr.NamalValleyPakistan`
      - 14
      - 10-min precipitation (``pcp_mm``, 14 stations) and water level (``wl_ft_obs``, 8 stations)
-     - 2020 - 2024
+     - 2020
+     - 2024
      - Pakistan (Namal Valley)
      - `Sheraz et al., 2025 <https://doi.org/10.1038/s41597-025-05310-3>`_
 

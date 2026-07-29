@@ -120,6 +120,11 @@ nbsphinx_allow_errors = True
 # attach normally. Re-enable it if a notebook ever needs AMD-based widgets.
 nbsphinx_requirejs_path = ''
 
+# sphinx_datatables applies these options to every sortable table. Show 100 rows
+# per page by default (DataTables' built-in default is 10) so the full dataset
+# tables are visible without paging.
+datatables_options = {"pageLength": 100}
+
 # nbsphinx_thumbnails = {
 #     'gallery/thumbnail-from-conf-py': 'gallery/a-local-file.png',
 #     'gallery/*-rst': 'images/notebook_icon.png',
