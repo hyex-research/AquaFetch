@@ -10,6 +10,7 @@ List of datasets
 .. list-table:: Summary of datasets
    :widths: 10 10 10 15 30 15
    :header-rows: 1
+   :class: sphinx-datatable
 
    * - Dataset
      - Variables Covered
@@ -102,7 +103,7 @@ List of datasets
      - `Minaudo et al., 2025 <https://doi.org/10.5194/essd-17-3411-2025>`_
      - :py:class:`aqua_fetch.Oligotrend`
    * - Global River Nutrients
-     - 3 (TN, TP, streamflow)
+     - 3
      - 1806 - 2025
      - Global
      - `Peters et al., 2026 <https://doi.org/10.1038/s41597-026-07625-1>`_
