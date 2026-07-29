@@ -110,6 +110,16 @@ nbsphinx_execute_arguments = [
 
 nbsphinx_allow_errors = True
 
+# nbsphinx loads RequireJS on every page by default. RequireJS defines
+# `define.amd`, which makes DataTables (used by sphinx_datatables for the
+# sortable summary tables) register itself as an AMD module instead of
+# attaching `$.fn.DataTable` to jQuery. As a result the sortable-table
+# activation script (`$('table.sphinx-datatable').DataTable()`) throws and no
+# table becomes sortable. None of our notebooks use RequireJS, so we disable
+# its injection (empty string => nbsphinx skips loading it) to let DataTables
+# attach normally. Re-enable it if a notebook ever needs AMD-based widgets.
+nbsphinx_requirejs_path = ''
+
 # nbsphinx_thumbnails = {
 #     'gallery/thumbnail-from-conf-py': 'gallery/a-local-file.png',
 #     'gallery/*-rst': 'images/notebook_icon.png',

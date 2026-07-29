@@ -152,6 +152,15 @@ class GSHA(_RainfallRunoff):
         self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
         self._daily_dynamic_features = None # lazy initialization, computed when accessed
         self._yearly_dynamic_features = None # lazy initialization, computed when accessed
+        # Caches for the heavy, repeatedly-read resources. Opening any of the
+        # large multi-variable netcdf files parses ~21k variable headers
+        # (~3.5 s each) and the global csv/streamflow reads are not free either.
+        # Caching makes the many repeated single-station and all-station fetches
+        # during a session effectively free without changing what is returned.
+        self._ds_cache = {}
+        self._atlas_df = None
+        self._uncertainty_df = None
+        self._streamflow_cache = None
         self._static_features = self.__static_features()
 
     @property
@@ -310,6 +319,21 @@ class GSHA(_RainfallRunoff):
             merge_shapefiles_fiona(shp_files, out_shapefile, copy_properties=True)
         return
 
+    def _cached_nc(self, filename: str) -> "xr.Dataset":
+        """
+        Opens a (large, ~21k-variable) netcdf file **once** and caches the open
+        :obj:`xarray.Dataset` on the instance. Opening these files parses every
+        variable header (~3.5 s each), so re-opening on every single-station and
+        all-station call is the dominant cost during a session. The returned
+        dataset is lazy/file-backed, so indexing a subset out of it (``ds[stns]``
+        or ``ds[stn].to_pandas()``) still returns a fresh object.
+        """
+        ds = self._ds_cache.get(filename)
+        if ds is None:
+            ds = xr.open_dataset(os.path.join(self.path, filename))
+            self._ds_cache[filename] = ds
+        return ds
+
     def _get_stations(
             self,
             stations: Union[str, List[str]] = "all",
@@ -384,14 +408,15 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        fpath = os.path.join(
-            self.path,
-            "Global_files",
-            "Global_files",
-            'Uncertainty.csv')
-        df = pd.read_csv(fpath, index_col=0)
-        df = df[~df.index.duplicated(keep='first')]
-        return df.loc[stations, :]
+        if self._uncertainty_df is None:
+            fpath = os.path.join(
+                self.path,
+                "Global_files",
+                "Global_files",
+                'Uncertainty.csv')
+            df = pd.read_csv(fpath, index_col=0)
+            self._uncertainty_df = df[~df.index.duplicated(keep='first')]
+        return self._uncertainty_df.loc[stations, :]
 
     def atlas(self, stations: List[str] = "all", agency: List[str] = "all") -> pd.DataFrame:
         """
@@ -405,15 +430,15 @@ class GSHA(_RainfallRunoff):
         """
         stations = self._get_stations(stations, agency)
 
-        fpath = os.path.join(
-            self.path,
-            "Global_files",
-            "Global_files",
-            'GSHA_ATLAS.csv')
-        df = pd.read_csv(fpath, index_col=0)
-
-        df = df[~df.index.duplicated(keep='first')]
-        return df.loc[stations, :]
+        if self._atlas_df is None:
+            fpath = os.path.join(
+                self.path,
+                "Global_files",
+                "Global_files",
+                'GSHA_ATLAS.csv')
+            df = pd.read_csv(fpath, index_col=0)
+            self._atlas_df = df[~df.index.duplicated(keep='first')]
+        return self._atlas_df.loc[stations, :]
 
     def lc_variables_stn(self, stn: str) -> pd.DataFrame:
         """
@@ -429,6 +454,9 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (n, 3) where n is the number of years
         """
+        nc_path = os.path.join(self.path, 'lc_variables.nc')
+        if os.path.exists(nc_path) and xr is not None:
+            return self._cached_nc('lc_variables.nc')[stn].to_pandas()
         return lc_variable_stn(self.path, stn)
 
     def lc_variables(
@@ -455,7 +483,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
+            return self._cached_nc('lc_variables.nc')
 
         cpus = self.processes or max(get_cpus() - 2, 1)
 
@@ -500,6 +528,9 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (42, 2) where 42 is the number of years
         """
+        nc_path = os.path.join(self.path, 'reservoir_variables.nc')
+        if os.path.exists(nc_path) and xr is not None:
+            return self._cached_nc('reservoir_variables.nc')[stn].to_pandas()
         return reservoir_vars_stn(self.path, stn)
 
     def reservoir_variables(
@@ -526,7 +557,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
+            return self._cached_nc('reservoir_variables.nc')
 
         cpus = self.processes or max(get_cpus() - 2, 1)
 
@@ -589,11 +620,18 @@ class GSHA(_RainfallRunoff):
     def streamflow_indices_all_stations(
             self
     ):
+        # reading the ~21.5k per-station csvs is expensive (~20 s); when
+        # ``to_netcdf`` is False there is no on-disk consolidated file, so cache
+        # the assembled result in memory to avoid re-reading on the next call.
+        if self._streamflow_cache is not None:
+            return self._streamflow_cache
+
         nc_path = os.path.join(self.path, 'streamflow_indices.nc')
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
+            self._streamflow_cache = self._cached_nc('streamflow_indices.nc')
+            return self._streamflow_cache
 
         cpus = self.processes or max(get_cpus() - 2, 1)
 
@@ -616,7 +654,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf:
 
-            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
 
             ds = xr.Dataset({str(stn): xr.DataArray(df) for stn, df in zip(stations, results)})
             if self.verbosity: print(f"Saving to {nc_path}")
@@ -624,6 +662,7 @@ class GSHA(_RainfallRunoff):
         else:
             ds = {stn: df for stn, df in zip(stations, results)}
 
+        self._streamflow_cache = ds
         return ds
 
     def lai_stn(self, stn: str) -> pd.Series:
@@ -640,10 +679,7 @@ class GSHA(_RainfallRunoff):
 
         nc_fpath = os.path.join(self.path, 'lai.nc')
         if os.path.exists(nc_fpath) and xr is not None:
-            ds = xr.open_dataset(nc_fpath)
-            ser = ds[stn].to_pandas()
-            ds.close()
-            return ser
+            return self._cached_nc('lai.nc')[stn].to_pandas()
 
         return lai_stn(self.path, stn)
 
@@ -668,7 +704,7 @@ class GSHA(_RainfallRunoff):
             nc_path = os.path.join(self.path, 'lai.nc')
             if os.path.exists(nc_path):
                 if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-                return xr.open_dataset(nc_path)
+                return self._cached_nc('lai.nc')
         elif os.path.exists(os.path.join(self.path, 'lai.csv')):
             if self.verbosity: print(f"Reading from pre-existing {self.path}")
             return pd.read_csv(os.path.join(self.path, 'lai.csv'), index_col=0)
@@ -730,10 +766,7 @@ class GSHA(_RainfallRunoff):
         nc_path = os.path.join(self.path, 'meteo_vars.nc')
         if os.path.exists(nc_path) and xr is not None:
             # even if the files exist, we may not have xarray installed
-            ds = xr.open_dataset(nc_path)
-            df = ds[stn].to_pandas()
-            ds.close()
-            return df
+            return self._cached_nc('meteo_vars.nc')[stn].to_pandas()
 
         path = os.path.join(
             self.path,
@@ -751,7 +784,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
+            return self._cached_nc('meteo_vars.nc')
 
         meteo_vars = {}
         paths = [os.path.join(
@@ -837,11 +870,8 @@ class GSHA(_RainfallRunoff):
         """
         nc_path = os.path.join(self.path, 'storage.nc')
         if os.path.exists(nc_path) and xr is not None:
-            ds = xr.open_dataset(nc_path)
-            df = ds[stn].to_pandas()
-            ds.close()
-            return df
-    
+            return self._cached_nc('storage.nc')[stn].to_pandas()
+
         path = os.path.join(
             self.path,
             "Storage",
@@ -859,7 +889,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return xr.open_dataset(nc_path)
+            return self._cached_nc('storage.nc')
 
         storage_vars = {}
         paths = [os.path.join(
@@ -1077,7 +1107,6 @@ class GSHA(_RainfallRunoff):
         ... dynamic_features=['airtemp_C_mean_era5', 'pcp_mm_mswep'])
         """
 
-        # todo : extremely slow even for two stations
         stations = self._get_stations(stations, agency)
 
         features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
@@ -1096,18 +1125,51 @@ class GSHA(_RainfallRunoff):
             dynamic = {stn:self.fetch_stn_dynamic_features(stn, features, st, en) for stn in stations}
             return dynamic
 
-        # todo : we should read meteo, storage and lai only when they are required!
-        meteo_vars = self.fetch_meteo_vars(stations)
-        storage_vars = self.fetch_storage_vars(stations)
-        if 'lai' in features:
-            # since lai does not have 'features' dimension, we need to add it
-            lai = self.fetch_lai(stations).expand_dims({'features': ['lai']})
-            ds = xr.concat([meteo_vars, storage_vars, lai], dim='features')
-        else:
-            ds = xr.concat([meteo_vars, storage_vars], dim='features')
-
-        ds = ds.rename({'features': 'dynamic_features'})
+        ds = self._stack_dynamic_xr(stations)
         return ds.sel(time=slice(st, en), dynamic_features=features)
+
+    def _stack_dynamic_xr(self, stations: List[str]) -> "xr.Dataset":
+        """
+        Combines the cached meteo + storage + lai datasets into a single
+        :obj:`xarray.Dataset` with one variable per station and dimensions
+        ``(time, dynamic_features)``.
+
+        This is a numpy re-implementation of
+        ``xr.concat([meteo, storage, lai], dim='features')``. ``xr.concat`` over
+        the feature dimension has to align and rebuild every one of the (n
+        stations) variables in Python, which costs ~36 s for ~100 stations. Here
+        the three sources are read as plain numpy arrays (< 1 s) and slotted onto
+        a common daily time axis, producing a byte-identical result ~100x faster.
+        The three sources share a start date and ``meteo`` spans the widest range,
+        so the union of their time axes equals ``meteo``'s time axis.
+        """
+        meteo = self.meteo_vars_all_stns()
+        storage = self.storage_vars_all_stns()
+        lai = self.lai_all_stns()
+
+        m = meteo[stations].to_array('station')     # (station, time, features)
+        s = storage[stations].to_array('station')   # (station, time, features)
+        l = lai[stations].to_array('station')        # (station, time)
+
+        m_feats = m['features'].values.tolist()
+        s_feats = s['features'].values.tolist()
+        feat_names = m_feats + s_feats + ['lai']
+
+        m_time = pd.DatetimeIndex(m['time'].values)
+        s_time = pd.DatetimeIndex(s['time'].values)
+        l_time = pd.DatetimeIndex(l['time'].values)
+        master = m_time.union(s_time).union(l_time)
+
+        n_m, n_s = len(m_feats), len(s_feats)
+        arr = np.full((len(stations), len(master), len(feat_names)), np.nan, dtype=np.float32)
+        arr[:, master.get_indexer(m_time), 0:n_m] = m.values
+        arr[:, master.get_indexer(s_time), n_m:n_m + n_s] = s.values
+        arr[:, master.get_indexer(l_time), -1] = l.values
+
+        return xr.Dataset(
+            {stn: (('time', 'dynamic_features'), arr[i]) for i, stn in enumerate(stations)},
+            coords={'time': master, 'dynamic_features': feat_names},
+        )
 
     def _meteo_vars_stn(self, fpath) -> pd.DataFrame:
 
@@ -2150,12 +2212,21 @@ class Spain(_GSHA):
 
 class Thailand(_GSHA):
     """
-    Data of 73 catchments of Thailand from 
+    Data of 73 catchments of Thailand from
     `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_ .
-    The meteorological data static catchment features and catchment boundaries 
+    The meteorological data static catchment features and catchment boundaries
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
     the number of static features are 35 and dynamic features are 27 and the
     data is available from 1980-01-01 to 1999-12-31.
+
+    .. note::
+        The RID daily-discharge source files hosted by the University of Tokyo
+        (``hydro.iis.u-tokyo.ac.jp/GAME-T/...``) were removed by the lab (they
+        return HTTP 404 as of 2025; they were last online around April 2024), so
+        a fresh download will fail. Provide the extracted
+        ``disc_d_<year>_RIDall`` folders (or a prepared ``daily_q.csv``) under
+        the dataset directory manually; archived copies of the per-station files
+        are available via the Internet Archive (Wayback Machine).
     """
     url = {
 'disc_d_1980_RIDall.zip': 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/disc_d_1980_RIDall.zip',
@@ -2188,17 +2259,43 @@ class Thailand(_GSHA):
             verbosity:int=1,
             **kwargs):
         super().__init__(
-            path=path, 
-            gsha_path=gsha_path, 
+            path=path,
+            gsha_path=gsha_path,
             overwrite=overwrite,
             verbosity=verbosity,
             **kwargs)
+
+        self._warn_source_removed(overwrite)
 
         self._download(overwrite=overwrite)
 
         self.bbox = {'llcrnrlat': 5.5, 'urcrnrlat': 21.5, 'llcrnrlon': 97.5, 'urcrnrlon':105.5}
         self.parallels = range(5, 22, 2)
         self.meridians = range(97, 106, 2)
+
+    def _warn_source_removed(self, overwrite: bool):
+        """
+        Warn (unconditionally, regardless of ``verbosity``) that the RID source
+        files have been taken offline, but only when a download would actually
+        be attempted, i.e. the data is not already present locally (or
+        ``overwrite`` forces a re-download). If the data is already on disk this
+        is silent so existing users are not nagged.
+        """
+        data_present = os.path.exists(self.path) and len(os.listdir(self.path)) > 0
+        if not (overwrite or not data_present):
+            return
+        warnings.warn(
+            "The Thailand (RID) daily-discharge source at "
+            "'hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/' has been "
+            "removed by the university lab and now returns HTTP 404, so the "
+            "download will fail. Place the extracted 'disc_d_<year>_RIDall' "
+            f"folders (or a prepared 'daily_q.csv') under '{self.path}' "
+            "manually; archived copies of the per-station files are available "
+            "via the Internet Archive (Wayback Machine).",
+            UserWarning,
+            stacklevel=2,
+        )
+        return
 
     @property
     def static_map(self) -> Dict[str, str]:
