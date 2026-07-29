@@ -271,7 +271,8 @@ class WeatherJena(Datasets):
             if not os.path.exists(nc_path):
                 #download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
                 unzip_all_in_dir(sub_dir, 'zip')
-                print("converting data to netcdf file. This will happen only once.")
+                if self.verbosity:
+                    print("converting data to netcdf file. This will happen only once.")
                 df = self._read_as_df()
                 ndf = pd.DataFrame()
                 for _col in df.columns:
@@ -568,6 +569,7 @@ class ETPTelesinaItaly(Datasets):
 def gw_punjab(
         data_type:str = "full",
         country:str = None,
+        verbosity:int = 1,
 )->pd.DataFrame:
     """
     groundwater level (meters below ground level) dataset from Punjab region
@@ -611,7 +613,8 @@ def gw_punjab(
 
     fpath = os.path.join(ds_dir, "gw_punjab.xlsx")
     if not os.path.exists(fpath):
-        print(f"downloading {fpath}")
+        if verbosity:
+            print(f"downloading {fpath}")
         download(f, os.path.dirname(fpath), fname="gw_punjab.xlsx")
 
     assert data_type in ("full", "LTS")

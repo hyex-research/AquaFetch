@@ -130,7 +130,7 @@ class SWatCh(Datasets):
         df.index = dates
 
         if reduce_memory:
-            maybe_reduce_memory(df, hints=h)
+            maybe_reduce_memory(df, hints=h, verbosity=self.verbosity)
 
         strings = ["ResultComment", "ResultAnalyticalMethodID", "MonitoringLocationID",
                    "MonitoringLocationName"]
@@ -344,7 +344,7 @@ def memory_usage(dataframe):
     return round(dataframe.memory_usage().sum() / 1024**2, 4)
 
 
-def maybe_reduce_memory(dataframe:pd.DataFrame, hints=None)->pd.DataFrame:
+def maybe_reduce_memory(dataframe:pd.DataFrame, hints=None, verbosity:int=1)->pd.DataFrame:
 
     init_memory = memory_usage(dataframe)
 
@@ -367,5 +367,6 @@ def maybe_reduce_memory(dataframe:pd.DataFrame, hints=None)->pd.DataFrame:
         elif col_dtype in ['object'] and 'cat' in _hints[col]:
             dataframe[col] = dataframe[col].astype('category')
 
-    print(f"memory reduced from {init_memory} to {memory_usage(dataframe)}")
+    if verbosity:
+        print(f"memory reduced from {init_memory} to {memory_usage(dataframe)}")
     return dataframe

@@ -316,7 +316,7 @@ class GSHA(_RainfallRunoff):
         if not os.path.exists(out_shapefile):
             shp_files = [os.path.join(shp_path, filename) for filename in os.listdir(shp_path) if
                          filename.endswith('.shp')]
-            merge_shapefiles_fiona(shp_files, out_shapefile, copy_properties=True)
+            merge_shapefiles_fiona(shp_files, out_shapefile, copy_properties=True, verbosity=self.verbosity)
         return
 
     def _cached_nc(self, filename: str) -> "xr.Dataset":
@@ -734,7 +734,8 @@ class GSHA(_RainfallRunoff):
 
             nc_path = os.path.join(self.path, 'lai.nc')
             ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-            print(f"Saving to {nc_path}")
+            if self.verbosity:
+                print(f"Saving to {nc_path}")
             ds.to_netcdf(nc_path, encoding=encoding)
         else:
             ds = pd.concat(results, axis=1)
@@ -1683,7 +1684,8 @@ class Japan(_GSHA):
         hourly_file = os.path.join(self.path, 'hourly_data.csv')
 
         if os.path.exists(hourly_file):
-            print(f"reading hourly data from {hourly_file}")
+            if self.verbosity:
+                print(f"reading hourly data from {hourly_file}")
             q = pd.read_csv(hourly_file, index_col=0)
             q.index = pd.to_datetime(q.index)
             return q
@@ -2061,7 +2063,7 @@ class Arcticnet(_GSHA):
                     return adjust_feb_days(row.Year)
                 return month_days2[int(row.Month)]
             except KeyError as e:
-                print(f"KeyError encountered: {e} with row details: {row}")
+                warnings.warn(f"KeyError encountered: {e} with row details: {row}")
                 return None  # Or handle the error as needed
 
         df_long['DaysInMonth'] = df_long.apply(get_days_in_month, axis=1)

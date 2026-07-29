@@ -96,7 +96,8 @@ def download(
     try:
         (tmpfile, headers) = ulib.urlretrieve(binurl, tmpfile, callback)
     except ulib.HTTPError as e:
-        print(f"HTTP Error for {url} to download {fname}")
+        if verbosity:
+            print(f"HTTP Error for {url} to download {fname}")
         raise e
     
     filename = filename_from_url(url)
@@ -196,9 +197,10 @@ def validate_attributes(
     # (O(n) per element); the returned list keeps the caller's order untouched.
     check_against_set = set(check_against)
     if not all(elem in check_against_set for elem in attributes):
-        print(f"Allowed {attribute_name} are {check_against}")
-        print(f"Given {attribute_name} are {attributes}")
-        raise ValueError(f"The names of some {attribute_name} are not valid/allowed")
+        raise ValueError(
+            f"The names of some {attribute_name} are not valid/allowed. "
+            f"Allowed {attribute_name} are {check_against}. "
+            f"Given {attribute_name} are {attributes}")
 
     return attributes
 
@@ -227,7 +229,8 @@ def _maybe_not_all_files_downloaded(
 
         for fname, link in url.items():
             if fname not in available_files:
-                print(f"file {fname} is not available so downloading it now.")
+                if verbosity:
+                    print(f"file {fname} is not available so downloading it now.")
                 download_and_unzip(path, {fname:link}, verbosity=verbosity)
 
     return
@@ -299,7 +302,8 @@ def maybe_download(
     """
     if os.path.exists(path) and len(os.listdir(path)) > 0:
         if overwrite:
-            print(f"removing previous data directory {path} and downloading new")
+            if verbosity:
+                print(f"removing previous data directory {path} and downloading new")
             shutil.rmtree(path)
             download_and_unzip(path, 
                                url=url, 
@@ -498,7 +502,8 @@ def unzip(
 
                 with py7zr.SevenZipFile(fpath, mode='r') as z:
                     z.extractall(path = unzip_fpath if keep_parent_dir else path)
-                    print(f'Extracted {fpath}')
+                    if verbosity:
+                        print(f'Extracted {fpath}')
     return
 
 
@@ -837,7 +842,9 @@ def force_freq(data_frame, freq_to_force, method=None):
 
     df_reindexed.index.freq = pd.infer_freq(df_reindexed.index)
     new_nan_counts = df_reindexed.isna().sum()
-    print('Frequency {} is forced to dataframe, NaN counts changed from {} to {}, shape changed from {} to {}'
+    # data-modification warning: reindexing to a forced frequency changes the
+    # NaN counts and shape, so warn unconditionally (do not gate on verbosity).
+    warnings.warn('Frequency {} is forced to dataframe, NaN counts changed from {} to {}, shape changed from {} to {}'
           .format(df_reindexed.index.freq, old_nan_counts.values, new_nan_counts.values,
                   old_shape, df_reindexed.shape))
     return df_reindexed
@@ -948,10 +955,11 @@ def get_cpus()->int:
 
 
 def merge_shapefiles_fiona(
-        shp_files:List[os.PathLike], 
+        shp_files:List[os.PathLike],
         output_path: os.PathLike,
         gauge_id_attribute_name = None,
-        copy_properties: bool = False
+        copy_properties: bool = False,
+        verbosity: int = 1
         ):
     """
     merges shapefiles into one shapefile using fiona and keeps all attributes
@@ -962,7 +970,8 @@ def merge_shapefiles_fiona(
 
     import fiona
 
-    print(f"Merging {len(shp_files)} shapefiles into {output_path}")
+    if verbosity:
+        print(f"Merging {len(shp_files)} shapefiles into {output_path}")
 
     # Build a unified schema (union of all properties), adopt CRS and geometry from the first file
     crs = None
@@ -1047,10 +1056,11 @@ def merge_shapefiles_fiona(
                         'properties': props
                     })
 
-            if (idx + 1) % 1000 == 0 or (idx + 1) == len(shp_files):
+            if verbosity and ((idx + 1) % 1000 == 0 or (idx + 1) == len(shp_files)):
                 print(f"Processed {idx + 1}/{len(shp_files)} shapefiles...")
 
-    print(f"Merged {len(shp_files)} shapefiles into {output_path}")
+    if verbosity:
+        print(f"Merged {len(shp_files)} shapefiles into {output_path}")
     return
 
 

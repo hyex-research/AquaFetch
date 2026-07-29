@@ -7,6 +7,7 @@ import json
 import signal
 import time
 import hashlib
+import warnings
 from contextlib import contextmanager
 
 import requests
@@ -172,7 +173,8 @@ def download_from_zenodo(
                 if _wget == '-':
                     for f in files:
                         link = f['links']['self']
-                        print(link)
+                        if verbosity:
+                            print(link)
                 else:
                     with open(_wget, 'wt') as wgetfile:
                         for f in files:
@@ -204,34 +206,35 @@ def download_from_zenodo(
                     remote_hash, local_hash = check_hash(fname, checksum)
 
                     if remote_hash == local_hash and cont:
-                        print(f'{fname} is already downloaded correctly.')
+                        if verbosity: print(f'{fname} is already downloaded correctly.')
                         continue
 
                     for _ in range(retry + 1):
                         try:
                             filename = download(link, outdir=outdir, fname=fname, verbosity=verbosity)
                         except Exception as e:
-                            print('  Download error.')
+                            if verbosity: print('  Download error.')
                             time.sleep(pause)
                         else:
                             break
                     else:
-                        print('  Too many errors.')
+                        if verbosity: print('  Too many errors.')
                         if not tolerate_error:
                             raise Exception('Download is aborted. Too  many errors')
-                        print(f'  Ignoring {filename} and downloading the next file.')
+                        if verbosity: print(f'  Ignoring {filename} and downloading the next file.')
                         continue
 
                     h1, h2 = check_hash(filename, checksum)
                     if h1 == h2:
                         if verbosity: print(f'Checksum is correct. ({h1})')
                     else:
-                        print(f'Checksum is INCORRECT!({h1} got:{h2})')
+                        # data-integrity warning: a checksum mismatch means the
+                        # downloaded file is corrupt, so warn unconditionally.
                         if not keep:
-                            print('  File is deleted.')
                             os.remove(filename)
+                            warnings.warn(f'Checksum is INCORRECT!({h1} got:{h2}). File is deleted.')
                         else:
-                            print('  File is NOT deleted!')
+                            warnings.warn(f'Checksum is INCORRECT!({h1} got:{h2}). File is NOT deleted!')
                         if not tolerate_error:
                             sys.exit(1)
                 else:

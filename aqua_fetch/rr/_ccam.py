@@ -170,7 +170,7 @@ class CCAM(_RainfallRunoff):
         boundaries = os.path.join(shp_path, "boundaries")
 
         if fiona is not None:
-            merge_shapefiles_fiona(shp_files, boundaries)
+            merge_shapefiles_fiona(shp_files, boundaries, verbosity=self.verbosity)
 
 
         self.bbox = {'llcrnrlat': 20.0, 'urcrnrlat': 50.0, 'llcrnrlon': 70.0, 'urcrnrlon': 140.0}

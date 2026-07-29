@@ -1433,7 +1433,8 @@ class _RainfallRunoff(Datasets):
             d = dyn.sel(dynamic_features=feature).to_dataframe().drop(columns=['dynamic_features'], errors='ignore')
 
             if d.isna().sum().sum() < 10:
-                print(f"Skipping {feature} due to no missing values.")
+                if self.verbosity:
+                    print(f"Skipping {feature} due to no missing values.")
                 continue
 
             data = d.count().values.reshape(-1, )
@@ -1448,7 +1449,8 @@ class _RainfallRunoff(Datasets):
 
             # if np.allclose([100.], [y_values.sum()]):
             if np.all(y_values == y_values[0]):
-                print(f"All stations for {feature} have {int(x[0])} observations.")
+                if self.verbosity:
+                    print(f"All stations for {feature} have {int(x[0])} observations.")
                 if show_constant:
                     easy_mpl.plot(x[0], y_values[0], '*', label=label, ax=ax, show=False)
                 continue

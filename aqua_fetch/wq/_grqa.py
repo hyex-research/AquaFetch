@@ -806,7 +806,7 @@ class GRQA(Datasets):
             if self.verbosity> 1: print(idx, para )
 
         df = pd.concat(dfs)
-        print(df.shape)
+        if self.verbosity: print(df.shape)
         duplicates = df.index.duplicated(keep='first')  # Keep the first occurrence, mark others as duplicate
         # Drop duplicates based on the index
         df = df[~duplicates] 

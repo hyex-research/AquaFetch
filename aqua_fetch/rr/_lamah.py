@@ -348,7 +348,8 @@ class LamaHCE(_RainfallRunoff):
             os.makedirs(fdir)
 
         if not self.all_ncs_exist:
-            print(f'converting data to netcdf format for faster io operations')
+            if self.verbosity:
+                print(f'converting data to netcdf format for faster io operations')
 
             for feature in self.dynamic_features:
 
@@ -356,7 +357,8 @@ class LamaHCE(_RainfallRunoff):
                 dyn_fname = os.path.join(fdir, f"{feature}.nc")
 
                 if not os.path.exists(dyn_fname):
-                    print(f'Saving {feature} as {dyn_fname}')
+                    if self.verbosity:
+                        print(f'Saving {feature} as {dyn_fname}')
                     _, data = self.fetch(static_features=None, dynamic_features=feature)
 
                     data.to_netcdf(dyn_fname)

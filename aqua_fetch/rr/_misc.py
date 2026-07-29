@@ -323,7 +323,8 @@ class ShyftNorway(_RainfallRunoff):
                 [os.path.join(self.path, 'shapefiles', f) for f in files_to_merge],
                 self.boundary_file,
                 gauge_id_attribute_name='stID',
-                copy_properties=True
+                copy_properties=True,
+                verbosity=self.verbosity
                 )
 
         self._q = self.fetch_q(as_dataframe=True)

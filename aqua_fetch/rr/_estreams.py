@@ -1388,10 +1388,10 @@ class Ireland(_EStreams):
         if os.path.exists(all_epa_data_file):
             if self.verbosity>1: print(f"{all_epa_data_file} already exists")
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
-            print(f"{all_epa_data_file} already exists")  
+            if self.verbosity: print(f"{all_epa_data_file} already exists")
             return df
 
-        print("Downloading EPA data Sequentially")
+        if self.verbosity: print("Downloading EPA data Sequentially")
 
         epa_failiures = 0
         epa_dfs = []
@@ -1400,14 +1400,14 @@ class Ireland(_EStreams):
 
             fpath = os.path.join(folder, f"{stn}.csv")
 
-            print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
+            if self.verbosity: print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
 
-            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep)
+            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep, verbosity=self.verbosity)
 
-            epa_dfs.append(df) 
+            epa_dfs.append(df)
 
-        print(f'total epa failiures: {epa_failiures}')
-        print(f'total epa dfs: {len(epa_dfs)}')
+        if self.verbosity: print(f'total epa failiures: {epa_failiures}')
+        if self.verbosity: print(f'total epa dfs: {len(epa_dfs)}')
 
         df = pd.concat(epa_dfs, axis=1).astype('float32')
 
@@ -1428,16 +1428,17 @@ class Ireland(_EStreams):
         all_epa_data_file = os.path.join(self.path, f"epa_{fname}.csv")
         if os.path.exists(all_epa_data_file):
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
-            print(f"{all_epa_data_file} already exists")  
+            if self.verbosity: print(f"{all_epa_data_file} already exists")
             return df
 
         timesteps = [self.timestep] * len(self.epa_stations)
         fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.epa_stations]
 
-        print(f"Downloading {len(fpaths)} EPA stations using {cpus} cpus at {os.path.join(self.path, 'EPA', folder)}")
+        if self.verbosity: print(f"Downloading {len(fpaths)} EPA stations using {cpus} cpus at {os.path.join(self.path, 'EPA', folder)}")
 
         with ProcessPoolExecutor(cpus) as executor:
-            epa_dfs = list(executor.map(_download_epa_stn_data, fpaths, timesteps))
+            epa_dfs = list(executor.map(_download_epa_stn_data, fpaths, timesteps,
+                                        [self.verbosity] * len(fpaths)))
 
         df = pd.concat([val[0] for val in epa_dfs], axis=1).astype('float32')
 
@@ -1446,11 +1447,11 @@ class Ireland(_EStreams):
             # 2000-01-01 01:00:00 -> 2000-01-01
             df.index = df.index.normalize()
 
-        print(f'Downloaded total epa dfs: {len(epa_dfs)}')
+        if self.verbosity: print(f'Downloaded total epa dfs: {len(epa_dfs)}')
 
         df.to_csv(all_epa_data_file)
         return df
-    
+
     def download_opw_data_parallel(self, cpus=None):
 
         folder = {'D': self.daily_opw_path, 'H': self.hourly_opw_path}[self.timestep]
@@ -1461,7 +1462,7 @@ class Ireland(_EStreams):
         all_opw_data_file = os.path.join(self.path, f"opw_{fname}.csv")
         if os.path.exists(all_opw_data_file):
             df = pd.read_csv(all_opw_data_file, index_col=0, parse_dates=True)
-            print(f"{all_opw_data_file} already exists")  
+            if self.verbosity: print(f"{all_opw_data_file} already exists")
             return df
 
         fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.opw_stations]
@@ -1540,7 +1541,7 @@ class Ireland(_EStreams):
 
             fpath = os.path.join(folder, f"{stn}.csv")
 
-            print(f"{idx}/{len(self.opw_stations)} Downloading {stn}")
+            if self.verbosity: print(f"{idx}/{len(self.opw_stations)} Downloading {stn}")
 
             df = _download_opw_stn_data(fpath, self.timestep)
  
@@ -1565,8 +1566,9 @@ class Ireland(_EStreams):
 
 
 def _download_epa_stn_data(
-        fpath, 
+        fpath,
         timestep="D",
+        verbosity:int=1,
         overwrite:bool=False,
         save_raw = False,
         )->tuple[pd.Series, int]:
@@ -1632,7 +1634,7 @@ def _download_epa_stn_data(
                             sep=';',
                             names=["timestamp", stn, "qflag"])
                         except HTTPError:
-                            print(f"Failed to download {stn}")
+                            warnings.warn(f"Failed to download {stn}")
                             epa_failiures += 1
                             pass
 
@@ -1659,7 +1661,7 @@ def _download_epa_stn_data(
     if save_raw:
         df[stn].to_csv(raw_fpath, index_label="timestamp")
 
-    print(f"Resampling {stn} data to hourly timestep")
+    if verbosity: print(f"Resampling {stn} data to hourly timestep")
     # return df[stn].resample(timestep).mean(), epa_failiures
     # vectorised time-weighted resampling in a single pass (see tw_resampler)
     hourly_q = tw_resampler(df[stn], timestep)
@@ -1887,9 +1889,9 @@ class Italy(_EStreams):
 
             df.index = pd.to_datetime(df.pop('dateTime'))
             df.columns = [station]
-            print(idx, station, df.shape)
+            if self.verbosity: print(idx, station, df.shape)
 
-            dfs.append(df)    
+            dfs.append(df)
 
         df = pd.concat(dfs, axis=1)
 
@@ -2301,7 +2303,7 @@ class Portugal(_EStreams):
 
                 data.append(stn_data)
 
-                if i%10 == 0:
+                if self.verbosity and i%10 == 0:
                     print(i, "Done")
 
         tot_time = round ((time.time() - start) / 60, 2)
@@ -2474,8 +2476,9 @@ class Slovenia(_EStreams):
 
             if self.verbosity>1: print(f"Downloading q data at {self.path}")
 
-            q_df = download_slovenia_q(self.md, outpath=fpath, 
-                                       cpus=self.processes or min(get_cpus() - 2, 16))
+            q_df = download_slovenia_q(self.md, outpath=fpath,
+                                       cpus=self.processes or min(get_cpus() - 2, 16),
+                                       verbosity=self.verbosity)
         else:
             if self.verbosity: print(f"Reading q data from pre-existing file {fpath}")
             q_df = pd.read_csv(fpath, index_col=0)
@@ -2494,7 +2497,8 @@ class Slovenia(_EStreams):
 def download_slovenia_q(
         metadata:pd.DataFrame,
         outpath:Union[str, os.PathLike],
-        cpus = 1
+        cpus = 1,
+        verbosity:int = 1
         ) -> pd.DataFrame:
     """
     Downloads streamflow data for Slovenia stations.
@@ -2513,7 +2517,7 @@ def download_slovenia_q(
     # todo : we should parallelize stations-years combined
 
     cpus = cpus or min(get_cpus() - 2, 8)
-    if cpus > 1:
+    if verbosity and cpus > 1:
         print(f"Download operation will be parallelized using {cpus} CPUs")
 
     dirname = os.path.dirname(outpath)
@@ -2540,8 +2544,10 @@ def download_slovenia_q(
 
         if cpus > 1:
         # Download all year combinations in parallel
+            n_years = len(range(st_yr, en_yr))
             with cf.ProcessPoolExecutor(cpus) as executor:
-                results = executor.map(download_slovenia_stn, [row]*len(range(st_yr, en_yr)), range(st_yr, en_yr))
+                results = executor.map(download_slovenia_stn, [row]*n_years, range(st_yr, en_yr),
+                                       [verbosity]*n_years)
 
             for yr_df in results:
                 stn_dfs.append(yr_df)
@@ -2549,11 +2555,11 @@ def download_slovenia_q(
         else:
             for year in range(st_yr, en_yr):
 
-                yr_df = download_slovenia_stn(row, year)
+                yr_df = download_slovenia_stn(row, year, verbosity)
 
                 stn_dfs.append(yr_df)
 
-                print(f"downloaded data for {i}/{len(metadata)}: {gauge_id} - {gauge_name} for year {year}")
+                if verbosity: print(f"downloaded data for {i}/{len(metadata)}: {gauge_id} - {gauge_name} for year {year}")
 
         stn_df = pd.concat(stn_dfs)
 
@@ -2570,9 +2576,9 @@ def download_slovenia_q(
 
         wt_dfs.append(stn_df['water_temp_celsius'].rename(gauge_id))
 
-        print(st_yr, en_yr, stn_df.index[0], stn_df.index[-1])
-        
-        if cpus:
+        if verbosity: print(st_yr, en_yr, stn_df.index[0], stn_df.index[-1])
+
+        if verbosity and cpus:
             print(f"Downloaded data for {i+1}/{len(metadata)}: {gauge_id} - {gauge_name}")
 
     q_df = pd.concat(q_dfs, axis=1)
@@ -2586,7 +2592,7 @@ def download_slovenia_q(
     return q_df
 
 
-def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
+def download_slovenia_stn(row:pd.Series, year:int, verbosity:int=1)->pd.DataFrame:
 
     #row, year = input_data
 
@@ -2620,7 +2626,7 @@ def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
     try:
         yr_df = yr_df.astype('float32')
     except ValueError as e:
-        print(gauge_id, year)
+        if verbosity: print(gauge_id, year)
         raise e
     
     return yr_df

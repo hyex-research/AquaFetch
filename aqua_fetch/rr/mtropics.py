@@ -611,8 +611,9 @@ class MtropicsLaos(Datasets):
         wl_fname = os.path.join(self.path, 'hydro', 'wl.nc')
         spm_fname = os.path.join(self.path, 'hydro', 'spm.nc')
 
-        print("reading data from xlsx files and saving them in netcdf format.")
-        print("This will happen only once but will save io time.")
+        if self.verbosity:
+            print("reading data from xlsx files and saving them in netcdf format.")
+            print("This will happen only once but will save io time.")
         files = glob.glob(f"{os.path.join(self.path, 'hydro')}/*.xlsx")
         wls = []
         spms = []

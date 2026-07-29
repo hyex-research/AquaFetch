@@ -303,7 +303,8 @@ class Bull(_RainfallRunoff):
             if not os.path.exists(extracted_path):
                 with py7zr.SevenZipFile(fpath, mode='r') as z:
                     z.extractall(path = self.path)
-                    print(f'Extracted {file}')
+                    if self.verbosity:
+                        print(f'Extracted {file}')
         return
 
     def caravan_attributes(self) -> pd.DataFrame:

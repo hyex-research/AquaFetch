@@ -4219,7 +4219,7 @@ class CAMELS_NZ(_RainfallRunoff):
             try:
                 stn_q = pd.read_csv(fpath, index_col=0, parse_dates=True, na_values=['NA  '])
             except pd.errors.EmptyDataError:
-                print(f"Warning: {para_name}_station_id_{stn}.csv is empty. Skipping station {stn}.")
+                warnings.warn(f"{para_name}_station_id_{stn}.csv is empty. Skipping station {stn}.")
                 return stn_q
 
             if self.timestep == 'H':
@@ -4236,7 +4236,7 @@ class CAMELS_NZ(_RainfallRunoff):
 
             stn_q = stn_q[para_name].astype(np.float32).rename(stn)
         else:
-            if self.verbosity>1: 
+            if self.verbosity>1:
                 print(f"Warning: {para_name}_station_id_{stn}.csv does not exist. Skipping station {stn}.")
             stn_q = pd.Series(dtype=np.float32, name=stn)
         
@@ -4449,7 +4449,7 @@ class CAMELS_COL(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         stn_df.rename(columns=self.dyn_map, inplace=True)
         
@@ -4737,7 +4737,8 @@ class CAMELS_SK(_RainfallRunoff):
             fpath = os.path.join(self.path, 'shp.7z')
             with py7zr.SevenZipFile(fpath, mode='r') as z:
                 z.extractall(path = self.path)
-                print(f'Extracted {fpath}')
+                if self.verbosity:
+                    print(f'Extracted {fpath}')
         return
 
     def _read_stn_dyn(self, stn:str, nrows=None)->pd.DataFrame:
@@ -4754,7 +4755,7 @@ class CAMELS_SK(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         stn_df.rename(columns=self.dyn_map, inplace=True)
         
@@ -5120,7 +5121,7 @@ class CAMELS_LUX(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         # drop rows with duplicated index, ideally there should not be any
         if self.timestep == '15Min':
@@ -5403,7 +5404,7 @@ class CAMELS_FI(_RainfallRunoff):
 
         df.index = pd.to_datetime(df.index)
         if df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
           
         df.rename(columns=self.dyn_map, inplace=True)
 
@@ -7171,7 +7172,8 @@ class CAMELSH(_RainfallRunoff):
                     try:
                         run_id, time_f, dyn, arr = fut.result()
                     except Exception as e:
-                        print(f"[ERROR worker] {e}")
+                        warnings.warn(f"[worker] a forcing-data task failed and its "
+                                      f"station was skipped: {e}")
                         continue
                     # Skip the one we already wrote
                     if run_id == fr_run_id:

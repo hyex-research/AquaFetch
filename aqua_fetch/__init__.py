@@ -270,7 +270,7 @@ ALL_DATASETS = [
 
 
 
-def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
+def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX', verbosity: int = 1):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
 
     DeprecationWarning("load_nasdaq is deprecated and will be removed in future versions."
@@ -279,7 +279,8 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     fname = os.path.join(os.path.dirname(__file__), "data", "nasdaq100_padding.csv")
 
     if not os.path.exists(fname):
-        print(f"downloading file to {fname}")
+        if verbosity:
+            print(f"downloading file to {fname}")
         df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
         df.to_csv(fname)
 

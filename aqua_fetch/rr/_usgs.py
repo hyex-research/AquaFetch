@@ -157,7 +157,7 @@ class USGS(_RainfallRunoff):
         self.hysets_path = self.hysets.path
 
         self._stations = self.__stations()
-        self.metadata = maybe_make_and_get_metadata(self.path, self.stations())
+        self.metadata = maybe_make_and_get_metadata(self.path, self.stations(), verbosity=self.verbosity)
 
         self._static_features = self.__static_features()
 
@@ -482,7 +482,8 @@ class USGS(_RainfallRunoff):
         fpath = os.path.join(self.path, fname)
 
         if not os.path.exists(fpath):
-            print(f"{fpath} not found. Downloading data storing it in {fpath}")
+            if self.verbosity:
+                print(f"{fpath} not found. Downloading data storing it in {fpath}")
             self._make_csv(cpus=None)
 
         if ext == 'csv':
@@ -527,7 +528,7 @@ class USGS(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         
-        make_daily_q(self.path, sites, cpus=cpus)
+        make_daily_q(self.path, sites, cpus=cpus, verbosity=self.verbosity)
         if self.verbosity: print(f"Downloaded daily data and stored at {self.path}/daily_q.nc")
 
         #make_hourly_q(self.path, sites[9000:10000], cpus=cpus)
@@ -543,7 +544,7 @@ def download_metadata(
     try:
         metadata = _download_metadata(site)
     except (ValueError, IndexError):
-        print(f"Site: {site} ValueError/IndexError")
+        warnings.warn(f"Site: {site} ValueError/IndexError; metadata filled with NaN")
         # create dataframe with nan values
         metadata = pd.DataFrame(
             np.array([np.nan, np.nan, np.nan]).reshape(1,3),
@@ -555,10 +556,11 @@ def download_metadata(
     return metadata
 
 
-def maybe_make_and_get_metadata(        
+def maybe_make_and_get_metadata(
         path:str,
-        sites:List[str], 
-        cpus:int=None
+        sites:List[str],
+        cpus:int=None,
+        verbosity:int=1
         )->pd.DataFrame:
 
     cpus = max(get_cpus()-2, 1) if cpus is None else cpus
@@ -570,14 +572,16 @@ def maybe_make_and_get_metadata(
             index_col='site_no',
             dtype={'site_no': str, "dec_lat_va": float, "dec_long_va": float, "drain_area_va": float}) 
 
-    print(f"Downloading metadata for {len(sites)} sites using {cpus} cpus")
+    if verbosity:
+        print(f"Downloading metadata for {len(sites)} sites using {cpus} cpus")
 
     start = time.time()
     with ProcessPoolExecutor(max_workers=cpus) as executor:
         data = executor.map(download_metadata, sites)
 
     total = round((time.time() - start)/60, 2)
-    print(f"Time taken to download metadata: {total} mins with {cpus} cpus")
+    if verbosity:
+        print(f"Time taken to download metadata: {total} mins with {cpus} cpus")
     start = time.time()
 
     metadata = pd.concat(list(data))
@@ -641,7 +645,8 @@ def make_daily_q(
     # find out columns with all nans
     all_nan_cols = data.columns[data.isna().all()].tolist()
     if len(all_nan_cols) > 0:
-        print(f"found {len(all_nan_cols)} stations with all nans")
+        if verbosity:
+            print(f"found {len(all_nan_cols)} stations with all nans")
         if drop_all_nan_stns:
             data = data.drop(columns=all_nan_cols)
 
@@ -650,11 +655,12 @@ def make_daily_q(
     if netCDF4 is None:
         save_daily_q_as_csv(path, data, out_fname=out_fname)
     else:
-        save_daily_q_as_nc(path, data, out_fname, save_stns_as_data_vars)
+        save_daily_q_as_nc(path, data, out_fname, save_stns_as_data_vars, verbosity=verbosity)
         #save_daily_q_as_csv(path, data)
 
     total = round((time.time() - start_c)/60, 2)
-    print(f"Time taken: to write {total} mins for {data.shape[1]} stations")
+    if verbosity:
+        print(f"Time taken: to write {total} mins for {data.shape[1]} stations")
     return data
 
 
@@ -665,10 +671,11 @@ def save_daily_q_as_csv(path, data):
 
 
 def save_daily_q_as_nc(
-        path, 
+        path,
         data:pd.DataFrame,
         out_fname:str = "daily_q.nc",
         save_stns_as_data_vars:bool=False,
+        verbosity:int=1,
         ):
     from netCDF4 import Dataset, date2num
 
@@ -703,7 +710,7 @@ def save_daily_q_as_nc(
             col_var.units = "cms"
             col_var.description = "daily discharge"
 
-            if idx % 100 == 0:
+            if verbosity and idx % 100 == 0:
                 print(f"Saved data for {idx} sites in .nc file")
 
         ncfile.close()
@@ -881,11 +888,11 @@ def download_daily_q_nwis(
         site_data = _read_json(response.json())
     except JSONDecodeError:
         site_data = pd.DataFrame()
-        print(f"Site: {site} JSONDecodeError")
+        warnings.warn(f"Site: {site} JSONDecodeError; returning empty data for this site")
 
-    if 'datetime' in site_data.columns: 
+    if 'datetime' in site_data.columns:
         site_data.index = pd.to_datetime(site_data.pop('datetime'))
-    
+
     return site_data
 
 
@@ -1075,9 +1082,9 @@ def download_hourly_q_nwis(
         site_data = _read_json(response.json())
     except JSONDecodeError:
         site_data = pd.DataFrame()
-        print(f"Site: {site} JSONDecodeError")
+        warnings.warn(f"Site: {site} JSONDecodeError; returning empty data for this site")
 
-    if 'datetime' in site_data.columns: 
+    if 'datetime' in site_data.columns:
         site_data.index = pd.to_datetime(site_data.pop('datetime'))
 
     return site_data
