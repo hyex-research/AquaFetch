@@ -5,6 +5,7 @@ import time
 import shutil
 import zipfile
 import warnings
+import functools
 from pathlib import Path
 import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
@@ -1934,10 +1935,46 @@ class CAMELS_CH(_RainfallRunoff):
     #     lats = np.array(lats)
 
     #     if fiona is not None:
-    #         boundary = fiona.Geometry(type='Polygon', 
+    #         boundary = fiona.Geometry(type='Polygon',
     #                                   coordinates=[list(zip(longs, lats))])
 
     #     return boundary
+
+
+def _read_camels_de_dynamic(
+        ts_dir: str,
+        prefix: str,
+        dyn_map_items: Tuple[Tuple[str, str], ...],
+        dyn_feats: List[str],
+        st: pd.Timestamp,
+        en: pd.Timestamp,
+        station: str,
+) -> pd.DataFrame:
+    """Read the dynamic timeseries of a single CAMELS-DE station.
+
+    This is a module-level function (not a method) on purpose: it is dispatched
+    to a :class:`concurrent.futures.ProcessPoolExecutor` by
+    :meth:`CAMELS_DE._read_dynamic`. Handing a *bound* method to a process pool
+    would pickle ``self`` — and hence every cached heavy attribute — to every
+    worker on every task. Carrying only small, picklable arguments avoids that
+    and roughly halves the wall-clock of a large hourly fetch. The window/feature
+    slicing is done here (in the worker) so the parent does not repeat it
+    serially over hundreds of stations.
+
+    The result is byte-for-byte identical to
+    ``CAMELS_DE._read_stn_dyn(station).loc[st:en, dyn_feats]`` with the axis
+    names set — no values or dtypes are changed.
+    """
+    df = pd.read_csv(
+        os.path.join(ts_dir, f"{prefix}_hydromet_timeseries_{station}.csv"),
+        index_col='date',
+        parse_dates=True,
+    )
+    df.rename(columns=dict(dyn_map_items), inplace=True)
+    df = df.loc[st:en, list(dyn_feats)]
+    df.columns.name = 'dynamic_features'
+    df.index.name = 'time'
+    return df
 
 
 class CAMELS_DE(_RainfallRunoff):
@@ -2104,6 +2141,17 @@ class CAMELS_DE(_RainfallRunoff):
         # them below (otherwise self.to_netcdf keeps the parent's default of True)
         super().__init__(path=path, timestep=timestep, to_netcdf=to_netcdf,
                          verbosity=verbosity, **kwargs)
+
+        # Lazy caches for the heavy accessors. The base implementations recompute
+        # these on every call, so a single bulk ``fetch`` ends up re-listing the
+        # timeseries directory and re-reading a station csv hundreds of times
+        # (``fetch``/``check_*`` reference ``dynamic_features`` and ``stations()``
+        # once per requested station). Caching them here makes repeated fetches
+        # fast without touching any values. They are populated on first use so
+        # class initialization stays quick (unless it triggers the download).
+        self._stations_cache = None
+        self._dyn_features_cache = None
+        self._static_data_cache = None
 
         if timestep == 'D':
             self._download_daily(overwrite=overwrite)
@@ -2381,9 +2429,12 @@ class CAMELS_DE(_RainfallRunoff):
     def stations(self) -> List[str]:
         # daily file: CAMELS_DE_hydromet_timeseries_<id>.csv  -> id at split index 4
         # hourly file: CAMELS_DE_1h_hydromet_timeseries_<id>.csv -> id at split index 5
-        return [os.path.splitext(f)[0].split('_')[-1]
-                for f in os.listdir(self.ts_dir)
-                if f.endswith('.csv')]
+        if self._stations_cache is None:
+            self._stations_cache = [os.path.splitext(f)[0].split('_')[-1]
+                                    for f in os.listdir(self.ts_dir)
+                                    if f.endswith('.csv')]
+        # return a copy so a caller's in-place edit cannot corrupt the cache
+        return list(self._stations_cache)
 
     def clim_attrs(self) -> pd.DataFrame:
         return pd.read_csv(self.clim_attr_path, index_col='gauge_id',
@@ -2421,6 +2472,13 @@ class CAMELS_DE(_RainfallRunoff):
                            )
 
     def _static_data(self) -> pd.DataFrame:
+        # the concatenated static table (8 csv reads) is cached because it is
+        # requested repeatedly (static_features, area, stn_coords, fetch_static_*).
+        # Callers only read from it (``.loc`` returns copies), so returning the
+        # cached frame directly is safe and does not change any values.
+        if self._static_data_cache is not None:
+            return self._static_data_cache
+
         attrs = [
             self.clim_attrs(),
             self.hum_infl_attrs(),
@@ -2440,6 +2498,8 @@ class CAMELS_DE(_RainfallRunoff):
         df = pd.concat(attrs, axis=1)
 
         df.rename(columns=self.static_map, inplace=True)
+
+        self._static_data_cache = df
 
         return df
 
@@ -2461,6 +2521,64 @@ class CAMELS_DE(_RainfallRunoff):
 
         return df
 
+    def _read_dynamic(
+            self,
+            stations,
+            dynamic_features,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
+    ) -> Dict[str, pd.DataFrame]:
+        """Read dynamic data of many stations, in parallel where it pays off.
+
+        Behaves exactly like the base implementation (same dict of
+        ``{station: DataFrame}`` sliced to ``[st:en, dyn_feats]`` with the axis
+        names set) but, for the parallel branch, dispatches the module-level
+        :func:`_read_camels_de_dynamic` instead of the bound
+        ``self._read_stn_dyn``. The station csv files here are large (the hourly
+        files are ~31 MB each), so avoiding the per-task pickling of ``self`` —
+        which the base incurs by handing a bound method to the pool — roughly
+        halves the wall-clock of a big fetch. Values and dtypes are unchanged.
+        """
+        st, en = self._check_length(st, en)
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        cpus = self.processes or min(get_cpus(), 16)
+        start = time.time()
+        if len(stations) < cpus:
+            cpus = 1
+
+        if cpus == 1:
+            dyn = {}
+            for idx, stn in enumerate(stations):
+                stn_df = self._read_stn_dyn(stn).loc[st:en, dyn_feats]
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+                dyn[stn] = stn_df
+
+                if self.verbosity and idx % 100 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+        else:
+            # a plain function carrying only small, picklable arguments (paths,
+            # the rename map and the requested window/features) — NOT the bound
+            # method — so the pool does not ship a copy of ``self`` per task.
+            reader = functools.partial(
+                _read_camels_de_dynamic,
+                self.ts_dir, self._prefix, tuple(self.dyn_map.items()),
+                list(dyn_feats), st, en,
+            )
+            with cf.ProcessPoolExecutor(cpus) as executor:
+                results = executor.map(reader, stations)
+
+            dyn = {stn: stn_df for stn, stn_df in zip(stations, results)}
+
+        if self.verbosity:
+            total = time.time() - start
+            print(f"Read {len(dyn)} stations for {len(dyn_feats)} dyn features "
+                  f"in {total:.2f} seconds with {cpus} cpus.")
+
+        return dyn
+
     @property
     def start(self):
         if self.timestep == 'H':
@@ -2475,7 +2593,13 @@ class CAMELS_DE(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        return self._read_stn_dyn(self.stations()[0]).columns.tolist()
+        # cached: the base reads (and renames) a full station csv on every access,
+        # and fetch()/check_* touch this once per requested station. The column
+        # set is identical for every station, so read it once.
+        if self._dyn_features_cache is None:
+            self._dyn_features_cache = self._read_stn_dyn(self.stations()[0]).columns.tolist()
+        # return a copy so a caller's in-place edit cannot corrupt the cache
+        return list(self._dyn_features_cache)
 
     @property
     def static_features(self) -> List[str]:

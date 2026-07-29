@@ -133,7 +133,9 @@ class TestCamels(unittest.TestCase):
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 1582, 25568, 111, 21, test_latlong_ranges=False)
+        return
 
+    def test_camels_de_h(self):
         # hourly (CAMELS-DE-1h) data. The 109 static attributes come from the 7
         # attribute files (the modelled simulation_benchmark file is excluded);
         # all 26 observed + meteo-forcing timeseries columns are kept.
