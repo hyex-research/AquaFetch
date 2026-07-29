@@ -46,9 +46,13 @@ from .rr import CAMELS_LUX
 from .rr import CAMELS_COL
 from .rr import CAMELS_SK
 from .rr import CAMELS_FI
+from .rr import CAMELS_PL
+from .rr import CAMELS_PE
 from .rr import Slovenia
+from .rr import UKFlow15
 from .rr import CAMELSH
 from .rr import ShyftNorway
+from .rr import NamalValleyPakistan
 
 from .rr import MtropicsLaos
 from .rr import MtropcsThailand
@@ -102,6 +106,8 @@ from .wq import WhiteClayCreek
 from .wq import RiverChemSiberia
 from .wq import CamelsCHChem
 from .wq import Oligotrend
+from .wq import CaravanQual
+from .wq import GlobalRiverNutrients
 
 # *** Miscellaneous ***
 
@@ -136,75 +142,81 @@ from .misc import SoilPhosphorus
 
 
 ALL_DATASETS = [
-    CAMELS_AUS.__class__.__name__,
-    CAMELS_BR.__class__.__name__,
-    CAMELS_CL.__class__.__name__,
-    CAMELS_GB.__class__.__name__,
-    CAMELS_US.__class__.__name__,
-    CAMELS_DK.__class__.__name__,
-    CAMELS_CH.__class__.__name__,
-    CAMELS_DE.__class__.__name__,
-    CAMELS_FR.__class__.__name__,
-    CAMELS_IND.__class__.__name__,
-    CAMELS_SE.__class__.__name__,
-    GSHA.__class__.__name__,
-    CCAM.__class__.__name__,
-    RRLuleaSweden.__class__.__name__,
-    CABra.__class__.__name__,
-    LamaHIce.__class__.__name__,
-    LamaHCE.__class__.__name__,
-    HYSETS.__class__.__name__,
-    HYPE.__class__.__name__,
-    WaterBenchIowa.__class__.__name__,
-    Simbi.__class__.__name__,
-    Bull.__class__.__name__,
-    RainfallRunoff.__class__.__name__,
-    Arcticnet.__class__.__name__,
-    USGS.__class__.__name__,
-    EStreams.__class__.__name__,
-    Japan.__class__.__name__,
-    Thailand.__class__.__name__,
-    Spain.__class__.__name__,
-    Ireland.__class__.__name__,
-    Finland.__class__.__name__,
-    Poland.__class__.__name__,
-    Italy.__class__.__name__,
-    Portugal.__class__.__name__,
-    Caravan_DK.__class__.__name__,
-    MtropicsLaos.__class__.__name__,
-    MtropcsThailand.__class__.__name__,
-    MtropicsVietnam.__class__.__name__,
-    NPCTRCatchments.__class__.__name__,
-    GRDCCaravan.__class__.__name__,
-    CAMELS_NZ.__class__.__name__,
-    CAMELS_LUX.__class__.__name__,
-    CAMELS_COL.__class__.__name__,
-    CAMELS_SK.__class__.__name__,
-    CAMELS_FI.__class__.__name__,
-    Slovenia.__class__.__name__,
-    CAMELSH.__class__.__name__,
+    CAMELS_AUS.__name__,
+    CAMELS_BR.__name__,
+    CAMELS_CL.__name__,
+    CAMELS_GB.__name__,
+    CAMELS_US.__name__,
+    CAMELS_DK.__name__,
+    CAMELS_CH.__name__,
+    CAMELS_DE.__name__,
+    CAMELS_FR.__name__,
+    CAMELS_IND.__name__,
+    CAMELS_SE.__name__,
+    GSHA.__name__,
+    CCAM.__name__,
+    RRLuleaSweden.__name__,
+    CABra.__name__,
+    LamaHIce.__name__,
+    LamaHCE.__name__,
+    HYSETS.__name__,
+    HYPE.__name__,
+    WaterBenchIowa.__name__,
+    Simbi.__name__,
+    Bull.__name__,
+    RainfallRunoff.__name__,
+    Arcticnet.__name__,
+    USGS.__name__,
+    EStreams.__name__,
+    Japan.__name__,
+    Thailand.__name__,
+    Spain.__name__,
+    Ireland.__name__,
+    Finland.__name__,
+    Poland.__name__,
+    Italy.__name__,
+    Portugal.__name__,
+    Caravan_DK.__name__,
+    MtropicsLaos.__name__,
+    MtropcsThailand.__name__,
+    MtropicsVietnam.__name__,
+    NPCTRCatchments.__name__,
+    GRDCCaravan.__name__,
+    CAMELS_NZ.__name__,
+    CAMELS_LUX.__name__,
+    CAMELS_COL.__name__,
+    CAMELS_SK.__name__,
+    CAMELS_FI.__name__,
+    CAMELS_PL.__name__,
+    CAMELS_PE.__name__,
+    Slovenia.__name__,
+    UKFlow15.__name__,
+    CAMELSH.__name__,
+    NamalValleyPakistan.__name__,
 
-    Quadica.__class__.__name__,
-    GRQA.__class__.__name__,
-    SWatCh.__class__.__name__,
-    RC4USCoast.__class__.__name__,
-    DoceRiver.__class__.__name__,
-    SeluneRiver.__class__.__name__,
+    Quadica.__name__,
+    GRQA.__name__,
+    SWatCh.__name__,
+    RC4USCoast.__name__,
+    DoceRiver.__name__,
+    SeluneRiver.__name__,
     busan_beach.__name__,
-    SyltRoads.__class__.__name__,
+    SyltRoads.__name__,
     ecoli_mekong_laos.__name__,
     ecoli_houay_pano.__name__,
     ecoli_mekong_2016.__name__,
     ecoli_mekong.__name__,
-    CamelsChem.__class__.__name__,
-    SanFranciscoBay.__class__.__name__,
-    GRiMeDB.__class__.__name__,
-    BuzzardsBay.__class__.__name__,
-    WhiteClayCreek.__class__.__name__,
-    RiverChemSiberia.__class__.__name__,
-    CamelsCHChem.__class__.__name__,
-    Oligotrend.__class__.__name__,
-    
+    CamelsChem.__name__,
+    SanFranciscoBay.__name__,
+    GRiMeDB.__name__,
+    BuzzardsBay.__name__,
+    WhiteClayCreek.__name__,
+    RiverChemSiberia.__name__,
+    CamelsCHChem.__name__,
+    Oligotrend.__name__,
+    CaravanQual.__name__,
+    GlobalRiverNutrients.__name__,
+
     ec_removal_biochar.__name__,
     cr_removal.__name__,
     po4_removal_biochar.__name__,
@@ -225,40 +237,40 @@ ALL_DATASETS = [
     ion_transport_via_reverse_osmosis.__name__,
     cyanobacteria_disinfection.__name__,
 
-    Weisssee.__class__.__name__,
-    WaterChemEcuador.__class__.__name__,
-    WaterChemVictoriaLakes.__class__.__name__,
-    WeatherJena.__class__.__name__,
-    WQCantareira.__class__.__name__,
-    WQJordan.__class__.__name__,
-    FlowSamoylov.__class__.__name__,
-    FlowSedDenmark.__class__.__name__,
-    StreamTempSpain.__class__.__name__,
-    RiverTempEroo.__class__.__name__,
-    HoloceneTemp.__class__.__name__,
-    FlowTetRiver.__class__.__name__,
-    SedimentAmersee.__class__.__name__,
-    HydrocarbonsGabes.__class__.__name__,
-    HydroChemJava.__class__.__name__,
-    PrecipBerlin.__class__.__name__,
-    GeoChemMatane.__class__.__name__,
-    WQJordan2.__class__.__name__,
-    YamaguchiClimateJp.__class__.__name__,
-    FlowBenin.__class__.__name__,
-    HydrometricParana.__class__.__name__,
-    RiverTempSpain.__class__.__name__,
-    RiverIsotope.__class__.__name__,
-    EtpPcpSamoylov.__class__.__name__,
-    SWECanada.__class__.__name__,
+    Weisssee.__name__,
+    WaterChemEcuador.__name__,
+    WaterChemVictoriaLakes.__name__,
+    WeatherJena.__name__,
+    WQCantareira.__name__,
+    WQJordan.__name__,
+    FlowSamoylov.__name__,
+    FlowSedDenmark.__name__,
+    StreamTempSpain.__name__,
+    RiverTempEroo.__name__,
+    HoloceneTemp.__name__,
+    FlowTetRiver.__name__,
+    SedimentAmersee.__name__,
+    HydrocarbonsGabes.__name__,
+    HydroChemJava.__name__,
+    PrecipBerlin.__name__,
+    GeoChemMatane.__name__,
+    WQJordan2.__name__,
+    YamaguchiClimateJp.__name__,
+    FlowBenin.__name__,
+    HydrometricParana.__name__,
+    RiverTempSpain.__name__,
+    RiverIsotope.__name__,
+    EtpPcpSamoylov.__name__,
+    SWECanada.__name__,
     gw_punjab.__name__,
-    RRAlpineCatchments.__class__.__name__,
-    SoilPhosphorus.__class__.__name__
+    RRAlpineCatchments.__name__,
+    SoilPhosphorus.__name__
 ]
 
 
 
 
-def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
+def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX', verbosity: int = 1):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
 
     DeprecationWarning("load_nasdaq is deprecated and will be removed in future versions."
@@ -267,7 +279,8 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     fname = os.path.join(os.path.dirname(__file__), "data", "nasdaq100_padding.csv")
 
     if not os.path.exists(fname):
-        print(f"downloading file to {fname}")
+        if verbosity:
+            print(f"downloading file to {fname}")
         df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
         df.to_csv(fname)
 
@@ -281,4 +294,4 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     return df[inputs + target]
 
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"

@@ -6,6 +6,7 @@ import os
 import re
 import io
 import json
+import warnings
 import xml.etree.ElementTree as ET
 
 import requests
@@ -263,7 +264,7 @@ class PanDataSet:
                 self._setParameters(panXMLMatrixColumn)
 
             except requests.exceptions.HTTPError as e:
-                print(e)
+                warnings.warn(str(e))
 
     def children(self):
         """Finds the child datasets of a parent dataset"""

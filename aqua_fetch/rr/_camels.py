@@ -5,6 +5,7 @@ import time
 import shutil
 import zipfile
 import warnings
+import functools
 from pathlib import Path
 import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
@@ -13,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff
-from .._geom_utils import epsg25832_to_wgs84, epsg2056_point_to_wgs84
+from .._geom_utils import epsg25832_to_wgs84, epsg2056_point_to_wgs84, laea_to_wgs84, tmerc_to_wgs84
 from ..utils import get_cpus, download_and_unzip
 from ..utils import validate_attributes, download, unzip
 
@@ -25,6 +26,8 @@ if netCDF4 is not None:
 from ._map import (
     observed_streamflow_cms,
     observed_streamflow_mm,
+    observed_water_level_cm,
+    cloud_cover,
     mean_air_temp,
     min_air_temp_with_specifier,
     max_air_temp_with_specifier,
@@ -47,6 +50,9 @@ from ._map import (
     mean_windspeed,
     u_component_of_wind,
     v_component_of_wind,
+    u_component_of_wind_at_10m,
+    v_component_of_wind_at_10m,
+    mean_air_pressure,
     solar_radiation,
     downward_longwave_radiation,
     snow_water_equivalent,
@@ -77,6 +83,8 @@ from ._map import (
     catchment_perimeter,
     aridity_index,
     med_catchment_elevation_meters,
+    min_catchment_elevation_meters,
+    max_catchment_elevation_meters,
     soil_depth,
     population_density,
     )
@@ -233,22 +241,43 @@ class CAMELS_US(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
+        # An archive is satisfied (not needed) when *any* of these alternatives
+        # exists on disk: the archive itself, its extracted sibling folder, or a
+        # consolidated cache that fully captures its content. The third entry
+        # is what allows free_disk_space("redundant") to delete the per-station
+        # tree without triggering a re-download next time.
+        satisfied_by_cache = {
+            'basin_timeseries_v1p2_metForcing_obsFlow.zip': self.dyn_fpath,
+        }
+
         for fname, url in self.url.items():
 
             fpath = os.path.join(self.path, fname)
             furl = f"{url}{fname}"
 
-            if not os.path.exists(fpath) or self.overwrite:
+            if fname.endswith('.zip'):
+                extracted = os.path.join(self.path, fname[:-len('.zip')])
+                cache = satisfied_by_cache.get(fname)
+                already_have = (
+                    os.path.exists(fpath)
+                    or os.path.exists(extracted)
+                    or (cache is not None and os.path.exists(cache))
+                )
+            else:
+                already_have = os.path.exists(fpath)
 
-                if self.verbosity:
-                    print(f"downloading {fname} from {url}")
+            if already_have and not self.overwrite:
+                continue
 
-                download(furl, self.path, fname, verbosity=self.verbosity)
+            if self.verbosity:
+                print(f"downloading {fname} from {url}")
 
-                unzip(self.path, verbosity=self.verbosity)
+            download(furl, self.path, fname, verbosity=self.verbosity)
+
+            unzip(self.path, verbosity=self.verbosity)
 
         self.dataset_dir = os.path.join(
-            self.path, 
+            self.path,
             f'basin_timeseries_v1p2_metForcing_obsFlow{SEP}basin_dataset_public_v1p2')
 
         self._static_features = self._static_data().columns.tolist()
@@ -307,16 +336,44 @@ class CAMELS_US(_RainfallRunoff):
         return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     def stations(self) -> list:
-        stns = []
-        for _dir in os.listdir(os.path.join(self.dataset_dir, 'usgs_streamflow')):
-            cat = os.path.join(self.dataset_dir, f'usgs_streamflow{SEP}{_dir}')
-            stns += [fname.split('_')[0] for fname in os.listdir(cat)]
+        streamflow_dir = os.path.join(self.dataset_dir, 'usgs_streamflow')
+        if os.path.exists(streamflow_dir):
+            stns = []
+            for _dir in os.listdir(streamflow_dir):
+                cat = os.path.join(streamflow_dir, _dir)
+                stns += [fname.split('_')[0] for fname in os.listdir(cat)]
+        else:
+            # Fallback when the per-station tree has been removed by
+            # free_disk_space("redundant"): read station ids from the cached
+            # static_features.csv, which contains them as the gauge_id index.
+            static_fpath = os.path.join(self.path, 'static_features.csv')
+            df = pd.read_csv(static_fpath, dtype={'gauge_id': str}, usecols=['gauge_id'])
+            stns = df['gauge_id'].astype(str).tolist()
 
         # remove stations for which static values are not available
         for stn in ['06775500', '06846500', '09535100']:
-            stns.remove(stn)
+            if stn in stns:
+                stns.remove(stn)
 
         return stns
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        """
+        The per-station forcing and streamflow text files inside
+        ``basin_timeseries_v1p2_metForcing_obsFlow/`` become redundant once
+        ``camels_us_D.nc`` exists, since all dynamic data is baked into that
+        consolidated NetCDF.
+
+        Caveat: the cache reflects whichever ``data_source`` was selected when
+        it was first built. Once ``free_disk_space("redundant")`` removes the
+        per-station tree, switching ``data_source`` (e.g. ``daymet`` →
+        ``nldas``) requires re-downloading the source archive to rebuild the
+        cache. Run cleanup only after settling on a data source.
+        """
+        return [
+            (os.path.join(self.path, 'basin_timeseries_v1p2_metForcing_obsFlow'),
+             self.dyn_fpath),
+        ]
 
     def _read_stn_dyn(
             self,
@@ -1441,11 +1498,13 @@ class CAMELS_CH(_RainfallRunoff):
     >>> len(dynamic.data_vars)
     10
     ...
-    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords = dataset.stn_coords() # returns WGS84 coordinates of all stations
     >>> coords.shape
         (331, 2)
     >>> dataset.stn_coords('2004')  # returns coordinates of station whose id is 2004
-        47.925221       8.191595
+                    lat      long
+        gauge_id
+        2004      46.930752  7.116924
     >>> dataset.stn_coords(['2004', '2007'])  # returns coordinates of two stations
     ...
     # get area of a single station
@@ -1863,25 +1922,118 @@ class CAMELS_CH(_RainfallRunoff):
 
         return df
 
-    # def transform_boundary(self, boundary):
-    #     """
-    #     transforms boundary from EPSG:2056 to EPSG:4326
-    #     """
-    #     assert len(boundary.coordinates) == 1  # only one polygon
-    #     longs, lats = [], []
-    #     for i in range(0, len(boundary.coordinates[0])):
-    #         # assuming that coordinates in fiona.Geometry are in long, lat order
-    #         lat_, long_ = epsg2056_point_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1])
-    #         longs.append(long_)
-    #         lats.append(lat_)
-    #     longs = np.array(longs)
-    #     lats = np.array(lats)
+    def stn_coords(
+            self,
+            stations: Union[str, List[str]] = 'all'
+    ) -> pd.DataFrame:
+        """
+        Returns WGS84 (EPSG:4326) coordinates of stations as a DataFrame with
+        ``lat`` and ``long`` columns.
 
-    #     if fiona is not None:
-    #         boundary = fiona.Geometry(type='Polygon', 
-    #                                   coordinates=[list(zip(longs, lats))])
+        The coordinates are derived from the precise ``gauge_easting`` /
+        ``gauge_northing`` columns (CH1903+ / LV95, EPSG:2056) and converted to
+        WGS84 with the pyproj-free :func:`epsg2056_point_to_wgs84` helper. They
+        are used in preference to the dataset's own ``gauge_lat`` / ``gauge_lon``
+        columns, which are rounded to two decimals (~500 m). The conversion was
+        verified against pyproj (EPSG:2056 -> EPSG:4326): the error is under
+        3 m (mean 0.7 m) over all 331 stations.
 
-    #     return boundary
+        Parameters
+        ----------
+        stations :
+            name/names of stations. If not given, coordinates of all stations
+            will be returned.
+
+        Returns
+        -------
+        pd.DataFrame
+            with ``lat`` and ``long`` columns, indexed by station id.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_CH
+        >>> dataset = CAMELS_CH()
+        >>> dataset.stn_coords('2004')
+                        lat      long
+            gauge_id
+            2004      46.930752  7.116924
+        """
+        en = self.fetch_static_features(
+            static_features=['gauge_easting', 'gauge_northing'])
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        en = en.loc[stations, :].astype(float)
+        lat, long = epsg2056_point_to_wgs84(
+            en['gauge_easting'].values, en['gauge_northing'].values)
+        return pd.DataFrame(
+            {'lat': lat, 'long': long}, index=en.index).astype(self.fp)
+
+    def transform_boundary(self, boundary):
+        """
+        Transform a catchment boundary from CH1903+ / LV95 (EPSG:2056, the CRS
+        of the CAMELS-CH shapefile) to WGS84 (EPSG:4326) lon/lat.
+
+        Uses the pyproj-free :func:`epsg2056_point_to_wgs84` helper (swisstopo's
+        approximate LV95 -> WGS84 formula). Verified against pyproj
+        (EPSG:2056 -> EPSG:4326): the per-vertex error is below 3 m across all
+        331 catchments (~3.2 M vertices) - finer than the dataset's own
+        two-decimal (~500 m) gauge coordinates. Polygons with interior rings
+        (holes) and MultiPolygons are handled; the geometry type and ring
+        structure are preserved. The conversion is vectorised per ring (one
+        array call rather than one call per vertex).
+        """
+        if fiona is None:
+            return boundary
+
+        def _ring_to_wgs84(ring):
+            arr = np.asarray(ring, dtype=float)
+            # fiona stores each vertex as (x=easting, y=northing[, z]); output
+            # is (lon, lat) to keep the (x, y) ordering of the geometry.
+            lat, long = epsg2056_point_to_wgs84(arr[:, 0], arr[:, 1])
+            return list(zip(long.tolist(), lat.tolist()))
+
+        if boundary.type == 'MultiPolygon':
+            coords = [[_ring_to_wgs84(ring) for ring in polygon]
+                      for polygon in boundary.coordinates]
+        else:  # Polygon, possibly with interior rings (holes)
+            coords = [_ring_to_wgs84(ring) for ring in boundary.coordinates]
+
+        return fiona.Geometry(type=boundary.type, coordinates=coords)
+
+
+def _read_camels_de_dynamic(
+        ts_dir: str,
+        prefix: str,
+        dyn_map_items: Tuple[Tuple[str, str], ...],
+        dyn_feats: List[str],
+        st: pd.Timestamp,
+        en: pd.Timestamp,
+        station: str,
+) -> pd.DataFrame:
+    """Read the dynamic timeseries of a single CAMELS-DE station.
+
+    This is a module-level function (not a method) on purpose: it is dispatched
+    to a :class:`concurrent.futures.ProcessPoolExecutor` by
+    :meth:`CAMELS_DE._read_dynamic`. Handing a *bound* method to a process pool
+    would pickle ``self`` — and hence every cached heavy attribute — to every
+    worker on every task. Carrying only small, picklable arguments avoids that
+    and roughly halves the wall-clock of a large hourly fetch. The window/feature
+    slicing is done here (in the worker) so the parent does not repeat it
+    serially over hundreds of stations.
+
+    The result is byte-for-byte identical to
+    ``CAMELS_DE._read_stn_dyn(station).loc[st:en, dyn_feats]`` with the axis
+    names set — no values or dtypes are changed.
+    """
+    df = pd.read_csv(
+        os.path.join(ts_dir, f"{prefix}_hydromet_timeseries_{station}.csv"),
+        index_col='date',
+        parse_dates=True,
+    )
+    df.rename(columns=dict(dyn_map_items), inplace=True)
+    df = df.loc[st:en, list(dyn_feats)]
+    df.columns.name = 'dynamic_features'
+    df.index.name = 'time'
+    return df
 
 
 class CAMELS_DE(_RainfallRunoff):
@@ -1891,6 +2043,16 @@ class CAMELS_DE(_RainfallRunoff):
     The data is downloaded from `zenodo <https://zenodo.org/record/12733968>`_ .
     This data consists of 111 static and 21 dynamic features. The dynamic features
     span from 1951-01-01 to 2020-12-31 with daily timestep.
+
+    Hourly data (CAMELS-DE-1h) is available by setting ``timestep='H'``. It has
+    1611 catchments with 26 dynamic and 109 static features spanning
+    2001-01-01 to 2024-12-31, following `Dolich et al., 2026
+    <https://doi.org/10.5194/essd-2026-289>`_ and downloaded from
+    `GFZ dataservices <https://doi.org/10.5880/fidgeo.2026.045>`_ .
+    Only observed streamflow, meteorological forcing, static attributes and
+    catchment boundaries are provided; the modelled benchmark simulations and
+    the weather-forecast files are not downloaded. The netcdf consolidation is
+    skipped by default for the hourly data (``to_netcdf`` defaults to False).
 
     Examples
     --------
@@ -1964,14 +2126,36 @@ class CAMELS_DE(_RainfallRunoff):
     ...
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('DE110260')
+    ...
+    # the hourly (CAMELS-DE-1h) data can be accessed by setting timestep to 'H'
+    >>> dataset = CAMELS_DE(timestep='H')
+    >>> len(dataset.stations())
+    1611
+    >>> _, dynamic = dataset.fetch(stations='DE110000', as_dataframe=True)
+    >>> dynamic['DE110000'].shape
+    (210383, 26)
     """
     url = "https://zenodo.org/record/16755906"
+
+    # direct download of the hourly (CAMELS-DE-1h) archive from GFZ dataservices.
+    # only the ~14 GB CAMELS-DE-1h.zip is listed here (it bundles the timeseries,
+    # static attributes and shapefiles). The two weather-forecast .zarr.zip files
+    # (deterministic ~15 GB and ensemble ~51 GB) which live at the same URL base
+    # are deliberately NOT included so they are never downloaded.
+    hourly_url = {
+        "CAMELS-DE-1h.zip":
+            "https://datapub.gfz.de/download/10.5880.FIDGEO.2026.045-Trfghbv/"
+            "2026-045_Dolich-et-al_data/CAMELS-DE-1h.zip",
+    }
+
+    time_steps = ['D', 'H']
 
     def __init__(
             self,
             path=None,
+            timestep: str = 'D',
             overwrite: bool = False,
-            to_netcdf: bool = True,
+            to_netcdf: bool = None,
             verbosity: int = 1,
             **kwargs
     ):
@@ -1985,36 +2169,204 @@ class CAMELS_DE(_RainfallRunoff):
             The data is downloaded once and therefore susbsequent
             calls to this class will not download the data unless
             ``overwrite`` is set to True.
+        timestep : str
+            possible values are ``D`` for daily (default) or ``H`` for the
+            hourly (CAMELS-DE-1h) data.
         overwrite : bool
             If the data is already down then you can set it to True,
             to make a fresh download.
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc. but will
-            require netCDF4 package as well as xarray.
+            require netCDF4 package as well as xarray. If not given, it
+            defaults to True for the daily timestep and False for the hourly
+            timestep. The hourly data is too large to consolidate into a single
+            netcdf file and reading it directly from the csv files is already
+            fast, so the conversion is skipped by default.
         """
-        super().__init__(path=path, verbosity=verbosity, **kwargs)
+        assert timestep in self.time_steps, \
+            f"invalid timestep '{timestep}' given, choose from {self.time_steps}"
 
-        self._download(overwrite=overwrite)
+        if to_netcdf is None:
+            # hourly data is too large for the single-file netcdf consolidation
+            # and raw-csv fetching is already fast, so skip it by default.
+            to_netcdf = (timestep == 'D')
 
         if to_netcdf and netCDF4 is None:
             warnings.warn("netCDF4 is not installed. Therefore, the data will not be converted to netcdf format.")
             to_netcdf = False
 
-        # if to_netcdf:
+        # forward timestep and to_netcdf so the parent stores them before we use
+        # them below (otherwise self.to_netcdf keeps the parent's default of True)
+        super().__init__(path=path, timestep=timestep, to_netcdf=to_netcdf,
+                         verbosity=verbosity, **kwargs)
+
+        # Lazy caches for the heavy accessors. The base implementations recompute
+        # these on every call, so a single bulk ``fetch`` ends up re-listing the
+        # timeseries directory and re-reading a station csv hundreds of times
+        # (``fetch``/``check_*`` reference ``dynamic_features`` and ``stations()``
+        # once per requested station). Caching them here makes repeated fetches
+        # fast without touching any values. They are populated on first use so
+        # class initialization stays quick (unless it triggers the download).
+        self._stations_cache = None
+        self._dyn_features_cache = None
+        self._static_data_cache = None
+
+        if timestep == 'D':
+            self._download_daily(overwrite=overwrite)
+        else:
+            # CAMELS-DE-1h corresponds to an ESSD preprint (essd-2026-289) that is
+            # still under open review; the final accepted dataset may differ.
+            warnings.warn(
+                "CAMELS-DE-1h (timestep='H') corresponds to a preprint "
+                "(https://doi.org/10.5194/essd-2026-289) which is under open "
+                "review, not the final peer-reviewed dataset. Values may change "
+                "in the accepted version; verify before using for critical work.",
+                UserWarning,
+            )
+            self._download_hourly(overwrite=overwrite)
+
         self._maybe_to_netcdf()
 
         self.bbox = {'llcrnrlat': 47.0, 'urcrnrlat': 55.0, 'llcrnrlon': 5.0, 'urcrnrlon': 16.0}
         self.parallels = range(47, 55, 2)
         self.meridians = range(5, 16, 2)
 
+    def _download_daily(self, overwrite: bool = False):
+        """Downloads the daily CAMELS-DE data from zenodo.
+
+        The guard is on the daily ``camels_de`` folder (not just a non-empty
+        ``CAMELS_DE`` directory) so that the presence of the sibling hourly
+        ``CAMELS-DE-1h`` folder does not fool the download check when both
+        timesteps share the same ``path``. When the daily folder is missing we
+        download directly (bypassing the parent-directory-non-empty check that
+        the sibling hourly folder would otherwise satisfy).
+        """
+        if os.path.exists(self.ts_dir) and not overwrite:
+            if self.verbosity:
+                print(f"daily data already exists at {self._root}")
+            return
+        download_and_unzip(self.path, url=self.url, verbosity=self.verbosity)
+
+    def _download_hourly(self, overwrite: bool = False):
+        """Downloads and extracts only the CAMELS-DE-1h.zip archive from GFZ.
+
+        The weather-forecast archives (the two large ``.zarr.zip`` files that
+        sit at the same URL base) are never requested because ``hourly_url``
+        only lists the main archive. The extracted (modelled) ``benchmark_models``
+        folder is removed right after extraction since it is never read.
+
+        If the extracted data is already present, nothing is downloaded or
+        extracted (unless ``overwrite=True``).
+        """
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        fname, url = next(iter(self.hourly_url.items()))
+        zip_path = os.path.join(self.path, fname)
+
+        # already have the extracted data -> nothing to do (unless overwrite)
+        if os.path.exists(self.ts_dir) and not overwrite:
+            return
+
+        # download only if the archive is not already on disk (or overwrite).
+        # This way, deleting the .zip after extraction does not re-trigger a
+        # download as long as the extracted timeseries folder is present.
+        if overwrite or not os.path.exists(zip_path):
+            if self.verbosity:
+                print(f"Downloading {fname} from {url}")
+            download(url, outdir=self.path, fname=fname, verbosity=self.verbosity)
+
+        # forward overwrite so that a fresh download also replaces a stale
+        # extracted tree (unzip skips extraction when the target folder exists
+        # unless overwrite=True is passed).
+        unzip(self.path, overwrite=overwrite, verbosity=self.verbosity)
+
+        # the extracted archive ships a modelled ``benchmark_models`` folder
+        # (LSTM/HBV simulations, ~1.8 GB) which we do not expose; remove it so it
+        # does not sit on disk. The ~14 GB CAMELS-DE-1h.zip is left in place (a
+        # later `free_disk_space("archives")` call removes it) so that deleting it
+        # does not force a re-download.
+        benchmark_dir = os.path.join(self._root, 'benchmark_models')
+        if os.path.exists(benchmark_dir):
+            if self.verbosity:
+                print(f"removing modelled benchmark data at {benchmark_dir}")
+            shutil.rmtree(benchmark_dir)
+
+    @property
+    def _prefix(self) -> str:
+        """filename prefix used by the dataset files for the current timestep"""
+        return "CAMELS_DE_1h" if self.timestep == 'H' else "CAMELS_DE"
+
+    @property
+    def _root(self) -> os.PathLike:
+        """folder into which the archive extracts for the current timestep.
+
+        The hourly archive ``CAMELS-DE-1h.zip`` extracts into a doubly-nested
+        ``CAMELS-DE-1h/CAMELS-DE-1h/`` folder which holds the timeseries, the
+        attribute csvs and the catchment boundaries.
+        """
+        if self.timestep == 'H':
+            return os.path.join(self.path, "CAMELS-DE-1h", "CAMELS-DE-1h")
+        return os.path.join(self.path, "camels_de")
+
     @property
     def boundary_file(self) -> os.PathLike:
-        return os.path.join(self.path,
-                            "camels_de",
+        if self.timestep == 'H':
+            return os.path.join(self._root,
+                                "CAMELS_DE_1h_catchment_boundaries",
+                                "catchments",
+                                "CAMELS_DE_1h_catchments.shp")
+        return os.path.join(self._root,
                             "CAMELS_DE_catchment_boundaries",
-                            "catchments", 
+                            "catchments",
                             "CAMELS_DE_catchments.shp")
+
+    def transform_boundary(self, boundary):
+        """
+        The hourly (CAMELS-DE-1h) catchment boundaries are in ETRS89-LAEA
+        (EPSG:3035, meters); transform them to WGS84 (lat/lon) so they roughly
+        align with the gauge coordinates. Note the shared ``laea_to_wgs84``
+        helper uses a spherical (not ellipsoidal/GRS80) LAEA model, so the
+        result is approximate to within a few hundred meters. The daily
+        boundaries are left untouched (the base no-op) to preserve existing
+        behaviour.
+        """
+        if self.timestep != 'H':
+            return super().transform_boundary(boundary)
+
+        # The reprojection uses ``laea_to_wgs84`` which approximates the Earth as
+        # a sphere (R=6378137 m), whereas EPSG:3035 (ETRS89-LAEA) is defined on
+        # the GRS80 ellipsoid (see the shapefile .prj: SPHEROID["GRS_1980", ...]).
+        # This spherical-vs-ellipsoidal simplification introduces a location
+        # error of ~250-500 m (measured against the dataset's own WGS84 gauge
+        # coordinates). This is acceptable for visualisation/rough overlays but
+        # NOT for precise spatial joins, area calculations or gridded-data
+        # masking. For exact geometry, reproject the shapefile with a full CRS
+        # library (e.g. pyproj / GeoPandas using EPSG:3035 -> EPSG:4326).
+        warnings.warn(
+            "CAMELS-DE-1h boundaries are reprojected from EPSG:3035 to WGS84 "
+            "using a spherical LAEA approximation (~250-500 m error). Do not use "
+            "the returned geometry for precise spatial analysis; reproject the "
+            "original EPSG:3035 shapefile with pyproj/GeoPandas instead.",
+            UserWarning,
+        )
+
+        # EPSG:3035 parameters (from the shapefile .prj)
+        lon_0, lat_0 = 10.0, 52.0
+        false_easting, false_northing = 4321000.0, 3210000.0
+
+        assert len(boundary.coordinates) == 1  # only one polygon
+        longs, lats = [], []
+        for x, y, *_ in boundary.coordinates[0]:
+            lat_, long_ = laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing)
+            longs.append(long_)
+            lats.append(lat_)
+
+        if fiona is not None:
+            boundary = fiona.Geometry(type='Polygon',
+                                      coordinates=[list(zip(longs, lats))])
+        return boundary
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -2027,6 +2379,8 @@ class CAMELS_DE(_RainfallRunoff):
 
     @property
     def dyn_map(self):
+        if self.timestep == 'H':
+            return self._dyn_map_hourly
         # table 1 in https://essd.copernicus.org/articles/16/5625/2024/#&gid=1&pid=1
         return {
             'discharge_vol_obs': observed_streamflow_cms(),
@@ -2054,43 +2408,92 @@ class CAMELS_DE(_RainfallRunoff):
         }
 
     @property
+    def _dyn_map_hourly(self) -> Dict[str, str]:
+        # Table 1 of Dolich et al., 2026 (CAMELS-DE-1h). All observed and
+        # meteorological-forcing columns are kept; those with a canonical name in
+        # the aqua_fetch vocabulary are renamed here, the rest keep their original
+        # dataset name (surface pressure, wind direction and the precip-coverage
+        # diagnostic). The modelled/benchmark data lives in separate files/folders
+        # and is never read.
+        return {
+            'discharge_vol_obs': observed_streamflow_cms(),
+            'discharge_spec_obs': observed_streamflow_mm(),  # mm/hour
+            'water_level_obs': observed_water_level_cm(),  # cm
+            'precipitation_mean': total_precipitation_with_specifier('mean'),
+            'precipitation_min': total_precipitation_with_specifier('min'),
+            'precipitation_max': total_precipitation_with_specifier('max'),
+            'precipitation_stdev': total_precipitation_with_specifier('std'),
+            'precipitation_mean_gapfilled': total_precipitation_with_specifier('mean_gapfilled'),
+            'precipitation_min_gapfilled': total_precipitation_with_specifier('min_gapfilled'),
+            'precipitation_max_gapfilled': total_precipitation_with_specifier('max_gapfilled'),
+            'precipitation_stdev_gapfilled': total_precipitation_with_specifier('std_gapfilled'),
+            'air_temperature_mean': mean_air_temp(),
+            'air_temperature_min': min_air_temp(),
+            'air_temperature_max': max_air_temp(),
+            'relative_humidity_mean': mean_rel_hum(),
+            'water_vapor_mixing_ratio_mean': mean_specific_humidity(),  # g/kg
+            'global_radiation_mean': solar_radiation(),
+            'air_pressure_sea_level_mean': mean_air_pressure(),  # hPa
+            'cloud_cover_mean': cloud_cover(),
+            'dew_point_temperature_mean': mean_dewpoint_temperature_at_2m(),
+            'wind_speed_eastward_mean': u_component_of_wind_at_10m(),
+            'wind_speed_northward_mean': v_component_of_wind_at_10m(),
+            'wind_speed_mean': mean_windspeed(),
+            # kept with original names (no canonical mapping):
+            #   air_pressure_surface_mean (hPa)
+            #   wind_direction_mean (degrees)
+            #   perc_nan_precipitation_original (% catchment w/o original radar precip)
+        }
+
+    @property
     def ts_dir(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'timeseries')
+        return os.path.join(self._root, 'timeseries')
+
+    def _attr_path(self, name: str) -> str:
+        """path to a static-attribute csv for the current timestep"""
+        return os.path.join(self._root, f"{self._prefix}_{name}.csv")
 
     @property
     def clim_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_climatic_attributes.csv')
+        return self._attr_path("climatic_attributes")
 
     @property
     def hum_infl_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_humaninfluence_attributes.csv')
+        return self._attr_path("humaninfluence_attributes")
 
     @property
     def hydrogeol_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_hydrogeology_attributes.csv')
+        return self._attr_path("hydrogeology_attributes")
 
     @property
     def hydrol_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_hydrologic_attributes.csv')
+        return self._attr_path("hydrologic_attributes")
 
     @property
     def lc_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_landcover_attributes.csv')
+        return self._attr_path("landcover_attributes")
 
     @property
     def sim_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_simulation_benchmark.csv')
+        return self._attr_path("simulation_benchmark")
 
     @property
     def soil_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_soil_attributes.csv')
+        return self._attr_path("soil_attributes")
 
     @property
     def topo_attr_path(self) -> str:
-        return os.path.join(self.path, 'camels_de', 'CAMELS_DE_topographic_attributes.csv')
+        return self._attr_path("topographic_attributes")
 
     def stations(self) -> List[str]:
-        return [f.split('_')[4].split('.')[0] for f in os.listdir(self.ts_dir)]
+        # daily file: CAMELS_DE_hydromet_timeseries_<id>.csv  -> id at split index 4
+        # hourly file: CAMELS_DE_1h_hydromet_timeseries_<id>.csv -> id at split index 5
+        if self._stations_cache is None:
+            self._stations_cache = [os.path.splitext(f)[0].split('_')[-1]
+                                    for f in os.listdir(self.ts_dir)
+                                    if f.endswith('.csv')]
+        # return a copy so a caller's in-place edit cannot corrupt the cache
+        return list(self._stations_cache)
 
     def clim_attrs(self) -> pd.DataFrame:
         return pd.read_csv(self.clim_attr_path, index_col='gauge_id',
@@ -2128,29 +2531,45 @@ class CAMELS_DE(_RainfallRunoff):
                            )
 
     def _static_data(self) -> pd.DataFrame:
-        df = pd.concat([
+        # the concatenated static table (8 csv reads) is cached because it is
+        # requested repeatedly (static_features, area, stn_coords, fetch_static_*).
+        # Callers only read from it (``.loc`` returns copies), so returning the
+        # cached frame directly is safe and does not change any values.
+        if self._static_data_cache is not None:
+            return self._static_data_cache
+
+        attrs = [
             self.clim_attrs(),
             self.hum_infl_attrs(),
             self.hydrogeol_attrs(),
             self.hydrol_attrs(),
             self.lc_attrs(),
-            self.sim_attrs(),
             self.soil_attrs(),
-            self.topo_attrs()
-        ], axis=1)
+            self.topo_attrs(),
+        ]
+        # the daily dataset ships a simulation_benchmark file with observed-data
+        # signatures. For the hourly (CAMELS-DE-1h) dataset that file only holds
+        # modelled benchmark scores (NSE_lstm, NSE_hbv, ...) which we do not make
+        # available, so it is excluded from the static attributes.
+        if self.timestep == 'D':
+            attrs.append(self.sim_attrs())
+
+        df = pd.concat(attrs, axis=1)
 
         df.rename(columns=self.static_map, inplace=True)
+
+        self._static_data_cache = df
 
         return df
 
     def _read_stn_dyn(self, station) -> pd.DataFrame:
         """
-        Reads daily dynamic (meteorological + streamflow) data for one catchment
+        Reads dynamic (meteorological + streamflow) data for one catchment
         and returns as DataFrame
         """
 
         df = pd.read_csv(
-            os.path.join(self.ts_dir, f"CAMELS_DE_hydromet_timeseries_{station}.csv"),
+            os.path.join(self.ts_dir, f"{self._prefix}_hydromet_timeseries_{station}.csv"),
             # sep=';',
             index_col='date',
             parse_dates=True,
@@ -2158,19 +2577,88 @@ class CAMELS_DE(_RainfallRunoff):
         )
 
         df.rename(columns=self.dyn_map, inplace=True)
+
         return df
+
+    def _read_dynamic(
+            self,
+            stations,
+            dynamic_features,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
+    ) -> Dict[str, pd.DataFrame]:
+        """Read dynamic data of many stations, in parallel where it pays off.
+
+        Behaves exactly like the base implementation (same dict of
+        ``{station: DataFrame}`` sliced to ``[st:en, dyn_feats]`` with the axis
+        names set) but, for the parallel branch, dispatches the module-level
+        :func:`_read_camels_de_dynamic` instead of the bound
+        ``self._read_stn_dyn``. The station csv files here are large (the hourly
+        files are ~31 MB each), so avoiding the per-task pickling of ``self`` —
+        which the base incurs by handing a bound method to the pool — roughly
+        halves the wall-clock of a big fetch. Values and dtypes are unchanged.
+        """
+        st, en = self._check_length(st, en)
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
+        cpus = self.processes or min(get_cpus(), 16)
+        start = time.time()
+        if len(stations) < cpus:
+            cpus = 1
+
+        if cpus == 1:
+            dyn = {}
+            for idx, stn in enumerate(stations):
+                stn_df = self._read_stn_dyn(stn).loc[st:en, dyn_feats]
+                stn_df.columns.name = 'dynamic_features'
+                stn_df.index.name = 'time'
+                dyn[stn] = stn_df
+
+                if self.verbosity and idx % 100 == 0:
+                    print(f"Read {idx+1}/{len(stations)} stations.")
+        else:
+            # a plain function carrying only small, picklable arguments (paths,
+            # the rename map and the requested window/features) — NOT the bound
+            # method — so the pool does not ship a copy of ``self`` per task.
+            reader = functools.partial(
+                _read_camels_de_dynamic,
+                self.ts_dir, self._prefix, tuple(self.dyn_map.items()),
+                list(dyn_feats), st, en,
+            )
+            with cf.ProcessPoolExecutor(cpus) as executor:
+                results = executor.map(reader, stations)
+
+            dyn = {stn: stn_df for stn, stn_df in zip(stations, results)}
+
+        if self.verbosity:
+            total = time.time() - start
+            print(f"Read {len(dyn)} stations for {len(dyn_feats)} dyn features "
+                  f"in {total:.2f} seconds with {cpus} cpus.")
+
+        return dyn
 
     @property
     def start(self):
+        if self.timestep == 'H':
+            return pd.Timestamp('2001-01-01 01:00:00')
         return pd.Timestamp('1951-01-01')
 
     @property
     def end(self):
+        if self.timestep == 'H':
+            return pd.Timestamp('2024-12-31 23:00:00')
         return pd.Timestamp('2020-12-31')
 
     @property
     def dynamic_features(self) -> List[str]:
-        return self._read_stn_dyn(self.stations()[0]).columns.tolist()
+        # cached: the base reads (and renames) a full station csv on every access,
+        # and fetch()/check_* touch this once per requested station. The column
+        # set is identical for every station, so read it once.
+        if self._dyn_features_cache is None:
+            self._dyn_features_cache = self._read_stn_dyn(self.stations()[0]).columns.tolist()
+        # return a copy so a caller's in-place edit cannot corrupt the cache
+        return list(self._dyn_features_cache)
 
     @property
     def static_features(self) -> List[str]:
@@ -3414,11 +3902,11 @@ class CAMELS_NZ(_RainfallRunoff):
     ... # get name of all stations as list
     >>> stns = dataset.stations()
     >>> len(stns)
-       347
+       369
     ... # get data of 10 % of stations as dataframe
     >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
-    >>> len(dynamic)  # dynamic has data for 10% of stations (34 out of 347)
-       34
+    >>> len(dynamic)  # dynamic has data for 10% of stations (36 out of 369)
+       36
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
@@ -3461,7 +3949,7 @@ class CAMELS_NZ(_RainfallRunoff):
     ...
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
-        (347, 2)
+        (369, 2)
     >>> dataset.stn_coords('74321')  # returns coordinates of station whose id is 74321
         -45.945599      170.101486
     >>> dataset.stn_coords(['74321', '802'])  # returns coordinates of two stations
@@ -3479,7 +3967,7 @@ class CAMELS_NZ(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='74321', as_dataframe=True)
     >>> df = dynamic['74321'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (460928, 5)    
+    (460978, 5)    
     """
     url = "https://figshare.canterbury.ac.nz/ndownloader/articles/28827644/versions/2"
 
@@ -3497,18 +3985,27 @@ class CAMELS_NZ(_RainfallRunoff):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        if not os.path.exists(os.path.join(self.path, 'camels_nz.zip')) and not self.overwrite:
+        zip_path = os.path.join(self.path, 'camels_nz.zip')
+        unzipped_dir = os.path.join(self.path, 'camels_nz')
+
+        # Download only if neither the archive nor the extracted folder exists.
+        # This way, deleting camels_nz.zip after extraction does not re-trigger
+        # a download on subsequent class instantiation.
+        if not (os.path.exists(zip_path) or os.path.exists(unzipped_dir)) and not self.overwrite:
             download(
-            outdir=self.path,
-            url=self.url,
-            fname="camels_nz.zip",
-            verbosity=self.verbosity,
-        )
+                outdir=self.path,
+                url=self.url,
+                fname="camels_nz.zip",
+                verbosity=self.verbosity,
+            )
 
-        unzip(self.path, verbosity=self.verbosity)
+        # Outer extract: only if the unzipped folder is not already there.
+        if not os.path.exists(unzipped_dir):
+            unzip(self.path, verbosity=self.verbosity)
 
-        # unzip the .zip files which are inside the camels_nz folder
-        unzip(os.path.join(self.path, 'camels_nz'), verbosity=self.verbosity)
+        # Inner extract: idempotent when no inner .zip files remain.
+        if os.path.exists(unzipped_dir):
+            unzip(unzipped_dir, verbosity=self.verbosity)
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
@@ -3590,6 +4087,23 @@ class CAMELS_NZ(_RainfallRunoff):
     @property
     def static_path(self) -> os.PathLike:
         return os.path.join(self.path, 'camels_nz', 'CAMELS_NZ_Catchment_Atrributes')
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        # The five per-feature folders for each timestep become redundant once
+        # the corresponding consolidated NetCDF (camels_nz_D.nc / camels_nz_H.nc)
+        # exists. Both timesteps are listed regardless of self.timestep so that
+        # cleanup works whichever instance the user invokes free_disk_space on.
+        inner = os.path.join(self.path, 'camels_nz')
+        name_lc = self.name.lower()
+        pairs: List[Tuple[str, str]] = []
+        for ts_code, ts_word in (("D", "daily"), ("H", "hourly")):
+            cache = os.path.join(self.path, f"{name_lc}_{ts_code}.nc")
+            for feat in ("Temperature", "Precipitation", "Streamflow",
+                         "PET", "Relative_Humidity"):
+                pairs.append(
+                    (os.path.join(inner, f"CAMELS_NZ_{ts_word}_{feat}"), cache)
+                )
+        return pairs
 
     def _static_data(self, nrows:int = None) -> pd.DataFrame:
         """
@@ -3705,7 +4219,7 @@ class CAMELS_NZ(_RainfallRunoff):
             try:
                 stn_q = pd.read_csv(fpath, index_col=0, parse_dates=True, na_values=['NA  '])
             except pd.errors.EmptyDataError:
-                print(f"Warning: {para_name}_station_id_{stn}.csv is empty. Skipping station {stn}.")
+                warnings.warn(f"{para_name}_station_id_{stn}.csv is empty. Skipping station {stn}.")
                 return stn_q
 
             if self.timestep == 'H':
@@ -3722,7 +4236,7 @@ class CAMELS_NZ(_RainfallRunoff):
 
             stn_q = stn_q[para_name].astype(np.float32).rename(stn)
         else:
-            if self.verbosity>1: 
+            if self.verbosity>1:
                 print(f"Warning: {para_name}_station_id_{stn}.csv does not exist. Skipping station {stn}.")
             stn_q = pd.Series(dtype=np.float32, name=stn)
         
@@ -3935,7 +4449,7 @@ class CAMELS_COL(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         stn_df.rename(columns=self.dyn_map, inplace=True)
         
@@ -4223,7 +4737,8 @@ class CAMELS_SK(_RainfallRunoff):
             fpath = os.path.join(self.path, 'shp.7z')
             with py7zr.SevenZipFile(fpath, mode='r') as z:
                 z.extractall(path = self.path)
-                print(f'Extracted {fpath}')
+                if self.verbosity:
+                    print(f'Extracted {fpath}')
         return
 
     def _read_stn_dyn(self, stn:str, nrows=None)->pd.DataFrame:
@@ -4240,7 +4755,7 @@ class CAMELS_SK(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         stn_df.rename(columns=self.dyn_map, inplace=True)
         
@@ -4394,12 +4909,23 @@ class CAMELS_LUX(_RainfallRunoff):
         assert timestep in ['D', 'H', '15Min'], "timestep must be one of ['D', 'H', '15Min']"
 
         super(CAMELS_LUX, self).__init__(
-            path=path, 
+            path=path,
             timestep=timestep,
-            to_netcdf=to_netcdf, 
+            to_netcdf=to_netcdf,
             **kwargs)
-        
-        self._download(overwrite=overwrite)
+
+        # Skip download if any proof-of-data is already on disk: the original
+        # CAMELS-LUX folder, OR any of the per-timestep consolidated NetCDF
+        # caches (camels_lux_{D,H,15Min}.nc). The presence of any .nc proves
+        # the source archive was once successfully extracted, which is what
+        # the download is for.
+        lux_dir = os.path.join(self.path, "CAMELS-LUX")
+        name_lc = self.name.lower()
+        nc_files = [os.path.join(self.path, f"{name_lc}_{ts}.nc")
+                    for ts in ('D', 'H', '15Min')]
+        already_have = os.path.exists(lux_dir) or any(os.path.exists(f) for f in nc_files)
+        if not already_have or overwrite:
+            self._download(overwrite=overwrite)
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
@@ -4410,8 +4936,19 @@ class CAMELS_LUX(_RainfallRunoff):
 
     @property
     def dynamic_features(self) -> List[str]:
-        df = self._read_stn_dyn(self.stations()[0], nrows=2)
-        return df.columns.to_list()
+        ts_path = {
+            'D': self.daily_ts_path,
+            'H': self.hourly_ts_path,
+            '15Min': self.subhourly_ts_path,
+        }[self.timestep]
+        if os.path.exists(ts_path):
+            df = self._read_stn_dyn(self.stations()[0], nrows=2)
+            return df.columns.to_list()
+        # Fallback when the per-station csv folder has been removed by
+        # free_disk_space("redundant"): read feature names from the
+        # consolidated NetCDF for the current timestep.
+        with netCDF4.Dataset(self.dyn_fpath, "r") as ds:
+            return [str(s) for s in ds.variables["dynamic_features"][:]]
 
     def stations(self) -> List[str]:
         """
@@ -4423,6 +4960,26 @@ class CAMELS_LUX(_RainfallRunoff):
             index_col=0,
             dtype={0: str}
         ).index.to_list()
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        """
+        The per-station csv files under ``timeseries/<timestep>/`` become
+        redundant once the consolidated NetCDF for that timestep exists.
+
+        All three timesteps are listed regardless of the current instance's
+        ``self.timestep``: the parent's per-pair guard skips any folder
+        whose backing ``.nc`` cache is missing, so a single
+        ``free_disk_space("redundant")`` call cleans up every timestep that
+        has been consolidated. After all three NetCDFs are present and
+        cleanup runs, the outer ``CAMELS-LUX/timeseries/`` directory will
+        be left as empty timestep subdirs (which can be removed manually).
+        """
+        name_lc = self.name.lower()
+        pairs: List[Tuple[str, str]] = []
+        for ts_code, ts_word in (('D', 'daily'), ('H', 'hourly'), ('15Min', '15Min')):
+            cache = os.path.join(self.path, f"{name_lc}_{ts_code}.nc")
+            pairs.append((os.path.join(self.ts_path, ts_word), cache))
+        return pairs
 
     @property
     def boundary_file(self):
@@ -4564,7 +5121,7 @@ class CAMELS_LUX(_RainfallRunoff):
         stn_df.index = pd.to_datetime(stn_df.index)
 
         if stn_df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
         
         # drop rows with duplicated index, ideally there should not be any
         if self.timestep == '15Min':
@@ -4847,7 +5404,7 @@ class CAMELS_FI(_RainfallRunoff):
 
         df.index = pd.to_datetime(df.index)
         if df.index.has_duplicates:
-            print(f"Warning: {stn} has duplicated index. Removing duplicates.")
+            warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
           
         df.rename(columns=self.dyn_map, inplace=True)
 
@@ -4864,6 +5421,867 @@ class CAMELS_FI(_RainfallRunoff):
             else:
                 raise FileNotFoundError(f"Boundary file {zip_file} not found.")
         return
+
+
+class CAMELS_PL(_RainfallRunoff):
+    """
+    Hydro-meteorological time series and static catchment attributes for 354
+    streamflow gauges across Poland following the work of Brzezińska et al.
+    (CAMELS-PL v1.0.0). The data is downloaded from its
+    `zenodo repository <https://zenodo.org/records/20133183>`_ .
+
+    This dataset consists of 74 static and 13 dynamic features for each
+    catchment. The dynamic (time series) features span from 1951-01-01 to
+    2024-12-31 with a daily timestep (27029 steps). The observed discharge and
+    water-level records are provided by the Institute of Meteorology and Water
+    Management - National Research Institute (IMGW-PIB), the meteorological
+    forcing is derived from E-OBS v31.0e and the static attributes describe
+    topography, climate, hydrology, soils and land cover. The machine-learning
+    generated LSTM/HBV benchmark scores are **not** part of the static features
+    (per the library's observational-data-only policy); they can be accessed
+    separately via :meth:`benchmark_attrs`.
+
+    .. note::
+        This is a different dataset from :py:class:`aqua_fetch.Poland`. The
+        ``Poland`` class provides 1287 catchments whose observed streamflow comes
+        from `IMGW <https://danepubliczne.imgw.pl>`_ while the meteorological
+        forcing, static attributes and boundaries are taken from
+        :py:class:`aqua_fetch.EStreams` (214 static and 10 dynamic features).
+        ``CAMELS_PL`` on the other hand is a self-contained, CAMELS-style dataset
+        of 354 gauges published on Zenodo with its own harmonised attributes,
+        benchmark model simulations and catchment boundaries.
+
+    Examples
+    --------
+    >>> from aqua_fetch import CAMELS_PL
+    >>> dataset = CAMELS_PL()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='149180020', as_dataframe=True)
+    >>> df = dynamic['149180020'] # dynamic is a dictionary of with keys as station names and values as DataFrames
+    >>> df.shape
+    (27029, 13)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       354
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (35 out of 354)
+       35
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(27029, 13), (27029, 13), (27029, 13),... (27029, 13), (27029, 13)]
+    ...
+    ... get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('149180020', as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_mean', 'rh_%', 'pcp_mm_mean', 'q_cms_obs'])
+    >>> dynamic['149180020'].shape
+       (27029, 4)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='149180020', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['149180020'].shape
+    ((1, 74), 1, (27029, 13))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)
+    xarray.core.dataset.Dataset
+    ...
+    >>> dynamic.dims
+    FrozenMappingWarningOnValuesAccess({'time': 27029, 'dynamic_features': 13})
+    ...
+    >>> len(dynamic.data_vars)
+    10
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (354, 2)
+    >>> dataset.stn_coords('149180020')  # returns coordinates of station whose id is 149180020
+        49.921268       18.327517
+    >>> dataset.stn_coords(['149180020', '149180040'])  # returns coordinates of two stations
+    ...
+    # get area of a single station
+    >>> dataset.area('149180020')
+    # get area of two stations
+    >>> dataset.area(['149180020', '149180040'])
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('149180020')
+    """
+    url = "https://zenodo.org/records/20133183"
+
+    # name of the single ~780 MB archive on the Zenodo record. Only this file is
+    # downloaded (the accompanying data-description pdf is skipped).
+    _archive_name = "CAMELS-PL.zip"
+
+    def __init__(
+            self,
+            path: str = None,
+            overwrite: bool = False,
+            to_netcdf: bool = True,
+            verbosity: int = 1,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        path : str
+            If the data is already downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore subsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        overwrite : bool
+            If the data is already downloaded then you can set it to True,
+            to make a fresh download.
+        to_netcdf : bool
+            whether to convert all the dynamic data into one netcdf file or not.
+            This will fasten repeated calls to fetch etc. but will require the
+            netCDF4 package as well as xarray. When enabled, a consolidated
+            ``camels_pl_D.nc`` cache (~500 MB) is written once next to the data.
+            It is silently disabled if netCDF4 is not installed (handled by the
+            base class).
+        verbosity : int
+            0: no message will be printed
+        """
+        super().__init__(path=path, overwrite=overwrite, to_netcdf=to_netcdf,
+                         verbosity=verbosity, **kwargs)
+
+        self._download_camels_pl(overwrite=overwrite)
+
+        self._maybe_to_netcdf()
+
+        # bounding box of Poland (used for plotting the station map)
+        self.bbox = {'llcrnrlat': 49.0, 'urcrnrlat': 55.0, 'llcrnrlon': 14.0, 'urcrnrlon': 24.5}
+        self.parallels = range(49, 55, 2)
+        self.meridians = range(14, 25, 2)
+
+    def _download_camels_pl(self, overwrite: bool = False):
+        """
+        Downloads and extracts the CAMELS-PL archive from Zenodo.
+
+        The guard is on the extracted ``timeseries`` folder so that once the
+        data is on disk (even if the ~780 MB ``CAMELS-PL.zip`` archive has been
+        deleted afterwards, e.g. via :meth:`free_disk_space`) no re-download is
+        triggered. Only ``CAMELS-PL.zip`` is requested (``include=...``); the
+        supplementary pdf on the record is not downloaded.
+        """
+        if os.path.exists(self.ts_dir) and not overwrite:
+            if self.verbosity:
+                print(f"CAMELS_PL data already exists at {self._root}")
+            return
+        download_and_unzip(self.path, url=self.url, include=[self._archive_name],
+                           verbosity=self.verbosity)
+
+    @property
+    def _root(self) -> os.PathLike:
+        """folder into which the archive extracts.
+
+        ``unzip`` extracts ``CAMELS-PL.zip`` into a folder named ``CAMELS-PL``
+        and the archive itself has a top-level ``CAMELS-PL`` folder, hence the
+        doubly-nested path.
+        """
+        return os.path.join(self.path, "CAMELS-PL", "CAMELS-PL")
+
+    @property
+    def ts_dir(self) -> os.PathLike:
+        """folder containing the 354 daily hydro-meteorological csv files"""
+        return os.path.join(self._root, "timeseries")
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self._root,
+                            "CAMELS_PL_catchment_boundaries",
+                            "catchments",
+                            "CAMELS_PL_catchments.shp")
+
+    @property
+    def boundary_id_map(self) -> str:
+        """attribute in the boundary shapefile used to map to the gauge id"""
+        return "gauge_id"
+
+    @property
+    def start(self) -> pd.Timestamp:
+        return pd.Timestamp("1951-01-01")
+
+    @property
+    def end(self) -> pd.Timestamp:
+        return pd.Timestamp("2024-12-31")
+
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        """maps the raw column names of the hydro-meteorological time series
+        files (Table 2 of the data description) to the standardised
+        aqua_fetch names. The units of the raw and standardised names are
+        identical so no unit conversion is required."""
+        return {
+            'discharge_vol_obs': observed_streamflow_cms(),                    # m3 s-1
+            'discharge_spec_obs': observed_streamflow_mm(),                    # mm day-1
+            'water_level_obs': observed_water_level_cm(),                      # cm
+            'precipitation_min': total_precipitation_with_specifier('min'),    # mm day-1
+            'precipitation_mean': total_precipitation_with_specifier('mean'),  # mm day-1
+            'precipitation_max': total_precipitation_with_specifier('max'),    # mm day-1
+            'precipitation_stdev': total_precipitation_with_specifier('std'),  # mm day-1
+            'temperature_mean': mean_air_temp(),                               # deg C
+            'maximum_temperature_mean': max_air_temp(),                        # deg C
+            'minimum_temperature_mean': min_air_temp(),                        # deg C
+            'wind_speed_mean': mean_windspeed(),                               # m s-1
+            'relative_humidity_mean': mean_rel_hum(),                          # %
+            'radiation_global_mean': solar_radiation(),                        # W m-2
+        }
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        """maps the raw static attribute column names to the standardised
+        aqua_fetch names.
+
+        .. warning::
+            The ``gauge_lon`` and ``gauge_lat`` columns are **swapped** in the
+            source ``CAMELS_PL_topographic_attributes.csv`` file: the column
+            labelled ``gauge_lon`` actually holds latitude values (~49-55) while
+            ``gauge_lat`` holds longitude values (~14-24). This was verified
+            against the EPSG:2180 gauging-station geometry. They are therefore
+            mapped to the *correct* canonical names below so that
+            :meth:`stn_coords` returns valid (lat, long) pairs.
+        """
+        return {
+            'area_metadata': catchment_area(),           # km2
+            'gauge_lon': gauge_latitude(),               # -> lat  (see warning: source columns are swapped)
+            'gauge_lat': gauge_longitude(),              # -> long (see warning: source columns are swapped)
+            'gauge_elev': gauge_elevation_meters(),      # m a.s.l
+            'elev_mean': catchment_elevation_meters(),   # m a.s.l
+        }
+
+    @property
+    def _mm_feature_name(self) -> str:
+        """observed catchment-specific discharge (mm day-1) is provided directly
+        in the dataset, so :meth:`q_mm` uses it instead of converting from cms"""
+        return observed_streamflow_mm()
+
+    @property
+    def _area_name(self) -> str:
+        return 'area_metadata'
+
+    @property
+    def _coords_name(self) -> List[str]:
+        # note: the source columns are swapped (gauge_lon holds latitude), see static_map
+        return ['gauge_lon', 'gauge_lat']
+
+    def _attr_path(self, name: str) -> os.PathLike:
+        """path to a static-attribute csv file"""
+        return os.path.join(self._root, f"CAMELS_PL_{name}.csv")
+
+    def stations(self) -> List[str]:
+        """names/ids of the 354 gauges (parsed from the time-series filenames)"""
+        prefix = "CAMELS_PL_hydromet_timeseries_"
+        return [f[len(prefix):-len(".csv")]
+                for f in os.listdir(self.ts_dir)
+                if f.startswith(prefix) and f.endswith(".csv")]
+
+    def topographic_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self._attr_path("topographic_attributes"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def climatic_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self._attr_path("climatic_attributes"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def hydrologic_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self._attr_path("hydrologic_attributes"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def soil_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self._attr_path("soil_attributes"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def landcover_attrs(self) -> pd.DataFrame:
+        return pd.read_csv(self._attr_path("landcover_attributes"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def bdot10k_attrs(self) -> pd.DataFrame:
+        """BDOT10k land-cover attributes. Note this file only covers the 241
+        catchments that are fully located inside Polish territory; the remaining
+        catchments will have NaN for these columns."""
+        return pd.read_csv(self._attr_path("BDOT10K_land_cover_catchments"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def benchmark_attrs(self) -> pd.DataFrame:
+        """
+        Machine-learning / model benchmark results from
+        ``CAMELS_PL_simulation_benchmark.csv``.
+
+        This returns the **model-generated** LSTM/HBV benchmark scores
+        (``NSE_lstm_ensemble_median``/``std``, ``NSE_hbv_ensemble_median``/``std``
+        and the per-seed ``NSE_lstm_seed1..5`` / ``NSE_hbv_seed1..5``) together
+        with the three observed-data completeness fractions
+        (``training``/``validation``/``testing_perc_complete``).
+
+        Because these NSE values are machine-learning generated (not
+        observations), they are deliberately **excluded** from
+        :meth:`static_features`; use this method if you specifically need them.
+        Only the three observational ``*_perc_complete`` columns are folded into
+        the static attributes.
+
+        Returns
+        -------
+        pd.DataFrame
+            index is the gauge id, columns are the 14 NSE scores plus the 3
+            completeness fractions.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_PL
+        >>> dataset = CAMELS_PL()
+        >>> scores = dataset.benchmark_attrs()
+        >>> scores.loc['149180020', 'NSE_lstm_ensemble_median']
+        """
+        return pd.read_csv(self._attr_path("simulation_benchmark"),
+                           index_col='gauge_id', dtype={'gauge_id': str})
+
+    def _static_data(self) -> pd.DataFrame:
+        # only the observed-data completeness fractions from the benchmark file
+        # are treated as static attributes. The NSE_* columns are machine-learning
+        # generated model scores and are intentionally left out (they remain
+        # accessible via :meth:`benchmark_attrs`), following the library policy of
+        # exposing observational data only.
+        benchmark = self.benchmark_attrs()
+        completeness = benchmark[[c for c in benchmark.columns
+                                  if c.endswith('_perc_complete')]]
+
+        df = pd.concat([
+            self.topographic_attrs(),
+            self.climatic_attrs(),
+            self.hydrologic_attrs(),
+            self.soil_attrs(),
+            self.landcover_attrs(),
+            self.bdot10k_attrs(),
+            completeness,
+        ], axis=1)
+
+        df.rename(columns=self.static_map, inplace=True)
+
+        return df
+
+    def _read_stn_dyn(self, station: str) -> pd.DataFrame:
+        """
+        Reads daily dynamic (meteorological + streamflow) data for one catchment
+        and returns it as a DataFrame with time as index and the standardised
+        dynamic-feature names as columns.
+        """
+        fpath = os.path.join(self.ts_dir,
+                             f"CAMELS_PL_hydromet_timeseries_{station}.csv")
+
+        df = pd.read_csv(fpath, index_col='date', parse_dates=True)
+
+        df = df.astype(np.float32)
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        return df
+
+    def observed_q_cms(self) -> pd.DataFrame:
+        """
+        Returns the supplementary wide-format observed volumetric discharge
+        (m3 s-1) from ``CAMELS_PL_Q_354_data.csv``. Unlike the per-catchment
+        time-series files (which run over calendar years 1951-01-01 to
+        2024-12-31), this file runs from 1950-11-01 to 2024-10-31 so that
+        complete Polish hydrological years (1 November - 31 October) can be
+        analysed. Missing values are encoded as NA.
+
+        Returns
+        -------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` whose index is time and whose columns are
+            the 354 gauge ids. The dataset's ``hyy`` (hydrological year) helper
+            column is dropped.
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_PL
+        >>> dataset = CAMELS_PL()
+        >>> q = dataset.observed_q_cms()
+        >>> q.shape
+        (27029, 354)
+        """
+        fpath = os.path.join(self._root, "CAMELS_PL_Q_354_data.csv")
+        df = pd.read_csv(fpath, index_col='date', parse_dates=True)
+        df = df.drop(columns=['hyy'], errors='ignore')
+        df.index.name = 'time'
+        return df
+
+    def transform_boundary(self, boundary):
+        """
+        Transforms a catchment boundary from ETRS89 / Poland CS92 (EPSG:2180,
+        meters) to WGS84 (lat/lon). Both ``Polygon`` and ``MultiPolygon``
+        geometries are supported. The transformation uses the dependency-free
+        :func:`aqua_fetch._geom_utils.tmerc_to_wgs84` helper which matches
+        ``pyproj`` to within ~5 cm.
+        """
+        # EPSG:2180 parameters (from the shapefile .prj)
+        lon_0, k0 = 19.0, 0.9993
+        false_easting, false_northing = 500000.0, -5300000.0
+
+        def _convert(coords):
+            # a coordinate pair is a sequence whose first element is a number
+            if len(coords) >= 2 and isinstance(coords[0], (int, float)):
+                lat_, long_ = tmerc_to_wgs84(coords[0], coords[1], lon_0, k0,
+                                             false_easting, false_northing)
+                return (long_, lat_)   # fiona stores coordinates as (long, lat)
+            return [_convert(c) for c in coords]
+
+        new_coords = _convert(boundary['coordinates'])
+
+        if fiona is not None:
+            boundary = fiona.Geometry(type=boundary['type'], coordinates=new_coords)
+        return boundary
+
+
+class CAMELS_PE(_RainfallRunoff):
+    """
+    Daily hydrometeorological time series and static catchment attributes for
+    136 catchments in Peru following Llauca et al. (CAMELS-PE v1.0.1). The data
+    is downloaded from its
+    `zenodo repository <https://zenodo.org/records/21195425>`_ .
+
+    The dataset provides 9 daily dynamic features and 78 static features for
+    each catchment. The dynamic (time series) features span from 1981-01-01 to
+    2025-12-31 with a daily timestep (16436 steps), although individual
+    variables retain the temporal coverage of their source product (observed
+    streamflow is gauge-dependent and mostly incomplete, PET ends in 2016, air
+    temperature ends in 2020) with the remaining dates filled with ``NaN``.
+    Observed streamflow (``q_mm_obs``, catchment-averaged runoff depth in mm/day)
+    is provided by SENAMHI while the meteorological forcing is derived from the
+    PISCO (PISCOp v2.1, PISCOt v1.2, PISCOeo_pm v1.0) and ERA5-Land gridded
+    products.
+
+    .. note::
+        The source dataset also ships a model-simulated streamflow series
+        (``flow_sim``, from PISCO-ARNOVIC v1.1). Following the library's
+        observational-data-only policy, this simulated series is **not** presented
+        as a dynamic feature, so ``CAMELS_PE`` exposes 9 dynamic features rather
+        than the 10 documented in the paper.
+
+    The 78 static features comprise 64 thematic catchment attributes (7
+    topography, 10 climatic indices, 13 hydrological signatures, 8 land cover, 7
+    geology, 10 soil, 9 human intervention) plus 14 gauge-metadata / relational
+    columns from ``stations.csv`` (name, region, record start/end, percentage of
+    valid observations, official catchment name, and the nested-catchment
+    up/down-stream relations). The 13 hydrological signatures are computed from
+    the streamflow records; consult the shipped ``data_dictionary.csv`` for the
+    exact source of each attribute (per the dictionary most cite the observed
+    SENAMHI series, while the paper describes computing them from the simulated
+    series for temporal completeness). Catchment boundaries and gauge outlets are
+    provided as GeoPackage files in WGS84 (EPSG:4326).
+
+    On a typical machine the one-time download (~121 MB), extraction and netCDF
+    cache build take ~45 s; thereafter fetching all 136 stations (all 9 dynamic
+    features) from the cache takes ~0.2 s.
+
+    .. note::
+        ``srad`` (surface solar radiation, MJ m-2 day-1) and ``prec_var``
+        (spatial precipitation variance, mm2 day-2) keep their original names
+        because no aqua_fetch canonical name carries those exact units;
+        renaming them would misrepresent the units.
+
+    Examples
+    --------
+    >>> from aqua_fetch import CAMELS_PE
+    >>> dataset = CAMELS_PE()
+    ... # get data by station id
+    >>> _, dynamic = dataset.fetch(stations='PE_204617', as_dataframe=True)
+    >>> df = dynamic['PE_204617'] # dynamic is a dictionary with keys as station names and values as DataFrames
+    >>> df.shape
+    (16436, 9)
+    ...
+    ... # get name of all stations as list
+    >>> stns = dataset.stations()
+    >>> len(stns)
+       136
+    ... # get data of 10 % of stations as dataframe
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 10% of stations (13 out of 136)
+       13
+    ...
+    ... # dynamic is a dictionary whose values are dataframes of dynamic features
+    >>> [df.shape for df in dynamic.values()]
+        [(16436, 9), (16436, 9), ... (16436, 9)]
+    ...
+    ... # get the data of a single (randomly selected) station
+    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
+    >>> len(dynamic)  # dynamic has data for 1 station
+        1
+    ... # get names of available dynamic features
+    >>> dataset.dynamic_features
+    ... # get only selected dynamic features
+    >>> _, dynamic = dataset.fetch('PE_204617', as_dataframe=True,
+    ...  dynamic_features=['airtemp_C_mean', 'pcp_mm', 'pet_mm', 'q_mm_obs'])
+    >>> dynamic['PE_204617'].shape
+       (16436, 4)
+    ...
+    ... # get names of available static features
+    >>> dataset.static_features
+    ... # get data of 10 random stations
+    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
+    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
+       10
+    ...
+    # If we get both static and dynamic data
+    >>> static, dynamic = dataset.fetch(stations='PE_204617', static_features="all", as_dataframe=True)
+    >>> static.shape, len(dynamic), dynamic['PE_204617'].shape
+    ((1, 78), 1, (16436, 9))
+    ...
+    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
+    >>> _, dynamic = dataset.fetch(10)
+    ... type(dynamic)
+    xarray.core.dataset.Dataset
+    ...
+    >>> coords = dataset.stn_coords() # returns coordinates of all stations
+    >>> coords.shape
+        (136, 2)
+    >>> dataset.stn_coords('PE_204617')  # returns coordinates of station whose id is PE_204617
+    ...
+    # get area (km2) of a single station
+    >>> dataset.area('PE_204617')
+    ...
+    # if fiona library is installed we can get the boundary as fiona Geometry
+    >>> dataset.get_boundary('PE_204617')
+    """
+    url = "https://zenodo.org/records/21195425"
+
+    # name of the single ~121 MB archive on the Zenodo record. Only this file is
+    # downloaded (the accompanying technical-description pdf is skipped).
+    _archive_name = "CAMELS-PE_v1.0.1.zip"
+
+    def __init__(
+            self,
+            path: str = None,
+            overwrite: bool = False,
+            to_netcdf: bool = True,
+            verbosity: int = 1,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        path : str
+            If the data is already downloaded then provide the complete
+            path to it. If None, then the data will be downloaded.
+            The data is downloaded once and therefore subsequent
+            calls to this class will not download the data unless
+            ``overwrite`` is set to True.
+        overwrite : bool
+            If the data is already downloaded then you can set it to True,
+            to make a fresh download.
+        to_netcdf : bool
+            whether to convert all the dynamic data into one netcdf file or not.
+            This will fasten repeated calls to fetch etc. but will require the
+            netCDF4 package as well as xarray. When enabled, a consolidated
+            ``camels_pe_D.nc`` cache is written once next to the data. It is
+            silently disabled if netCDF4 is not installed (handled by the base
+            class).
+        verbosity : int
+            0: no message will be printed
+        """
+        super().__init__(path=path, overwrite=overwrite, to_netcdf=to_netcdf,
+                         verbosity=verbosity, **kwargs)
+
+        # lazy caches (heavy attributes are loaded on first use)
+        self._static_df = None
+        self._static_feats = None
+        self._stns = None
+        self._dyn_feats = None
+
+        self._download_camels_pe(overwrite=overwrite)
+
+        self._warn_duplicate_gauges()
+
+        self._maybe_to_netcdf()
+
+        # bounding box of Peru (used for plotting the station map)
+        self.bbox = {'llcrnrlat': -18.5, 'urcrnrlat': 0.5,
+                     'llcrnrlon': -81.5, 'urcrnrlon': -68.5}
+        self.parallels = range(-18, 2, 4)
+        self.meridians = range(-81, -68, 4)
+
+    def _download_camels_pe(self, overwrite: bool = False):
+        """
+        Downloads and extracts the CAMELS-PE archive from Zenodo.
+
+        The guard is on the extracted ``03_timeseries`` folder so that once the
+        data is on disk (even if the ~121 MB ``CAMELS-PE_v1.0.1.zip`` archive has
+        been deleted afterwards, e.g. via :meth:`free_disk_space`) no
+        re-download is triggered. Only ``CAMELS-PE_v1.0.1.zip`` is requested
+        (``include=...``); the supplementary technical pdf on the record is not
+        downloaded.
+        """
+        if os.path.exists(self.ts_dir) and not overwrite:
+            if self.verbosity:
+                print(f"CAMELS_PE data already exists at {self._root}")
+            return
+
+        if overwrite:
+            # overwrite must yield a genuinely fresh copy end-to-end. Delete:
+            #  (1) the stale archive (otherwise ``download`` writes to
+            #      ``<name>.zip1`` which nothing ever reads),
+            #  (2) the previously extracted directory (otherwise ``unzip`` skips
+            #      re-extraction and silently keeps stale data), and
+            #  (3) the derived netCDF cache (otherwise the base
+            #      ``_maybe_to_netcdf`` rebuilds it by reading the *old* cache and
+            #      rewriting the same file, which both keeps stale data and
+            #      raises a KeyError from the concurrent read/write),
+            # before re-downloading and re-extracting.
+            archive = os.path.join(self.path, self._archive_name)
+            extracted = os.path.dirname(self._root)  # <path>/CAMELS-PE_v1.0.1
+            for stale in (archive, extracted, self.dyn_fpath):
+                if os.path.exists(stale):
+                    if self.verbosity:
+                        print(f"overwrite=True: removing stale {stale}")
+                    if os.path.isdir(stale):
+                        shutil.rmtree(stale)
+                    else:
+                        os.remove(stale)
+
+        download_and_unzip(self.path, url=self.url, include=[self._archive_name],
+                           verbosity=self.verbosity)
+
+    @property
+    def _root(self) -> os.PathLike:
+        """folder holding the four CAMELS-PE component directories.
+
+        ``unzip`` extracts ``CAMELS-PE_v1.0.1.zip`` into a folder named
+        ``CAMELS-PE_v1.0.1`` and the archive itself has a top-level
+        ``CAMELS-PE`` folder, hence the doubly-nested path.
+        """
+        return os.path.join(self.path, "CAMELS-PE_v1.0.1", "CAMELS-PE")
+
+    @property
+    def _meta_dir(self) -> os.PathLike:
+        return os.path.join(self._root, "01_metadata")
+
+    @property
+    def _attr_dir(self) -> os.PathLike:
+        return os.path.join(self._root, "02_attributes")
+
+    @property
+    def ts_dir(self) -> os.PathLike:
+        """folder containing the daily hydro-meteorological time-series files"""
+        return os.path.join(self._root, "03_timeseries")
+
+    @property
+    def _geo_dir(self) -> os.PathLike:
+        return os.path.join(self._root, "04_geospatial")
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        return os.path.join(self._geo_dir, "camels_pe_catchments.gpkg")
+
+    @property
+    def boundary_id_map(self) -> str:
+        """attribute in the boundary GeoPackage used to map to the gauge id"""
+        return "gauge_id"
+
+    @property
+    def start(self) -> pd.Timestamp:
+        return pd.Timestamp("1981-01-01")
+
+    @property
+    def end(self) -> pd.Timestamp:
+        return pd.Timestamp("2025-12-31")
+
+    @property
+    def dyn_map(self) -> Dict[str, str]:
+        """maps the raw time-series column names (Table 11 of the technical
+        documentation) to the standardised aqua_fetch names. The units of the
+        raw and standardised names are identical so no unit conversion is
+        required.
+
+        The raw ``flow_sim`` column (model-simulated streamflow from
+        PISCO-ARNOVIC v1.1) is intentionally omitted here and dropped in
+        :meth:`_read_stn_dyn`, following the library's observational-data-only
+        policy (simulated data is not presented). ``prec_var`` (mm2 day-2) and
+        ``srad`` (MJ m-2 day-1) are left unmapped because no aqua_fetch canonical
+        name carries those exact units, so renaming would misrepresent them.
+        """
+        return {
+            'prec': total_precipitation(),                   # mm day-1
+            'flow_obs': observed_streamflow_mm(),            # mm day-1 (observed, SENAMHI)
+            'pet': total_potential_evapotranspiration(),     # mm day-1
+            'tmin': min_air_temp(),                          # deg C
+            'tmean': mean_air_temp(),                        # deg C
+            'tmax': max_air_temp(),                          # deg C
+            'vprp': mean_vapor_pressure(),                   # hPa
+        }
+
+    @property
+    def static_map(self) -> Dict[str, str]:
+        """maps the raw static-attribute column names to the standardised
+        aqua_fetch names. Only the attributes that have a canonical aqua_fetch
+        name (and are needed by :meth:`area`, :meth:`stn_coords` etc.) are
+        renamed; the remaining CAMELS-PE attributes keep their original,
+        already CAMELS-standard names.
+        """
+        return {
+            'area': catchment_area(),                        # km2
+            'perimeter': catchment_perimeter(),              # km
+            'gauge_lat': gauge_latitude(),                   # deg N (WGS84)
+            'gauge_lon': gauge_longitude(),                  # deg E (WGS84)
+            'gauge_elev': gauge_elevation_meters(),          # m a.s.l
+            'elev_mean': catchment_elevation_meters(),       # m a.s.l
+            'elev_min': min_catchment_elevation_meters(),    # m a.s.l
+            'elev_max': max_catchment_elevation_meters(),    # m a.s.l
+            'elev_median': med_catchment_elevation_meters(), # m a.s.l
+            'slope_mean': slope('mkm-1'),                    # m km-1
+        }
+
+    @property
+    def _mm_feature_name(self) -> str:
+        """observed catchment-specific discharge (mm day-1) is provided directly
+        in the dataset, so :meth:`q_mm` uses it instead of converting from cms"""
+        return observed_streamflow_mm()
+
+    @property
+    def _area_name(self) -> str:
+        # post-rename (standardised) name, matching the columns of _static_data()
+        return catchment_area()
+
+    @property
+    def _coords_name(self) -> List[str]:
+        # post-rename (standardised) names, matching the columns of _static_data()
+        return [gauge_latitude(), gauge_longitude()]
+
+    def _warn_duplicate_gauges(self):
+        """
+        Warns (unconditionally, i.e. regardless of ``verbosity``) if any two
+        gauges share the same name **and** rounded coordinates. This is a cheap
+        one-time check on the small ``stations.csv`` file and does not slow the
+        fetching process. Duplicates are only warned about, never excluded.
+        """
+        meta = pd.read_csv(
+            os.path.join(self._meta_dir, "stations.csv"),
+            usecols=['gauge_id', 'gauge_name', 'gauge_lat', 'gauge_lon'],
+            dtype={'gauge_id': str})
+        key = (meta['gauge_name'].astype(str) + '_' +
+               meta['gauge_lat'].round(3).astype(str) + '_' +
+               meta['gauge_lon'].round(3).astype(str))
+        dup_mask = key.duplicated(keep=False)
+        if dup_mask.any():
+            dups = meta.loc[dup_mask, 'gauge_id'].tolist()
+            warnings.warn(
+                f"CAMELS_PE: {int(dup_mask.sum())} gauges appear to be "
+                f"duplicates (same name and coordinates): {dups}. They are "
+                f"kept in the dataset.", UserWarning)
+        return
+
+    def stations(self) -> List[str]:
+        """ids of the 136 gauges (read from the ``gauge_id`` column of
+        ``stations.csv``)"""
+        if self._stns is None:
+            meta = pd.read_csv(
+                os.path.join(self._meta_dir, "stations.csv"),
+                usecols=['gauge_id'], dtype={'gauge_id': str})
+            self._stns = meta['gauge_id'].tolist()
+        return list(self._stns)
+
+    @property
+    def static_features(self) -> List[str]:
+        # cache the column list so we don't copy the whole frame just to read it
+        if self._static_feats is None:
+            self._static_feats = self._static_data().columns.tolist()
+        return list(self._static_feats)
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        if self._dyn_feats is None:
+            self._dyn_feats = self._read_stn_dyn(self.stations()[0]).columns.tolist()
+        return list(self._dyn_feats)
+
+    def _static_data(self) -> pd.DataFrame:
+        """all 78 static attributes (index is ``gauge_id``). Built once from the
+        metadata + the seven thematic attribute tables and then cached. A copy
+        of the cache is returned so a caller's in-place edit cannot corrupt the
+        cached frame."""
+        if self._static_df is not None:
+            return self._static_df.copy()
+
+        dfs = [pd.read_csv(os.path.join(self._meta_dir, "stations.csv"),
+                           index_col='gauge_id', dtype={'gauge_id': str})]
+        for name in ("topographic_attributes", "climatic_indices",
+                     "hydrological_signatures", "landcover_attributes",
+                     "geologic_attributes", "soil_attributes",
+                     "human_intervention_attributes"):
+            dfs.append(pd.read_csv(os.path.join(self._attr_dir, f"{name}.csv"),
+                                   index_col='gauge_id', dtype={'gauge_id': str}))
+
+        df = pd.concat(dfs, axis=1)
+        df.rename(columns=self.static_map, inplace=True)
+        df.index.name = 'gauge_id'
+
+        self._static_df = df
+        return df.copy()
+
+    def _read_stn_dyn(self, station: str) -> pd.DataFrame:
+        """
+        Reads the daily dynamic (meteorological + streamflow) data for one
+        catchment and returns it as a DataFrame with time as index and the
+        standardised dynamic-feature names as columns. Missing observations are
+        retained as ``NaN``.
+
+        Values are cast to ``self.fp`` (the ``float_precision`` of the base
+        class, ``np.float32`` by default). This is safe for CAMELS-PE: the
+        largest value across the whole dataset is ~2.55e4 (``prec_var``), far
+        below the ``float32`` overflow limit, and the worst-case rounding error
+        is ~5e-4 on ``prec_var`` only (relative error ~6e-8 everywhere), i.e.
+        well below the 3-decimal resolution of every measurement. Pass
+        ``float_precision=np.float64`` to keep full precision.
+        """
+        fpath = os.path.join(self.ts_dir, "by_catchment", f"{station}.csv")
+
+        df = pd.read_csv(fpath, index_col='date', parse_dates=True)
+        df.index.name = 'time'
+
+        # simulated streamflow (raw ``flow_sim``, PISCO-ARNOVIC v1.1) is model
+        # output, not an observation, so it is not presented as a dynamic feature
+        # (library observational-data-only policy). Drop it before renaming.
+        df = df.drop(columns=['flow_sim'], errors='ignore')
+
+        df.rename(columns=self.dyn_map, inplace=True)
+
+        return df.astype(self.fp)
+
+
+# Process-wide, read-only netCDF4 handles for the two consolidated CAMELSH
+# caches (``all_stations_q.nc`` ~18 GB and ``all_stn_forcings.nc`` ~67 GB).
+# Re-opening these multi-GB HDF5 files on every fetch — or holding an xarray
+# handle and a netCDF4 handle on the *same* file at once — can segfault HDF5
+# (the same hazard fixed for EStreams' meteorology.nc). Keeping a single shared
+# handle per path, opened once and never mixed with xarray, avoids both.
+_SHARED_CAMELSH_NC: Dict[str, "netCDF4.Dataset"] = {}
+
+
+def _shared_camelsh_nc(path: str) -> "netCDF4.Dataset":
+    """Returns the process-wide read-only netCDF4 handle for ``path``, opening
+    it once on first use."""
+    handle = _SHARED_CAMELSH_NC.get(path)
+    if handle is None:
+        handle = netCDF4.Dataset(path, "r")
+        _SHARED_CAMELSH_NC[path] = handle
+    return handle
 
 
 class CAMELSH(_RainfallRunoff):
@@ -4974,28 +6392,66 @@ class CAMELSH(_RainfallRunoff):
         **kwargs)
 
         assert self.timestep == "H", f"CAMELSH dataset only supports hourly timestep but got {self.timestep}."
-            
+
+        # For each remote resource, declare the on-disk paths that fully satisfy
+        # it. If any of these exists, the archive is not needed and we skip
+        # download + unzip. This prevents re-acquiring data that free_disk_space()
+        # (or the user) has deleted because a consolidated NetCDF cache
+        # (all_stations_q.nc / all_stn_forcings.nc) covers the same content.
+        satisfied_by = {
+            "Hourly2.zip":          [self.h2_path,         self.all_stations_q_path],
+            "timeseries_nonobs.7z": [self.nonobs_path,     self.all_stn_forcings_path],
+            "timeseries.7z":        [self.timeseries_path, self.all_stn_forcings_path],
+            "attributes.7z":        [self.attr_path],
+            "shapefiles.7z":        [self.sf_path],
+            "info.csv":             [os.path.join(self.path, "info.csv")],
+        }
+
         for fname, url in self.url.items():
+
+            if not overwrite and any(os.path.exists(p) for p in satisfied_by.get(fname, [])):
+                continue
 
             dirname = fname.split('.')[0]
             dirpath = os.path.join(self.path, dirname)
-            
+
             fpath = os.path.join(self.path, fname)
 
             if not ((os.path.exists(fpath) or os.path.exists(dirpath)) or overwrite):
                 download_and_unzip(self.path, url, include=[fname], verbosity=self.verbosity)
 
             uzipped_dir_path = os.path.join(self.path, fname.split('.')[0])
-            if not os.path.exists(uzipped_dir_path):
+            if fname.endswith(('.zip', '.7z')) and not os.path.exists(uzipped_dir_path):
                 unzip(self.path, keep_parent_dir=True, verbosity=self.verbosity)
 
-        self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
-        self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
+        # Discover stations and dynamic features. Prefer the per-station files
+        # when Hourly2/ is present; otherwise fall back to the consolidated nc
+        # caches. The fallback uses netCDF4 directly (one open per file) instead
+        # of xarray, which is much faster for metadata-only lookups when the
+        # consolidated file has thousands of data variables.
+        if os.path.exists(self.h2_path):
+            self.__stations = [fname.split('_')[0] for fname in os.listdir(self.h2_path)]
+            self.__dyn_features = self._read_stn_dyn(self.stations()[0]).dynamic_features.data.tolist()
+        else:
+            with netCDF4.Dataset(self.all_stations_q_path, "r") as _ncq:
+                self.__stations = [v for v in _ncq.variables if v not in _ncq.dimensions]
+                q_feats_raw = [str(s) for s in _ncq.variables["dynamic_features"][:]]
+            with netCDF4.Dataset(self.all_stn_forcings_path, "r") as _ncf:
+                f_feats_raw = [str(s) for s in _ncf.variables["dynamic_features"][:]]
+            q_feats = [str(self.dyn_map.get(v, v)) for v in q_feats_raw]
+            f_feats = [str(self.dyn_map.get(v, v)) for v in f_feats_raw]
+            self.__dyn_features = q_feats + f_feats
 
         self.bbox = {"llcrnrlat": 22, "urcrnrlat": 75,
                      "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
         self.parallels = np.arange(22, 75, 7)
         self.meridians = np.arange(-168, -65, 12)
+
+        # lazily-populated caches for the consolidated-cache fast reader and the
+        # static attribute table (both are heavy to build and read many times).
+        self._axes_cache = None
+        self._static_cache = None
+        self._read_order_cache = None
 
     def stations(self) -> List[str]:
         return self.__stations
@@ -5065,6 +6521,10 @@ class CAMELSH(_RainfallRunoff):
         return os.path.join(self.path, 'all_stn_forcings.nc')
 
     @property
+    def all_stations_q_path(self) -> Union[str, os.PathLike]:
+        return os.path.join(self.path, 'all_stations_q.nc')
+
+    @property
     def dynamic_features(self) -> List[str]:
         """
         Returns a list of dynamic features that are available in the dataset.
@@ -5080,6 +6540,171 @@ class CAMELSH(_RainfallRunoff):
         # overwriting because _read_stn_dyn in this class returns xarray Dataset
         return self.__dyn_features
 
+    # ------------------------------------------------------------------
+    # Fast reader for the consolidated NetCDF caches.
+    #
+    # When ``all_stations_q.nc`` + ``all_stn_forcings.nc`` are present (the
+    # standard, disk-consolidated layout), dynamic data is read directly with
+    # netCDF4 and assembled with numpy. This replaces xarray's per-variable
+    # ``concat``/``sel`` machinery — which took minutes for a few hundred
+    # stations because its cost scales with the ~5,767 data variables in each
+    # file — with a direct read that is byte-for-byte identical.
+    # ------------------------------------------------------------------
+
+    def _consolidated_ready(self) -> bool:
+        """True when both consolidated caches exist, so the fast netCDF4 reader
+        can be used instead of the per-station files."""
+        return (os.path.exists(self.all_stations_q_path)
+                and os.path.exists(self.all_stn_forcings_path))
+
+    @property
+    def _q_handle(self) -> "netCDF4.Dataset":
+        return _shared_camelsh_nc(self.all_stations_q_path)
+
+    @property
+    def _forcing_handle(self) -> "netCDF4.Dataset":
+        return _shared_camelsh_nc(self.all_stn_forcings_path)
+
+    def _consolidated_axes(self):
+        """
+        Returns ``(time_index, q_feats, f_feats, q_col, f_col)`` for the
+        consolidated caches, decoded once and cached.
+
+        - ``time_index`` : the shared hourly :obj:`pandas.DatetimeIndex`
+          (identical in both files).
+        - ``q_feats`` / ``f_feats`` : mapped dynamic-feature names held by
+          ``all_stations_q.nc`` / ``all_stn_forcings.nc``.
+        - ``q_col`` / ``f_col`` : maps each mapped feature name to its column
+          index within that file's per-station ``(time, dynamic_features)``
+          variable.
+        """
+        if self._axes_cache is None:
+            q_exists = os.path.exists(self.all_stations_q_path)
+            f_exists = os.path.exists(self.all_stn_forcings_path)
+            # the decoded time axis is identical in both files; use whichever
+            # exists to build it once.
+            time_handle = self._q_handle if q_exists else self._forcing_handle
+            tv = time_handle.variables['time']
+            time_index = pd.DatetimeIndex(
+                netCDF4.num2date(
+                    tv[:], tv.units, getattr(tv, 'calendar', 'standard'),
+                    only_use_cftime_datetimes=False,
+                    only_use_python_datetimes=True),
+                name='time')
+            q_feats = ([str(self.dyn_map.get(str(s), str(s)))
+                        for s in self._q_handle.variables['dynamic_features'][:]]
+                       if q_exists else [])
+            f_feats = ([str(self.dyn_map.get(str(s), str(s)))
+                        for s in self._forcing_handle.variables['dynamic_features'][:]]
+                       if f_exists else [])
+            q_col = {name: i for i, name in enumerate(q_feats)}
+            f_col = {name: i for i, name in enumerate(f_feats)}
+            self._axes_cache = (time_index, q_feats, f_feats, q_col, f_col)
+        return self._axes_cache
+
+    def _time_positions(self, st, en):
+        """Maps a ``(st, en)`` window onto integer positions in the shared time
+        index. ``time_index[i0:i1]`` is inclusive of both endpoints, matching
+        :meth:`xarray.Dataset.sel` with a ``slice``."""
+        time_index = self._consolidated_axes()[0]
+        st, en = self._check_length(st, en)
+        i0 = int(time_index.searchsorted(pd.Timestamp(st), side='left'))
+        i1 = int(time_index.searchsorted(pd.Timestamp(en), side='right'))
+        return time_index, i0, i1
+
+    def _read_order(self) -> Dict[str, int]:
+        """
+        Cached ``{station: position}`` in the variable-creation order of the
+        (compressed, chunked, hence seek-sensitive) forcing file. Reading a
+        random station subset in this order turns scattered back-and-forth
+        seeks into a mostly-forward scan; because the data lives on a spinning
+        disk this measurably speeds up cold reads and never changes the result
+        (the caller still receives a station-keyed dict).
+        """
+        if self._read_order_cache is None:
+            handle = (self._forcing_handle
+                      if os.path.exists(self.all_stn_forcings_path)
+                      else self._q_handle)
+            self._read_order_cache = {
+                v: i for i, v in enumerate(
+                    v for v in handle.variables if v not in handle.dimensions)}
+        return self._read_order_cache
+
+    def _read_consolidated(self, stations: List[str], feats: List[str], i0: int, i1: int):
+        """
+        Reads ``feats`` for ``stations`` over time positions ``[i0:i1]`` directly
+        from the consolidated netCDF4 caches.
+
+        Returns ``{station: ndarray(shape=(i1-i0, len(feats)), dtype=float32)}``
+        with columns ordered exactly as ``feats``. NaN handling matches xarray:
+        ``all_stations_q.nc`` variables carry a ``_FillValue`` (returned as a
+        masked array, filled with NaN) while ``all_stn_forcings.nc`` stores NaNs
+        directly, and ``np.ma.filled`` is correct for both.
+
+        Reads are issued in on-disk order (see :meth:`_read_order`) to keep the
+        spinning-disk access pattern sequential; a process pool is deliberately
+        *not* used because the cold read is disk-seek bound (parallel workers do
+        not speed it up and the IPC of shipping the decoded arrays back is a net
+        loss — both measured).
+        """
+        _, _, _, q_col, f_col = self._consolidated_axes()
+        need_q = any(f in q_col for f in feats)
+        need_f = any(f in f_col for f in feats)
+        qh = self._q_handle if need_q else None
+        fh = self._forcing_handle if need_f else None
+        n = i1 - i0
+        order = self._read_order()
+        read_seq = sorted(stations, key=lambda s: order.get(s, 0))
+        out: Dict[str, np.ndarray] = {}
+        for stn in read_seq:
+            qa = np.ma.filled(qh.variables[stn][i0:i1], np.nan) if need_q else None
+            fa = np.ma.filled(fh.variables[stn][i0:i1], np.nan) if need_f else None
+            arr = np.empty((n, len(feats)), dtype='float32')
+            for j, feat in enumerate(feats):
+                col = q_col.get(feat)
+                if col is not None:
+                    arr[:, j] = qa[:, col]
+                else:
+                    arr[:, j] = fa[:, f_col[feat]]
+            out[stn] = arr
+        return out
+
+    def _build_dyn_dataset(self, data: Dict[str, np.ndarray], feats: List[str], time_index):
+        """Wraps ``{station: ndarray(time, dynamic_features)}`` into an xarray
+        Dataset (data_vars = stations, dims = time × dynamic_features) without
+        copying the arrays."""
+        return xr.Dataset(
+            {stn: (('time', 'dynamic_features'), arr) for stn, arr in data.items()},
+            coords={'time': time_index, 'dynamic_features': list(feats)},
+        )
+
+    def _fetch_dynamic(self, stations: List[str], feats: List[str], st, en, as_dataframe: bool):
+        """Fast entry point for dynamic reads from the consolidated caches.
+        Returns a dict of per-station DataFrames (``as_dataframe=True``) or an
+        xarray Dataset."""
+        time_index, i0, i1 = self._time_positions(st, en)
+        data = self._read_consolidated(stations, feats, i0, i1)
+        tsel = time_index[i0:i1]
+        if as_dataframe:
+            out: Dict[str, pd.DataFrame] = {}
+            for stn in stations:
+                df = pd.DataFrame(data[stn], index=tsel, columns=list(feats))
+                df.columns.name = 'dynamic_features'
+                df.index.name = 'time'
+                out[stn] = df
+            return out
+        return self._build_dyn_dataset(data, feats, tsel)
+
+    def close(self):
+        """Closes the process-wide consolidated-cache handles for this dataset,
+        if open, and drops the decoded-axes cache."""
+        for path in (self.all_stations_q_path, self.all_stn_forcings_path):
+            handle = _SHARED_CAMELSH_NC.pop(path, None)
+            if handle is not None:
+                handle.close()
+        self._axes_cache = None
+        self._read_order_cache = None
+
     def _read_stn_q(self, stn):
         fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
         if not os.path.exists(fpath):
@@ -5090,11 +6715,23 @@ class CAMELSH(_RainfallRunoff):
 
     def _read_stn_q1(self, stn):
         fpath = os.path.join(self.h2_path, f"{stn}_hourly.nc")
-        if not os.path.exists(fpath):
-            raise FileNotFoundError(f"q data for station {stn} not found in {self.h2_path}")
-        dyn_map = {k:v for k,v in self.dyn_map.items() if k in ['streamflow']}
-        ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
-        return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
+        if os.path.exists(fpath):
+            dyn_map = {k:v for k,v in self.dyn_map.items() if k in ['streamflow']}
+            ds = xr.open_dataset(fpath, engine='netcdf4').rename(dyn_map)
+            return ds.to_array("dynamic_features").astype('float32').to_dataset(name=stn).transpose()
+
+        # Fall back to the consolidated cache if the per-station file is gone.
+        # Read via the shared netCDF4 handle (never xarray) so we never hold two
+        # handles on the same multi-GB file at once.
+        if os.path.exists(self.all_stations_q_path):
+            time_index, q_feats, _, _, _ = self._consolidated_axes()
+            data = self._read_consolidated([stn], q_feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, q_feats, time_index)
+
+        raise FileNotFoundError(
+            f"q data for station {stn} not found in {self.h2_path} "
+            f"nor in {self.all_stations_q_path}"
+        )
 
     def fetch_q(
             self, 
@@ -5113,14 +6750,17 @@ class CAMELSH(_RainfallRunoff):
         """
         stations = validate_attributes(stations, self.stations(), 'stations')
 
-        all_q_fname = os.path.join(self.path, "all_stations_q.nc")
+        all_q_fname = self.all_stations_q_path
         if os.path.exists(all_q_fname) and not self.overwrite:
             if self.verbosity>1:
                 print(f"Loading q data for {len(stations)} stations from {all_q_fname}")
-            # read all_q_fname and return only required stations
-            ds = xr.open_dataset(all_q_fname, engine='netcdf4')
-            return ds[stations]
-    
+            # read the requested stations directly via the shared netCDF4 handle
+            # (numpy assembly) instead of xarray, which is orders of magnitude
+            # faster for a file holding thousands of data variables.
+            time_index, q_feats, _, _, _ = self._consolidated_axes()
+            data = self._read_consolidated(stations, q_feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, q_feats, time_index)
+
         cpus = self.processes or min(32, get_cpus())
         if self.verbosity>2: print(f"Using {cpus} processes to read q data of {len(stations)} stations")
 
@@ -5171,10 +6811,12 @@ class CAMELSH(_RainfallRunoff):
         if os.path.exists(all_stn_forcings) and not self.overwrite:
             if self.verbosity>1:
                 print(f"Loading forcing data for {len(stations)} stations from {all_stn_forcings}")
-            ds = xr.open_dataset(all_stn_forcings, engine='netcdf4')
-            new_dyn = [str(self.dyn_map.get(v, v)) for v in ds["dynamic_features"].data]
-            return ds[stations].assign_coords(dynamic_features=("dynamic_features", new_dyn))
-        
+            # direct netCDF4 + numpy assembly (see fetch_q); the feature names are
+            # already mapped via dyn_map inside _consolidated_axes.
+            time_index, _, f_feats, _, _ = self._consolidated_axes()
+            data = self._read_consolidated(stations, f_feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, f_feats, time_index)
+
         cpus = self.processes or min(32, get_cpus())
         st = time.time()
 
@@ -5199,9 +6841,9 @@ class CAMELSH(_RainfallRunoff):
         if os.path.exists(all_stn_forcings) and not self.overwrite:
             if self.verbosity>1:
                 print(f"Loading forcing data for {stn} from {all_stn_forcings}")
-            ds = xr.open_dataset(all_stn_forcings, engine='netcdf4')
-            new_dyn = [str(self.dyn_map.get(v, v)) for v in ds["dynamic_features"].data]
-            return ds[stn].assign_coords(dynamic_features=("dynamic_features", new_dyn)).to_dataset(name=stn)
+            time_index, _, f_feats, _, _ = self._consolidated_axes()
+            data = self._read_consolidated([stn], f_feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, f_feats, time_index)
 
         fpath = os.path.join(self.nonobs_path, f"{stn}.nc")
         if not os.path.exists(fpath):
@@ -5225,6 +6867,12 @@ class CAMELSH(_RainfallRunoff):
         -------
         xr.Dataset
         """
+        if self._consolidated_ready():
+            time_index, q_feats, f_feats, _, _ = self._consolidated_axes()
+            feats = q_feats + f_feats
+            data = self._read_consolidated(stns, feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, feats, time_index)
+
         q = self.fetch_q(stns)
         forcing = self._read_stns_forcing(stns)
 
@@ -5233,6 +6881,12 @@ class CAMELSH(_RainfallRunoff):
         return ds
 
     def _read_stn_dyn(self, stn:str, nrows=None) -> pd.DataFrame:
+        if self._consolidated_ready():
+            time_index, q_feats, f_feats, _, _ = self._consolidated_axes()
+            feats = q_feats + f_feats
+            data = self._read_consolidated([stn], feats, 0, len(time_index))
+            return self._build_dyn_dataset(data, feats, time_index)
+
         q = self._read_stn_q1(stn)
         forcing = self._read_stn_forcing(stn)
 
@@ -5242,8 +6896,14 @@ class CAMELSH(_RainfallRunoff):
 
     def _static_data(self) -> pd.DataFrame:
         """
-        reads static data for all stations
+        reads static data for all stations. The assembled table is cached after
+        the first read because it is consulted many times (static_features,
+        stn_coords, area, every static fetch) and re-reading ~30 CSVs each time
+        was a needless repeated cost.
         """
+        if self._static_cache is not None:
+            return self._static_cache
+
         csv_files = glob.glob(os.path.join(self.attr_path, '*.csv'))
 
         dfs = []
@@ -5270,6 +6930,7 @@ class CAMELSH(_RainfallRunoff):
 
         # rename columns using self.static_map
         df = df.rename(columns=self.static_map)
+        self._static_cache = df
         return df
 
     def fetch_stations_features(
@@ -5354,11 +7015,15 @@ class CAMELSH(_RainfallRunoff):
 
             dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
 
-            dynamic = self._read_dynamic(stations, dynamic_features, st=st, en=en)
-
-            if as_dataframe:
-                # convert xarray Dataset to dictionary of pandas DataFrame
-                dynamic = {stn: dynamic[stn].to_pandas() for stn in stations}
+            if self._consolidated_ready():
+                # fast path: read/assemble directly from the consolidated caches,
+                # building DataFrames without an intermediate xarray Dataset.
+                dynamic = self._fetch_dynamic(stations, dynamic_features, st, en, as_dataframe)
+            else:
+                dynamic = self._read_dynamic(stations, dynamic_features, st=st, en=en)
+                if as_dataframe:
+                    # convert xarray Dataset to dictionary of pandas DataFrame
+                    dynamic = {stn: dynamic[stn].to_pandas() for stn in stations}
 
             if static_features is not None:
                 static = self.fetch_static_features(stations, static_features)
@@ -5390,17 +7055,18 @@ class CAMELSH(_RainfallRunoff):
         dyn_feats = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
         stations = validate_attributes(stations, self.stations(), 'stations')
 
-        cpus = self.processes or min(get_cpus(), 16)
-        start = time.time()
-        if len(stations) < cpus:
-            cpus = 1
-        
-        # There can be 3 scenarios
+        if self._consolidated_ready():
+            # fast path: direct netCDF4 read + numpy assembly, already sliced to
+            # the requested features and time window.
+            return self._fetch_dynamic(stations, dyn_feats, st, en, as_dataframe=False)
+
+        # fallback (per-station files; consolidated caches not built yet). There
+        # can be 3 scenarios.
         if len(dyn_feats) == 1 and dyn_feats[0] == observed_streamflow_cms():
             # only q is asked
             results = self.fetch_q(stations)
 
-        elif observed_streamflow_cms() not in dyn_feats:
+        elif observed_streamflow_cms() not in dyn_feats and 'water_level' not in dyn_feats:
             # only forcing data is asked
             results = self._read_stns_forcing(stations)
         else:
@@ -5506,7 +7172,8 @@ class CAMELSH(_RainfallRunoff):
                     try:
                         run_id, time_f, dyn, arr = fut.result()
                     except Exception as e:
-                        print(f"[ERROR worker] {e}")
+                        warnings.warn(f"[worker] a forcing-data task failed and its "
+                                      f"station was skipped: {e}")
                         continue
                     # Skip the one we already wrote
                     if run_id == fr_run_id:
@@ -5568,6 +7235,13 @@ class CAMELSH(_RainfallRunoff):
 
         q = (q / area_m2) * time_conversion  # cms to m
         return q * 1e3  # to mm
+
+    def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
+        return [
+            (os.path.join(self.path, "Hourly2"),           self.all_stations_q_path),
+            (os.path.join(self.path, "timeseries"),        self.all_stn_forcings_path),
+            (os.path.join(self.path, "timeseries_nonobs"), self.all_stn_forcings_path),
+        ]
 
 
 def _validate_coords(run_id, time_f, dyn, T, D):

@@ -11,10 +11,10 @@ import sys
 sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'AquaFetch'
-copyright = '2025, Ather Abbas'
+copyright = '2026, Ather Abbas'
 author = 'Ather Abbas'
 
-release = "1.0.0"
+release = "1.1.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -99,12 +99,31 @@ sphinx_gallery_conf = {
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
+# Custom CSS to widen the content area (the RTD theme caps it at 800px, which
+# leaves empty space on wide screens and makes wide tables scroll horizontally).
+html_css_files = ['custom.css']
+
 # List of arguments to be passed to the kernel that executes the notebooks:
 nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",
 ]
 
 nbsphinx_allow_errors = True
+
+# nbsphinx loads RequireJS on every page by default. RequireJS defines
+# `define.amd`, which makes DataTables (used by sphinx_datatables for the
+# sortable summary tables) register itself as an AMD module instead of
+# attaching `$.fn.DataTable` to jQuery. As a result the sortable-table
+# activation script (`$('table.sphinx-datatable').DataTable()`) throws and no
+# table becomes sortable. None of our notebooks use RequireJS, so we disable
+# its injection (empty string => nbsphinx skips loading it) to let DataTables
+# attach normally. Re-enable it if a notebook ever needs AMD-based widgets.
+nbsphinx_requirejs_path = ''
+
+# sphinx_datatables applies these options to every sortable table. Show 100 rows
+# per page by default (DataTables' built-in default is 10) so the full dataset
+# tables are visible without paging.
+datatables_options = {"pageLength": 100}
 
 # nbsphinx_thumbnails = {
 #     'gallery/thumbnail-from-conf-py': 'gallery/a-local-file.png',

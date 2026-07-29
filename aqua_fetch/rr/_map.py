@@ -27,6 +27,24 @@ def observed_streamflow_mm()->str:
     return "q_mm_obs"
 
 
+def simulated_streamflow_mm()->str:
+    """simulated (model) streamflow expressed as catchment-equivalent runoff
+    depth in mm/timestep"""
+    return "q_mm_sim"
+
+
+def observed_water_level_cm()->str:
+    """observed water level (gauge stage) in centimeters"""
+    return "wl_cm_obs"
+
+
+def observed_water_level_ft()->str:
+    """observed water level in feet. The reference datum is station-specific
+    (e.g. stage above the local streambed/ground for stream gauges, or
+    instantaneous surface level for a lake/reservoir gauge)."""
+    return "wl_ft_obs"
+
+
 # %% precpiation
 
 def total_precipitation()->str:
@@ -500,7 +518,7 @@ def max_catchment_elevation_meters()->str:
 
 def med_catchment_elevation_meters()->str:
     """median elevation of the catchment in meters"""
-    return "elev_catch_max_m"
+    return "elev_catch_med_m"
 
 
 def urban_fraction()->str:

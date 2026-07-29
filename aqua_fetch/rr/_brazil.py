@@ -552,7 +552,7 @@ class CAMELS_BR(_RainfallRunoff):
                 # making one separate dataframe for one station
                 dyn[station] = self.get_dynamic_features(station, features).loc[st:en]
 
-                if idx % 20 == 0:
+                if self.verbosity and idx % 20 == 0:
                     print(f"completed {idx} stations")
         else:
 

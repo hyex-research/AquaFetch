@@ -3,7 +3,7 @@ import gc
 import os
 import warnings
 from pathlib import Path
-from datetime import datetime
+from functools import partial
 import concurrent.futures as cf
 from typing import Union, List, Dict
 
@@ -71,12 +71,16 @@ class LamaHCE(_RainfallRunoff):
 
     url = {
         '1_LamaH-CE_daily_hourly.tar.gz': 'https://zenodo.org/records/5153305/files/1_LamaH-CE_daily_hourly.tar.gz',
+        # contains only A_basins_total_upstrm and B_basins_intermediate_all
         '2_LamaH-CE_daily.tar.gz': 'https://zenodo.org/records/5153305/files/2_LamaH-CE_daily.tar.gz'
     }
 
     dirs_to_check = {
         '1_LamaH-CE_daily_hourly.tar.gz': {
-            'total_upstrm': ['A_basins_total_upstrm', 'D_gauges']},
+            'total_upstrm': ['A_basins_total_upstrm', 'D_gauges'],
+            'intermediate_all': ['B_basins_intermediate_all', 'D_gauges'],
+            'intermediate_lowimp': ['C_basins_intermediate_lowimp', 'D_gauges'],
+            },
         '2_LamaH-CE_daily.tar.gz': {
             'total_upstrm': 
                 ['A_basins_total_upstrm', 'D_gauges'],
@@ -215,47 +219,44 @@ class LamaHCE(_RainfallRunoff):
         assert timestep in self.time_steps, f"invalid timestep '{timestep}' given, choose from {self.time_steps}"
         assert data_type in self._data_types, f"invalid data_type '{data_type}' given, choose from {self._data_types}"
 
-        self.timestep = timestep
         self.data_type = data_type
 
-        super().__init__(path=path, overwrite=overwrite, **kwargs)
+        # forward timestep and to_netcdf so the parent doesn't reset them
+        super().__init__(path=path, timestep=timestep, to_netcdf=to_netcdf,
+                         overwrite=overwrite, **kwargs)
 
-        self.timestep = timestep
-
-        if timestep == "D" and "1_LamaH-CE_daily_hourly.tar.gz" in self.url:
-            self.url.pop("1_LamaH-CE_daily_hourly.tar.gz")
-        if timestep == 'H' and '2_LamaH-CE_daily.tar.gz' in self.url:
-            self.url.pop('2_LamaH-CE_daily.tar.gz')
+        # copy so we don't mutate the class-level dict shared across instances
+        self.url = dict(self.url)
+        if timestep == "D":
+            self.url.pop("1_LamaH-CE_daily_hourly.tar.gz", None)
+        if timestep == 'H':
+            self.url.pop('2_LamaH-CE_daily.tar.gz', None)
 
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
         for fname, url in self.url.items():
             fpath = os.path.join(self.path, fname)
+
+            # if the unzipped folders already exist, nothing to do
+            if all(os.path.exists(os.path.join(self.path, folder))
+                   for folder in self.dirs_to_check[fname][data_type]):
+                continue
+
+            # archive missing -> download
             if not os.path.exists(fpath):
-
-                # # first we check if the .nc files exist so we don't download again
-                # if os.path.exists(os.path.join(self.path, self.dirs_to_check1[fname][data_type])):
-                #     continue
-
-                # then if the the unzipped folders exist so we don't download again
-                if all([os.path.exists(os.path.join(self.path, folder)) for folder in self.dirs_to_check[fname][data_type]]):
-                    continue
-    
-                if self.verbosity: 
+                if self.verbosity:
                     print(f'downloading {fname}')
                 download(url, self.path, fname)
 
-                unzip(self.path, verbosity=self.verbosity)
+            # archive present (just downloaded or already on disk) but not unzipped
+            unzip(self.path, verbosity=self.verbosity)
 
         self._static_features = self.static_data().columns.to_list()
 
         self._dynamic_features = self.__dynamic_features()
 
-        if netCDF4 is None:
-            to_netcdf = False
-
-        if not self.all_ncs_exist and to_netcdf:
+        if self.to_netcdf and not self.all_ncs_exist:
             self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
 
         self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5, 
@@ -270,7 +271,7 @@ class LamaHCE(_RainfallRunoff):
         only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
         file can take some time however it leads to faster I/O operations.
         """
-        return self.name.lower() + f"_{self.timestep}_{self.self.data_type}.nc"
+        return self.name.lower() + f"_{self.timestep}_{self.data_type}.nc"
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -324,14 +325,15 @@ class LamaHCE(_RainfallRunoff):
 
     @property
     def boundary_file(self) -> os.PathLike:
-        if self.timestep == 'D':
-            return os.path.join(self.path,
-                                "A_basins_total_upstrm",
-                                "3_shapefiles", "Basins_A.shp")
-        else:
-            return os.path.join(self.path,
-                                "A_basins_total_upstrm",
-                                "3_shapefiles", "Basins_A.shp")
+        # A_basins_total_upstrm -> Basins_A.shp,
+        # B_basins_intermediate_all -> Basins_B.shp,
+        # C_basins_intermediate_lowimp -> Basins_C.shp
+        letters = {'total_upstrm': 'A',
+                   'intermediate_all': 'B',
+                   'intermediate_lowimp': 'C'}
+        return os.path.join(self.data_type_dir,
+                            "3_shapefiles",
+                            f"Basins_{letters[self.data_type]}.shp")
 
     def _maybe_to_netcdf(self, fdir: str):
         # since data is very large, saving all the data in one file
@@ -346,7 +348,8 @@ class LamaHCE(_RainfallRunoff):
             os.makedirs(fdir)
 
         if not self.all_ncs_exist:
-            print(f'converting data to netcdf format for faster io operations')
+            if self.verbosity:
+                print(f'converting data to netcdf format for faster io operations')
 
             for feature in self.dynamic_features:
 
@@ -354,13 +357,36 @@ class LamaHCE(_RainfallRunoff):
                 dyn_fname = os.path.join(fdir, f"{feature}.nc")
 
                 if not os.path.exists(dyn_fname):
-                    print(f'Saving {feature} as {dyn_fname}')
+                    if self.verbosity:
+                        print(f'Saving {feature} as {dyn_fname}')
                     _, data = self.fetch(static_features=None, dynamic_features=feature)
 
                     data.to_netcdf(dyn_fname)
 
                     gc.collect()
         return
+
+    def _archive_files(self) -> List[str]:
+        """LamaHCE archives don't unzip into a same-named wrapper folder
+        (they extract ``A_basins_total_upstrm``, ``D_gauges``, ... directly
+        under ``self.path``), so the parent class's stem-matching heuristic
+        skips them. Use the per-archive ``dirs_to_check`` declaration as the
+        proof that an archive's content is on disk.
+        """
+        if not os.path.isdir(self.path):
+            return []
+        out: List[str] = []
+        for fname, dt_map in self.dirs_to_check.items():
+            fpath = os.path.join(self.path, fname)
+            if not os.path.exists(fpath):
+                continue
+            expected = dt_map.get(self.data_type)
+            if not expected:
+                continue
+            if all(os.path.exists(os.path.join(self.path, folder))
+                   for folder in expected):
+                out.append(fpath)
+        return out
 
     @property
     def dynamic_fnames(self):
@@ -389,7 +415,7 @@ class LamaHCE(_RainfallRunoff):
     @property
     def data_type_dir(self):
         f = [f for f in os.listdir(self.path) if f.endswith(self.data_type)][0]
-        return os.path.join(self.path, f'{self.path}{SEP}{f}')
+        return os.path.join(self.path, f)
 
     @property
     def q_dir(self):
@@ -544,6 +570,9 @@ class LamaHCE(_RainfallRunoff):
     def static_data(self) -> pd.DataFrame:
         """returns all static attributes of LamaHCE dataset"""
         df = pd.concat([self.catchment_attributes(), self.gauge_attributes()], axis=1)
+        # Catchment_attributes.csv and Gauge_attributes.csv share fields (lat, lon, ...);
+        # keep the gauge copy because static_map maps 'lat'/'lon' to gauge coordinates.
+        df = df.loc[:, ~df.columns.duplicated(keep='last')]
         df.rename(columns=self.static_map, inplace=True)
         return df
 
@@ -789,8 +818,6 @@ class LamaHCE(_RainfallRunoff):
                             freq="D")
 
             q_df.index = periods.to_timestamp()
-            index = pd.date_range("1981-01-01", "2017-12-31", freq="D")
-            q_df = q_df.reindex(index=index)
         else:
             q_dtype.update({
                 'hh': np.int32,
@@ -809,8 +836,6 @@ class LamaHCE(_RainfallRunoff):
                             minute=q_df["mm"], freq="h")
 
             q_df.index = periods.to_timestamp()
-            index = pd.date_range("1981-01-01", "2017-12-31", freq="h")
-            q_df = q_df.reindex(index=index)
 
         [q_df.pop(item) for item in ['YYYY', 'MM', 'DD', 'hh', 'mm'] if item in q_df]
         q_df.rename(columns={'qobs': 'q_cms'}, inplace=True)
@@ -822,7 +847,7 @@ class LamaHCE(_RainfallRunoff):
 
     @property
     def start(self):
-        return "19810101"
+        return pd.Timestamp("1981-01-01")
 
     @property
     def end(self):  # todo, is it untill 2017 or 2019?
@@ -950,10 +975,16 @@ class LamaHIce(LamaHCE):
                 [os.path.join('lamah_ice', 'lamah_ice', 'C_basins_intermediate_lowimp'), os.path.join('lamah_ice', 'lamah_ice', 'D_gauges')],
                           },
         'lamah_ice_hourly.zip': {
-            'total_upstrm': 
-                [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'A_basins_total_upstrm'), os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
-            'intermediate_all': ['intermediate_all_H'],
-                                    },    
+            'total_upstrm':
+                [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'A_basins_total_upstrm'),
+                 os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
+            'intermediate_all':
+                [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'B_basins_intermediate_all'),
+                 os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
+            'intermediate_lowimp':
+                [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'C_basins_intermediate_lowimp'),
+                 os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
+                                    },
         'Caravan_extension_lamahice.zip': {
             'total_upstrm': [],
             'intermediate_all': [],
@@ -1002,11 +1033,15 @@ class LamaHIce(LamaHCE):
                     or ``intermediate_lowimp``
         """
 
-        # don't download hourly data if timestep is daily
-        if timestep == "D" and "lamah_ice_hourly.zip" in self.url:
-            self.url.pop("lamah_ice_hourly.zip")
-        if timestep == 'H' and 'Caravan_extension_lamahice.zip' in self.url:
-            self.url.pop('Caravan_extension_lamahice.zip')
+        # copy so we don't mutate the class-level dict shared across instances
+        self.url = dict(self.url)
+        if timestep == "D":
+            self.url.pop("lamah_ice_hourly.zip", None)
+        if timestep == 'H':
+            # hourly mode reads everything from lamah_ice_hourly.zip; the
+            # daily archive and the caravan extension are not used.
+            self.url.pop('lamah_ice.zip', None)
+            self.url.pop('Caravan_extension_lamahice.zip', None)
 
         super().__init__(path=path,
                          timestep=timestep,
@@ -1069,11 +1104,15 @@ class LamaHIce(LamaHCE):
 
     @property
     def boundary_file(self) -> os.PathLike:
-        return os.path.join(self.path,
-                            "lamah_ice",
-                            "lamah_ice",
-                            "A_basins_total_upstrm",
-                            "3_shapefiles", "Basins_A.shp")
+        # A_basins_total_upstrm -> Basins_A.shp,
+        # B_basins_intermediate_all -> Basins_B.shp,
+        # C_basins_intermediate_lowimp -> Basins_C.shp
+        letters = {'total_upstrm': 'A',
+                   'intermediate_all': 'B',
+                   'intermediate_lowimp': 'C'}
+        return os.path.join(self.data_type_dir,
+                            "3_shapefiles",
+                            f"Basins_{letters[self.data_type]}.shp")
 
     @property
     def start(self):
@@ -1380,18 +1419,22 @@ class LamaHIce(LamaHCE):
 
         # todo : consider quality code!
 
-        index = df.apply(  # todo, is it taking more time?
-            lambda x: datetime.strptime("{0} {1} {2}".format(
-                x['YYYY'].astype(int), x['MM'].astype(int), x['DD'].astype(int)), "%Y %m %d"),
-            axis=1)
+        # vectorized date parsing from the YYYY/MM/DD integer columns. This is
+        # ~200x faster than a per-row datetime.strptime via df.apply(axis=1)
+        # (which dominated the hourly read time) and yields identical timestamps.
+        index = pd.to_datetime(
+            df[['YYYY', 'MM', 'DD']].rename(
+                columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
 
         if self.timestep == "H":
+            # the hourly q file has no explicit hour column; rows are stored
+            # sequentially within each (YYYY, MM, DD) group, so derive the
+            # hour offset from cumcount within the day.
             hour = df.groupby(['YYYY', 'MM', 'DD']).cumcount()
             df.index = index + pd.to_timedelta(hour, unit='h')
         else:
-            df.index = pd.to_datetime(index)
+            df.index = index
         s = df['qobs']
-        # s.name = stn
         return s
 
     def fetch_clim_features(
@@ -1415,9 +1458,13 @@ class LamaHIce(LamaHCE):
     def fetch_stn_meteo(
             self,
             stn: str,
-            nrows: int = None
+            nrows: int = None,
+            usecols: List[str] = None,
     ) -> pd.DataFrame:
         """returns climate/meteorological time series data for one station
+
+        ``usecols`` restricts the columns read from disk (it must include the
+        date columns needed to build the index); ``None`` reads all columns.
 
         Returns
         -------
@@ -1453,27 +1500,59 @@ class LamaHIce(LamaHCE):
             "volsw_4": np.float32,
             "prec_rav": np.float32,
             "prec_carra": np.float32,
+            # hourly-timestep columns. The daily aggregates above cover the
+            # daily files; the hourly files store the instantaneous variables
+            # under un-suffixed names. Declaring an explicit dtype for every
+            # hourly column avoids pandas' float64 type-inference on ~15
+            # columns, which measurably slows the read of these 631k-row,
+            # 97 MB files, and (being half the width of float64) also shrinks
+            # the frames shipped back from the worker processes. float32 is
+            # used only where its value range was verified safe: the
+            # instantaneous variables mirror how the daily aggregates of the
+            # same quantities are already read, and the reanalysis (``_rav``)
+            # columns all fall well below 1000 in magnitude -- float32 keeps
+            # more precision there than the source's own decimals. The one
+            # exception is ``surf_press_rav`` (~9.6e4, i.e. 7 significant
+            # figures) which is kept at full float64 precision.
+            "2m_temp": np.float32,
+            "2m_dp_temp": np.float32,
+            "surf_net_solar_rad": np.float32,
+            "surf_net_therm_rad": np.float32,
+            "pet": np.float32,
+            "surf_press_rav": np.float64,
+            "total_et_rav": np.float32,
+            "2m_temp_rav": np.float32,
+            "10m_wind_u_rav": np.float32,
+            "10m_wind_v_rav": np.float32,
+            "surf_dwn_therm_rad_rav": np.float32,
+            "surf_outg_therm_rad_rav": np.float32,
+            "surf_dwn_solar_rad_rav": np.float32,
+            "2m_qv_rav": np.float32,
+            "grdflx_rav": np.float32,
         }
 
         if not os.path.exists(fpath):
             raise FileNotFoundError(f"File not found: {fpath}")
 
-        df = pd.read_csv(fpath, sep=';', dtype=dtypes, nrows=nrows)
+        df = pd.read_csv(fpath, sep=';', dtype=dtypes, nrows=nrows, usecols=usecols)
 
-        index = df.apply(
-            lambda x: datetime.strptime("{0} {1} {2}".format(
-                x['YYYY'].astype(int), x['MM'].astype(int), x['DD'].astype(int)), "%Y %m %d"),
-            axis=1)
+        # vectorized date parsing from the YYYY/MM/DD integer columns. This is
+        # ~200x faster than a per-row datetime.strptime via df.apply(axis=1)
+        # (which dominated the hourly read time) and yields identical timestamps.
+        index = pd.to_datetime(
+            df[['YYYY', 'MM', 'DD']].rename(
+                columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
 
         if self.timestep == "H":
-            # hour = df.groupby(['YYYY', 'MM', 'DD']).cumcount()
             df.index = index + pd.to_timedelta(df['HOD'], unit='h')
             for col in ['YYYY', 'MM', 'DD', 'DOY', 'hh', 'mm', 'HOD']:
-                df.pop(col)
+                if col in df:
+                    df.pop(col)
         else:
-            df.index = pd.to_datetime(index)
-            for col in ['YYYY', 'MM', 'DD', 'DOY', ]:
-                df.pop(col)
+            df.index = index
+            for col in ['YYYY', 'MM', 'DD', 'DOY']:
+                if col in df:
+                    df.pop(col)
 
         return df
 
@@ -1496,14 +1575,32 @@ class LamaHIce(LamaHCE):
         cpus = self.processes or min(get_cpus(), 16)
         st, en = self._check_length(st, en)
 
-        if self.verbosity>1: 
+        # spinning up a process pool (and pickling ``self`` to every worker)
+        # only pays off once there are >=2 stations to read in parallel; for a
+        # single station the pool startup is pure overhead, so read it inline.
+        if len(stations) < 2:
+            cpus = 1
+
+        if self.verbosity>1:
             print(f"reading dynamic data for {len(stations)} stations with {cpus} cpus")
+
+        # when the caller wants only a strict subset of the dynamic features,
+        # tell the per-station reader so it can read just those columns off
+        # disk (a meteo file has 34 columns; a single-feature fetch otherwise
+        # parses and ships all of them just to throw 33 away). Requesting the
+        # full feature set leaves the read path exactly as before.
+        subset = None
+        if dynamic_features != 'all' and len(dynamic_features) < len(self.dynamic_features):
+            subset = list(dynamic_features)
 
         if cpus > 1:
 
+            reader = self._read_stn_dyn if subset is None else partial(
+                self._read_stn_dyn, dynamic_features=subset)
+
             with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
                 results = executor.map(
-                    self._read_stn_dyn,
+                    reader,
                     stations
                 )
 
@@ -1517,32 +1614,55 @@ class LamaHIce(LamaHCE):
                 if dynamic_features == 'all':
                     results[stn] = self._read_stn_dyn(stn)
                 else:
-                    results[stn] = self._read_stn_dyn(stn).loc[st:en, dynamic_features]
+                    results[stn] = self._read_stn_dyn(stn, dynamic_features=subset).loc[st:en, dynamic_features]
 
-                if idx % 10 == 0:
+                if self.verbosity and idx % 10 == 0:
                     print(f"processed {idx} stations")
 
         return results
 
     def _read_stn_dyn(
             self,
-            station: str
+            station: str,
+            dynamic_features: Union[str, List[str]] = None,
     ) -> pd.DataFrame:
         """
         Reads daily dynamic (meteorological + streamflow) data for one catchment
-        and returns as DataFrame
+        and returns as DataFrame.
+
+        ``dynamic_features`` (a list of the standardized/renamed feature names)
+        restricts the read to just those columns; ``None`` reads everything.
         """
 
         if self.verbosity>2:
             print(f"reading data for {station}")
 
-        q = self.fetch_stn_q(station).copy()
-        met = self.fetch_stn_meteo(station).copy()
+        # translate the requested (renamed) feature names back to the on-disk
+        # column names so we can hand read_csv a ``usecols`` and avoid parsing
+        # the ~30 columns we would only discard. ``None`` -> read everything.
+        meteo_usecols = None
+        want_q = True
+        if dynamic_features is not None:
+            feats = [dynamic_features] if isinstance(dynamic_features, str) else list(dynamic_features)
+            renamed_to_src = {ren: src for src, ren in self.dyn_map[self.timestep].items()}
+            want_q = self._q_name in feats
+            date_cols = ['YYYY', 'MM', 'DD', 'HOD'] if self.timestep == 'H' else ['YYYY', 'MM', 'DD']
+            meteo_src = [renamed_to_src.get(f, f) for f in feats if f != self._q_name]
+            meteo_usecols = date_cols + [c for c in meteo_src if c not in date_cols]
 
-        # drop duplicated index from met
-        met = met.loc[~met.index.duplicated(keep='first')].copy()
+        # fetch_stn_q / fetch_stn_meteo already return freshly-built objects and
+        # the concat below copies again, so defensive .copy() calls here only
+        # duplicated the 631k-row meteo frame (~68 MB) for nothing.
+        met = self.fetch_stn_meteo(station, usecols=meteo_usecols)
 
-        df = pd.concat([met, q], axis=1).loc[self.start:self.end, :].copy()
+        # drop duplicated index from met (boolean indexing already returns a copy)
+        met = met.loc[~met.index.duplicated(keep='first')]
+
+        if want_q:
+            q = self.fetch_stn_q(station)
+            df = pd.concat([met, q], axis=1).loc[self.start:self.end, :].copy()
+        else:
+            df = met.loc[self.start:self.end, :].copy()
 
         for col in self.dyn_map[self.timestep]:
             if col in df.columns:

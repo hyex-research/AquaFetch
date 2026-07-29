@@ -52,7 +52,10 @@ from ._camels import CAMELS_LUX
 from ._camels import CAMELS_COL
 from ._camels import CAMELS_SK
 from ._camels import CAMELS_FI
+from ._camels import CAMELS_PL
+from ._camels import CAMELS_PE
 from ._estreams import Slovenia
+from ._ukflow15 import UKFlow15
 from ._camels import CAMELSH
 # following are not available with RainfallRunoff class yet
 from ._npctr import NPCTRCatchments
@@ -62,6 +65,7 @@ from .mtropics import MtropicsVietnam
 from ._misc import DraixBleone
 from ._misc import JialingRiverChina
 from ._misc import ShyftNorway
+from ._misc import NamalValleyPakistan
 
 
 DATASETS = {
@@ -107,7 +111,11 @@ DATASETS = {
     'CAMELS_COL': CAMELS_COL,
     'CAMELS_SK': CAMELS_SK,
     'CAMELS_FI': CAMELS_FI,
+    'CAMELS_PL': CAMELS_PL,
+    'CAMELS_PE': CAMELS_PE,
     'Slovenia': Slovenia,
+    'UKFlow15': UKFlow15,
+    'NamalValleyPakistan': NamalValleyPakistan,
 }
 
 
@@ -244,6 +252,8 @@ class RainfallRunoff(object):
             - ``Japan``
             - ``LamaHCE``
             - ``LamaHIce``
+            - ``CAMELS_PL``
+            - ``CAMELS_PE``
             - ``Poland``
             - ``Portugal``
             - ``RRLuleaSweden``
@@ -272,8 +282,11 @@ class RainfallRunoff(object):
             0: no message will be printed
         kwargs :
             additional keyword arguments for the underlying dataset class
-            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS` or ``timestep`` for
-            :py:class:`aqua_fetch.rr.LamaHCE` dataset or ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`
+            For example ``version`` for :py:class:`aqua_fetch.rr.CAMELS_AUS`,
+            ``met_src`` for :py:class:`aqua_fetch.rr.CAMELS_BR`, or ``timestep``
+            (``'D'`` daily or ``'H'`` hourly) for datasets available at multiple
+            timesteps such as :py:class:`aqua_fetch.rr.LamaHCE` and
+            :py:class:`aqua_fetch.rr.CAMELS_DE`
         """
 
         if dataset not in DATASETS:
@@ -426,6 +439,7 @@ class RainfallRunoff(object):
             st: Union[None, str] = None,
             en: Union[None, str] = None,
             as_dataframe: bool = False,
+            seed: Union[int, None] = None,
             **kwargs  # todo, where do these keyword args go?
             ) -> tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """
@@ -469,6 +483,11 @@ class RainfallRunoff(object):
             or as :obj:`xarray.Dataset`. if :obj:`xarray` library is not
             installed, then this parameter will be ignored and the data will
             be returned as :obj:`pandas.DataFrame`.
+        seed :
+            seed for reproducible random selection of stations. It is only used
+            when ``stations`` is an :obj:`int` or a :obj:`float`. If None (default),
+            the selection is non-deterministic. Passing an integer returns the same
+            set of stations on every call. The global random state is left untouched.
         kwargs :
             keyword arguments
 
@@ -497,6 +516,12 @@ class RainfallRunoff(object):
         ...  # fetch data of 5 (randomly selected) stations
         >>> _, five_random_stn_data = dataset.fetch(stations=5, as_dataframe=True)
         ...
+        ... # fetch the same 5 stations reproducibly by passing a seed
+        >>> _, a = dataset.fetch(stations=5, seed=313, as_dataframe=True)
+        >>> _, b = dataset.fetch(stations=5, seed=313, as_dataframe=True)
+        >>> list(a) == list(b)  # same stations on every call
+        True
+        ...
         ... # fetch data of 2 selected stations
         >>> _, two_selec_stn_data = dataset.fetch(stations=['912101A','912105A'], as_dataframe=True)
         ...
@@ -515,7 +540,7 @@ class RainfallRunoff(object):
         >>> _, data = dataset.fetch(stations='912101A', st="20010101", en="20101231", as_dataframe=True)
 
         """
-        return self.dataset.fetch(stations, dynamic_features, static_features, st, en, as_dataframe, **kwargs)
+        return self.dataset.fetch(stations, dynamic_features, static_features, st, en, as_dataframe, seed=seed, **kwargs)
 
     def fetch_stations_features(
             self,

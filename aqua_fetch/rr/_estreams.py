@@ -32,10 +32,12 @@ except (ModuleNotFoundError, ImportError):
     ET = None
 
 from .._backend import xarray as xr
+from .._backend import netCDF4
+from .._backend import fiona
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from .utils import _RainfallRunoff
- 
+from ._utils import tw_resampler
  
 from ._map import (
     catchment_area,
@@ -59,6 +61,18 @@ from ._map import (
 
 
 # todo : a lot of methods in subclasses of _EStreams are redundant
+
+# Process-wide, read-only handles to meteorology.nc keyed by its absolute path.
+# The parent EStreams and every country class' internal EStreams resolve to the
+# SAME meteorology.nc, so they share one handle that is opened once and kept open
+# for the life of the process. This is deliberate: with netCDF4/HDF5 in this
+# environment, opening a second handle to the file while a previous one is being
+# torn down (e.g. when one EStreams instance is garbage-collected as another is
+# created) crashes the interpreter (use-after-free in the HDF5 C library). A
+# single shared handle that is never closed mid-process removes that race.
+_SHARED_METEO_NC = {}   # nc_path -> netCDF4.Dataset  (single-station reads)
+_SHARED_METEO_XR = {}   # nc_path -> xarray.Dataset   (all-stations accessor)
+
 
 class EStreams(_RainfallRunoff):
     """
@@ -88,6 +102,10 @@ class EStreams(_RainfallRunoff):
         self._stations = self.__stations()
         self._dynamic_features = None # lazy loading, will be loaded when first accessed
         self._static_features = None # lazy loading, will be loaded when first accessed
+        self._static_data_cache = None # assembled static table, cached on first use
+        # the meteorology.nc file handles are shared process-wide (see the module
+        # level _SHARED_METEO_* dicts); only the cheap decoded axes are per-instance
+        self._meteo_axes_cache = None # shared (time index, column names) of meteo.nc
 
         self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
         self.parallels = range(30, 80, 15)
@@ -152,8 +170,14 @@ class EStreams(_RainfallRunoff):
 
     def _static_data(self) -> pd.DataFrame:
         """
-        Returns a dataframe with static attributes of catchments
+        Returns a dataframe with static attributes of catchments. The assembled
+        table (concatenation of several csv files) is cached on first use, since
+        area(), stn_coords(), q_mm() and fetch_static_features() all request it
+        repeatedly and rebuilding it each time dominated the runtime.
         """
+        if self._static_data_cache is not None:
+            return self._static_data_cache
+
         static_path = os.path.join(self.path2, 'attributes', 'static_attributes')
 
         dfs = [self.hydro_clim_sigs(), self.md.copy()]
@@ -168,6 +192,7 @@ class EStreams(_RainfallRunoff):
 
         df.columns.name = 'static_features'
         df.index.name = 'station_id'
+        self._static_data_cache = df
         return df
 
     def gauge_stations(self) -> pd.DataFrame:
@@ -272,13 +297,10 @@ class EStreams(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
         """
-        if os.path.exists(self.nc_path) and xr is not None:
+        if os.path.exists(self.nc_path) and netCDF4 is not None:
             if self.verbosity > 2:
                 print(f"Reading {station} from {self.nc_path}")
-            ds = xr.open_dataset(self.nc_path)
-            df = ds[station].to_pandas()
-            ds.close()
-            return df
+            return self._meteo_station_from_nc(station)
 
         df = pd.read_csv(
             os.path.join(self.path2, 'meteorology', f'estreams_meteorology_{station}.csv'),
@@ -291,6 +313,65 @@ class EStreams(_RainfallRunoff):
         df.rename(columns=self.dyn_map, inplace=True)
 
         return df
+
+    def _meteo_handle(self):
+        """
+        Returns the process-wide, read-only :obj:`netCDF4.Dataset` handle to
+        ``meteorology.nc``, opened once on first use and shared across all
+        EStreams instances pointing at the same file. Reading via netCDF4
+        directly (rather than re-opening with :func:`xarray.open_dataset`) avoids
+        xarray's global file-handle cache whose teardown segfaults; sharing one
+        handle avoids opening a second one while a first is being torn down.
+        """
+        handle = _SHARED_METEO_NC.get(self.nc_path)
+        if handle is None:
+            handle = netCDF4.Dataset(self.nc_path)
+            _SHARED_METEO_NC[self.nc_path] = handle
+        return handle
+
+    def _meteo_axes(self):
+        """
+        Returns the ``(time index, column names)`` shared by every station
+        variable in ``meteorology.nc``. Decoded once and cached: ``num2date``
+        over the 26844 timestamps (and the column decode) is identical for every
+        station, and recomputing it per station dominated bulk reads.
+        """
+        if self._meteo_axes_cache is None:
+            nc = self._meteo_handle()
+            t = nc.variables['time']
+            # "days since 1950-01-01 00:00:00" / proleptic_gregorian -> timestamps
+            times = netCDF4.num2date(
+                t[:], t.units, getattr(t, 'calendar', 'standard'),
+                only_use_cftime_datetimes=False, only_use_python_datetimes=True)
+            index = pd.DatetimeIndex(times, name='time')
+            cols = [c.decode() if isinstance(c, bytes) else str(c)
+                    for c in nc.variables['dynamic_features'][:]]
+            self._meteo_axes_cache = (index, cols)
+        return self._meteo_axes_cache
+
+    def _meteo_station_from_nc(self, station: str) -> pd.DataFrame:
+        """
+        Reads a single station's meteorological data from ``meteorology.nc`` using
+        the cached netCDF4 handle. Produces the same DataFrame (values, time index,
+        column/index names) that ``xr.open_dataset(nc)[station].to_pandas()`` did.
+        """
+        nc = self._meteo_handle()
+        # read at full precision; do not downcast measurement values
+        data = np.asarray(nc.variables[station][:])  # (time, dynamic_features)
+        index, cols = self._meteo_axes()
+        df = pd.DataFrame(data, index=index, columns=cols)
+        df.columns.name = 'dynamic_features'
+        return df
+
+    def close(self):
+        """Closes the shared ``meteorology.nc`` handles for this file, if open."""
+        xds = _SHARED_METEO_XR.pop(self.nc_path, None)
+        if xds is not None:
+            xds.close()
+        handle = _SHARED_METEO_NC.pop(self.nc_path, None)
+        if handle is not None:
+            handle.close()
+        self._meteo_axes_cache = None
 
     def meteo_data(
             self,
@@ -315,11 +396,17 @@ class EStreams(_RainfallRunoff):
         """
         
         if self.to_netcdf and os.path.exists(self.nc_path):
-            if self.verbosity > 1:
-                print(f"Reading from {self.nc_path}")
-            # todo :with xarray 2025.1.2 it is causing following error, however tested successfully with xarray 2025.10.1
-            # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".                
-            return xr.open_dataset(self.nc_path)
+            # open once and share process-wide; re-opening the same file makes
+            # xarray share/tear-down one global netCDF4/HDF5 handle -> segfault
+            xds = _SHARED_METEO_XR.get(self.nc_path)
+            if xds is None:
+                if self.verbosity > 1:
+                    print(f"Reading from {self.nc_path}")
+                # todo :with xarray 2025.1.2 it is causing following error, however tested successfully with xarray 2025.10.1
+                # ValueError: Failed to decode variable 'time': unable to decode time units 'days since 1950-01-01 00:00:00' with "calendar 'proleptic_gregorian'".
+                xds = xr.open_dataset(self.nc_path)
+                _SHARED_METEO_XR[self.nc_path] = xds
+            return xds
 
         cpus = self.processes or max(get_cpus() - 2, 1)
         stations = self.stations()
@@ -507,6 +594,10 @@ class _EStreams(_RainfallRunoff):
 
         self.bndry_id_map_ = self.estreams.bndry_id_map_.copy()
 
+        # cache for the streamflow table so repeated fetch() calls (which pull q
+        # for every requested station) do not re-read the multi-hundred-MB csv
+        self._q_df_cache = None
+
     @property
     def dynamic_features(self) -> List[str]:
         return [observed_streamflow_cms()] + self.estreams.dynamic_features
@@ -561,6 +652,60 @@ class _EStreams(_RainfallRunoff):
         '1060' -> 'SI000001'
         """
         return {k:v for v,k in self.md['gauge_id'].to_dict().items()}
+
+    def _create_boundary_id_map(self):
+        """
+        Builds the ``{basin_id: geometry}`` map for this country only.
+
+        The boundary shapefile is the shared EStreams file holding all ~17130
+        catchments, but a country class needs only its own (e.g. 464 for
+        Ireland). Reading just the features whose geometry intersects the
+        country bounding box is ~25x faster than scanning every catchment. A
+        full scan is used as a fallback should the bbox miss any station, so the
+        result is always complete. The map is cached after the first build.
+        """
+        if fiona is None:
+            raise ModuleNotFoundError(
+                "fiona module is not installed. Please install it to use boundary file")
+
+        if self.bndry_id_map_:
+            return self.bndry_id_map_
+
+        wanted = set(self.stations())
+
+        b = getattr(self, 'bbox', None)
+        bbox = None
+        if b is not None:
+            bbox = (b['llcrnrlon'], b['llcrnrlat'], b['urcrnrlon'], b['urcrnrlat'])
+
+        bndry = self._read_bndry_map(wanted, bbox)
+        if bbox is not None and wanted - set(bndry):
+            # bbox missed some station(s); rebuild from a full scan to be safe
+            bndry = self._read_bndry_map(wanted, None)
+
+        self.bndry_id_map_ = bndry
+        return self.bndry_id_map_
+
+    def _read_bndry_map(self, wanted: set, bbox):
+        """reads geometries of the ``wanted`` stations from the boundary file,
+        optionally restricted to features intersecting ``bbox``."""
+        assert os.path.exists(self.boundary_file), \
+            f"Boundary file {self.boundary_file} does not exist."
+
+        bndry = {}
+        with fiona.open(self.boundary_file, "r") as src:
+            id_attr = self.boundary_id_map
+            if id_attr is None:
+                id_attr = list(src.schema['properties'].keys())[0]
+                if self.verbosity:
+                    print(f"Using attribute '{id_attr}' as default for boundary ID mapping.")
+
+            features = src.filter(bbox=bbox) if bbox is not None else src
+            for feature in features:
+                catch_id = str(feature["properties"][id_attr])
+                if catch_id in wanted:
+                    bndry[catch_id] = feature["geometry"]
+        return bndry
 
     def _fetch_dynamic_features(
             self,
@@ -1127,10 +1272,15 @@ class Ireland(_EStreams):
             self, 
             path:Union[str, os.PathLike] = None,
             estreams_path:Union[str, os.PathLike] = None,
+            timestep:str='D',
             verbosity:int=1,
             **kwargs):
 
-        super().__init__(path=path, estreams_path=estreams_path, verbosity=verbosity, **kwargs)
+        super().__init__(
+            path=path, 
+            estreams_path=estreams_path,
+            timestep=timestep,
+            verbosity=verbosity, **kwargs)
 
         self.bbox = {'llcrnrlat': 51.0, 'urcrnrlat': 55.5, 'llcrnrlon': -11.0, 'urcrnrlon': -5.0}
         self.parallels = range(51, 56, 1)
@@ -1181,53 +1331,46 @@ class Ireland(_EStreams):
             ):
         fname = 'daily_q' if self.timestep in ["D", 'daily'] else 'hourly_q'
         ext = '.csv'
-    
+
         fpath = os.path.join(self.path, fname + ext)
 
-        if not os.path.exists(fpath) or overwrite:
+        # reuse the already-loaded streamflow table; fetch()/q_mm() ask for q on
+        # every call, and re-reading the (up to ~900 MB) csv each time dominated
+        # the runtime. overwrite bypasses the cache to force a fresh download.
+        data = None if overwrite else self._q_df_cache
 
-            cpus = self.processes or max(get_cpus() - 2, 1)
+        if data is None:
+            if not os.path.exists(fpath) or overwrite:
 
-            if cpus > 1:
-                epa_df = self.download_epa_data_parallel(cpus=cpus)
-                opw_df = self.download_opw_data_parallel(cpus=cpus)
-            else:
-                epa_df = self.download_epa_data_seq()
-                opw_df = self.download_opw_data_seq()
+                cpus = self.processes or max(get_cpus() - 2, 1)
 
-            data = pd.concat([epa_df, opw_df], axis=1)
-            data.index.name = 'time'
-            data.index = pd.to_datetime(data.index)
-            assert data.index.tz is None, "timezone info found in index"
-            data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+                if cpus > 1:
+                    epa_df = self.download_epa_data_parallel(cpus=cpus)
+                    opw_df = self.download_opw_data_parallel(cpus=cpus)
+                else:
+                    epa_df = self.download_epa_data_seq()
+                    opw_df = self.download_opw_data_seq()
 
-            if ext == '.csv':
+                data = pd.concat([epa_df, opw_df], axis=1)
+                data.index.name = 'time'
+                data.index = pd.to_datetime(data.index)
+                assert data.index.tz is None, "timezone info found in index"
+                data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+
                 data.to_csv(fpath, index_label="index")
-            else:
-                data = xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
-                data.to_netcdf(fpath)
 
-        else:
-            if self.verbosity > 1: print(f"Reading from pre-exising {fpath}")
-            if ext == '.csv':
+            else:
+                if self.verbosity > 1: print(f"Reading from pre-exising {fpath}")
                 data = pd.read_csv(fpath, index_col="index")
                 data.index = pd.to_datetime(data.index)
                 data.index.name = 'time'
                 data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
-            else:
-                data = xr.open_dataset(fpath)
-                if self.verbosity > 1: print(f"opened {fpath}")
 
-        if isinstance(data, pd.DataFrame):
-            if as_dataframe:
-                return data
-            return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
-        else:
-            if as_dataframe:
-                data = data.to_dataframe()
-                data.index.name = 'time'
-                return data
+            self._q_df_cache = data
+
+        if as_dataframe:
             return data
+        return xr.Dataset({stn: xr.DataArray(data.loc[:, stn]) for stn in data.columns})
 
     def download_epa_data_seq(self):
         """
@@ -1235,32 +1378,36 @@ class Ireland(_EStreams):
         ---------
         >>> epa_df = download_epa_data()
         """
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_epa_path, 'H': self.hourly_epa_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
 
-        all_epa_data_file = os.path.join(self.path, f"epa_{folder}.csv")
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+
+        all_epa_data_file = os.path.join(self.path, f"epa_{fname}.csv")
         if os.path.exists(all_epa_data_file):
             if self.verbosity>1: print(f"{all_epa_data_file} already exists")
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
-            print(f"{all_epa_data_file} already exists")  
+            if self.verbosity: print(f"{all_epa_data_file} already exists")
             return df
 
-        print("Downloading EPA data Sequentially")
+        if self.verbosity: print("Downloading EPA data Sequentially")
 
         epa_failiures = 0
         epa_dfs = []
 
         for idx, stn in enumerate(self.epa_stations):
 
-            fpath = os.path.join(self.path, "EPA", folder, f"{stn}.csv")
+            fpath = os.path.join(folder, f"{stn}.csv")
 
-            print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
+            if self.verbosity: print(f"{idx}/{len(self.epa_stations)} Downloading {stn}")
 
-            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep)
+            df, epa_failiures = _download_epa_stn_data(fpath, self.timestep, verbosity=self.verbosity)
 
-            epa_dfs.append(df) 
+            epa_dfs.append(df)
 
-        print(f'total epa failiures: {epa_failiures}')
-        print(f'total epa dfs: {len(epa_dfs)}')
+        if self.verbosity: print(f'total epa failiures: {epa_failiures}')
+        if self.verbosity: print(f'total epa dfs: {len(epa_dfs)}')
 
         df = pd.concat(epa_dfs, axis=1).astype('float32')
 
@@ -1273,21 +1420,25 @@ class Ireland(_EStreams):
         if cpus is None:
             cpus = self.processes or max(get_cpus() - 2, 1)
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_epa_path, 'H': self.hourly_epa_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_epa_data_file = os.path.join(self.path, f"epa_{folder}.csv")
+        all_epa_data_file = os.path.join(self.path, f"epa_{fname}.csv")
         if os.path.exists(all_epa_data_file):
             df = pd.read_csv(all_epa_data_file, index_col=0, parse_dates=True)
-            print(f"{all_epa_data_file} already exists")  
+            if self.verbosity: print(f"{all_epa_data_file} already exists")
             return df
 
         timesteps = [self.timestep] * len(self.epa_stations)
-        fpaths = [os.path.join(self.path, "EPA", folder, f"{stn}.csv") for stn in self.epa_stations]
+        fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.epa_stations]
 
-        print(f"Downloading {len(fpaths)} EPA stations using {cpus} cpus at {os.path.join(self.path, 'EPA', folder)}")
+        if self.verbosity: print(f"Downloading {len(fpaths)} EPA stations using {cpus} cpus at {os.path.join(self.path, 'EPA', folder)}")
 
         with ProcessPoolExecutor(cpus) as executor:
-            epa_dfs = list(executor.map(_download_epa_stn_data, fpaths, timesteps))
+            epa_dfs = list(executor.map(_download_epa_stn_data, fpaths, timesteps,
+                                        [self.verbosity] * len(fpaths)))
 
         df = pd.concat([val[0] for val in epa_dfs], axis=1).astype('float32')
 
@@ -1296,25 +1447,28 @@ class Ireland(_EStreams):
             # 2000-01-01 01:00:00 -> 2000-01-01
             df.index = df.index.normalize()
 
-        print(f'Downloaded total epa dfs: {len(epa_dfs)}')
+        if self.verbosity: print(f'Downloaded total epa dfs: {len(epa_dfs)}')
 
         df.to_csv(all_epa_data_file)
         return df
-    
+
     def download_opw_data_parallel(self, cpus=None):
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_opw_path, 'H': self.hourly_opw_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_opw_data_file = os.path.join(self.path, f"opw_{folder}.csv")
+        all_opw_data_file = os.path.join(self.path, f"opw_{fname}.csv")
         if os.path.exists(all_opw_data_file):
             df = pd.read_csv(all_opw_data_file, index_col=0, parse_dates=True)
-            print(f"{all_opw_data_file} already exists")  
+            if self.verbosity: print(f"{all_opw_data_file} already exists")
             return df
 
-        fpaths = [os.path.join(self.path, "OPW", folder, f"{stn}.csv") for stn in self.opw_stations]
+        fpaths = [os.path.join(folder, f"{stn}.csv") for stn in self.opw_stations]
 
         if self.verbosity:
-            print(f"Downloading {len(fpaths)} OPW stations using {cpus} cpus at {os.path.join(self.path, 'OPW', folder)}")
+            print(f"Downloading {len(fpaths)} OPW stations using {cpus} cpus at {folder}")
 
         with ProcessPoolExecutor(cpus) as executor:
             opw_dfs = list(executor.map(_download_opw_stn_data, fpaths, [self.timestep]*len(self.opw_stations)))
@@ -1337,6 +1491,30 @@ class Ireland(_EStreams):
 
         return opw_df
 
+    @property
+    def raw_opw_path(self):
+        return os.path.join(self.path, "OPW")
+
+    @property
+    def daily_opw_path(self):
+        return os.path.join(self.raw_opw_path, "daily")
+
+    @property
+    def hourly_opw_path(self):
+        return os.path.join(self.raw_opw_path, "hourly")
+
+    @property
+    def raw_epa_path(self):
+        return os.path.join(self.path, "EPA")
+    
+    @property
+    def daily_epa_path(self):
+        return os.path.join(self.raw_epa_path, "daily")
+    
+    @property
+    def hourly_epa_path(self):
+        return os.path.join(self.raw_epa_path, "hourly")
+
     def download_opw_data_seq(self):
         """
         Examples
@@ -1344,9 +1522,12 @@ class Ireland(_EStreams):
         >>> opw_df = download_opw_data()
         """
 
-        folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
+        folder = {'D': self.daily_opw_path, 'H': self.hourly_opw_path}[self.timestep]
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+        fname = {'D': 'daily', 'H': 'hourly'}[self.timestep]
 
-        all_opw_data_file = os.path.join(self.path, f"opw_{folder}.csv")
+        all_opw_data_file = os.path.join(self.path, f"opw_{fname}.csv")
         if os.path.exists(all_opw_data_file):
             df = pd.read_csv(all_opw_data_file, index_col=0, parse_dates=True)
             if self.verbosity: print(f"{all_opw_data_file} already exists")  
@@ -1358,9 +1539,9 @@ class Ireland(_EStreams):
         opw_dfs = []
         for idx, stn in enumerate(self.opw_stations):
 
-            fpath = os.path.join(self.path, "OPW", folder, f"{stn}.csv")
+            fpath = os.path.join(folder, f"{stn}.csv")
 
-            print(f"{idx}/{len(self.opw_stations)} Downloading {stn}")
+            if self.verbosity: print(f"{idx}/{len(self.opw_stations)} Downloading {stn}")
 
             df = _download_opw_stn_data(fpath, self.timestep)
  
@@ -1384,12 +1565,28 @@ class Ireland(_EStreams):
         return opw_df
 
 
-def _download_epa_stn_data(fpath, timestep="D")->pd.Series:
+def _download_epa_stn_data(
+        fpath,
+        timestep="D",
+        verbosity:int=1,
+        overwrite:bool=False,
+        save_raw = False,
+        )->tuple[pd.Series, int]:
+    """
+    For hourly timestep, 15 min data is first downloaded and then resampled to hourly timestep.
+    """
     stn = os.path.basename(fpath).split('.')[0]
-    if timestep in ("D", 'daily'):
+
+    if os.path.exists(fpath) and not overwrite:
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True)
+        df.index.name = 'timestamp'
+        return df.loc[:, stn], 0
+
+    if timestep.lower().startswith("d"):
         fname = "daymean.zip"
     else:
         fname = "15min.zip"
+        raw_fpath = os.path.join(os.path.dirname(fpath), f"{stn}_15min.csv")
 
     epa_failiures = 0
 
@@ -1437,33 +1634,67 @@ def _download_epa_stn_data(fpath, timestep="D")->pd.Series:
                             sep=';',
                             names=["timestamp", stn, "qflag"])
                         except HTTPError:
-                            print(f"Failed to download {stn}")
+                            warnings.warn(f"Failed to download {stn}")
                             epa_failiures += 1
                             pass
 
 
     df.index = pd.to_datetime(df.pop('timestamp'))
 
+    if df.index.tz is not None:
+        df.index = df.index.tz_convert("UTC").tz_localize(None)
+
     # considering quality codes https://epawebapp.epa.ie/Hydronet/#FAQ
     # Quality codes: Good, nan, Suspect, Extrapolated, Unchecked, Excellent, Estimated
 
     df = df.loc[~df['qflag'].isin(['Unchecked'])]
     
-    if timestep == "D":
-        return df[stn], epa_failiures
+    if timestep.lower().startswith("d"):
+        daily_data = df[stn]
+        # since we are downloading the daily file, we don't need hourly information
+        daily_data.index = daily_data.index.normalize()
+        daily_data.to_csv(fpath, index_label="timestamp")
+        return daily_data, epa_failiures
 
-    return df[stn].resample(timestep).mean(), epa_failiures
+    df = df.sort_index()
+
+    if save_raw:
+        df[stn].to_csv(raw_fpath, index_label="timestamp")
+
+    if verbosity: print(f"Resampling {stn} data to hourly timestep")
+    # return df[stn].resample(timestep).mean(), epa_failiures
+    # vectorised time-weighted resampling in a single pass (see tw_resampler)
+    hourly_q = tw_resampler(df[stn], timestep)
+    hourly_q.name = stn
+    hourly_q.to_csv(fpath, index_label="timestamp")
+    return hourly_q, epa_failiures
 
 
-def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
+def _download_opw_stn_data(
+        fpath, 
+        timestep="D",
+        overwrite:bool=False
+        )->pd.Series:
+    """
+    Uses the high resolution (15 min) data of daily discharge.
+    For daily timestep, this data is resampled to daily timestep. Ideally
+    we should be able to directly download daily mean data from the OPW website
+    which means we would not need to resample the data ourselves. But the link
+    for daily mean files is not available ATM.
+    For hourly timestep, 15 data is resampled to hourly timestep. 
+    """
+
     stn = os.path.basename(fpath).split('.')[0]
-    # we don't/can't download daily data 
-    if timestep == "daily":
+
+    if os.path.exists(fpath) and not overwrite:
+        df = pd.read_csv(fpath, index_col=0, parse_dates=True)
+        df.index.name = 'timestamp'
+        return df.loc[:, stn]
+
+    if timestep.lower().startswith('d'):
         timestep = "D"
-    elif timestep == "hourly":
+    elif timestep.lower().startswith('h'):
         timestep = "H"
-    elif timestep == "D":
-        pass
     else:
         raise ValueError(f"timestep should be either 'D' or 'H' but it is {timestep}")
 
@@ -1477,10 +1708,28 @@ def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
                         )
     except HTTPError:
         warnings.warn(f"Failed to download {stn}", UserWarning)
-        df = pd.Series(name=stn)
+        # an empty but DatetimeIndex-ed series, so that callers can still concat it
+        # along axis=1 without degrading the index, and spot the failure via len()==0.
+        # fpath is deliberately not written, so that a later run retries the download.
+        return pd.Series(
+            name=stn,
+            dtype='float32',
+            index=pd.DatetimeIndex([], name='timestamp')
+        )
 
     df.index = pd.to_datetime(df.pop('timestamp'))
-    if df.index.tz is not None:
+
+    # waterlevel.ie serves ISO-8601 UTC stamps e.g. '1973-07-10T12:00:00.000Z'. Without an
+    # offset, UTC is indistinguishable from Irish local time (UTC+1 during DST), so hourly
+    # values would be silently mislabelled by an hour for most of the year.
+    if getattr(df.index, 'tz', None) is None:
+        if timestep == "H":
+            raise ValueError(
+                f"Timestamps of OPW station {stn} were parsed as timezone-naive "
+                f"(first value: {df.index[0]}). Hourly data requires timezone-aware "
+                f"timestamps so that the conversion to UTC is correct."
+            )
+    else:
         df.index = df.index.tz_convert("UTC").tz_localize(None)
 
     # considering quality codes as given here https://waterlevel.ie/hydro-data/#/html/qualitycodes
@@ -1490,10 +1739,15 @@ def _download_opw_stn_data(fpath, timestep="D")->pd.Series:
 
     # get rows where q_code is not 96 or 254
     df = df.loc[~df['q_code'].isin([96, 254])]
-    
+
     stn_data = df[stn]
-    #stn_data = stn_data.resample(timestep).apply(lambda subdata: tw_resampler(subdata, stn_data.sort_index(), timestep))    
-    stn_data = stn_data.resample(timestep).mean()
+    # vectorised time-weighted resampling in a single pass (see tw_resampler)
+    stn_data = tw_resampler(stn_data, timestep)
+    #stn_data = stn_data.resample(timestep).mean()
+
+    stn_data.name = stn
+    stn_data.to_csv(fpath, index_label="timestamp")
+
     return stn_data
 
 
@@ -1635,9 +1889,9 @@ class Italy(_EStreams):
 
             df.index = pd.to_datetime(df.pop('dateTime'))
             df.columns = [station]
-            print(idx, station, df.shape)
+            if self.verbosity: print(idx, station, df.shape)
 
-            dfs.append(df)    
+            dfs.append(df)
 
         df = pd.concat(dfs, axis=1)
 
@@ -2049,7 +2303,7 @@ class Portugal(_EStreams):
 
                 data.append(stn_data)
 
-                if i%10 == 0:
+                if self.verbosity and i%10 == 0:
                     print(i, "Done")
 
         tot_time = round ((time.time() - start) / 60, 2)
@@ -2222,8 +2476,9 @@ class Slovenia(_EStreams):
 
             if self.verbosity>1: print(f"Downloading q data at {self.path}")
 
-            q_df = download_slovenia_q(self.md, outpath=fpath, 
-                                       cpus=self.processes or min(get_cpus() - 2, 16))
+            q_df = download_slovenia_q(self.md, outpath=fpath,
+                                       cpus=self.processes or min(get_cpus() - 2, 16),
+                                       verbosity=self.verbosity)
         else:
             if self.verbosity: print(f"Reading q data from pre-existing file {fpath}")
             q_df = pd.read_csv(fpath, index_col=0)
@@ -2242,7 +2497,8 @@ class Slovenia(_EStreams):
 def download_slovenia_q(
         metadata:pd.DataFrame,
         outpath:Union[str, os.PathLike],
-        cpus = 1
+        cpus = 1,
+        verbosity:int = 1
         ) -> pd.DataFrame:
     """
     Downloads streamflow data for Slovenia stations.
@@ -2261,7 +2517,7 @@ def download_slovenia_q(
     # todo : we should parallelize stations-years combined
 
     cpus = cpus or min(get_cpus() - 2, 8)
-    if cpus > 1:
+    if verbosity and cpus > 1:
         print(f"Download operation will be parallelized using {cpus} CPUs")
 
     dirname = os.path.dirname(outpath)
@@ -2288,8 +2544,10 @@ def download_slovenia_q(
 
         if cpus > 1:
         # Download all year combinations in parallel
+            n_years = len(range(st_yr, en_yr))
             with cf.ProcessPoolExecutor(cpus) as executor:
-                results = executor.map(download_slovenia_stn, [row]*len(range(st_yr, en_yr)), range(st_yr, en_yr))
+                results = executor.map(download_slovenia_stn, [row]*n_years, range(st_yr, en_yr),
+                                       [verbosity]*n_years)
 
             for yr_df in results:
                 stn_dfs.append(yr_df)
@@ -2297,11 +2555,11 @@ def download_slovenia_q(
         else:
             for year in range(st_yr, en_yr):
 
-                yr_df = download_slovenia_stn(row, year)
+                yr_df = download_slovenia_stn(row, year, verbosity)
 
                 stn_dfs.append(yr_df)
 
-                print(f"downloaded data for {i}/{len(metadata)}: {gauge_id} - {gauge_name} for year {year}")
+                if verbosity: print(f"downloaded data for {i}/{len(metadata)}: {gauge_id} - {gauge_name} for year {year}")
 
         stn_df = pd.concat(stn_dfs)
 
@@ -2318,9 +2576,9 @@ def download_slovenia_q(
 
         wt_dfs.append(stn_df['water_temp_celsius'].rename(gauge_id))
 
-        print(st_yr, en_yr, stn_df.index[0], stn_df.index[-1])
-        
-        if cpus:
+        if verbosity: print(st_yr, en_yr, stn_df.index[0], stn_df.index[-1])
+
+        if verbosity and cpus:
             print(f"Downloaded data for {i+1}/{len(metadata)}: {gauge_id} - {gauge_name}")
 
     q_df = pd.concat(q_dfs, axis=1)
@@ -2334,7 +2592,7 @@ def download_slovenia_q(
     return q_df
 
 
-def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
+def download_slovenia_stn(row:pd.Series, year:int, verbosity:int=1)->pd.DataFrame:
 
     #row, year = input_data
 
@@ -2368,7 +2626,7 @@ def download_slovenia_stn(row:pd.Series, year:int)->pd.DataFrame:
     try:
         yr_df = yr_df.astype('float32')
     except ValueError as e:
-        print(gauge_id, year)
+        if verbosity: print(gauge_id, year)
         raise e
     
     return yr_df

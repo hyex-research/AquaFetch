@@ -333,7 +333,7 @@ def check_dataframe(
         msg = f"""for {stn} station of {dataset.name} the shape is {stn_data.shape} and not {desired_shape}"""
         if raise_len_error:
             assert len(stn_data) >= min_data_len, msg
-            assert stn_data.shape[1] == num_dynamic or len(dataset.dynamic_features), stn_data.shape
+            assert stn_data.shape[1] == (num_dynamic or len(dataset.dynamic_features)), stn_data.shape
         else:
             logger.warning(msg)
 
@@ -509,6 +509,6 @@ def test_dataset(dataset,
 
         test_plot_catchment(dataset)
 
-    logger.info(f"** Finished testing {dataset.name} **")
+    logger.info(f"*** Finished testing {dataset.name} ***")
 
     return
