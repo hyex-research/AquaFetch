@@ -40,13 +40,13 @@ extra_requires = [
 
 all_requirements = min_requirements + extra_requires
 
-wwt_requires = min_requirements = ['openpyxl']
+wwt_requires = min_requirements + ['openpyxl']
 
 setup(
 
     name='aqua_fetch',
 
-    version = "1.0.2",
+    version = "1.1.0",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
