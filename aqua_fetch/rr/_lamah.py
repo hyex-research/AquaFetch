@@ -1,17 +1,18 @@
 
 import gc
 import os
+import shutil
 import warnings
-from pathlib import Path
 from functools import partial
 import concurrent.futures as cf
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 import numpy as np
 import pandas as pd
 
 from .._backend import xarray as xr
 from .._backend import netCDF4
+from .._backend import fiona
 
 from ..utils import get_cpus
 from ..utils import validate_attributes, download, unzip
@@ -30,7 +31,6 @@ from ._map import (
     snow_water_equivalent,
     solar_radiation,
     max_solar_radiation,
-    min_solar_radiation,
     max_thermal_radiation,
     mean_thermal_radiation,
     u_component_of_wind_at_10m,
@@ -44,6 +44,7 @@ from ._map import (
 
 from ._map import (
     catchment_area,
+    catchment_area_with_specifier,
     gauge_latitude,
     gauge_longitude,
     slope
@@ -52,50 +53,333 @@ from ._map import (
 SEP = os.sep
 
 # todo : currently when saving .nc files for each variable, we first fetch data for all meteo
-# variables and then save a single variable and extract data for all meteos again. This 
+# variables and then save a single variable and extract data for all meteos again. This
 # is extremely inefficient. We should not make multiple calls to .fetch we saving .ncs
 # todo : try to use mfopen_dataset instead of opening multiple .nc files separately
 # without xarray, LamaHCE seems to be much faster
+
+
+# columns that only encode the timestamp and are therefore never exposed as
+# dynamic features
+_CE_DATE_COLS = ('YYYY', 'MM', 'DD', 'hh', 'mm', 'DOY', 'HOD')
+
+# quality/provenance flags shipped alongside ``qobs`` in D_gauges. They are not
+# hydro-meteorological observations, so they are not dynamic features. They stay
+# reachable in their raw form through :meth:`LamaHCE.fetch_stn_q_raw`.
+_CE_Q_FLAG_COLS = ('ckhs', 'qceq', 'qcol')
+
+# value used by LamaH-CE to mark a gap in the runoff time series which could not
+# be interpolated (Info_english/2_Timeseries.txt, point 4)
+_CE_Q_NODATA = -999.0
+
+# dtypes of every column that can appear in a LamaH-CE csv (meteorological or
+# runoff, daily or hourly). Declaring them avoids pandas' type inference and
+# halves the memory of the parsed frame. float32 is safe here: the widest
+# quantity is ``surf_press`` (~1e5 Pa, 5 significant digits) while float32
+# carries ~7.
+_CE_DTYPES = {
+    'YYYY': np.int32, 'MM': np.int32, 'DD': np.int32,
+    'hh': np.int32, 'mm': np.int32, 'DOY': np.int32, 'HOD': np.int32,
+    # daily meteorological columns
+    '2m_temp_max': np.float32, '2m_temp_mean': np.float32, '2m_temp_min': np.float32,
+    '2m_dp_temp_max': np.float32, '2m_dp_temp_mean': np.float32, '2m_dp_temp_min': np.float32,
+    'surf_net_solar_rad_max': np.float32, 'surf_net_solar_rad_mean': np.float32,
+    'surf_net_therm_rad_max': np.float32, 'surf_net_therm_rad_mean': np.float32,
+    # hourly meteorological columns
+    '2m_temp': np.float32, '2m_dp_temp': np.float32,
+    'surf_net_solar_rad': np.float32, 'surf_net_therm_rad': np.float32,
+    # common to both timesteps
+    '10m_wind_u': np.float32, '10m_wind_v': np.float32,
+    'fcst_alb': np.float32, 'lai_high_veg': np.float32, 'lai_low_veg': np.float32,
+    'swe': np.float32, 'surf_press': np.float32, 'total_et': np.float32,
+    'prec': np.float32, 'volsw_123': np.float32, 'volsw_4': np.float32,
+    # runoff. The quality flags are deliberately absent: they are only ever read
+    # by fetch_stn_q_raw(), which reproduces the file with pandas' own dtypes.
+    'qobs': np.float32,
+}
+
+
+def _ymd_index(
+        year: np.ndarray,
+        month: np.ndarray,
+        day: np.ndarray,
+        hour: np.ndarray = None,
+        minute: np.ndarray = None
+) -> pd.DatetimeIndex:
+    """
+    Builds a :obj:`pandas.DatetimeIndex` from integer year/month/day(/hour/minute)
+    columns using numpy's datetime64 arithmetic.
+
+    This is ~8x faster than ``pd.PeriodIndex(...).to_timestamp()`` on the 341856
+    row hourly files and yields a bit-identical index (asserted in
+    ``tests/rr/test_lamah.py::test_lamahce_index_construction``).
+    """
+    year = np.asarray(year, dtype='int64')
+    month = np.asarray(month, dtype='int64')
+    day = np.asarray(day, dtype='int64')
+
+    months = (year - 1970).astype('datetime64[Y]').astype('datetime64[M]') + (month - 1)
+    idx = months.astype('datetime64[D]') + (day - 1)
+
+    if hour is not None:
+        idx = idx.astype('datetime64[m]') + np.asarray(hour, dtype='int64') * 60
+        if minute is not None:
+            idx = idx + np.asarray(minute, dtype='int64')
+
+    return pd.DatetimeIndex(idx.astype('datetime64[ns]'))
+
+
+def _read_ce_csv(
+        fpath: str,
+        timestep: str,
+        usecols: List[str]
+) -> pd.DataFrame:
+    """
+    Reads one LamaH-CE csv (meteorological or runoff) and returns it indexed by
+    time with the date columns removed.
+
+    ``usecols`` must contain the date columns needed to build the index; only
+    the listed columns are parsed off disk.
+    """
+    df = pd.read_csv(fpath, sep=';', usecols=usecols,
+                     dtype={k: v for k, v in _CE_DTYPES.items() if k in usecols})
+
+    if timestep == 'H':
+        df.index = _ymd_index(df['YYYY'], df['MM'], df['DD'], df['hh'], df['mm'])
+    else:
+        df.index = _ymd_index(df['YYYY'], df['MM'], df['DD'])
+
+    return df.drop(columns=[c for c in _CE_DATE_COLS if c in df.columns])
+
+
+_CE_FREQ = {'D': 'D', 'H': 'h'}
+
+
+def _first_last_stamps(fpath: str, timestep: str) -> tuple:
+    """
+    First and last timestamp of a LamaH-CE csv, read with two seeks instead of
+    parsing the whole file.
+
+    This only reports the two timestamps that are written in the file; it makes
+    no assumption about what lies between them. Do not use it to reconstruct an
+    index - a file with a gap and a compensating duplicate would be mis-stamped
+    without any cheap way of noticing.
+    """
+    with open(fpath, 'rb') as fh:
+        fh.readline()                                   # header
+        first = fh.readline().decode().split(';')
+        size = fh.seek(0, os.SEEK_END)
+        fh.seek(max(0, size - 4096))
+        last = fh.read().decode().strip().splitlines()[-1].split(';')
+
+    def _stamp(fields):
+        year, month, day = int(fields[0]), int(fields[1]), int(fields[2])
+        if timestep == 'H':
+            return pd.Timestamp(year=year, month=month, day=day,
+                                hour=int(fields[3]), minute=int(fields[4]))
+        return pd.Timestamp(year=year, month=month, day=day)
+
+    return _stamp(first), _stamp(last)
+
+
+def _read_ce_stn(spec: Dict, station: str) -> pd.DataFrame:
+    """
+    Reads the dynamic data of a single LamaH-CE station.
+
+    This is a module level function (and ``spec`` is a small dict of paths and
+    column names) so that handing it to a :obj:`concurrent.futures.ProcessPoolExecutor`
+    does not pickle the dataset instance - and with it every cached table - once
+    per station.
+    """
+    frames = []
+    n_nodata = 0
+
+    if spec['met_usecols'] is not None:
+        frames.append(_read_ce_csv(
+            os.path.join(spec['met_dir'], f"ID_{station}.csv"),
+            spec['timestep'], spec['met_usecols']))
+
+    if spec['q_usecols'] is not None:
+        q_fpath = os.path.join(spec['q_dir'], f"ID_{station}.csv")
+        if os.path.exists(q_fpath):
+            q = _read_ce_csv(q_fpath, spec['timestep'], spec['q_usecols'])
+            # LamaH-CE marks non-interpolated gaps in the runoff series with
+            # -999; leaving them in would turn a gap into a large negative
+            # discharge (33267 daily values across 179 gauges).
+            # copy=True: the array must be writable also under pandas'
+            # copy-on-write mode, where to_numpy() hands out a read-only view
+            vals = q['qobs'].to_numpy(copy=True)
+            missing = vals == _CE_Q_NODATA
+            n_nodata = int(missing.sum())
+            if n_nodata:
+                vals[missing] = np.nan
+                q['qobs'] = vals
+            frames.append(q)
+        else:
+            # never happens for the published archive (every basin has a gauge
+            # file) but a truncated extraction must not pass silently
+            warnings.warn(f"no runoff file found at {q_fpath}. Returning NaNs "
+                          f"for the streamflow of station {station}")
+            index = frames[0].index if frames else pd.DatetimeIndex([], name='time')
+            frames.append(pd.DataFrame(
+                {'qobs': np.full(len(index), np.nan, dtype=np.float32)}, index=index))
+
+    df = frames[0] if len(frames) == 1 else pd.concat(frames, axis=1)
+
+    if spec['met_usecols'] is None:
+        # only the runoff file was read. Its index starts later (and ends
+        # earlier) than the meteorological grid, so put it back on that grid:
+        # a fetch of q alone must be indexed exactly like a fetch of everything.
+        grid = pd.date_range(spec['grid_start'], spec['grid_end'],
+                             freq=spec['grid_freq'])
+        n_before = int(df.notna().to_numpy().sum())
+        df = df.reindex(grid)
+        n_after = int(df.notna().to_numpy().sum())
+        if n_after != n_before:
+            warnings.warn(
+                f"{n_before - n_after} runoff observations of station {station} "
+                f"lie outside the {spec['grid_start']} - {spec['grid_end']} "
+                f"period of the meteorological forcings and were dropped.")
+
+    df.rename(columns=spec['rename'], inplace=True)
+
+    for col, factor in spec['factors'].items():
+        if col in df.columns:
+            df[col] = df[col] * factor
+
+    if spec['st'] is not None or spec['en'] is not None:
+        df = df.loc[spec['st']:spec['en']]
+
+    if spec['features'] is not None:
+        df = df.loc[:, spec['features']]
+
+    df.columns.name = "dynamic_features"
+    df.index.name = "time"
+    # reported by the caller, which warns once for the whole fetch instead of
+    # once per worker process
+    df.attrs['n_q_nodata'] = n_nodata
+    return df
+
+
+def _read_area_calc(fpath: str) -> pd.Series:
+    """
+    ``area_calc`` column of a LamaH ``Catchment_attributes.csv``, indexed by the
+    (string) catchment id.
+
+    The separator and the spelling of the id column vary across the LamaH
+    products (``ID`` in LamaH-CE, ``id`` in LamaH-Ice, and LamaH-Ice's
+    ``intermediate_lowimp`` file is comma separated), so both are detected
+    rather than assumed.
+    """
+    for sep in (';', ','):
+        df = pd.read_csv(fpath, sep=sep, index_col=0)
+        if 'area_calc' in df.columns:
+            df.index = df.index.astype(str)
+            return df['area_calc']
+
+    raise ValueError(f"no 'area_calc' column in {fpath}")
+
+
+def _warn_nodata(n_values: int, n_stations: int):
+    """single, unconditional warning about the -999 -> NaN substitution"""
+    if n_values:
+        warnings.warn(
+            f"{n_values} runoff value(s) of {n_stations} station(s) carry the "
+            f"LamaH-CE no-data marker -999 (see Info_english/2_Timeseries.txt) "
+            f"and are returned as NaN. Use fetch_stn_q_raw() for the unmodified "
+            f"source values together with the ckhs/qceq/qcol quality flags.",
+            UserWarning)
+    return
+
+
+_WORKER_SPEC = {}
+
+
+def _init_ce_worker(spec: Dict):
+    """stores the (small) reader spec once per worker process"""
+    _WORKER_SPEC['spec'] = spec
+
+
+def _read_ce_stn_in_worker(station: str) -> pd.DataFrame:
+    return _read_ce_stn(_WORKER_SPEC['spec'], station)
+
 
 class LamaHCE(_RainfallRunoff):
     """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
     (mainly Austria). The dataset is downloaded from
-    `zenodo <https://zenodo.org/record/4609826#.YFNp59zt02w>`_
+    `zenodo <https://zenodo.org/record/5153305>`_
     following the work of
     `Klingler et al., 2021 <https://doi.org/10.5194/essd-13-4529-2021>`_ .
-    For ``total_upstrm`` data, there are 859 stations with 61 static features
-    and 17 dynamic features. The temporal extent of data is from 1981-01-01
-    to 2019-12-31.
+
+    The meteorological forcings cover 1981-01-01 to 2019-12-31 while the observed
+    runoff ends on 2017-12-31. Depending on ``data_type`` the dataset consists of
+
+        - ``total_upstrm``      : 859 stations, 84 static features
+        - ``intermediate_all``  : 859 stations, 86 static features
+        - ``intermediate_lowimp``: 454 stations, 86 static features
+
+    There are 22 dynamic features at daily and 16 at hourly timestep.
+
+    All time series are in UTC (no summer time), labelled with the start of the
+    interval; the returned index is timezone-naive.
+
+    LamaH-CE marks gaps in the runoff series that could not be interpolated with
+    the value ``-999``. These are returned as ``NaN``; the untouched source rows
+    (including the ``ckhs``/``qceq``/``qcol`` quality flags) are available from
+    :meth:`fetch_stn_q_raw`. Catchment boundaries are provided (EPSG:3035) and
+    are reprojected to WGS84 by :meth:`get_boundary`.
+
+    The runoff files in ``D_gauges`` are the same for all three ``data_type``\\ s
+    and always hold the *total* discharge at the gauge, while the catchment
+    attributes of ``intermediate_all``/``intermediate_lowimp`` describe only the
+    incremental sub-catchment between this gauge and the ones above it. So that
+    ``area_km2`` means the same thing here as in every other dataset, :meth:`area`
+    (and hence :meth:`q_mm`) always reports the area upstream of the gauge; under
+    the two intermediate delineations the incremental area is kept alongside it
+    as ``area_km2_intermediate``, which is why they carry one static feature more.
     """
 
     url = {
         '1_LamaH-CE_daily_hourly.tar.gz': 'https://zenodo.org/records/5153305/files/1_LamaH-CE_daily_hourly.tar.gz',
-        # contains only A_basins_total_upstrm and B_basins_intermediate_all
+        # this archive carries the daily files only
         '2_LamaH-CE_daily.tar.gz': 'https://zenodo.org/records/5153305/files/2_LamaH-CE_daily.tar.gz'
     }
 
+    # Both archives extract into the *same* top level folders
+    # (``A_basins_total_upstrm``, ``D_gauges``, ...) and differ only in the
+    # ``2_timeseries`` sub-folder they fill: archive 2 carries ``daily`` alone
+    # while archive 1 carries ``daily`` and ``hourly``. The "is it already
+    # extracted?" test must therefore name the timestep specific sub-folder -
+    # checking the top level folder would let a daily-only installation pass
+    # archive 1 off as present, so the hourly time series would never be
+    # downloaded. ``self.url`` is filtered by ``timestep`` in ``__init__``, so
+    # each archive below is only ever consulted for the timestep it carries.
     dirs_to_check = {
+        # consulted only when timestep == 'H'
         '1_LamaH-CE_daily_hourly.tar.gz': {
-            'total_upstrm': ['A_basins_total_upstrm', 'D_gauges'],
-            'intermediate_all': ['B_basins_intermediate_all', 'D_gauges'],
-            'intermediate_lowimp': ['C_basins_intermediate_lowimp', 'D_gauges'],
+            'total_upstrm': [
+                os.path.join('A_basins_total_upstrm', '2_timeseries', 'hourly'),
+                os.path.join('D_gauges', '2_timeseries', 'hourly')],
+            'intermediate_all': [
+                os.path.join('B_basins_intermediate_all', '2_timeseries', 'hourly'),
+                os.path.join('D_gauges', '2_timeseries', 'hourly')],
+            'intermediate_lowimp': [
+                os.path.join('C_basins_intermediate_lowimp', '2_timeseries', 'hourly'),
+                os.path.join('D_gauges', '2_timeseries', 'hourly')],
             },
+        # consulted only when timestep == 'D'
         '2_LamaH-CE_daily.tar.gz': {
-            'total_upstrm': 
-                ['A_basins_total_upstrm', 'D_gauges'],
-            'intermediate_all': 
-                ['B_basins_intermediate_all', 'D_gauges'],
-            'intermediate_lowimp':
-                ['C_basins_intermediate_lowimp', 'D_gauges']
-                                    },
-    }
-
-    dirs_to_check1 = {
-        '1_LamaH-CE_daily_hourly.tar.gz': {'total_upstrm': 'total_upstrm_H'},
-        '2_LamaH-CE_daily.tar.gz': {'total_upstrm': 'total_upstrm_D',
-                                    'intermediate_all': 'intermediate_all_D',
-                                    },
+            'total_upstrm': [
+                os.path.join('A_basins_total_upstrm', '2_timeseries', 'daily'),
+                os.path.join('D_gauges', '2_timeseries', 'daily')],
+            'intermediate_all': [
+                os.path.join('B_basins_intermediate_all', '2_timeseries', 'daily'),
+                os.path.join('D_gauges', '2_timeseries', 'daily')],
+            'intermediate_lowimp': [
+                os.path.join('C_basins_intermediate_lowimp', '2_timeseries', 'daily'),
+                os.path.join('D_gauges', '2_timeseries', 'daily')],
+            },
     }
 
     _data_types = ['total_upstrm', 'intermediate_all', 'intermediate_lowimp']
@@ -190,16 +474,23 @@ class LamaHCE(_RainfallRunoff):
     >>> coords.shape
         (859, 2)
     >>> dataset.stn_coords('826')  # returns coordinates of station whose id is 826
-        2995596.0	4811891.0
+              lat       long
+    ID
+    826  49.86693  16.838505
     >>> dataset.stn_coords(['826', '819'])  # returns coordinates of two stations
     ...
     # get area of a single station
     >>> dataset.area('826')
-    # get coordinates of two stations
+    # get area of two stations
     >>> dataset.area(['826', '819'])
     ...
-    # if fiona library is installed we can get the boundary as fiona Geometry
+    # if fiona library is installed we can get the boundary (in WGS84) as fiona Geometry
     >>> dataset.get_boundary('826')
+    ...
+    # the raw runoff file of a gauge, including the quality flags and the
+    # -999 no-data markers exactly as published
+    >>> dataset.fetch_stn_q_raw('826').columns.tolist()
+    ['qobs', 'ckhs', 'qceq', 'qcol']
     ...
     # the data_type can also be 'intermediate_all'
     >>> dataset = LamaHCE(data_type='intermediate_all')
@@ -221,6 +512,16 @@ class LamaHCE(_RainfallRunoff):
 
         self.data_type = data_type
 
+        # caches for the small-but-repeatedly-read tables. They are filled on
+        # first use so that instantiating the class stays cheap.
+        self._static_data_cache = None
+        self._total_area_cache = None
+        self._stations_cache = None
+        self._data_type_dir_cache = None
+        self._extent_cache = None
+        self._met_cols_cache = None
+        self._q_cols_cache = None
+
         # forward timestep and to_netcdf so the parent doesn't reset them
         super().__init__(path=path, timestep=timestep, to_netcdf=to_netcdf,
                          overwrite=overwrite, **kwargs)
@@ -232,37 +533,85 @@ class LamaHCE(_RainfallRunoff):
         if timestep == 'H':
             self.url.pop('2_LamaH-CE_daily.tar.gz', None)
 
+        self._download_and_extract()
+
+        self._static_features = self.static_data().columns.to_list()
+
+        self._dynamic_features = self._infer_dynamic_features()
+
+        if self.to_netcdf and not self.all_ncs_exist:
+            self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
+
+        self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5,
+                        "llcrnrlon": 7.5, "urcrnrlon": 19}
+        self.parallels = range(46, 51, 1)
+        self.meridians = range(7, 19, 2)
+
+    def _download_and_extract(self):
+        """
+        Downloads and extracts whatever the requested ``data_type`` needs.
+
+        The "is it already there?" decision is taken on the *extracted*
+        directories, never on the archive, so that ``remove_zip=True`` does not
+        force a re-download on the next instantiation. Those directories are the
+        timestep specific ones declared in :attr:`dirs_to_check`, because the
+        two LamaH-CE archives share their top level folder names and only the
+        daily+hourly archive fills the ``hourly`` sub-folders.
+
+        With ``overwrite=True`` both the stale archive and the previously
+        extracted directories are removed first, otherwise
+        :func:`aqua_fetch.utils.download` would write to ``<name>1``. What is
+        removed there is the *top level* folder of each declared directory, so
+        that the attributes and shapefiles are refreshed too and not only the
+        time series.
+        """
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
         for fname, url in self.url.items():
             fpath = os.path.join(self.path, fname)
+            declared = self.dirs_to_check[fname][self.data_type]
+            folders = [os.path.join(self.path, folder) for folder in declared]
 
-            # if the unzipped folders already exist, nothing to do
-            if all(os.path.exists(os.path.join(self.path, folder))
-                   for folder in self.dirs_to_check[fname][data_type]):
+            if not folders:
+                # the archive does not declare anything that this data_type
+                # needs, so it is neither downloaded nor extracted
+                continue
+
+            if self.overwrite:
+                # dict, not set, so that the removal order stays deterministic
+                top_level = {os.path.join(self.path, folder.split(os.sep)[0]): None
+                             for folder in declared}
+                for target in [fpath] + list(top_level):
+                    if os.path.isdir(target):
+                        if self.verbosity:
+                            print(f"removing {target} because overwrite=True")
+                        shutil.rmtree(target)
+                    elif os.path.exists(target):
+                        os.remove(target)
+
+            # if the extracted folders already exist, nothing to do
+            elif all(os.path.exists(folder) for folder in folders):
                 continue
 
             # archive missing -> download
             if not os.path.exists(fpath):
                 if self.verbosity:
                     print(f'downloading {fname}')
-                download(url, self.path, fname)
+                download(url, self.path, fname, verbosity=self.verbosity)
 
             # archive present (just downloaded or already on disk) but not unzipped
             unzip(self.path, verbosity=self.verbosity)
 
-        self._static_features = self.static_data().columns.to_list()
+            missing = [f for f in folders if not os.path.exists(f)]
+            if missing:
+                warnings.warn(
+                    f"the following directories are missing after extracting "
+                    f"{fname}: {missing}. The extraction may have been "
+                    f"interrupted; the data of {self.name} is incomplete.")
 
-        self._dynamic_features = self.__dynamic_features()
-
-        if self.to_netcdf and not self.all_ncs_exist:
-            self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
-
-        self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5, 
-                        "llcrnrlon": 7.5, "urcrnrlon": 19}
-        self.parallels = range(46, 51, 1)
-        self.meridians = range(7, 19, 2)
+        self.maybe_remove_zip_files()
+        return
 
     @property
     def dyn_fname(self) -> Union[str, os.PathLike]:
@@ -286,7 +635,7 @@ class LamaHCE(_RainfallRunoff):
     def dyn_map(self):
         return {
             'D': {
-                'q_cms': observed_streamflow_cms(),
+                'qobs': observed_streamflow_cms(),
                 '2m_temp_min': min_air_temp(),  # todo : what about height?
                 '2m_temp_max': max_air_temp(),
                 '2m_temp_mean': mean_air_temp(),
@@ -304,7 +653,7 @@ class LamaHCE(_RainfallRunoff):
                 'surf_press': mean_air_pressure(),  # todo : is this air pressure?
             },
             'H': {
-                'q_cms': observed_streamflow_cms(),
+                'qobs': observed_streamflow_cms(),
                 '2m_temp': mean_air_temp(),
                 'prec': total_precipitation(),
                 'swe': snow_water_equivalent(),
@@ -335,13 +684,42 @@ class LamaHCE(_RainfallRunoff):
                             "3_shapefiles",
                             f"Basins_{letters[self.data_type]}.shp")
 
+    def transform_boundary(self, boundary):
+        """
+        The LamaH-CE shapefiles are in ETRS89-LAEA (EPSG:3035, metres, see
+        ``Info_english/1_Folder_structure.txt``). This reprojects them to WGS84
+        so that the returned geometry is in the same coordinate system as
+        :meth:`stn_coords`. The conversion is the ellipsoidal (GRS80) inverse
+        LAEA and was verified against pyproj to better than 1e-8 m.
+        """
+        if fiona is None:
+            return boundary
+
+        # parameters of EPSG:3035, taken from the accompanying .prj file
+        lon_0, lat_0 = 10.0, 52.0
+        false_easting, false_northing = 4321000.0, 3210000.0
+
+        def _to_wgs84(ring):
+            xy = np.asarray(ring, dtype='float64')
+            lat, lon = laea_to_wgs84(xy[:, 0], xy[:, 1], lon_0, lat_0,
+                                     false_easting, false_northing)
+            return list(zip(lon.tolist(), lat.tolist()))
+
+        if boundary.type == 'MultiPolygon':
+            coords = [[_to_wgs84(ring) for ring in polygon]
+                      for polygon in boundary.coordinates]
+        else:
+            coords = [_to_wgs84(ring) for ring in boundary.coordinates]
+
+        return fiona.Geometry(type=boundary.type, coordinates=coords)
+
     def _maybe_to_netcdf(self, fdir: str):
         # since data is very large, saving all the data in one file
         # consumes a lot of memory, which is impractical for most of the personal
-        # computers! Therefore, saving each feature separately
-
-        # todo: if we are only interested in one dynamic feature say 'o_cms_obs', 
-        # then why do we need to save all the dynamic features in the netcdf file?
+        # computers! Therefore, saving each feature separately. Each of these
+        # passes now only parses the columns of the feature being written
+        # (see ``_read_dynamic``), so the cost is roughly one file scan per
+        # feature rather than one full parse per feature.
 
         fdir = os.path.join(self.path, fdir)
         if not os.path.exists(fdir):
@@ -398,63 +776,107 @@ class LamaHCE(_RainfallRunoff):
         return all(os.path.exists(os.path.join(fdir, fname_)) for fname_ in self.dynamic_fnames)
 
     @property
-    def dynamic_features(self):
-        return self._dynamic_features
+    def dynamic_features(self) -> List[str]:
+        return list(self._dynamic_features)
 
-    def __dynamic_features(self) -> List[str]:
+    def _infer_dynamic_features(self) -> List[str]:
+        """
+        Names of the dynamic features, derived from the headers of the two csv
+        files of the first station. Only the headers are parsed, so this does
+        not slow down the instantiation of the class (reading a whole hourly
+        meteorological file to learn its column names used to cost ~0.5 s).
+        """
         station = self.stations()[0]
-        df = self._read_stn_dyn(station)  # this takes time
-        cols = df.columns.to_list()
-        [cols.remove(val) for val in ['DOY', 'ckhs', 'checked', 'HOD', 'qceq', 'qcol'] if val in cols]
-        return cols
+        cols = self._met_columns(station) + self._q_columns(station)
+        skip = set(_CE_DATE_COLS) | set(_CE_Q_FLAG_COLS)
+        rename = self.dyn_map[self.timestep]
+        return [rename.get(col, col) for col in cols if col not in skip]
+
+    def _met_columns(self, station: str) -> List[str]:
+        """column names of the meteorological file of ``station`` (cached)"""
+        if self._met_cols_cache is None:
+            self._met_cols_cache = pd.read_csv(
+                self.met_fname(station), sep=';', nrows=0).columns.to_list()
+        return list(self._met_cols_cache)
+
+    def _q_columns(self, station: str) -> List[str]:
+        """column names of the runoff file of ``station`` (cached)"""
+        if self._q_cols_cache is None:
+            self._q_cols_cache = pd.read_csv(
+                self.q_fname(station), sep=';', nrows=0).columns.to_list()
+        return list(self._q_cols_cache)
 
     @property
     def static_features(self) -> List[str]:
-        return self._static_features
+        return list(self._static_features)
 
     @property
     def data_type_dir(self):
-        f = [f for f in os.listdir(self.path) if f.endswith(self.data_type)][0]
-        return os.path.join(self.path, f)
+        # cached: this is resolved for every single station file name
+        if self._data_type_dir_cache is None:
+            f = [f for f in os.listdir(self.path) if f.endswith(self.data_type)][0]
+            self._data_type_dir_cache = os.path.join(self.path, f)
+        return self._data_type_dir_cache
 
     @property
     def q_dir(self):
         return os.path.join(self.path, 'D_gauges', '2_timeseries')
 
-    def stations(self) -> list:
+    @property
+    def ts_dir_name(self) -> str:
+        """name of the sub-folder (``daily``/``hourly``) holding the time series"""
+        return {'H': 'hourly', 'D': 'daily'}[self.timestep]
+
+    @property
+    def met_dir(self) -> str:
+        """directory holding the meteorological time series of all stations"""
+        return os.path.join(self.data_type_dir, '2_timeseries', self.ts_dir_name)
+
+    @property
+    def q_ts_dir(self) -> str:
+        """directory holding the runoff time series of all gauges"""
+        return os.path.join(self.q_dir, self.ts_dir_name)
+
+    def q_fname(self, station: str) -> str:
+        """path of the runoff file of ``station``"""
+        return os.path.join(self.q_ts_dir, f'ID_{station}.csv')
+
+    def stations(self) -> List[str]:
         # assuming file_names of the format ID_{stn_id}.csv
-        ts_dir = {'H': 'hourly', 'D': 'daily'}[self.timestep]
-        _dirs = os.listdir(os.path.join(self.data_type_dir,
-                                        f'2_timeseries{SEP}{ts_dir}'))
-        s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
-        return s
+        if self._stations_cache is None:
+            self._stations_cache = [f.split('_')[1].split('.csv')[0]
+                                    for f in os.listdir(self.met_dir)]
+        # a copy, so that a caller sorting/appending to the returned list
+        # cannot corrupt the cache
+        return list(self._stations_cache)
 
     def transform_stn_coords(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        transforms coordinates from EPSG:3035 (LAEA Europe) to projected
-
+        transforms the gauge coordinates from EPSG:3035 (ETRS89-LAEA) to
+        WGS84 (EPSG:4326)
         """
 
-        # following 2 lines are from .prj file 
+        # following 2 lines are from .prj file
         false_easting, false_northing = 4321000.0, 3210000.0
         lat_0, lon_0 = 52, 10
 
-        x, y = laea_to_wgs84(df.loc[:, 'long'], df.loc[:, 'lat'], lon_0, lat_0, false_easting, false_northing)
-        # todo : what about index?
-        coord_m = pd.concat([x, y], axis=1)
-        coord_m.columns = ['lat', 'long']
-        return coord_m
+        # the caller hands over float32 eastings/northings; do the trigonometry
+        # in double precision, otherwise the result is off by ~0.2 m
+        lat, lon = laea_to_wgs84(df.loc[:, 'long'].astype('float64'),
+                                 df.loc[:, 'lat'].astype('float64'),
+                                 lon_0, lat_0, false_easting, false_northing)
+        return pd.DataFrame({'lat': lat, 'long': lon}, index=df.index)
 
     def fetch_stations_features(
             self,
-            stations: list,
-            dynamic_features='all',
-            static_features=None,
-            st=None,
-            en=None,
+            stations: Union[str, List[str]],
+            dynamic_features: Union[str, List[str]] = 'all',
+            static_features: Union[str, List[str]] = None,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
             as_dataframe: bool = False,
             **kwargs
-    ):
+    ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
         """Reads attributes of more than one stations.
 
         This function checks of .nc files exist, then they are not prepared
@@ -512,12 +934,15 @@ class LamaHCE(_RainfallRunoff):
         st, en = self._check_length(st, en)
         static, dynamic = None, None
 
+        stations = validate_attributes(stations, self.stations(), 'stations')
+
         if dynamic_features is not None:
 
-            if self.verbosity>2:
-                print(f'fetching data for {len(dynamic_features)} dynamic features for {len(stations)} stations')
-
             dynamic_features = validate_attributes(dynamic_features, self.dynamic_features, 'dynamic_features')
+
+            if self.verbosity > 2:
+                print(f'fetching data for {len(dynamic_features)} dynamic '
+                      f'features for {len(stations)} stations')
 
             if netCDF4 is None or not self.all_ncs_exist:
                 # read from csv files
@@ -531,17 +956,16 @@ class LamaHCE(_RainfallRunoff):
 
             if static_features is not None:
                 static = self.fetch_static_features(stations, static_features)
-                dynamic = _handle_dynamic(dynamic, as_dataframe)
-            else:
-                # if the dyn is a dictionary of key, DataFames, we will return a as it is
-                dynamic = _handle_dynamic(dynamic, as_dataframe)
+
+            dynamic = _handle_dynamic(dynamic, as_dataframe)
 
         elif static_features is not None:
 
             static = self.fetch_static_features(stations, static_features)
 
         else:
-            raise ValueError
+            raise ValueError(f"static features are {static_features} and "
+                             f"dynamic features are {dynamic_features}")
 
         return static, dynamic
 
@@ -567,14 +991,254 @@ class LamaHCE(_RainfallRunoff):
         df.index = df.index.astype(str)
         return df
 
+    @property
+    def total_upstrm_dir(self) -> str:
+        """
+        directory of the ``A`` (total upstream) basin delineation, whatever
+        ``data_type`` is. The three delineations are siblings of each other, so
+        this is resolved from :attr:`data_type_dir`.
+        """
+        return os.path.join(os.path.dirname(self.data_type_dir),
+                            'A_basins_total_upstrm')
+
+    def total_upstrm_area(
+            self,
+            stations: Union[str, List[str]] = "all"
+    ) -> pd.Series:
+        """
+        Area (km2) upstream of the gauge, i.e. ``area_calc`` of the
+        ``A_basins_total_upstrm`` delineation, regardless of ``data_type``.
+
+        This is the area the observed runoff drains and is therefore what
+        :meth:`q_mm` divides by. It differs from :meth:`area` when ``data_type``
+        is ``intermediate_all`` or ``intermediate_lowimp``, where the catchment
+        attributes describe the incremental sub-catchment between two gauges
+        while ``D_gauges`` still reports the total discharge.
+
+        It is what :meth:`area` reports for every ``data_type``; the incremental
+        area of an intermediate delineation stays available under
+        ``area_km2_intermediate``.
+
+        Parameters
+        ----------
+        stations : str/list
+            name/names of stations. Default is ``all``.
+
+        Returns
+        -------
+        pd.Series
+            a :obj:`pandas.Series` whose index are station ids and values are
+            the total upstream areas in km2
+
+        Examples
+        --------
+        >>> from aqua_fetch import LamaHCE
+        >>> dataset = LamaHCE(data_type='intermediate_all')
+        >>> dataset.total_upstrm_area('1')
+        ID
+        1    4668.378906
+        Name: area_km2, dtype: float32
+        >>> dataset.area('1')   # the same thing
+        ID
+        1    4668.378906
+        Name: area_km2, dtype: float32
+        >>> # the incremental catchment between this gauge and the ones above it
+        >>> dataset.fetch_static_features('1', 'area_km2_intermediate')
+            area_km2_intermediate
+        ID
+        1                 442.343
+        """
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        return self._total_upstrm_areas().loc[stations].astype(self.fp)
+
+    def _total_upstrm_areas(self) -> pd.Series:
+        """``area_calc`` of the ``A`` delineation for every catchment (cached)"""
+        if self._total_area_cache is None:
+            fname = os.path.join(self.total_upstrm_dir,
+                                 '1_attributes', 'Catchment_attributes.csv')
+            if not os.path.exists(fname):
+                raise FileNotFoundError(
+                    f"{fname} holds the area upstream of each gauge, which "
+                    f"{self.name} needs whatever the data_type is, but it is "
+                    f"not on disk. Re-instantiate the class with "
+                    f"overwrite=True to extract it again.")
+            self._total_area_cache = _read_area_calc(fname).rename(catchment_area())
+        return self._total_area_cache
+
+    def area(self, stations: List[str]) -> pd.Series:
+        # D_gauges reports the total discharge at the gauge for every
+        # data_type, so the runoff height must always use the total upstream
+        # area and never the (possibly much smaller) intermediate one.
+        return self.total_upstrm_area(stations)
+
     def static_data(self) -> pd.DataFrame:
         """returns all static attributes of LamaHCE dataset"""
-        df = pd.concat([self.catchment_attributes(), self.gauge_attributes()], axis=1)
-        # Catchment_attributes.csv and Gauge_attributes.csv share fields (lat, lon, ...);
-        # keep the gauge copy because static_map maps 'lat'/'lon' to gauge coordinates.
-        df = df.loc[:, ~df.columns.duplicated(keep='last')]
-        df.rename(columns=self.static_map, inplace=True)
-        return df
+        if self._static_data_cache is None:
+            df = pd.concat([self.catchment_attributes(), self.gauge_attributes()], axis=1)
+            duplicated = df.columns.duplicated(keep='last')
+            if duplicated.any():
+                # does not happen for the published archives (the catchment and
+                # the gauge tables share no field name) but must not silently
+                # produce a table with repeated columns if that ever changes
+                warnings.warn(
+                    f"Catchment_attributes.csv and Gauge_attributes.csv of "
+                    f"{self.name} share the field(s) "
+                    f"{df.columns[duplicated].to_list()}. Keeping the gauge copy.")
+                df = df.loc[:, ~duplicated]
+            df.rename(columns=self.static_map, inplace=True)
+            df = self._standardize_area(df)
+            self._static_data_cache = df
+            self._warn_about_duplicate_gauges(df)
+        # a copy, so that an in-place edit by the caller cannot corrupt the cache
+        return self._static_data_cache.copy()
+
+    def _standardize_area(self, static: pd.DataFrame) -> pd.DataFrame:
+        """
+        Makes ``area_km2`` mean the same thing as in every other dataset of the
+        library: the area upstream of the gauge.
+
+        For ``total_upstrm`` that is already what the catchment attributes hold
+        and the table is returned unchanged. For the two intermediate
+        delineations ``area_calc`` is the incremental catchment between this
+        gauge and the ones above it - a real area, but not the one the gauge's
+        discharge drains - so it is kept under ``area_km2_intermediate`` and
+        ``area_km2`` is taken from the ``A`` delineation instead. Nothing is
+        dropped; the table gains one column.
+        """
+        if self.data_type == 'total_upstrm':
+            return static
+
+        area, intermediate = catchment_area(), catchment_area_with_specifier('intermediate')
+        if area not in static:
+            return static
+
+        static = static.rename(columns={area: intermediate})
+        # same position as before, so area_km2 stays the leading column
+        static.insert(static.columns.get_loc(intermediate), area,
+                      self._total_upstrm_areas().reindex(static.index))
+        return static
+
+    def _warn_about_duplicate_gauges(self, static: pd.DataFrame):
+        """
+        Warns (but does not exclude) when two stations describe the same gauge.
+
+        Two gauges are considered duplicates when their coordinates agree to
+        within 100 m; the gauge name alone is not sufficient because LamaH-CE
+        legitimately contains e.g. two gauges called *Anger* on two different
+        rivers 270 km apart. This runs once per instance on a ~880 row table, so
+        it does not slow down fetching.
+        """
+        lat, lon = gauge_latitude(), gauge_longitude()
+        if lat not in static or lon not in static:
+            return
+
+        # gauges without coordinates cannot be compared and must not all end up
+        # in one "NaN" group
+        df = static.reindex(self.stations()).dropna(subset=[lat, lon])
+
+        # coordinates are in metres (EPSG:3035), so a 100 m tolerance is a
+        # plain rounding of the easting/northing
+        key = list(zip((df[lon] // 100).to_list(), (df[lat] // 100).to_list()))
+        keys = pd.Series(key, index=df.index)
+        dupes = keys[keys.duplicated(keep=False)]
+
+        if len(dupes) == 0:
+            return
+
+        groups = {}
+        for stn, k in dupes.items():
+            groups.setdefault(k, []).append(stn)
+        msg = "; ".join(
+            f"{grp} (name(s): {df.loc[grp, 'name'].to_list() if 'name' in df else '?'})"
+            for grp in groups.values())
+        warnings.warn(
+            f"{self.name} contains gauges whose coordinates agree to within "
+            f"100 m and which may therefore be duplicates: {msg}. They are kept "
+            f"in the dataset.", UserWarning)
+        return
+
+    def _reader_spec(
+            self,
+            dynamic_features: List[str] = None,
+            st: pd.Timestamp = None,
+            en: pd.Timestamp = None
+    ) -> Dict:
+        """
+        Builds the (small, picklable) description of what a station read has to
+        do. Translating the requested feature names back into the on-disk column
+        names lets :func:`_read_ce_csv` parse only the needed columns and lets
+        the whole meteorological or runoff file be skipped when none of its
+        columns were asked for. Fetching only ``q_cms_obs`` from the hourly
+        product therefore no longer parses a 29 MB meteorological file per
+        station.
+        """
+        rename = dict(self.dyn_map[self.timestep])
+        src_of = {ren: src for src, ren in rename.items()}
+
+        date_cols = ['YYYY', 'MM', 'DD'] + (['hh', 'mm'] if self.timestep == 'H' else [])
+
+        met_cols = [c for c in self._met_columns(self.stations()[0])
+                    if c not in _CE_DATE_COLS]
+        q_cols = [c for c in self._q_columns(self.stations()[0])
+                  if c not in _CE_DATE_COLS and c not in _CE_Q_FLAG_COLS]
+
+        if dynamic_features is None:
+            wanted_met, wanted_q = met_cols, q_cols
+        else:
+            src = [src_of.get(f, f) for f in dynamic_features]
+            wanted_met = [c for c in met_cols if c in src]
+            wanted_q = [c for c in q_cols if c in src]
+
+        grid_start, grid_end = self._dyn_extent()
+
+        return dict(
+            met_dir=self.met_dir,
+            q_dir=self.q_ts_dir,
+            timestep=self.timestep,
+            met_usecols=date_cols + wanted_met if wanted_met else None,
+            q_usecols=date_cols + wanted_q if wanted_q else None,
+            rename=rename,
+            factors=dict(self.dyn_factors),
+            features=list(dynamic_features) if dynamic_features is not None else None,
+            st=st,
+            en=en,
+            grid_start=grid_start,
+            grid_end=grid_end,
+            grid_freq=_CE_FREQ[self.timestep],
+        )
+
+    def _n_workers(self, spec: Dict, n_stations: int) -> int:
+        """
+        Number of worker processes to read ``n_stations`` with.
+
+        The decision is taken on the *size* of the workload rather than on the
+        number of stations: three hourly stations are ~100 MB of csv and are
+        worth a pool, while a hundred daily stations of a single feature are not.
+        """
+        cpus = self.processes or min(get_cpus(), 32)
+
+        if cpus == 1 or n_stations < 2:
+            return 1
+
+        station = self.stations()[0]
+        nbytes = 0
+        for key, directory in (('met_usecols', spec['met_dir']),
+                               ('q_usecols', spec['q_dir'])):
+            if spec[key] is None:
+                continue
+            fpath = os.path.join(directory, f"ID_{station}.csv")
+            if os.path.exists(fpath):
+                # only the requested columns are parsed
+                ncols = len(spec[key])
+                total_cols = len(self._met_columns(station) if key == 'met_usecols'
+                                 else self._q_columns(station))
+                nbytes += os.path.getsize(fpath) * ncols / total_cols
+
+        # ~30 MB is where the cost of starting the pool and shipping the frames
+        # back starts to be repaid by the parallel parsing
+        if nbytes * n_stations < 30e6:
+            return 1
+        return min(cpus, n_stations)
 
     def _read_dynamic(
             self,
@@ -582,28 +1246,41 @@ class LamaHCE(_RainfallRunoff):
             dynamic_features: Union[str, list] = 'all',
             st=None,
             en=None,
-    ):
-        """Reads features of one or more station"""
+    ) -> Dict[str, pd.DataFrame]:
+        """Reads dynamic features of one or more stations"""
 
-        cpus = self.processes or min(get_cpus(), 32)
+        stations = list(stations)
+        dyn_feats = validate_attributes(dynamic_features, self.dynamic_features,
+                                        'dynamic_features')
         st, en = self._check_length(st, en)
 
-        if cpus == 1 or len(stations) < 10:
+        spec = self._reader_spec(dyn_feats, st=st, en=en)
+        cpus = self._n_workers(spec, len(stations))
+
+        if self.verbosity > 1:
+            print(f"reading {len(dyn_feats)} dynamic features of "
+                  f"{len(stations)} stations with {cpus} cpus")
+
+        if cpus == 1:
             results = {}
             for idx, stn in enumerate(stations):
-                results[stn] = self._read_stn_dyn(stn).loc[st:en, dynamic_features]
+                results[stn] = _read_ce_stn(spec, stn)
 
-                if self.verbosity > 0 and idx % 10 == 0:
+                if self.verbosity > 2 and idx % 10 == 0:
                     print(f'{idx} stations read')
         else:
+            # the reader is a module level function and the (small) spec is
+            # shipped to each worker exactly once by the initializer, so no
+            # cached table of this instance is pickled per station
+            with cf.ProcessPoolExecutor(max_workers=cpus,
+                                        initializer=_init_ce_worker,
+                                        initargs=(spec,)) as executor:
+                data = executor.map(_read_ce_stn_in_worker, stations)
+                results = {stn: df for stn, df in zip(stations, data)}
 
-            with  cf.ProcessPoolExecutor(max_workers=cpus) as executor:
-                results = executor.map(
-                    self._read_stn_dyn,
-                    stations
-                )
+        nodata = {stn: df.attrs.get('n_q_nodata', 0) for stn, df in results.items()}
+        _warn_nodata(sum(nodata.values()), sum(1 for n in nodata.values() if n))
 
-            results = {stn: data.loc[st:en, dynamic_features] for stn, data in zip(stations, results)}
         return results
 
     def _make_ds_from_ncs(self, dynamic_features, stations, st, en):
@@ -615,8 +1292,8 @@ class LamaHCE(_RainfallRunoff):
         dyns = []
         for idx, f in enumerate(dynamic_features):
             dyn_fpath = os.path.join(self.path, f"{self.data_type}_{self.timestep}", f'{f}.nc')
-            dyn = xr.open_dataset(dyn_fpath)  # daataset
-            dyns.append(dyn[stations].sel(time=slice(st, en)))
+            with xr.open_dataset(dyn_fpath) as dyn:
+                dyns.append(dyn[stations].sel(time=slice(st, en)).load())
 
             if self.verbosity>3:
                 print(f'{idx}: {f} read')
@@ -630,7 +1307,7 @@ class LamaHCE(_RainfallRunoff):
     def fetch_static_features(
             self,
             stations: Union[str, List[str]] = "all",
-            static_features: Union[str, List[str]] = None
+            static_features: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         static features of LamaHCE
@@ -647,211 +1324,122 @@ class LamaHCE(_RainfallRunoff):
         --------
             >>> from aqua_fetch import LamaHCE
             >>> dataset = LamaHCE(timestep='D', data_type='total_upstrm')
-            >>> df = dataset.fetch_static_features('99')  # (1, 61)
+            >>> dataset.fetch_static_features('99').shape
+            (1, 84)
             ...  # get list of all static features
             >>> dataset.static_features
             >>> dataset.fetch_static_features('99',
-            >>> static_features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
+            ... static_features=['area_km2', 'elev_mean', 'agr_fra', 'sand_fra']).shape
+            (1, 4)
         """
-
-        df = self.static_data()
 
         static_features = validate_attributes(static_features, self.static_features, 'static features')
         stations = validate_attributes(stations, self.stations(), 'stations')
 
-        df = df[static_features]
-
+        df = self.static_data()
         df.index = df.index.astype(str)
-        df = df.loc[stations]
-        if isinstance(df, pd.Series):
-            df = pd.DataFrame(df).transpose()
 
-        return df
+        return df.loc[stations, static_features]
 
     @property
-    def chk_col(self):
-        cols = {'D': 'checked',
-                'H': 'ckhs'}
-        return cols[self.timestep]
+    def chk_col(self) -> str:
+        """
+        name of the column carrying the "checked by the hydrographic service"
+        flag in the runoff files. It is named ``ckhs`` at both timesteps.
+        """
+        return 'ckhs'
 
     def _read_stn_dyn(
             self,
-            station,
-            # features=None
+            station: str,
+            dynamic_features: Union[str, List[str]] = None,
+            st: Union[str, pd.Timestamp] = None,
+            en: Union[str, pd.Timestamp] = None,
     ) -> pd.DataFrame:
-        # read a file containing timeseries data for one station
-        q_df = self._read_q_for_station(station)
+        """
+        reads the dynamic (meteorological + runoff) data of a single station.
 
-        met_df = self._read_met_for_station(station, features=None)
+        ``dynamic_features`` restricts both the columns that are parsed off disk
+        and the columns of the returned DataFrame. ``None`` (default) returns
+        all dynamic features.
+        """
+        if isinstance(dynamic_features, str):
+            dynamic_features = [dynamic_features]
 
-        df = pd.concat([met_df, q_df], axis=1)
-        # change the column names to the names of dynamic features
-        df.rename(columns=self.dyn_map[self.timestep], inplace=True)
-
-        # change the units of the dynamic features
-        for col in self.dyn_factors:
-            df[col] = df[col] * self.dyn_factors[col]
-
-        df.columns.name = "dynamic_features"
-        df.index.name = "time"
+        spec = self._reader_spec(dynamic_features,
+                                 st=None if st is None else pd.Timestamp(st),
+                                 en=None if en is None else pd.Timestamp(en))
+        df = _read_ce_stn(spec, station)
+        _warn_nodata(df.attrs.get('n_q_nodata', 0), 1)
         return df
 
-    def met_fname(self, station):
-        ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
-        return os.path.join(
-            self.data_type_dir,
-            f'2_timeseries{SEP}{ts_folder}{SEP}ID_{station}.csv')
+    def met_fname(self, station: str) -> str:
+        """path of the meteorological file of ``station``"""
+        return os.path.join(self.met_dir, f'ID_{station}.csv')
 
-    def _read_met_for_station(self, station, features):
-        if isinstance(features, list):
-            features = features.copy()
-            [features.remove(itm) for itm in ['q_cms', 'ckhs'] if itm in features]
+    def fetch_stn_q_raw(self, station: str) -> pd.DataFrame:
+        """
+        The runoff file of one gauge exactly as published, i.e. with the
+        ``-999`` no-data markers still in place and with the quality flags
 
-        met_dtype = {
-            'YYYY': np.int32,
-            'MM': np.int32,
-            'DD': np.int32,
-            'DOY': np.int32,
-            '2m_temp_max': np.float32,
-            '2m_temp_mean': np.float32,
-            '2m_temp_min': np.float32,
-            '2m_dp_temp_max': np.float32,
-            '2m_dp_temp_mean': np.float32,
-            '2m_dp_temp_min': np.float32,
-            '10m_wind_u': np.float32,
-            '10m_wind_v': np.float32,
-            'fcst_alb': np.float32,
-            'lai_high_veg': np.float32,
-            'lai_low_veg': np.float32,
-            'swe': np.float32,
-            'surf_net_solar_rad_max': np.float32,
-            'surf_net_solar_rad_mean': np.float32,
-            'surf_net_therm_rad_max': np.float32,
-            'surf_net_therm_rad_mean': np.float32,
-            'surf_press': np.float32,
-            'total_et': np.float32,
-            'prec': np.float32,
-            'volsw_123': np.float32,
-            'volsw_4': np.float32
-        }
+            - ``ckhs`` : 1 where the value was checked by the hydrographic service
+            - ``qceq`` : 1 where at least 10 consecutive values are equal
+            - ``qcol`` : 1 where the value is an outlier w.r.t. the calendar
+              day/hour statistics
 
-        if self.timestep == 'D':
-            if features:
-                if not isinstance(features, list):
-                    features = [features]
+        Use this when the flags matter; :meth:`fetch` returns the analysis ready
+        view where ``-999`` has been replaced by ``NaN`` and the flags are
+        dropped.
 
-            met_df = pd.read_csv(self.met_fname(station), 
-                                 sep=';', 
-                                 dtype=met_dtype,
-                                 )
+        Returns
+        -------
+        pd.DataFrame
+            a :obj:`pandas.DataFrame` indexed by time whose columns are
+            ``qobs``, ``ckhs``, ``qceq`` and ``qcol``.
 
-            if pd.__version__ > "2.1.4":
-                periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
-                                                    month=met_df["MM"], day=met_df["DD"],
-                                                    freq="D")
-            else:
-                periods = pd.PeriodIndex(year=met_df["YYYY"],
-                            month=met_df["MM"], day=met_df["DD"],
-                            freq="D")
-            met_df.index = periods.to_timestamp()
+        Examples
+        --------
+        >>> from aqua_fetch import LamaHCE
+        >>> dataset = LamaHCE()
+        >>> raw = dataset.fetch_stn_q_raw('124')
+        >>> (raw['qobs'] == -999).sum()
+        3
+        """
+        fpath = self.q_fname(station)
+        # no dtype/usecols: reproduce the file with pandas' own type inference
+        df = pd.read_csv(fpath, sep=';')
 
+        if self.timestep == 'H':
+            df.index = _ymd_index(df['YYYY'], df['MM'], df['DD'], df['hh'], df['mm'])
         else:
-            if features:
-                if not isinstance(features, list):
-                    features = [features]
+            df.index = _ymd_index(df['YYYY'], df['MM'], df['DD'])
 
-            met_dtype.update({
-                'hh': np.int32,
-                'mm': np.int32,
-                'HOD': np.int32,
-                '2m_temp': np.float32,
-                '2m_dp_temp': np.float32,
-                'surf_net_solar_rad': np.float32,
-                'surf_net_therm_rad': np.float32
-            })
+        df.index.name = 'time'
+        return df.drop(columns=[c for c in _CE_DATE_COLS if c in df.columns])
 
-            met_df = pd.read_csv(self.met_fname(station), sep=';', 
-                                 dtype=met_dtype)
-
-            if pd.__version__ > "2.1.4":
-                periods = pd.PeriodIndex.from_fields(year=met_df["YYYY"],
-                                                    month=met_df["MM"], 
-                                                    day=met_df["DD"], 
-                                                    hour=met_df["hh"],
-                                                    minute=met_df["mm"], 
-                                                    freq="h")
-            else:
-                periods = pd.PeriodIndex(year=met_df["YYYY"],
-                            month=met_df["MM"], day=met_df["DD"], hour=met_df["hh"],
-                            minute=met_df["mm"], freq="h")
-            met_df.index = periods.to_timestamp()
-
-        # remove the cols specifying index
-        [met_df.pop(item) for item in ['YYYY', 'MM', 'DD', 'hh', 'mm'] if item in met_df]
-        return met_df
-
-    def _read_q_for_station(self, station):
-
-        ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
-
-        q_fname = os.path.join(self.q_dir,
-                               f'{ts_folder}{SEP}ID_{station}.csv')
-
-        q_dtype = {
-            'YYYY': np.int32,
-            'MM': np.int32,
-            'DD': np.int32,
-            'qobs': np.float32,
-            'checked': np.bool_
-        }
-
-        if self.timestep == 'D':
-            q_df = pd.read_csv(q_fname, sep=';', dtype=q_dtype)
-
-            if pd.__version__ > "2.1.4":
-                periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
-                                                 month=q_df["MM"], day=q_df["DD"],
-                                                 freq="D")
-            else:
-                periods = pd.PeriodIndex(year=q_df["YYYY"],
-                            month=q_df["MM"], day=q_df["DD"],
-                            freq="D")
-
-            q_df.index = periods.to_timestamp()
-        else:
-            q_dtype.update({
-                'hh': np.int32,
-                'mm': np.int32
-            })
-
-            q_df = pd.read_csv(q_fname, sep=';', dtype=q_dtype)
-
-            if pd.__version__ > "2.1.4":
-                periods = pd.PeriodIndex.from_fields(year=q_df["YYYY"],
-                                                 month=q_df["MM"], day=q_df["DD"], hour=q_df["hh"],
-                                                 minute=q_df["mm"], freq="h")
-            else:
-                periods = pd.PeriodIndex(year=q_df["YYYY"],
-                            month=q_df["MM"], day=q_df["DD"], hour=q_df["hh"],
-                            minute=q_df["mm"], freq="h")
-
-            q_df.index = periods.to_timestamp()
-
-        [q_df.pop(item) for item in ['YYYY', 'MM', 'DD', 'hh', 'mm'] if item in q_df]
-        q_df.rename(columns={'qobs': 'q_cms'}, inplace=True)
-
-        q_df.columns.name = "dynamic_features"
-        q_df.index.name = "time"
-
-        return q_df
+    def _dyn_extent(self) -> tuple:
+        """
+        First and last timestamp of the meteorological forcings, read from the
+        first and last line of one file rather than hardcoded. All 859 (454 for
+        ``intermediate_lowimp``) files of a given product share the same period.
+        """
+        if self._extent_cache is None:
+            self._extent_cache = _first_last_stamps(
+                self.met_fname(self.stations()[0]), self.timestep)
+        return self._extent_cache
 
     @property
-    def start(self):
-        return pd.Timestamp("1981-01-01")
+    def start(self) -> pd.Timestamp:
+        """first timestamp of the (meteorological) time series"""
+        return self._dyn_extent()[0]
 
     @property
-    def end(self):  # todo, is it untill 2017 or 2019?
-        return pd.Timestamp("2019-12-31 23:00:00")
+    def end(self) -> pd.Timestamp:
+        """
+        last timestamp of the (meteorological) time series. Note that the
+        observed runoff of every gauge ends earlier (2017-12-31).
+        """
+        return self._dyn_extent()[1]
 
 
 class LamaHIce(LamaHCE):
@@ -953,18 +1541,6 @@ class LamaHIce(LamaHCE):
     
     """
 
-    dirs_to_check1 = {
-        'lamah_ice.zip': {'total_upstrm': 'total_upstrm_D',
-                          'intermediate_all': 'intermediate_all_D',
-                          'intermediate_lowimp': 'intermediate_lowimp_D'
-                          },
-        'lamah_ice_hourly': {
-            'total_upstrm': 'total_upstrm_H',
-            'intermediate_all': 'intermediate_all_H',
-                                    },
-        'Caravan_extension_lamahice.zip': {'total_upstrm': '', 'intermediate_all': '', 'intermediate_lowimp': ''}
-    }
-
     dirs_to_check = {
         'lamah_ice.zip': {
             'total_upstrm': 
@@ -1053,6 +1629,26 @@ class LamaHIce(LamaHCE):
         self.bbox = {'llcrnrlat': 63.0, 'urcrnrlat': 67.0, 'llcrnrlon': -25.0, 'urcrnrlon': -13.0}
         self.parallels = range(63, 67, 1)
         self.meridians = range(-25, -12, 2)
+
+    def _infer_dynamic_features(self) -> List[str]:
+        """
+        LamaH-Ice ships different column sets than LamaH-CE (e.g. a ``qc_flag``
+        column in the runoff files), so the names are taken from a real read of
+        the first station rather than from the csv headers.
+        """
+        station = self.stations()[0]
+        cols = self._read_stn_dyn(station).columns.to_list()
+        skip = set(_CE_DATE_COLS) | set(_CE_Q_FLAG_COLS) | {'checked'}
+        return [col for col in cols if col not in skip]
+
+    def transform_boundary(self, boundary):
+        """
+        The LamaH-Ice shapefiles are in EPSG:3057 (Lambert conformal conic), not
+        in the EPSG:3035 that :meth:`LamaHCE.transform_boundary` assumes, so the
+        geometry is returned untouched (i.e. in the projected coordinates of the
+        source shapefile).
+        """
+        return boundary
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1186,7 +1782,7 @@ class LamaHIce(LamaHCE):
 
         df.rename(columns=self.static_map, inplace=True)
 
-        return df
+        return self._standardize_area(df)
 
     def gauge_attributes(self) -> pd.DataFrame:
         """
@@ -1312,7 +1908,9 @@ class LamaHIce(LamaHCE):
     ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
-        by diving q_cms/area
+        by diving q_cms by the area upstream of the gauge
+        (:meth:`LamaHCE.total_upstrm_area`, which equals :meth:`area` for the
+        ``total_upstrm`` delineation only).
 
         parameters
         ----------

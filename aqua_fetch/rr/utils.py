@@ -1125,7 +1125,8 @@ class _RainfallRunoff(Datasets):
     ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
-        by diving ``q``/area
+        by diving ``q``/area, where area is the area drained by the gauge
+        (see :meth:`area`).
 
         parameters
         ----------
@@ -1146,7 +1147,7 @@ class _RainfallRunoff(Datasets):
         if self._mm_feature_name is None:
             _, q = self.fetch_stations_features(
                 stations,
-                dynamic_features="q_cms_obs", 
+                dynamic_features="q_cms_obs",
                 as_dataframe=True)
             q = pd.DataFrame.from_dict({stn:df['q_cms_obs'] for stn,df in q.items()})
 

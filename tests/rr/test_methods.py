@@ -58,7 +58,6 @@ from aqua_fetch import Poland
 from aqua_fetch import Portugal
 from aqua_fetch import Slovenia
 from aqua_fetch import GRDCCaravan
-from aqua_fetch import LamaHCE
 from aqua_fetch import LamaHIce
 
 from utils import test_stations
@@ -105,12 +104,7 @@ DATASETS = {
 "Ireland": Ireland(path=raw_data_path, verbosity=0),
 "Italy": Italy(path=raw_data_path, verbosity=0),
 'Japan': Japan(path=raw_data_path, verbosity=0),
-"LamaHCE_tu": LamaHCE(timestep='D', data_type="total_upstrm", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_ia": LamaHCE(timestep='D', data_type="intermediate_all", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_il": LamaHCE(timestep='D', data_type="intermediate_lowimp", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_h_tu": LamaHCE(timestep='H', data_type="total_upstrm", path=raw_data_path, verbosity=10),
-"LamaHCE_h_ia": LamaHCE(timestep='H', data_type="intermediate_all", path=raw_data_path, verbosity=10),
-"LamaHCE_h_il": LamaHCE(timestep='H', data_type="intermediate_lowimp", path=raw_data_path, verbosity=10),
+# LamaHCE is exercised by these same shared helpers in test_lamah.py
 "LamaHIce_h_tu": LamaHIce(path=raw_data_path, timestep="H", data_type="total_upstrm", verbosity=0),
 "LamaHIce_h_ia": LamaHIce(path=raw_data_path, timestep="H", data_type="intermediate_all", verbosity=0),
 "LamaHIce_h_il": LamaHIce(path=raw_data_path, timestep="H", data_type="intermediate_lowimp", verbosity=0),
@@ -187,12 +181,6 @@ def test_stations_method():
         "Portugal": 280,
         "Slovenia": 117,
         "GRDCCaravan": 5356,
-        "LamaHCE_tu": 859,
-        "LamaHCE_ia": 859,
-        "LamaHCE_il": 454,
-        "LamaHCE_h_tu": 859,
-        "LamaHCE_h_ia": 859,
-        "LamaHCE_h_il": 454,
         "LamaHIce_h_tu": 111,
         "LamaHIce_h_ia": 107,
         "LamaHIce_h_il": 86,
@@ -228,7 +216,6 @@ class TestMethods(unittest.TestCase):
                 # (note: 'CAMELS_DE_h' is intentionally absent here -> its hourly
                 #  boundaries ARE reprojected to wgs84, so latlong ranges apply)
                 if ds_name in ['CAMELS_CH', 'CAMELS_COL', 'CAMELS_DE', 'CAMELS_FR', 'CAMELS_GB', 'CAMELS_FI',
-                            'LamaHCE_tu', 'LamaHCE_ia', 'LamaHCE_il', 'LamaHCE_h_tu', 'LamaHCE_h_ia', 'LamaHCE_h_il',
                                 'LamaHIce_h_tu', 'LamaHIce_h_ia', 'LamaHIce_h_il', 'LamaHIce_d_tu', 'LamaHIce_d_ia', 'LamaHIce_d_il',
                             ]:
                     test_latlong_ranges = False
