@@ -1028,7 +1028,7 @@ def test_lamahce_netcdf_roundtrip():
     with synthetic_lamahce() as tmpdir:
         ds = LamaHCE(path=tmpdir, timestep='D', to_netcdf=True, verbosity=0)
 
-        ncdir = os.path.join(ds.path, 'total_upstrm_D')
+        ncdir = os.path.join(ds.path, 'total_upstrm_D_v2')
         assert sorted(os.listdir(ncdir)) == sorted(ds.dynamic_fnames)
         assert ds.all_ncs_exist
 

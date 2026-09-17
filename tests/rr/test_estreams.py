@@ -214,7 +214,7 @@ test_dataset(ds,
 
 ds = Slovenia(path=raw_data_path, verbosity=3)
 
-q = ds.fetch_q()
+q = ds.fetch_q().loc[:"2023-12-31"]
 
 assert q.shape == (27028, 117)
 

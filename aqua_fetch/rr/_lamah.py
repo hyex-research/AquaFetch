@@ -16,7 +16,7 @@ from .._backend import fiona
 
 from ..utils import get_cpus
 from ..utils import validate_attributes, download, unzip
-from .utils import _RainfallRunoff, _handle_dynamic
+from .utils import _RainfallRunoff, _handle_dynamic, cache_name
 from .._geom_utils import laea_to_wgs84, lcc_to_wgs84
 
 from ._map import (
@@ -29,10 +29,9 @@ from ._map import (
     mean_air_temp,
     total_precipitation,
     snow_water_equivalent,
-    solar_radiation,
-    max_solar_radiation,
-    max_thermal_radiation,
-    mean_thermal_radiation,
+    net_solar_radiation,
+    max_net_solar_radiation,
+    net_longwave_radiation,
     u_component_of_wind_at_10m,
     v_component_of_wind_at_10m,
     max_dewpoint_temperature_at_2m,
@@ -539,13 +538,40 @@ class LamaHCE(_RainfallRunoff):
 
         self._dynamic_features = self._infer_dynamic_features()
 
+        self._warn_thermal_sign()
+
         if self.to_netcdf and not self.all_ncs_exist:
-            self._maybe_to_netcdf(fdir=f"{data_type}_{timestep}")
+            self._maybe_to_netcdf(fdir=cache_name(f"{data_type}_{timestep}"))
 
         self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5,
                         "llcrnrlon": 7.5, "urcrnrlon": 19}
         self.parallels = range(46, 51, 1)
         self.meridians = range(7, 19, 2)
+
+    def _warn_thermal_sign(self):
+        """
+        Reports LamaH-CE's net-thermal sign convention.
+
+        The values are served exactly as published -- this library does not
+        negate them -- so the user has to know that they run opposite to the
+        other datasets before combining them.
+        """
+        therm = [f for f in self._dynamic_features if f.startswith('surf_net_therm_rad')]
+        if not therm:
+            return
+        warnings.warn(
+            f"{self.__class__.__name__} publishes net thermal (longwave) "
+            f"radiation POSITIVE-UPWARD, i.e. as a heat loss: "
+            f"{', '.join(therm)} have a positive mean. Every other dataset in aqua_fetch "
+            f"(BULL, GRDC-Caravan, GSHA, HYSETS) publishes net longwave "
+            f"positive-toward-the-surface, i.e. about -50 W m-2, which is what "
+            f"the canonical name '{net_longwave_radiation()}' denotes. These "
+            f"columns are therefore served under their SOURCE names and are "
+            f"NOT mapped to '{net_longwave_radiation()}'; the data is returned "
+            f"exactly as published. To compare them with the other datasets, "
+            f"negate them yourself (df[col] * -1), remembering that this also "
+            f"turns 'surf_net_therm_rad_max' into the minimum.",
+            UserWarning)
 
     def _download_and_extract(self):
         """
@@ -620,7 +646,7 @@ class LamaHCE(_RainfallRunoff):
         only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
         file can take some time however it leads to faster I/O operations.
         """
-        return self.name.lower() + f"_{self.timestep}_{self.data_type}.nc"
+        return cache_name(self.name.lower() + f"_{self.timestep}_{self.data_type}.nc")
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -641,10 +667,23 @@ class LamaHCE(_RainfallRunoff):
                 '2m_temp_mean': mean_air_temp(),
                 'prec': total_precipitation(),
                 'swe': snow_water_equivalent(),
-                'surf_net_solar_rad_max': max_solar_radiation(),
-                'surf_net_solar_rad_mean': solar_radiation(),
-                'surf_net_therm_rad_max': max_thermal_radiation(),
-                'surf_net_therm_rad_mean': mean_thermal_radiation(),
+                # NET (not downward) shortwave -- see Appendix A of Klingler et
+                # al., 2021. Already in W m-2.
+                'surf_net_solar_rad_max': max_net_solar_radiation(),
+                'surf_net_solar_rad_mean': net_solar_radiation(),
+                # NOTE: surf_net_therm_rad_* is deliberately NOT mapped to
+                # lwnetrad_wm2. LamaH publishes net thermal radiation
+                # POSITIVE-UPWARD whereas this library's lwnetrad_wm2 is defined
+                # positive-toward-the-surface, as GRDC-Caravan, BULL and GSHA
+                # publish it. Station means over randomly sampled stations:
+                # BULL -88..-46 (median -72, n=80), GRDC-Caravan -127..-27
+                # (median -52, n=120), GSHA -131..-27 (median -59, n=119).
+                # Both conventions are self-consistent; LamaH is not wrong.
+                # Mapping it to lwnetrad_wm2 would assert a convention the data
+                # does not follow, and negating it would modify the data, which
+                # is outside this library's remit. The columns therefore keep
+                # their source names and _warn_thermal_sign() tells the user how
+                # to convert if they want cross-dataset comparability.
                 '10m_wind_u': u_component_of_wind_at_10m(),
                 '10m_wind_v': v_component_of_wind_at_10m(),
                 '2m_dp_temp_max': max_dewpoint_temperature_at_2m(),
@@ -660,14 +699,18 @@ class LamaHCE(_RainfallRunoff):
                 '10m_wind_u': u_component_of_wind_at_10m(),
                 '10m_wind_v': v_component_of_wind_at_10m(),
                 '2m_dp_temp': mean_dewpoint_temperature_at_2m(),
-                'surf_net_solar_rad': solar_radiation(),
-                'surf_net_therm_rad': mean_thermal_radiation(),
+                'surf_net_solar_rad': net_solar_radiation(),  # NET shortwave, W m-2
+                # surf_net_therm_rad deliberately unmapped -- see 'D' above
                 'surf_press': mean_air_pressure(),  # todo : is this air pressure?
             }
         }
 
     @property
     def dyn_factors(self) -> Dict[str, float]:
+        # Only unit conversions belong here. The net-thermal sign convention is
+        # NOT normalised: that would alter the published values rather than
+        # re-express them, so it is reported to the user instead. See
+        # _warn_thermal_sign().
         return {
             mean_air_pressure(): 0.01,
         }
@@ -772,7 +815,7 @@ class LamaHCE(_RainfallRunoff):
 
     @property
     def all_ncs_exist(self):
-        fdir = os.path.join(self.path, f"{self.data_type}_{self.timestep}")
+        fdir = os.path.join(self.path, cache_name(f"{self.data_type}_{self.timestep}"))
         return all(os.path.exists(os.path.join(fdir, fname_)) for fname_ in self.dynamic_fnames)
 
     @property
@@ -1065,7 +1108,7 @@ class LamaHCE(_RainfallRunoff):
             self._total_area_cache = _read_area_calc(fname).rename(catchment_area())
         return self._total_area_cache
 
-    def area(self, stations: List[str]) -> pd.Series:
+    def area(self, stations: List[str] = "all") -> pd.Series:
         # D_gauges reports the total discharge at the gauge for every
         # data_type, so the runoff height must always use the total upstream
         # area and never the (possibly much smaller) intermediate one.
@@ -1291,7 +1334,7 @@ class LamaHCE(_RainfallRunoff):
 
         dyns = []
         for idx, f in enumerate(dynamic_features):
-            dyn_fpath = os.path.join(self.path, f"{self.data_type}_{self.timestep}", f'{f}.nc')
+            dyn_fpath = os.path.join(self.path, cache_name(f"{self.data_type}_{self.timestep}"), f'{f}.nc')
             with xr.open_dataset(dyn_fpath) as dyn:
                 dyns.append(dyn[stations].sel(time=slice(st, en)).load())
 
@@ -1670,6 +1713,22 @@ class LamaHIce(LamaHCE):
                 'prec': total_precipitation(),
                 'pet': total_potential_evapotranspiration(),
                 'ref_et_rav': 'ref_et_mm',
+                # LamaH-Ice ships the same net-shortwave columns as LamaH-CE and
+                # they were being left unharmonised. Values are W m-2 and
+                # positive under either sign convention, so they map cleanly.
+                'surf_net_solar_rad_mean': net_solar_radiation(),
+                'surf_net_solar_rad_max': max_net_solar_radiation(),
+                # surf_net_therm_rad_* is left unmapped for the same reason as
+                # LamaH-CE: it is positive-upward (mean +33 W m-2 here).
+                # _warn_thermal_sign(), inherited from LamaHCE, reports it.
+                #
+                # The *_rav columns (surf_dwn_therm_rad_rav,
+                # surf_outg_therm_rad_rav, surf_dwn_solar_rad_rav) are the only
+                # UPWARD radiation in the library, but their magnitudes do not
+                # reconcile with the net columns (270.8 down vs 206.7 outgoing
+                # implies +64 W m-2 net, while surf_net_therm_rad_mean is +33),
+                # so they are left under their source names until that is
+                # resolved against the LamaH-Ice paper rather than guessed at.
             },
             'H': {
                 'qobs': observed_streamflow_cms(),
@@ -1677,6 +1736,7 @@ class LamaHIce(LamaHCE):
                 'prec': total_precipitation(),
                 'pet': total_potential_evapotranspiration(),
                 'ref_et_rav': 'ref_et_mm',
+                'surf_net_solar_rad': net_solar_radiation(),
             }
         }
 

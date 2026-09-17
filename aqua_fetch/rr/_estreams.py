@@ -36,7 +36,7 @@ from .._backend import netCDF4
 from .._backend import fiona
 from ..utils import get_cpus
 from ..utils import validate_attributes
-from .utils import _RainfallRunoff
+from .utils import _RainfallRunoff, cache_name
 from ._utils import tw_resampler
  
 from ._map import (
@@ -166,7 +166,7 @@ class EStreams(_RainfallRunoff):
 
     @property
     def nc_path(self):
-        return os.path.join(self.path, 'EStreams', 'meteorology.nc')
+        return os.path.join(self.path, 'EStreams', cache_name('meteorology.nc'))
 
     def _static_data(self) -> pd.DataFrame:
         """
@@ -1356,6 +1356,7 @@ class Ireland(_EStreams):
                 data.index = pd.to_datetime(data.index)
                 assert data.index.tz is None, "timezone info found in index"
                 data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+                data = data.sort_index()
 
                 data.to_csv(fpath, index_label="index")
 
@@ -1365,6 +1366,8 @@ class Ireland(_EStreams):
                 data.index = pd.to_datetime(data.index)
                 data.index.name = 'time'
                 data.rename(columns=self.gauge_id_basin_id_map(), inplace=True)
+
+                data = data.sort_index()
 
             self._q_df_cache = data
 

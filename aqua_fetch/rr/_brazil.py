@@ -9,7 +9,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from .utils import _RainfallRunoff
+from .utils import _RainfallRunoff, cache_name
 from ..utils import validate_attributes, get_cpus, download, unzip
 from ._map import (
     min_air_temp,
@@ -26,6 +26,7 @@ from ._map import (
     mean_rel_hum_with_specifier,
     mean_windspeed_with_specifier,
     solar_radiation_with_specifier,
+    MJ_M2_DAY_TO_WM2,
 )
 
 from ._map import (
@@ -767,7 +768,7 @@ class CABra(_RainfallRunoff):
         only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
         file can take some time however it leads to faster I/O operations.
         """
-        return self.name.lower() + f"_{self.timestep}_{self.met_src}.nc"
+        return cache_name(self.name.lower() + f"_{self.timestep}_{self.met_src}.nc")
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -815,9 +816,21 @@ class CABra(_RainfallRunoff):
             'pet_pm': total_potential_evapotranspiration_with_specifier('pm'),
             'pet_pt': total_potential_evapotranspiration_with_specifier('pt'),
             'pet_hg': total_potential_evapotranspiration_with_specifier('hg'),
-            'srad_ens': solar_radiation_with_specifier('ens'),  # todo: change units from MJ/m2/day to W/m2
+            'srad_ens': solar_radiation_with_specifier('ens'),  # MJ/m2/day -> W/m2 in dyn_factors
             'srad_era5': solar_radiation_with_specifier('era5'),
             'srad_ref': solar_radiation_with_specifier('ref'),
+        }
+
+    @property
+    def dyn_factors(self) -> Dict[str, float]:
+        # The units row inside every ``CABra_*_climate_*.txt`` gives srad as
+        # "MJ m-2" accumulated over the day, while the canonical name promises
+        # W m-2. Only the column of the selected ``met_src`` is present in a
+        # given frame; the other keys are skipped.
+        return {
+            solar_radiation_with_specifier('ens'): MJ_M2_DAY_TO_WM2,
+            solar_radiation_with_specifier('era5'): MJ_M2_DAY_TO_WM2,
+            solar_radiation_with_specifier('ref'): MJ_M2_DAY_TO_WM2,
         }
 
     @property
@@ -1234,6 +1247,8 @@ mean_air_temp_with_specifier(self.met_src): (self.mean_temp, (min_air_temp_with_
                              header=12)
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        self._apply_dyn_factors(df)
 
         for new_col, (func, old_col) in self.dyn_generators.items():
             if isinstance(old_col, str):

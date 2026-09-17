@@ -76,7 +76,10 @@ class TestCamels(unittest.TestCase):
 
     def test_us(self):
         ds_us = CAMELS_US(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
-        test_dataset(ds_us, 671, 12784, 59, 8)
+        # 9 dynamic features: the 8 raw Daymet/USGS columns plus the derived
+        # 24-h mean ``swdownrad_wm2``. Daymet's own srad is a daylight-period mean
+        # and is kept, unaltered, as ``swdownrad_wm2_daylight``.
+        test_dataset(ds_us, 671, 12784, 59, 9)
         return
 
     def test_ccam(self):

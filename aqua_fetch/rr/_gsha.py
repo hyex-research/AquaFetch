@@ -23,15 +23,15 @@ from .._backend import xarray as xr
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from ..utils import merge_shapefiles_fiona
-from .utils import _RainfallRunoff
+from .utils import _RainfallRunoff, cache_name
 
 from ._map import (
     total_precipitation_with_specifier,
     leaf_area_index,
     actual_evapotranspiration_with_specifier,
     total_potential_evapotranspiration_with_specifier,
-    download_longwave_radiation_with_specifier,
-    solar_radiation_with_specifier,
+    net_longwave_radiation_with_specifier,
+    net_solar_radiation_with_specifier,
     snow_water_equivalent_with_specifier,
     mean_air_temp_with_specifier,
     mean_windspeed_with_specifier,
@@ -222,12 +222,20 @@ class GSHA(_RainfallRunoff):
             'GLEAM_PET': total_potential_evapotranspiration_with_specifier('gleam'),
             'GW': groundwater_percentages(),
             'HPET_PET': total_potential_evapotranspiration_with_specifier('hpet'),
-            'LONGRAD_ERA': download_longwave_radiation_with_specifier('era5'),
-            'LONGRAD_MERRA': download_longwave_radiation_with_specifier('merra2'),
+            # NET, not downward. Verified against HYSETS, which publishes both
+            # ERA5 fields for the same USGS gauges: GSHA's SHORTRAD tracks
+            # ERA5 *net* shortwave to ~1% across five climates and sits at only
+            # 0.75-0.86 of downward. LONGRAD is negative essentially always
+            # (99.5% of values at one gauge; station means over 119 randomly
+            # sampled global stations run -131 .. -27 W m-2, median -59),
+            # while downward longwave is always strongly positive (~+283),
+            # so a negative series can only be net.
+            'LONGRAD_ERA': net_longwave_radiation_with_specifier('era5'),
+            'LONGRAD_MERRA': net_longwave_radiation_with_specifier('merra2'),
             'P_EMEarth': total_precipitation_with_specifier('emearth'),
             'P_MSWEP': total_precipitation_with_specifier('mswep'),
-            'SHORTRAD_ERA': solar_radiation_with_specifier('era5'),
-            'SHORTRAD_MERRA': solar_radiation_with_specifier('merra2'),
+            'SHORTRAD_ERA': net_solar_radiation_with_specifier('era5'),
+            'SHORTRAD_MERRA': net_solar_radiation_with_specifier('merra2'),
             'SML1': soil_moisture_layer1(),
             'SML2': soil_moisture_layer2(),
             'SML3': soil_moisture_layer3(),
@@ -454,9 +462,9 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (n, 3) where n is the number of years
         """
-        nc_path = os.path.join(self.path, 'lc_variables.nc')
+        nc_path = os.path.join(self.path, cache_name('lc_variables.nc'))
         if os.path.exists(nc_path) and xr is not None:
-            return self._cached_nc('lc_variables.nc')[stn].to_pandas()
+            return self._cached_nc(cache_name('lc_variables.nc'))[stn].to_pandas()
         return lc_variable_stn(self.path, stn)
 
     def lc_variables(
@@ -479,11 +487,11 @@ class GSHA(_RainfallRunoff):
     def lc_vars_all_stns(
             self
     ):
-        nc_path = os.path.join(self.path, 'lc_variables.nc')
+        nc_path = os.path.join(self.path, cache_name('lc_variables.nc'))
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return self._cached_nc('lc_variables.nc')
+            return self._cached_nc(cache_name('lc_variables.nc'))
 
         cpus = self.processes or max(get_cpus() - 2, 1)
 
@@ -506,7 +514,7 @@ class GSHA(_RainfallRunoff):
 
         if self.to_netcdf:
 
-            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations()}
+            encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
 
             ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
             if self.verbosity: print(f"Saving to {nc_path}")
@@ -528,9 +536,9 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (42, 2) where 42 is the number of years
         """
-        nc_path = os.path.join(self.path, 'reservoir_variables.nc')
+        nc_path = os.path.join(self.path, cache_name('reservoir_variables.nc'))
         if os.path.exists(nc_path) and xr is not None:
-            return self._cached_nc('reservoir_variables.nc')[stn].to_pandas()
+            return self._cached_nc(cache_name('reservoir_variables.nc'))[stn].to_pandas()
         return reservoir_vars_stn(self.path, stn)
 
     def reservoir_variables(
@@ -553,11 +561,11 @@ class GSHA(_RainfallRunoff):
     def reservoir_vars_all_stns(
             self
     ):
-        nc_path = os.path.join(self.path, 'reservoir_variables.nc')
+        nc_path = os.path.join(self.path, cache_name('reservoir_variables.nc'))
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return self._cached_nc('reservoir_variables.nc')
+            return self._cached_nc(cache_name('reservoir_variables.nc'))
 
         cpus = self.processes or max(get_cpus() - 2, 1)
 
@@ -583,7 +591,10 @@ class GSHA(_RainfallRunoff):
             encoding = {var: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for var in stations}
 
             ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
-            self.print(f"Saving to {nc_path}")
+
+            if self.verbosity:
+                print(f"Saving to {nc_path}")
+
             ds.to_netcdf(nc_path, encoding=encoding)
         else:
             ds = {stn: df for stn, df in zip(stations, results)}
@@ -626,11 +637,11 @@ class GSHA(_RainfallRunoff):
         if self._streamflow_cache is not None:
             return self._streamflow_cache
 
-        nc_path = os.path.join(self.path, 'streamflow_indices.nc')
+        nc_path = os.path.join(self.path, cache_name('streamflow_indices.nc'))
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            self._streamflow_cache = self._cached_nc('streamflow_indices.nc')
+            self._streamflow_cache = self._cached_nc(cache_name('streamflow_indices.nc'))
             return self._streamflow_cache
 
         cpus = self.processes or max(get_cpus() - 2, 1)
@@ -677,9 +688,9 @@ class GSHA(_RainfallRunoff):
             a :obj:`pandas.Series` of shape (14571,) where 14571 is the number of days
         """
 
-        nc_fpath = os.path.join(self.path, 'lai.nc')
+        nc_fpath = os.path.join(self.path, cache_name('lai.nc'))
         if os.path.exists(nc_fpath) and xr is not None:
-            return self._cached_nc('lai.nc')[stn].to_pandas()
+            return self._cached_nc(cache_name('lai.nc'))[stn].to_pandas()
 
         return lai_stn(self.path, stn)
 
@@ -701,10 +712,10 @@ class GSHA(_RainfallRunoff):
             self
     ):
         if self.to_netcdf:
-            nc_path = os.path.join(self.path, 'lai.nc')
+            nc_path = os.path.join(self.path, cache_name('lai.nc'))
             if os.path.exists(nc_path):
                 if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-                return self._cached_nc('lai.nc')
+                return self._cached_nc(cache_name('lai.nc'))
         elif os.path.exists(os.path.join(self.path, 'lai.csv')):
             if self.verbosity: print(f"Reading from pre-existing {self.path}")
             return pd.read_csv(os.path.join(self.path, 'lai.csv'), index_col=0)
@@ -732,7 +743,7 @@ class GSHA(_RainfallRunoff):
 
             encoding = {stn: {'dtype': 'float32', 'zlib': True, 'complevel': 3} for stn in stations}
 
-            nc_path = os.path.join(self.path, 'lai.nc')
+            nc_path = os.path.join(self.path, cache_name('lai.nc'))
             ds = xr.Dataset({stn: xr.DataArray(val) for stn, val in zip(stations, results)})
             if self.verbosity:
                 print(f"Saving to {nc_path}")
@@ -764,10 +775,10 @@ class GSHA(_RainfallRunoff):
             a :obj:`pandas.DataFrame` of shape (16071, 19) where n is the number of days
         """
 
-        nc_path = os.path.join(self.path, 'meteo_vars.nc')
+        nc_path = os.path.join(self.path, cache_name('meteo_vars.nc'))
         if os.path.exists(nc_path) and xr is not None:
             # even if the files exist, we may not have xarray installed
-            return self._cached_nc('meteo_vars.nc')[stn].to_pandas()
+            return self._cached_nc(cache_name('meteo_vars.nc'))[stn].to_pandas()
 
         path = os.path.join(
             self.path,
@@ -781,11 +792,11 @@ class GSHA(_RainfallRunoff):
         Meteorological variables from 1979-01-01 to 2022-12-31 for all stations either
         as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
-        nc_path = os.path.join(self.path, 'meteo_vars.nc')
+        nc_path = os.path.join(self.path, cache_name('meteo_vars.nc'))
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return self._cached_nc('meteo_vars.nc')
+            return self._cached_nc(cache_name('meteo_vars.nc'))
 
         meteo_vars = {}
         paths = [os.path.join(
@@ -869,9 +880,9 @@ class GSHA(_RainfallRunoff):
         pd.DataFrame
             a :obj:`pandas.DataFrame` of shape (15706, 6) where n is the number of days
         """
-        nc_path = os.path.join(self.path, 'storage.nc')
+        nc_path = os.path.join(self.path, cache_name('storage.nc'))
         if os.path.exists(nc_path) and xr is not None:
-            return self._cached_nc('storage.nc')[stn].to_pandas()
+            return self._cached_nc(cache_name('storage.nc'))[stn].to_pandas()
 
         path = os.path.join(
             self.path,
@@ -886,11 +897,11 @@ class GSHA(_RainfallRunoff):
         Water storage term variables from 1979-01-01 to 2021-12-31 for all stations either
         as :obj:`xarray.Dataset` or dictionary. The data has daily timestep.
         """
-        nc_path = os.path.join(self.path, 'storage.nc')
+        nc_path = os.path.join(self.path, cache_name('storage.nc'))
 
         if self.to_netcdf and os.path.exists(nc_path):
             if self.verbosity: print(f"Reading from pre-existing {nc_path}")
-            return self._cached_nc('storage.nc')
+            return self._cached_nc(cache_name('storage.nc'))
 
         storage_vars = {}
         paths = [os.path.join(
@@ -1186,9 +1197,7 @@ class GSHA(_RainfallRunoff):
 
         df.rename(columns=self.dyn_map, inplace=True)
 
-        for col, func in self.dyn_factors.items():
-            if col in df.columns:
-                df[col] = df[col].apply(func)
+        self._apply_dyn_factors(df)
 
         return df.astype(self.fp)
 
@@ -1213,9 +1222,7 @@ class GSHA(_RainfallRunoff):
 
         df.rename(columns=self.dyn_map, inplace=True)
 
-        for col, func in self.dyn_factors.items():
-            if col in df.columns:
-                df[col] = df[col].apply(func)
+        self._apply_dyn_factors(df)
 
         return df
 
@@ -1517,7 +1524,7 @@ def streamflow_indices_stn(
 
 def lc_variable_stn(ds_path, stn: str) -> pd.DataFrame:
 
-    nc_path = os.path.join(ds_path, 'lc_variables.nc')
+    nc_path = os.path.join(ds_path, cache_name('lc_variables.nc'))
 
     if os.path.exists(nc_path) and xr is not None:
         ds = xr.open_dataset(nc_path)
@@ -1553,7 +1560,7 @@ def reservoir_vars_stn(ds_path, stn: str) -> pd.DataFrame:
         "Reservoir",
         f'{stn}.csv')
 
-    nc_path = os.path.join(ds_path, 'reservoir_variables.nc')
+    nc_path = os.path.join(ds_path, cache_name('reservoir_variables.nc'))
     if os.path.exists(nc_path) and xr is not None:
         ds = xr.open_dataset(nc_path)
         df = ds[stn].to_pandas()
@@ -1688,7 +1695,7 @@ class Japan(_GSHA):
                 print(f"reading hourly data from {hourly_file}")
             q = pd.read_csv(hourly_file, index_col=0)
             q.index = pd.to_datetime(q.index)
-            return q
+            return q.sort_index()
 
         path = os.path.join(self.path, 'hourly_files')
         if not os.path.exists(path):
@@ -1708,7 +1715,7 @@ class Japan(_GSHA):
             
             stn_qs.append(stn_q)
         
-        q = pd.concat(stn_qs, axis=1)
+        q = pd.concat(stn_qs, axis=1).sort_index()
 
         q.to_csv(hourly_file, index=True, index_label='time')
         return q
@@ -1991,7 +1998,7 @@ class Arcticnet(_GSHA):
         return df
 
     def fetch_q(self, as_dataframe:bool=True):
-        nc_path = os.path.join(self.path, "daily_q.nc")
+        nc_path = os.path.join(self.path, cache_name("daily_q.nc"))
 
         if os.path.exists(nc_path):
             if self.verbosity:

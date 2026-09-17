@@ -39,6 +39,12 @@ from ._map import (
     u_component_of_wind,
     v_component_of_wind,
     solar_radiation,
+    net_solar_radiation,
+    max_net_solar_radiation,
+    min_net_solar_radiation,
+    net_longwave_radiation,
+    max_net_longwave_radiation,
+    min_net_longwave_radiation,
     downward_longwave_radiation,
     snow_water_equivalent,
     mean_specific_humidity,
@@ -215,6 +221,18 @@ class GRDCCaravan(_RainfallRunoff):
             'temperature_2m_min': min_air_temp_with_specifier('2m'),
             'temperature_2m_max': max_air_temp_with_specifier('2m'),
             'total_precipitation_sum': total_precipitation(),
+            # NET (not downward) shortwave, already in W m-2: Caravan converts
+            # the ERA5-Land J m-2 accumulations. min/max are over the hours of
+            # the day, so the min is 0 at night.
+            'surface_net_solar_radiation_mean': net_solar_radiation(),
+            'surface_net_solar_radiation_max': max_net_solar_radiation(),
+            'surface_net_solar_radiation_min': min_net_solar_radiation(),
+            # net longwave, already positive-toward-the-surface: station means
+            # over 120 randomly sampled stations run -127 .. -27 W m-2,
+            # median -52
+            'surface_net_thermal_radiation_mean': net_longwave_radiation(),
+            'surface_net_thermal_radiation_max': max_net_longwave_radiation(),
+            'surface_net_thermal_radiation_min': min_net_longwave_radiation(),
         }
 
     @property

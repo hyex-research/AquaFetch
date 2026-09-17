@@ -27,6 +27,20 @@ from ._map import (
 # directory separator
 SEP = os.sep
 
+# Version of the cache (.nc) files this library writes. It is part of every
+# cache name, e.g. camels_gb_D_v2.nc. Increase it whenever the names or units
+# of cached features change: old cache files are then simply not found, and
+# new ones are built from the source files the next time the data is used.
+#   2 -> radiation renamed to <band><direction>rad_wm2 and converted to W m-2
+CACHE_VERSION = 2
+
+
+def cache_name(name: str) -> str:
+    """Adds the cache version to a cache file or folder name, e.g.
+    ``'meteo_vars.nc'`` -> ``'meteo_vars_v2.nc'``."""
+    stem, ext = os.path.splitext(name)
+    return f"{stem}_v{CACHE_VERSION}{ext}"
+
 
 def gb_message():
     link = "https://doi.org/10.5285/8344e4f3-d2ea-44f5-8afa-86d2987543a9"
@@ -151,7 +165,27 @@ class _RainfallRunoff(Datasets):
         
     @property
     def dyn_factors(self) -> Dict[str, float]:
+        """
+        Maps a *canonical* dynamic-feature name to the number the raw values are
+        multiplied by (or a function applied to them) so that the served data is
+        in the units the canonical name promises.
+
+        A class declaring a non-empty mapping here must call
+        :meth:`_apply_dyn_factors` in its read path, otherwise it has no effect.
+        """
         return {}
+
+    def _apply_dyn_factors(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Applies :attr:`dyn_factors` to an already-renamed frame, in place.
+        Columns the frame does not have are skipped."""
+        for col, factor in self.dyn_factors.items():
+            if col not in df.columns:
+                continue
+            if callable(factor):
+                df[col] = df[col].apply(factor)
+            else:
+                df[col] = df[col] * factor
+        return df
 
     @property
     def boundary_id_map(self) -> str:
@@ -170,7 +204,7 @@ class _RainfallRunoff(Datasets):
         only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
         file can take some time however it leads to faster I/O operations.
         """
-        return self.name.lower() + f"_{self.timestep}.nc"
+        return cache_name(self.name.lower() + f"_{self.timestep}.nc")
 
     @property
     def dyn_fpath(self) -> os.PathLike:
@@ -731,7 +765,7 @@ class _RainfallRunoff(Datasets):
         >>> dynamic
         ... # get only selected dynamic features
         >>> _, sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['q_mm_obs', 'solrad_wm2_silo'], as_dataframe=True)
+        ...     dynamic_features=['q_mm_obs', 'swdownrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 

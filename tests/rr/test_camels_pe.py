@@ -8,13 +8,14 @@ The tests verify that the class
       features,
     * fetches the hydro-meteorological time series and static attributes
       **without changing the values or their units** (compared against a fresh,
-      independent read of the raw csv files),
+      independent read of the raw csv files); the only exception is ``srad``,
+      served as ``swdownrad_wm2`` after converting MJ m-2 day-1 to W m-2,
     * does not re-download or re-extract when the data is already on disk,
     * reports a temporal extent that matches the actual data (not a drifting
       hardcoded literal),
     * handles coordinates / boundaries (WGS84) and q_mm correctly.
 
-The tests are efficient: with the consolidated ``camels_pe_D.nc`` cache built
+The tests are efficient: with the consolidated ``camels_pe_D_v2.nc`` cache built
 once during the first initialisation, the whole file runs in well under a
 minute.
 """
@@ -65,7 +66,7 @@ DYN_LEN = 16436  # daily steps 1981-01-01 .. 2025-12-31
 # NOTE: raw ``flow_sim`` (simulated streamflow) is deliberately NOT presented.
 EXPECTED_DYN_FEATURES = [
     'pcp_mm', 'prec_var', 'q_mm_obs', 'pet_mm',
-    'airtemp_C_min', 'airtemp_C_mean', 'airtemp_C_max', 'srad', 'vp_hpa',
+    'airtemp_C_min', 'airtemp_C_mean', 'airtemp_C_max', 'swdownrad_wm2', 'vp_hpa',
 ]
 
 # raw time-series column -> standardised dynamic feature name (``flow_sim`` is
@@ -73,9 +74,14 @@ EXPECTED_DYN_FEATURES = [
 RAW_TO_STD = {
     'prec': 'pcp_mm', 'prec_var': 'prec_var', 'flow_obs': 'q_mm_obs',
     'pet': 'pet_mm', 'tmin': 'airtemp_C_min',
-    'tmean': 'airtemp_C_mean', 'tmax': 'airtemp_C_max', 'srad': 'srad',
+    'tmean': 'airtemp_C_mean', 'tmax': 'airtemp_C_max', 'srad': 'swdownrad_wm2',
     'vprp': 'vp_hpa',
 }
+
+# the only unit conversion: srad is MJ m-2 day-1 in the raw csv and is served in
+# W m-2. Written out here rather than imported from aqua_fetch, so that a wrong
+# library constant is caught instead of being reused.
+RAW_FACTORS = {'srad': 1e6 / 86400.0}
 
 dataset = CAMELS_PE(path=CAMELS_PE_PATH, verbosity=0)
 
@@ -90,6 +96,11 @@ def _raw_ts(dataset, station) -> pd.DataFrame:
     return pd.read_csv(fpath, index_col='date', parse_dates=True)
 
 
+def _expected(raw, raw_c) -> np.ndarray:
+    """raw values after the documented unit conversion (if any), cast to self.fp"""
+    return (raw[raw_c] * RAW_FACTORS.get(raw_c, 1.0)).to_numpy(dtype=dataset.fp)
+
+
 def test_registration():
     """the class is importable from the package and registered."""
     logger.info("test_registration")
@@ -102,13 +113,14 @@ def test_registration():
 
 
 def test_feature_names():
-    """dynamic feature names are exactly the 9 expected ones and the
-    unit-ambiguous ``srad``/``prec_var`` are kept with their raw names."""
+    """dynamic feature names are exactly the 9 expected ones, ``srad`` is served
+    as ``swdownrad_wm2`` and ``prec_var`` keeps its raw name."""
     logger.info("test_feature_names")
     assert dataset.dynamic_features == EXPECTED_DYN_FEATURES, dataset.dynamic_features
-    # srad is MJ m-2 day-1 (NOT W m-2) and prec_var is mm2 day-2: both must be
-    # kept raw because no canonical name carries those units
-    assert 'srad' in dataset.dynamic_features
+    # srad is converted to W m-2, so it is served under the canonical name only
+    assert 'swdownrad_wm2' in dataset.dynamic_features
+    assert 'srad' not in dataset.dynamic_features
+    # prec_var is mm2 day-2: kept raw because no canonical name carries that unit
     assert 'prec_var' in dataset.dynamic_features
     # canonical names that DO match units must be present
     for f in ('pcp_mm', 'q_mm_obs', 'pet_mm', 'vp_hpa',
@@ -173,10 +185,9 @@ def test_read_stn_dyn_transform_fidelity():
             # NaN gaps preserved exactly (no gap-filling / dropping)
             assert (df[std_c].isna().values == raw[raw_c].isna().values).all(), \
                 f"{stn}:{std_c} NaN pattern changed by _read_stn_dyn"
-            # the ONLY transformation is the precision cast: values must equal the
-            # raw values cast to self.fp (no unit conversion / rescale / gap fill)
-            assert np.array_equal(df[std_c].values,
-                                  raw[raw_c].to_numpy(dtype=dataset.fp),
+            # the ONLY transformations are the srad unit conversion and the
+            # precision cast (no other rescale / gap fill)
+            assert np.array_equal(df[std_c].values, _expected(raw, raw_c),
                                   equal_nan=True), \
                 f"{stn}:{std_c} values changed by _read_stn_dyn"
     return
@@ -198,15 +209,16 @@ def test_dynamic_fidelity():
             # NaN mask must match exactly (no gap filling / dropping)
             assert (df[std_c].isna().values == raw[raw_c].isna().values).all(), \
                 f"{stn}:{std_c} NaN pattern changed"
-            # values must equal the raw values cast to self.fp (the cache is built
-            # at self.fp precision); no unit conversion / rescale / gap fill
-            assert np.array_equal(df[std_c].values,
-                                  raw[raw_c].to_numpy(dtype=dataset.fp),
+            # values must equal the raw values, after the srad unit conversion,
+            # cast to self.fp (the cache is built at self.fp precision)
+            assert np.array_equal(df[std_c].values, _expected(raw, raw_c),
                                   equal_nan=True), \
                 f"{stn}:{std_c} values changed"
-    # srad is MJ m-2 day-1: daily values are O(1-30), NOT the O(100-400) of W m-2
+    # a daily mean in W m-2 is O(30-450); unconverted MJ m-2 day-1 would stay
+    # below 50 and a double conversion would exceed 1000
     _, dyn = dataset.fetch(stns[0], as_dataframe=True)
-    assert dyn[stns[0]]['srad'].max() < 50, "srad looks like W m-2, not MJ m-2 day-1"
+    mx = dyn[stns[0]]['swdownrad_wm2'].max()
+    assert 50 < mx < 500, f"swdownrad_wm2 max {mx} is not a daily mean in W m-2"
     return
 
 

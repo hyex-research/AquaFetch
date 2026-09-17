@@ -54,7 +54,12 @@ from ._map import (
     v_component_of_wind_at_10m,
     mean_air_pressure,
     solar_radiation,
+    solar_radiation_with_spatial_stat,
+    daylight_solar_radiation,
     downward_longwave_radiation,
+    MJ_M2_DAY_TO_WM2,
+    KJ_M2_DAY_TO_WM2,
+    J_CM2_DAY_TO_WM2,
     snow_water_equivalent,
     mean_specific_humidity,
     soil_moisture_layer1,
@@ -96,7 +101,7 @@ SEP = os.sep
 class CAMELS_US(_RainfallRunoff):
     """
     This is a dataset of 671 US catchments with 59 static catchment features
-    and 8 catchment averaged dynamic features for each catchment. The dynamic features are
+    and 9 catchment averaged dynamic features for each catchment. The dynamic features are
     daily timeseries from 1980-01-01 to 2014-12-31. The data is downloaded
     from its `zenodo repository <https://zenodo.org/records/15529996>`_ . For more details
     on data refer to `Newman et al., 2015 <https://doi.org/10.5194/hess-19-209-2015>`_ ,
@@ -114,7 +119,7 @@ class CAMELS_US(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='11478500', as_dataframe=True)
     >>> df = dynamic['11478500'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (12784, 8)
+    (12784, 9)
     ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
@@ -127,7 +132,7 @@ class CAMELS_US(_RainfallRunoff):
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
-        [(12784, 8), (12784, 8), (12784, 8),... (12784, 8), (12784, 8)]
+        [(12784, 9), (12784, 9), (12784, 9),... (12784, 9), (12784, 9)]
     ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
@@ -137,7 +142,7 @@ class CAMELS_US(_RainfallRunoff):
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, dynamic = dataset.fetch('11478500', as_dataframe=True,
-    ...  dynamic_features=['pcp_mm', 'solrad_wm2', 'airtemp_C_max', 'airtemp_C_min', 'q_cms_obs'])
+    ...  dynamic_features=['pcp_mm', 'swdownrad_wm2', 'airtemp_C_max', 'airtemp_C_min', 'q_cms_obs'])
     >>> dynamic['11478500'].shape
        (12784, 5)
     ...
@@ -151,7 +156,7 @@ class CAMELS_US(_RainfallRunoff):
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='11478500', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['11478500'].shape
-    ((1, 59), 1, (12784, 8))
+    ((1, 59), 1, (12784, 9))
     ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
@@ -159,7 +164,7 @@ class CAMELS_US(_RainfallRunoff):
     xarray.core.dataset.Dataset
     ...
     >>> dynamic.dims
-    FrozenMappingWarningOnValuesAccess({'time': 12784, 'dynamic_features': 8})
+    FrozenMappingWarningOnValuesAccess({'time': 12784, 'dynamic_features': 9})
     ...
     >>> len(dynamic.data_vars)
     10
@@ -310,8 +315,24 @@ class CAMELS_US(_RainfallRunoff):
             'swe(mm)': snow_water_equivalent(),
             'pet_mean': total_potential_evapotranspiration(),
             'vp(Pa)': mean_vapor_pressure(),  # todo: convert frmo Pa to hpa
-            'srad(W/m2)': solar_radiation(),
+            # Daymet's ``srad`` is averaged over the DAYLIGHT period, not over the
+            # 24-h day, so it is not comparable with the daily-mean W m-2 that
+            # every other dataset serves as ``swdownrad_wm2``. The native value is
+            # kept faithfully under its own name and the 24-h mean is derived
+            # from it in _read_stn_dyn(). The maurer and nldas forcings were
+            # resampled into the Daymet format and share the convention
+            # (verified: raw Kt 1.22 and 1.07, i.e. both impossible as 24-h
+            # means). Note _read_stn_dyn currently hardcodes the daymet
+            # filename, so those two sources cannot actually be read yet;
+            # that is a pre-existing limitation, not one introduced here.
+            'srad(W/m2)': daylight_solar_radiation(),
         }
+
+    @property
+    def dynamic_features(self) -> List[str]:
+        # swdownrad_wm2 is derived (see _read_stn_dyn) so it has no raw counterpart
+        # in dynamic_features_
+        return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_] + [solar_radiation()]
 
     @property
     def dyn_factors(self) -> Dict[str, float]:
@@ -330,10 +351,6 @@ class CAMELS_US(_RainfallRunoff):
     @property
     def static_features(self)->List[str]:
         return self._static_features
-
-    @property
-    def dynamic_features(self) -> List[str]:
-        return [self.dyn_map.get(feat, feat) for feat in self.dynamic_features_]
 
     def stations(self) -> list:
         streamflow_dir = os.path.join(self.dataset_dir, 'usgs_streamflow')
@@ -361,7 +378,7 @@ class CAMELS_US(_RainfallRunoff):
         """
         The per-station forcing and streamflow text files inside
         ``basin_timeseries_v1p2_metForcing_obsFlow/`` become redundant once
-        ``camels_us_D.nc`` exists, since all dynamic data is baked into that
+        ``camels_us_D_v2.nc`` exists, since all dynamic data is baked into that
         consolidated NetCDF.
 
         Caveat: the cache reflects whichever ``data_source`` was selected when
@@ -418,9 +435,14 @@ class CAMELS_US(_RainfallRunoff):
 
         stn_df.rename(columns=self.dyn_map, inplace=True)
 
-        for col, fact in self.dyn_factors.items():
-            if col in stn_df.columns:
-                stn_df[col] *= fact
+        self._apply_dyn_factors(stn_df)
+
+        # Daymet reports srad as the mean over the daylight hours only. Weighting
+        # by the daylight fraction of the day gives the 24-h mean that the
+        # canonical ``swdownrad_wm2`` promises and that every other dataset serves.
+        stn_df[solar_radiation()] = (
+            stn_df[daylight_solar_radiation()] * stn_df['dayl(s)'] / 86400.0
+        )
 
         return stn_df
 
@@ -968,8 +990,8 @@ class CAMELS_AUS(_RainfallRunoff):
             'et_tall_crop_SILO': actual_evapotranspiration_with_specifier('silo_tall_crop'),
             'precipitation_AWAP': total_precipitation_with_specifier('awap'),
             'precipitation_SILO': total_precipitation_with_specifier('silo'),
-            'solarrad_AWAP': solar_radiation_with_specifier('awap'),  # convert MJ/m2/day to W/m2
-            'radiation_SILO': solar_radiation_with_specifier('silo'),  # convert MJ/m2/day to W/m2
+            'solarrad_AWAP': solar_radiation_with_specifier('awap'),  # MJ/m2/day -> W/m2 in dyn_factors
+            'radiation_SILO': solar_radiation_with_specifier('silo'),  # MJ/m2/day -> W/m2 in dyn_factors
             'vp_SILO': mean_vapor_pressure_with_specifier('silo'),
             'vprp_AWAP': mean_vapor_pressure_with_specifier('awap'),
             'rh_tmax_SILO': mean_rel_hum_with_specifier('silo_tmax'),
@@ -984,8 +1006,14 @@ class CAMELS_AUS(_RainfallRunoff):
 
     @property
     def dyn_factors(self):
+        # Solar radiation is distributed as MJ m-2 day-1 ("Solar radiation
+        # MJ m-2" in the v2 Data Description, Table `Other variables`) while the
+        # canonical name promises W m-2. The AWAP series exists in v1 only; the
+        # key is harmless for v2 because absent columns are skipped.
         return {
             observed_streamflow_cms(): 0.01157,
+            solar_radiation_with_specifier('silo'): MJ_M2_DAY_TO_WM2,
+            solar_radiation_with_specifier('awap'): MJ_M2_DAY_TO_WM2,
         }
 
     @property
@@ -1097,9 +1125,7 @@ class CAMELS_AUS(_RainfallRunoff):
 
             stn_df.rename(columns=self.dyn_map, inplace=True)
 
-            for col, fact in self.dyn_factors.items():
-                if col in stn_df.columns:
-                    stn_df[col] = stn_df[col] * fact
+            self._apply_dyn_factors(stn_df)
 
             for new_col, (func, old_col) in self.dyn_generators.items():
                 if isinstance(old_col, str):
@@ -1203,6 +1229,8 @@ class CAMELS_CL(_RainfallRunoff):
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('8350001')
     """
+
+    # todo : 2022 version is available at https://www.cr2.cl/datos-informacion-integrada-por-cuencas/
 
     urls = {
         "1_CAMELScl_attributes.zip": "https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
@@ -2325,32 +2353,14 @@ class CAMELS_DE(_RainfallRunoff):
     def transform_boundary(self, boundary):
         """
         The hourly (CAMELS-DE-1h) catchment boundaries are in ETRS89-LAEA
-        (EPSG:3035, meters); transform them to WGS84 (lat/lon) so they roughly
-        align with the gauge coordinates. Note the shared ``laea_to_wgs84``
-        helper uses a spherical (not ellipsoidal/GRS80) LAEA model, so the
-        result is approximate to within a few hundred meters. The daily
-        boundaries are left untouched (the base no-op) to preserve existing
-        behaviour.
+        (EPSG:3035, meters); transform them to WGS84 (lat/lon) so they align
+        with the gauge coordinates. The shared ``laea_to_wgs84`` helper performs
+        the ellipsoidal (GRS80) inverse projection, verified against pyproj to
+        better than 1e-8 m. The daily boundaries are left untouched (the base
+        no-op) to preserve existing behaviour.
         """
         if self.timestep != 'H':
             return super().transform_boundary(boundary)
-
-        # The reprojection uses ``laea_to_wgs84`` which approximates the Earth as
-        # a sphere (R=6378137 m), whereas EPSG:3035 (ETRS89-LAEA) is defined on
-        # the GRS80 ellipsoid (see the shapefile .prj: SPHEROID["GRS_1980", ...]).
-        # This spherical-vs-ellipsoidal simplification introduces a location
-        # error of ~250-500 m (measured against the dataset's own WGS84 gauge
-        # coordinates). This is acceptable for visualisation/rough overlays but
-        # NOT for precise spatial joins, area calculations or gridded-data
-        # masking. For exact geometry, reproject the shapefile with a full CRS
-        # library (e.g. pyproj / GeoPandas using EPSG:3035 -> EPSG:4326).
-        warnings.warn(
-            "CAMELS-DE-1h boundaries are reprojected from EPSG:3035 to WGS84 "
-            "using a spherical LAEA approximation (~250-500 m error). Do not use "
-            "the returned geometry for precise spatial analysis; reproject the "
-            "original EPSG:3035 shapefile with pyproj/GeoPandas instead.",
-            UserWarning,
-        )
 
         # EPSG:3035 parameters (from the shapefile .prj)
         lon_0, lat_0 = 10.0, 52.0
@@ -2400,11 +2410,17 @@ class CAMELS_DE(_RainfallRunoff):
             'humidity_min': rel_hum_with_specifier('min'),
             'humidity_max': rel_hum_with_specifier('max'),
             # 'water_level':  # observed daily water level,
-            'radiation_global_stdev': solar_radiation_with_specifier('std'),
-            'radiation_global_min': solar_radiation_with_specifier('min'),
-            'radiation_global_median': solar_radiation_with_specifier('med'),
-            'radiation_global_mean': solar_radiation_with_specifier('mean'),
-            'radiation_global_max': solar_radiation_with_specifier('max'),
+            # The Data Description defines these as the "spatial mean, median,
+            # minimum, maximum and standard deviation of the global radiation",
+            # i.e. the spread of the gridded forcing ACROSS the catchment, not
+            # a within-day range. They are therefore marked `spat`. The spatial
+            # mean is what the bare canonical name already denotes, so
+            # radiation_global_mean carries no token.
+            'radiation_global_mean': solar_radiation(),
+            'radiation_global_stdev': solar_radiation_with_spatial_stat('std'),
+            'radiation_global_min': solar_radiation_with_spatial_stat('min'),
+            'radiation_global_median': solar_radiation_with_spatial_stat('med'),
+            'radiation_global_max': solar_radiation_with_spatial_stat('max'),
         }
 
     @property
@@ -3703,9 +3719,9 @@ class CAMELS_FR(_RainfallRunoff):
             'tsd_temp_max': max_air_temp(),  # maximum air temperature over the period (18h day-1, 18h day]
             'tsd_temp': mean_air_temp(),  # mean air temperature over the period (18h day-1, 18h day]
             # short wave visible radiation over the period (0h day, 0h day+1]
-            'tsd_rad_ssi': solar_radiation(),  # todo: convert from J cm⁻² to W m⁻²
+            'tsd_rad_ssi': solar_radiation(),  # J cm-2 day-1 -> W m-2 in dyn_factors
             # long wave atmospheric radiation over the period (0h day, 0h day+1]
-            'tsd_rad_dli': downward_longwave_radiation(), # todo : convert from J cm⁻² to W m⁻²
+            'tsd_rad_dli': downward_longwave_radiation(),  # J cm-2 day-1 -> W m-2 in dyn_factors
             # specific air humidity over the period (0h day, 0h day+1]
             'tsd_humid': mean_specific_humidity(),
             # PET over the period (0h day, 0h day+1] (Penman-Monteith method with a modified albedo when snow lies on the ground)
@@ -3716,6 +3732,15 @@ class CAMELS_FR(_RainfallRunoff):
             'tsd_prec': total_precipitation(),
             # solid fraction of precipitation over the period (6h day, 6h day+1]
             'tsd_prec_solid_frac': total_precipitation_with_specifier('solfrac'),  # todo : check its units?
+        }
+
+    @property
+    def dyn_factors(self) -> Dict[str, float]:
+        # ``CAMELS-FR_description.ods`` gives both radiation series in J cm-2
+        # accumulated over the day, while the canonical names promise W m-2.
+        return {
+            solar_radiation(): J_CM2_DAY_TO_WM2,
+            downward_longwave_radiation(): J_CM2_DAY_TO_WM2,
         }
 
     @property
@@ -3859,6 +3884,8 @@ class CAMELS_FR(_RainfallRunoff):
         )
 
         df.rename(columns=self.dyn_map, inplace=True)
+
+        self._apply_dyn_factors(df)
 
         return df
 
@@ -4090,7 +4117,7 @@ class CAMELS_NZ(_RainfallRunoff):
 
     def _redundant_after_consolidation(self) -> List[Tuple[str, str]]:
         # The five per-feature folders for each timestep become redundant once
-        # the corresponding consolidated NetCDF (camels_nz_D.nc / camels_nz_H.nc)
+        # the corresponding consolidated NetCDF (camels_nz_D_v2.nc / camels_nz_H_v2.nc)
         # exists. Both timesteps are listed regardless of self.timestep so that
         # cleanup works whichever instance the user invokes free_disk_space on.
         inner = os.path.join(self.path, 'camels_nz')
@@ -4718,6 +4745,19 @@ class CAMELS_SK(_RainfallRunoff):
             # 'potential_evaporation': total_potential_evapotranspiration(),
             # 'u_component_of_wind_10m': u_component_of_wind(),
             # 'v_component_of_wind_10m': v_component_of_wind(),
+            #
+            # surface_net_solar_radiation / surface_net_thermal_radiation are
+            # deliberately NOT mapped, and no dyn_factor can fix them. They are
+            # ERA5-Land RUNNING ACCUMULATIONS in J m-2 carried on hourly rows:
+            # the value climbs through the day, resets mid-series, and then sits
+            # flat overnight holding the previous total. For 2010-06-21 the
+            # series runs 14.9e6 (00:00-05:00, flat) -> 17.6e6 (09:00) ->
+            # 1.96e6 (10:00, reset) -> 18.4e6 (20:00) -> flat to midnight.
+            # Recovering a per-timestep flux needs differencing consecutive
+            # steps and handling the reset -- a derivation, not a unit
+            # conversion -- so it is left to the user rather than guessed at.
+            # Mapping it to swnetrad_wm2 would assert W m-2 for a J m-2
+            # accumulation, which is simply false.
             # 'surface_net_solar_radiation': solar_radiation(),
             # 'air_temp_obs': mean_air_temp(),
             # 'precip_obs': total_precipitation(),
@@ -5292,6 +5332,17 @@ class CAMELS_FI(_RainfallRunoff):
             'snow_depth': snow_depth(),  # change from cm to m
             'swe': snow_water_equivalent_with_specifier('era5'),
             'swe_cci3-1': snow_water_equivalent_with_specifier('cci3-1'),
+            # "catchment daily averaged global radiation sum, kJ m-2" (support
+            # document). Global radiation is downward shortwave; converted to
+            # W m-2 in dyn_factors. Sanity check: 8383 kJ m-2 day-1 -> 97 W m-2,
+            # clearness index 0.395-0.400 at lat 62-63, i.e. exactly Finland's.
+            'radiation_global': solar_radiation(),
+        }
+
+    @property
+    def dyn_factors(self) -> Dict[str, float]:
+        return {
+            solar_radiation(): KJ_M2_DAY_TO_WM2,
         }
 
     @property
@@ -5407,6 +5458,8 @@ class CAMELS_FI(_RainfallRunoff):
             warnings.warn(f"{stn} has duplicated index. Removing duplicates.")
           
         df.rename(columns=self.dyn_map, inplace=True)
+
+        self._apply_dyn_factors(df)
 
         return df
     
@@ -5554,7 +5607,7 @@ class CAMELS_PL(_RainfallRunoff):
             whether to convert all the dynamic data into one netcdf file or not.
             This will fasten repeated calls to fetch etc. but will require the
             netCDF4 package as well as xarray. When enabled, a consolidated
-            ``camels_pl_D.nc`` cache (~500 MB) is written once next to the data.
+            ``camels_pl_D_v2.nc`` cache (~500 MB) is written once next to the data.
             It is silently disabled if netCDF4 is not installed (handled by the
             base class).
         verbosity : int
@@ -5894,10 +5947,10 @@ class CAMELS_PE(_RainfallRunoff):
     features) from the cache takes ~0.2 s.
 
     .. note::
-        ``srad`` (surface solar radiation, MJ m-2 day-1) and ``prec_var``
-        (spatial precipitation variance, mm2 day-2) keep their original names
-        because no aqua_fetch canonical name carries those exact units;
-        renaming them would misrepresent the units.
+        ``srad`` (MJ m-2 day-1) is served as ``swdownrad_wm2``, converted to
+        W m-2. ``prec_var`` (spatial precipitation variance, mm2 day-2) keeps
+        its original name because no aqua_fetch canonical name carries those
+        units.
 
     Examples
     --------
@@ -5992,7 +6045,7 @@ class CAMELS_PE(_RainfallRunoff):
             whether to convert all the dynamic data into one netcdf file or not.
             This will fasten repeated calls to fetch etc. but will require the
             netCDF4 package as well as xarray. When enabled, a consolidated
-            ``camels_pe_D.nc`` cache is written once next to the data. It is
+            ``camels_pe_D_v2.nc`` cache is written once next to the data. It is
             silently disabled if netCDF4 is not installed (handled by the base
             class).
         verbosity : int
@@ -6114,9 +6167,9 @@ class CAMELS_PE(_RainfallRunoff):
         The raw ``flow_sim`` column (model-simulated streamflow from
         PISCO-ARNOVIC v1.1) is intentionally omitted here and dropped in
         :meth:`_read_stn_dyn`, following the library's observational-data-only
-        policy (simulated data is not presented). ``prec_var`` (mm2 day-2) and
-        ``srad`` (MJ m-2 day-1) are left unmapped because no aqua_fetch canonical
-        name carries those exact units, so renaming would misrepresent them.
+        policy (simulated data is not presented). ``prec_var`` (mm2 day-2) is
+        left unmapped because no aqua_fetch canonical name carries those units,
+        so renaming would misrepresent it.
         """
         return {
             'prec': total_precipitation(),                   # mm day-1
@@ -6126,6 +6179,22 @@ class CAMELS_PE(_RainfallRunoff):
             'tmean': mean_air_temp(),                        # deg C
             'tmax': max_air_temp(),                          # deg C
             'vprp': mean_vapor_pressure(),                   # hPa
+            # README: "Radiation: MJ m-2 d-1", source ERA5-Land. Converted to
+            # W m-2 in dyn_factors. Read as DOWNWARD shortwave: it is listed
+            # among the forcing variables (prec/pet/temp/srad/vprp), and a
+            # forcing set uses ERA5-Land's ssrd rather than the model-output
+            # ssr. Clearness index after conversion is 0.39-0.52 across lat
+            # -0.9 to -12.6, consistent with the humid tropics and the Andes.
+            # Note this is inference, not proof: unlike GSHA there is no second
+            # dataset here publishing both ERA5-Land fields for the same
+            # catchments to check against.
+            'srad': solar_radiation(),                       # MJ m-2 day-1
+        }
+
+    @property
+    def dyn_factors(self) -> Dict[str, float]:
+        return {
+            solar_radiation(): MJ_M2_DAY_TO_WM2,
         }
 
     @property
@@ -6262,6 +6331,8 @@ class CAMELS_PE(_RainfallRunoff):
 
         df.rename(columns=self.dyn_map, inplace=True)
 
+        self._apply_dyn_factors(df)
+
         return df.astype(self.fp)
 
 
@@ -6325,7 +6396,7 @@ class CAMELSH(_RainfallRunoff):
     >>> dataset.dynamic_features
     ... # get only selected dynamic features
     >>> _, dynamic = dataset.fetch('02342070', as_dataframe=True,
-    ...  dynamic_features=['SWdown', 'pcp_mm', 'pet_mm', 'airtemp_C_mean', 'q_cms_obs'])
+    ...  dynamic_features=['swdownrad_wm2', 'pcp_mm', 'pet_mm', 'airtemp_C_mean', 'q_cms_obs'])
     >>> dynamic['02342070'].shape
        (394488, 5)
     ...
@@ -6482,6 +6553,10 @@ class CAMELSH(_RainfallRunoff):
             'Tair': mean_air_temp(),
             'PotEvap': total_potential_evapotranspiration(),
             'Rainf': total_precipitation(),
+            # NLDAS-2 downward shortwave/longwave, already hourly W m-2
+            # (verified: shortwave peaks near 1000 and is 0 at night)
+            'SWdown': solar_radiation(),
+            'LWdown': downward_longwave_radiation(),
             'streamflow': observed_streamflow_cms()
         }
 

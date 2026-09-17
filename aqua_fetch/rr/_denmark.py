@@ -12,6 +12,12 @@ from ._map import (
     total_potential_evapotranspiration_with_specifier,
     actual_evapotranspiration,
     observed_streamflow_cms,
+    net_solar_radiation,
+    max_net_solar_radiation,
+    min_net_solar_radiation,
+    net_longwave_radiation,
+    max_net_longwave_radiation,
+    min_net_longwave_radiation,
 )
 
 from ._map import (
@@ -240,6 +246,18 @@ class Caravan_DK(_RainfallRunoff):
     def dyn_map(self) -> Dict[str, str]:
         return {
             'streamflow': observed_streamflow_cms(),
+            # Caravan extension, so the same six radiation columns as BULL and
+            # GRDC-Caravan: NET shortwave/longwave, already in W m-2 (Caravan
+            # converts ERA5-Land's J m-2 accumulations itself). Verified here:
+            # net shortwave mean 93.8 W m-2, net longwave -51.3 (negative, i.e.
+            # positive-toward-the-surface), and the shortwave `_min` column is
+            # identically 0.0, confirming min/max are within-day extremes.
+            'surface_net_solar_radiation_mean': net_solar_radiation(),
+            'surface_net_solar_radiation_max': max_net_solar_radiation(),
+            'surface_net_solar_radiation_min': min_net_solar_radiation(),
+            'surface_net_thermal_radiation_mean': net_longwave_radiation(),
+            'surface_net_thermal_radiation_max': max_net_longwave_radiation(),
+            'surface_net_thermal_radiation_min': min_net_longwave_radiation(),
         }
 
     def stn_coords(
