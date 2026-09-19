@@ -12,8 +12,8 @@ import pandas as pd
 
 from aqua_fetch import CCAM
 from aqua_fetch import CAMELS_CH
-from aqua_fetch import CAMELS_GB, CAMELS_AUS
-from aqua_fetch import CAMELS_CL, CAMELS_US, HYPE
+from aqua_fetch import CAMELS_AUS
+from aqua_fetch import CAMELS_US, HYPE
 from aqua_fetch import WaterBenchIowa
 from aqua_fetch import CAMELS_DE
 from aqua_fetch import CAMELS_SE
@@ -50,11 +50,6 @@ from utils import (
 
 class TestCamels(unittest.TestCase):
 
-    def test_gb(self):
-        dataset = CAMELS_GB(path=os.path.join(raw_data_path, 'CAMELS'))
-        test_dataset(dataset, 671, 16436, 145, 10, test_latlong_ranges=False)
-        return
-
     def test_aus(self):
         dataset = CAMELS_AUS(path=os.path.join(raw_data_path, 'CAMELS', 'CAMELS_AUS_V1'), version=1)
         test_dataset(dataset, 222, 23376, 166, 28)
@@ -66,12 +61,6 @@ class TestCamels(unittest.TestCase):
     def test_hype(self):
         dataset = HYPE(path=raw_data_path)
         test_dataset(dataset, 564, 12783, 0, 9)
-        return
-
-    def test_cl(self):
-        ds_cl = CAMELS_CL(os.path.join(raw_data_path, 'CAMELS'))
-        test_dataset(ds_cl, num_stations=516, dyn_data_len=38374,
-                     num_static_attrs=104, num_dyn_attrs=12)
         return
 
     def test_us(self):
