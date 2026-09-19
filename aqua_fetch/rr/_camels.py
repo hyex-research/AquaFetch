@@ -16,9 +16,9 @@ from typing import Union, List, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from .utils import _RainfallRunoff, apply_dyn_factors, n_workers, cache_name
+from .utils import _RainfallRunoff, apply_dyn_factors, n_workers, cache_name, ymd_index
 from .._geom_utils import (epsg25832_to_wgs84, epsg2056_point_to_wgs84, laea_to_wgs84,
-                           osgb36_to_wgs84, tmerc_to_wgs84)
+                           osgb36_to_wgs84, tmerc_to_wgs84, world_mercator_to_wgs84)
 from ..utils import get_cpus, download_and_unzip, BROWSER_HEADERS
 from ..utils import validate_attributes, download, unzip
 
@@ -4257,9 +4257,26 @@ class CAMELS_IND(_RainfallRunoff):
 class CAMELS_FR(_RainfallRunoff):
     """
     Dataset of 654 catchments from France following the works of
-    `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_.
+    `Delaigue et al., 2025 <https://doi.org/10.5194/essd-17-1461-2025>`_.
     The dataset consists of 344 static catchment features and 22 dynamic features.
     The dynamic features span from 1970101 to 20211231 with daily timestep.
+
+    This is release 3.2 of the `Recherche Data Gouv record
+    <https://doi.org/10.57745/WH7FJR>`_. All releases hold the same 654 stations,
+    22 dynamic features, 344 static features and time span; release 3.0 corrected
+    ``hym_q_questionable``, ``hym_q_unqualified`` and ``hym_q_anomaly_inrae``
+    (percentages of streamflow values flagged as doubtful), which is the only
+    difference in the data. Data downloaded by an earlier version of aqua_fetch is
+    release 2.1; it is detected at initialization, and only its 9.4 MB attributes
+    archive is downloaded again.
+
+    Not provided: the monthly and yearly aggregates of the time series archive.
+
+    Timings on a 48-core machine: the first initialization downloads 372 MB and
+    builds a 2.2 GB netCDF cache, for which it reads the 654 daily csv files in
+    18 s. An initialization that only upgrades release 2.1 takes 5 s. Afterwards
+    initialization takes 0.5 s, fetching all 654 stations with all 22 dynamic
+    features 0.15 s and with all 344 static features 0.45 s.
 
     Examples
     ---------
@@ -4269,7 +4286,7 @@ class CAMELS_FR(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch(stations='J421191001', as_dataframe=True)
     >>> df = dynamic['J421191001'] # dynamic is a dictionary of with keys as station names and values as DataFrames
     >>> df.shape
-    (12782, 22)
+    (18993, 22)
     ...
     ... # get name of all stations as list
     >>> stns = dataset.stations()
@@ -4282,7 +4299,7 @@ class CAMELS_FR(_RainfallRunoff):
     ...
     ... # dynamic is a dictionary whose values are dataframes of dynamic features
     >>> [df.shape for df in dynamic.values()]
-        [(12782, 22), (12782, 22), (12782, 22),... (12782, 22), (12782, 22)]
+        [(18993, 22), (18993, 22), (18993, 22),... (18993, 22), (18993, 22)]
     ...
     ... get the data of a single (randomly selected) station
     >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
@@ -4294,7 +4311,7 @@ class CAMELS_FR(_RainfallRunoff):
     >>> _, dynamic = dataset.fetch('J421191001', as_dataframe=True,
     ...  dynamic_features=['pcp_mm', 'spechum_gkg', 'airtemp_C_mean', 'pet_mm_pm', 'q_cms_obs'])
     >>> dynamic['J421191001'].shape
-       (12782, 5)
+       (18993, 5)
     ...
     ... # get names of available static features
     >>> dataset.static_features
@@ -4306,7 +4323,7 @@ class CAMELS_FR(_RainfallRunoff):
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='J421191001', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['J421191001'].shape
-    ((1, 344), 1, (12782, 22))
+    ((1, 344), 1, (18993, 22))
     ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
@@ -4314,7 +4331,7 @@ class CAMELS_FR(_RainfallRunoff):
     xarray.core.dataset.Dataset
     ...
     >>> dynamic.dims
-    FrozenMappingWarningOnValuesAccess({'time': 12782, 'dynamic_features': 22})
+    FrozenMappingWarningOnValuesAccess({'time': 18993, 'dynamic_features': 22})
     ...
     >>> len(dynamic.data_vars)
     10
@@ -4334,24 +4351,84 @@ class CAMELS_FR(_RainfallRunoff):
     # if fiona library is installed we can get the boundary as fiona Geometry
     >>> dataset.get_boundary('J421191001')
     """
+    # file ids of the Recherche Data Gouv record doi:10.57745/WH7FJR, release 3.2.
+    # Only the attributes archive and the README differ from release 2.1; the time
+    # series, geography, licenses and description files are the same files.
+    _DATAFILE = "https://entrepot.recherche.data.gouv.fr/api/access/datafile/"
     url = {
-        "ADDITIONAL_LICENSES.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343463",
-        "CAMELS_FR_attributes.zip": "https://entrepot.recherche.data.gouv.fr/api/access/datafile/343464",
-        'CAMELS_FR_geography.zip': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/343465',
-        'CAMELS_FR_time_series.zip': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/343470',
-        'README.md': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/431300',
-        'CAMELS-FR_description.ods': 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/348740',
+        "ADDITIONAL_LICENSES.zip": f"{_DATAFILE}343463",
+        "CAMELS_FR_attributes.zip": f"{_DATAFILE}621683",
+        'CAMELS_FR_geography.zip': f"{_DATAFILE}343465",
+        'CAMELS_FR_time_series.zip': f"{_DATAFILE}343470",
+        'README.md': f"{_DATAFILE}621685",
+        'NEWS.md': f"{_DATAFILE}621689",
+        'CAMELS-FR_description.ods': f"{_DATAFILE}348740",
     }
+
+    # files of CAMELS_FR_attributes.zip and CAMELS_FR_geography.zip, from the
+    # "File hierarchy convention" section of the README of the dataset. Used by
+    # _check_manifest, so that an incomplete extraction is reported instead of
+    # being taken for a smaller dataset.
+    _STATIC_ATTR_FILES = (
+        "00_description_geology_classes.txt",
+        "00_description_land_cover_classes.txt",
+        "CAMELS_FR_geology_attributes.csv",
+        "CAMELS_FR_human_influences_dams.csv",
+        "CAMELS_FR_hydrogeology_attributes.csv",
+        "CAMELS_FR_land_cover_attributes.csv",
+        "CAMELS_FR_site_general_attributes.csv",
+        "CAMELS_FR_soil_general_attributes.csv",
+        "CAMELS_FR_soil_quantiles_attributes.csv",
+        "CAMELS_FR_station_general_attributes.csv",
+        "CAMELS_FR_topography_general_attributes.csv",
+        "CAMELS_FR_topography_quantiles_attributes.csv",
+    )
+    _TS_STAT_FILES = (
+        "CAMELS_FR_climatic_statistics.csv",
+        "CAMELS_FR_hydroclimatic_quantiles.csv",
+        "CAMELS_FR_hydroclimatic_regimes_daily.csv",
+        "CAMELS_FR_hydroclimatic_statistics_joint_availability_yearly.csv",
+        "CAMELS_FR_hydroclimatic_statistics_timeseries_yearly.csv",
+        "CAMELS_FR_hydrological_signatures.csv",
+        "CAMELS_FR_hydrometry_statistics.csv",
+    )
+    _GEOG_FILES = (
+        "CAMELS_FR_catchment_boundaries.gpkg",
+        "CAMELS_FR_catchment_nestedness_information.csv",
+        "CAMELS_FR_gauge_outlet.gpkg",
+    )
+
+    # size in bytes of CAMELS_FR_hydrometry_statistics.csv in release 2.1, which
+    # aqua_fetch downloaded until now. Release 3.0 recomputed hym_q_questionable,
+    # hym_q_unqualified and hym_q_anomaly_inrae, making this the only file of the
+    # attributes archive whose content, and size, changed.
+    _V21_HYDROMETRY_BYTES = 38976
 
     def __init__(self,
                  path=None,
                  overwrite=False,
                  **kwargs):
-        super().__init__(path=path, **kwargs)
+        """
+        Parameters
+        ----------
+        path : str
+            directory under which the data is (or will be) saved in a
+            ``CAMELS_FR`` folder. If None, the default data directory of
+            aqua_fetch is used.
+        overwrite : bool
+            if True, the archives, the extracted folders and the netCDF caches
+            are deleted and downloaded/built again.
+        **kwargs :
+            any keyword argument of :py:class:`aqua_fetch.rr._RainfallRunoff`
+            such as ``processes``, ``verbosity``, ``to_netcdf`` or ``remove_zip``.
+        """
+        super().__init__(path=path, overwrite=overwrite, **kwargs)
 
-        self._download(overwrite=overwrite)
+        self._download_camels_fr(overwrite=overwrite)
 
         self._stations = self.__stations()
+
+        self._check_manifest()
 
         self._static_features = list(set(self._static_data().columns.to_list()))
 
@@ -4359,6 +4436,133 @@ class CAMELS_FR(_RainfallRunoff):
 
         # if self.to_netcdf:
         self._maybe_to_netcdf()
+
+    def _download_camels_fr(self, overwrite: bool = False):
+        """
+        Downloads and extracts only those archives whose extracted folder does
+        not exist, so that an archive deleted after extraction
+        (``remove_zip=True``) is not downloaded again, and downloads the plain
+        files that are missing.
+
+        When the attributes on disk are those of the superseded release 2.1 (see
+        :meth:`_stale_attributes`), the 9.4 MB attributes archive and the README
+        are downloaded again so that an existing installation is brought to
+        release 3.2. Nothing else is touched, because the 361 MB time series
+        archive, the geography archive and the netCDF cache, which holds dynamic
+        data only, are the same in both releases.
+
+        ``overwrite=True`` first deletes this dataset's archives, extracted
+        folders, plain files and netCDF caches.
+        """
+        os.makedirs(self.path, exist_ok=True)
+
+        archives = {fname: link for fname, link in self.url.items() if fname.endswith('.zip')}
+        plain = {fname: link for fname, link in self.url.items() if not fname.endswith('.zip')}
+        # each archive holds a folder of its own name, so CAMELS_FR_attributes.zip
+        # is extracted to path/CAMELS_FR_attributes/CAMELS_FR_attributes/
+        folder_of = {fname: os.path.join(self.path, fname[:-len('.zip')]) for fname in archives}
+
+        if overwrite:
+            caches = glob.glob(os.path.join(glob.escape(self.path),
+                                            f"{self.name.lower()}_{self.timestep}*.nc"))
+            _remove_stale([*(os.path.join(self.path, fname) for fname in self.url),
+                           *folder_of.values(), *caches], self.verbosity)
+        elif self._stale_attributes():
+            # unconditional, because this silently changes the values that
+            # static_features returns between two runs of the same code
+            warnings.warn(
+                f"The CAMELS-FR attributes in {self.path} are those of release 2.1, "
+                "in which hym_q_questionable, hym_q_unqualified and "
+                "hym_q_anomaly_inrae were miscalculated. Downloading the 9.4 MB "
+                "attributes archive of release 3.2 to replace them; the time "
+                "series, the boundaries and the netCDF cache are unaffected.",
+                UserWarning)
+            _remove_stale([folder_of['CAMELS_FR_attributes.zip'],
+                           os.path.join(self.path, 'CAMELS_FR_attributes.zip'),
+                           os.path.join(self.path, 'README.md')],
+                          self.verbosity, reason="superseded release 2.1")
+
+        for fname, link in archives.items():
+            folder = folder_of[fname]
+            if os.path.exists(folder):
+                continue
+
+            archive = os.path.join(self.path, fname)
+            if not os.path.exists(archive):
+                if self.verbosity:
+                    print(f"downloading {link} to {archive}")
+                download(link, outdir=self.path, fname=fname, verbosity=self.verbosity)
+
+            # extracted into a temporary folder that is renamed once complete, so
+            # that an interrupted extraction is redone instead of being taken as
+            # complete at the next initialization
+            if self.verbosity:
+                print(f"extracting {archive}")
+            partial = f"{folder}_extracting"
+            shutil.rmtree(partial, ignore_errors=True)
+            try:
+                with zipfile.ZipFile(archive) as zf:
+                    zf.extractall(partial)
+            except (zipfile.BadZipFile, zlib.error, EOFError):  # e.g. an error page saved as the archive
+                shutil.rmtree(partial, ignore_errors=True)
+                os.remove(archive)
+                raise ValueError(f"{archive} is corrupt and was deleted. "
+                                 f"Initialize CAMELS_FR again to download it again.") from None
+            os.replace(partial, folder)
+
+        for fname, link in plain.items():
+            fpath = os.path.join(self.path, fname)
+            if not os.path.exists(fpath):
+                if self.verbosity:
+                    print(f"downloading {link} to {fpath}")
+                download(link, outdir=self.path, fname=fname, verbosity=self.verbosity)
+
+        if self.remove_zip:
+            for fname in archives:
+                archive = os.path.join(self.path, fname)
+                if os.path.exists(archive):
+                    if self.verbosity:
+                        print(f"remove_zip=True: removing {archive}")
+                    os.remove(archive)
+        return
+
+    @property
+    def _hydrometry_file(self) -> os.PathLike:
+        """the only file whose content differs between releases 2.1 and 3.2"""
+        return os.path.join(self.ts_stat_path, "CAMELS_FR_hydrometry_statistics.csv")
+
+    def _stale_attributes(self) -> bool:
+        """
+        Whether the extracted attributes are those of release 2.1.
+
+        The two releases differ in one file only, whose size is 38976 bytes in
+        2.1 and 39467 bytes in 3.2, so one ``stat`` call tells them apart without
+        reading the file or contacting the server.
+        """
+        fpath = self._hydrometry_file
+        return os.path.exists(fpath) and os.path.getsize(fpath) == self._V21_HYDROMETRY_BYTES
+
+    def _check_manifest(self):
+        """
+        warns if files that the README of the dataset lists are missing, e.g.
+        left out by an interrupted extraction or deleted by hand
+        """
+        files = [os.path.join(self.static_attr_path, fname) for fname in self._STATIC_ATTR_FILES]
+        files += [os.path.join(self.ts_stat_path, fname) for fname in self._TS_STAT_FILES]
+        files += [os.path.join(self.geog_path, fname) for fname in self._GEOG_FILES]
+        missing = [fpath for fpath in files if not os.path.exists(fpath)]
+
+        n_daily = len(glob.glob(os.path.join(glob.escape(self.daily_ts_path),
+                                             "CAMELS_FR_tsd_*.csv")))
+        if n_daily != len(self._stations):
+            missing.append(f"{len(self._stations) - n_daily} of the {len(self._stations)} "
+                           f"daily time series files in {self.daily_ts_path}")
+
+        if missing:
+            warnings.warn(
+                f"CAMELS_FR: {len(missing)} expected files are missing: {missing}. "
+                f"Use overwrite=True to download them again.", UserWarning)
+        return
 
     @property
     def boundary_file(self) -> os.PathLike:        
@@ -5036,7 +5240,7 @@ class CAMELS_COL(_RainfallRunoff):
     >>> coords.shape
         (347, 2)
     >>> dataset.stn_coords('35067040')  # returns coordinates of station whose id is 35067040
-        4.746433        -73.587807
+        4.778274        -73.587807
     >>> dataset.stn_coords(['35067040', '21187030'])  # returns coordinates of two stations
     ...
     # get area of a single station
@@ -5102,6 +5306,36 @@ class CAMELS_COL(_RainfallRunoff):
                 'gauge_elev': gauge_elevation_meters(),
                 'perimeter': catchment_perimeter(),
         }
+
+    def transform_boundary(self, boundary):
+        """
+        Transforms a catchment boundary from WGS 84 / World Mercator
+        (EPSG:3395, the CRS of the shapefile) to WGS84 (EPSG:4326) lon/lat, so
+        that it matches the gauge coordinates.
+
+        Uses the pyproj-free :func:`world_mercator_to_wgs84` helper. Verified
+        against pyproj (EPSG:3395 -> EPSG:4326) on all catchments: the
+        per-vertex error is below 0.01 mm. The 70 MultiPolygons and the 21
+        Polygons with interior rings (holes) are handled, and the geometry type
+        and ring structure are kept. The conversion is vectorised per ring.
+        """
+        if fiona is None:
+            return boundary
+
+        def _ring_to_wgs84(ring):
+            arr = np.asarray(ring, dtype=float)
+            # fiona stores each vertex as (x=easting, y=northing[, z]); output
+            # is (lon, lat) to keep the (x, y) ordering of the geometry.
+            lat, long = world_mercator_to_wgs84(arr[:, 0], arr[:, 1])
+            return list(zip(long.tolist(), lat.tolist()))
+
+        if boundary.type == 'MultiPolygon':
+            coords = [[_ring_to_wgs84(ring) for ring in polygon]
+                      for polygon in boundary.coordinates]
+        else:  # Polygon, possibly with interior rings (holes)
+            coords = [_ring_to_wgs84(ring) for ring in boundary.coordinates]
+
+        return fiona.Geometry(type=boundary.type, coordinates=coords)
 
     @property
     def ts_path(self) -> os.PathLike:
@@ -5246,10 +5480,13 @@ class CAMELS_COL(_RainfallRunoff):
             if col in static_data.columns:
                 static_data[col] *= fac
 
-        # convert latitude and longitude from EPSG:3395 to EPSG:4326
-        R = 6378137.0   # Earth's radius in meters for EPSG:3395
-        static_data[gauge_longitude()] = np.degrees(static_data[gauge_longitude()] / R)
-        static_data[gauge_latitude()] = np.degrees(2 * np.arctan(np.exp(static_data[gauge_latitude()] / R)) - np.pi / 2)
+        # the file gives the gauge position in EPSG:3395 meters: the column
+        # named gauge_lat holds the northing and gauge_lon the easting
+        lat, lon = world_mercator_to_wgs84(
+            static_data[gauge_longitude()].values.astype(float),
+            static_data[gauge_latitude()].values.astype(float))
+        static_data[gauge_latitude()] = lat
+        static_data[gauge_longitude()] = lon
 
         return static_data    
 
@@ -6579,7 +6816,7 @@ class CAMELS_PL(_RainfallRunoff):
         return boundary
 
 
-def _remove_stale(paths, verbosity: int = 1):
+def _remove_stale(paths, verbosity: int = 1, reason: str = "overwrite=True"):
     """
     Deletes every existing file or folder in ``paths``. Called before an
     ``overwrite=True`` re-download so that nothing stale survives: ``download``
@@ -6590,7 +6827,7 @@ def _remove_stale(paths, verbosity: int = 1):
     for stale in paths:
         if os.path.lexists(stale):
             if verbosity:
-                print(f"overwrite=True: removing stale {stale}")
+                print(f"{reason}: removing stale {stale}")
             # a symlink is unlinked; its target is left alone
             if os.path.isdir(stale) and not os.path.islink(stale):
                 shutil.rmtree(stale)

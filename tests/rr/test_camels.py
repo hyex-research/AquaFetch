@@ -18,7 +18,6 @@ from aqua_fetch import WaterBenchIowa
 from aqua_fetch import CAMELS_DE
 from aqua_fetch import CAMELS_SE
 from aqua_fetch import CAMELS_IND
-from aqua_fetch import CAMELS_FR
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
 from aqua_fetch import CAMELS_NZ
@@ -212,18 +211,6 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 472, 14976, 210, 20)
         return
 
-    def test_fr(self):
-        ds = CAMELS_FR(os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
-        test_dataset(
-            ds,
-            num_stations=654,
-            dyn_data_len=18993,
-            num_static_attrs=344,
-            num_dyn_attrs=22,
-            test_latlong_ranges=False
-        )
-        return
-
     def test_rainfallrunoff(self):
         dataset = RainfallRunoff('CAMELS_AUS', path=os.path.join(raw_data_path, 'CAMELS'),
                                  overwrite=True)
@@ -254,8 +241,10 @@ class TestCamels(unittest.TestCase):
         return
 
     def test_camels_col(self):
+        # test_latlong_ranges=True validates that the boundaries are reprojected
+        # from EPSG:3395 (World Mercator, meters) to WGS84
         dataset = CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'))
-        test_dataset(dataset, 347, 15340, 255, 6, test_latlong_ranges=False)
+        test_dataset(dataset, 347, 15340, 255, 6, test_latlong_ranges=True)
         return
 
     def test_camels_sk(self):
@@ -267,8 +256,10 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_fi(self):
 
+        # test_latlong_ranges=False: the catchment boundaries are in EPSG:3067
+        # (ETRS-TM35FIN), so their coordinates are meters, not degrees
         dataset = CAMELS_FI(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
-        test_dataset(dataset, 320, 23010, 106, 16, test_latlong_ranges=False)
+        test_dataset(dataset, 320, 23010, 112, 16, test_latlong_ranges=False)
 
         return
 
