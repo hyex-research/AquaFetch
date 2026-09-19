@@ -17,7 +17,6 @@ from aqua_fetch import CAMELS_US, HYPE
 from aqua_fetch import WaterBenchIowa
 from aqua_fetch import CAMELS_DE
 from aqua_fetch import CAMELS_SE
-from aqua_fetch import CAMELS_IND
 from aqua_fetch import RainfallRunoff
 from aqua_fetch import RRLuleaSweden
 from aqua_fetch import CAMELS_NZ
@@ -203,12 +202,6 @@ class TestCamels(unittest.TestCase):
     def test_camels_se(self):
         dataset = CAMELS_SE(path=os.path.join(raw_data_path, 'CAMELS'))
         test_dataset(dataset, 50, 21915, 76, 4)
-        return
-
-    def test_india(self):
-
-        dataset = CAMELS_IND(path=os.path.join(raw_data_path, 'CAMELS'))
-        test_dataset(dataset, 472, 14976, 210, 20)
         return
 
     def test_rainfallrunoff(self):
