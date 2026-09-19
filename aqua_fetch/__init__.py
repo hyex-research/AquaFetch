@@ -48,6 +48,7 @@ from .rr import CAMELS_SK
 from .rr import CAMELS_FI
 from .rr import CAMELS_PL
 from .rr import CAMELS_PE
+from .rr import CAMELS_KR
 from .rr import Slovenia
 from .rr import UKFlow15
 from .rr import CAMELSH
@@ -189,6 +190,7 @@ ALL_DATASETS = [
     CAMELS_FI.__name__,
     CAMELS_PL.__name__,
     CAMELS_PE.__name__,
+    CAMELS_KR.__name__,
     Slovenia.__name__,
     UKFlow15.__name__,
     CAMELSH.__name__,

@@ -3,6 +3,7 @@ import time
 import random
 import shutil
 import warnings
+import multiprocessing as mp
 import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
 
@@ -40,6 +41,59 @@ def cache_name(name: str) -> str:
     ``'meteo_vars.nc'`` -> ``'meteo_vars_v2.nc'``."""
     stem, ext = os.path.splitext(name)
     return f"{stem}_v{CACHE_VERSION}{ext}"
+
+
+def apply_dyn_factors(df: pd.DataFrame, factors: Dict) -> pd.DataFrame:
+    """Multiplies (or, for a callable, maps) the columns of ``df`` named in
+    ``factors``, in place. Columns the frame does not have are skipped. A plain
+    function, so that a process-pool worker can use it without the dataset."""
+    for col, factor in factors.items():
+        if col not in df.columns:
+            continue
+        if callable(factor):
+            df[col] = df[col].apply(factor)
+        else:
+            df[col] = df[col] * factor
+    return df
+
+
+def n_workers(nbytes: float, n_tasks: int, processes: int = None) -> int:
+    """
+    Number of processes for reading ``n_tasks`` files of ``nbytes`` in total.
+    ``processes=1`` or a single task gives 1 (no pool). Otherwise a pool is used
+    only if the files are large enough to repay starting it, as measured for
+    csv files on 48 cores: ~5 MB with the ``fork`` start method (Linux up to
+    Python 3.13), ~60 MB with ``forkserver`` (Linux from Python 3.14) and
+    ~120 MB with ``spawn`` (Windows, macOS).
+    """
+    cpus = max(1, int(processes)) if processes is not None else min(get_cpus(), 32)
+    if cpus == 1 or n_tasks < 2:
+        return 1
+    # get_start_method() without allow_none would fix the start method for the
+    # whole program; the first of get_all_start_methods() is the default
+    method = mp.get_start_method(allow_none=True) or mp.get_all_start_methods()[0]
+    if nbytes < {'fork': 5e6, 'forkserver': 60e6}.get(method, 120e6):
+        return 1
+    return min(cpus, n_tasks)
+
+
+def atomic_to_netcdf(data, fpath: Union[str, os.PathLike], **kwargs):
+    """
+    Writes ``data`` (an :obj:`xarray.Dataset`) to ``fpath`` through a temporary
+    ``<fpath>.part`` file which replaces ``fpath`` only once the write has
+    finished. An interrupted write (Ctrl+C, a full disk) therefore leaves no
+    file behind instead of a truncated one that later looks like a complete
+    cache and serves empty stations.
+    """
+    tmp_fpath = f"{fpath}.part"
+    try:
+        data.to_netcdf(tmp_fpath, **kwargs)
+    except BaseException:
+        if os.path.exists(tmp_fpath):
+            os.remove(tmp_fpath)
+        raise
+    os.replace(tmp_fpath, fpath)
+    return
 
 
 def gb_message():
@@ -178,14 +232,7 @@ class _RainfallRunoff(Datasets):
     def _apply_dyn_factors(self, df: pd.DataFrame) -> pd.DataFrame:
         """Applies :attr:`dyn_factors` to an already-renamed frame, in place.
         Columns the frame does not have are skipped."""
-        for col, factor in self.dyn_factors.items():
-            if col not in df.columns:
-                continue
-            if callable(factor):
-                df[col] = df[col].apply(factor)
-            else:
-                df[col] = df[col] * factor
-        return df
+        return apply_dyn_factors(df, self.dyn_factors)
 
     @property
     def boundary_id_map(self) -> str:
@@ -321,10 +368,89 @@ class _RainfallRunoff(Datasets):
         # The user is recommended to implement this method in the child class in a more efficient way.
         return self._static_data().index.tolist()
 
+    def common_stations(
+            self,
+            other: Union["_RainfallRunoff", List[str]],
+            max_dist_km: float = None
+    ) -> List[str]:
+        """
+        ids of this dataset's stations that are also in ``other``. Several
+        datasets of this library cover the same region (see the table of
+        duplicate datasets in the documentation).
+
+        Parameters
+        ----------
+        other :
+            another rainfall-runoff dataset, or a list of station ids. Ids are
+            compared as they are, which only finds the shared stations when both
+            datasets use the same id system (e.g. :py:class:`aqua_fetch.rr.CAMELS_KR`
+            and :py:class:`aqua_fetch.rr.CAMELS_SK`, which both use the official
+            Korean gauge codes).
+        max_dist_km : float, optional
+            if given, the stations are matched by distance instead of by id: an
+            id of this dataset is returned when a station of ``other`` lies
+            within ``max_dist_km`` of it. Use this when the two datasets use
+            different id systems. ``other`` must then be a dataset, because its
+            :meth:`stn_coords` is needed. The distance is computed on a sphere,
+            which is up to ~0.3% longer than on the WGS84 ellipsoid (1° of
+            latitude: 111.19 km here, 110.99 km with ``pyproj``), so allow for
+            that in the tolerance.
+
+        Returns
+        -------
+        list
+            ids of **this** dataset, in the order of :meth:`stations`
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_KR, CAMELS_SK
+        >>> kr = CAMELS_KR()
+        ... # CAMELS_SK uses the same official Korean gauge codes as CAMELS_KR
+        >>> len(kr.common_stations(CAMELS_SK().stations()))
+        115
+        ... # a list of ids from anywhere works too, so the other dataset does
+        ... # not have to be downloaded
+        >>> kr.common_stations(['1001620', '1007635', 'not_an_id'])
+        ['1001620', '1007635']
+        ... # datasets with different ids are matched by distance instead
+        >>> kr.common_stations(other_dataset, max_dist_km=2.0)
+        """
+        stations = self.stations()
+
+        if max_dist_km is None:
+            ids = set(other.stations() if hasattr(other, 'stations') else other)
+            return [stn for stn in stations if stn in ids]
+
+        if not hasattr(other, 'stn_coords'):
+            raise TypeError(
+                f"matching by distance needs a dataset with coordinates, "
+                f"not {type(other)}. Leave max_dist_km out to match ids.")
+
+        mine = self.stn_coords().astype('float64')
+        theirs = other.stn_coords().astype('float64')
+        lat2 = np.radians(theirs['lat'].to_numpy())
+        lon2 = np.radians(theirs['long'].to_numpy())
+
+        matched = np.zeros(len(mine), dtype=bool)
+        # in chunks, so that a big dataset (HYSETS has 14425 stations) does not
+        # need one huge distance matrix
+        for beg in range(0, len(mine), 512):
+            end = beg + 512
+            lat1 = np.radians(mine['lat'].to_numpy()[beg:end])[:, None]
+            lon1 = np.radians(mine['long'].to_numpy()[beg:end])[:, None]
+            # haversine distance on a sphere of 6371 km
+            h = (np.sin((lat2 - lat1) / 2) ** 2 +
+                 np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
+            dist = 2 * 6371.0 * np.arcsin(np.sqrt(h))
+            # a station without coordinates gives NaN, which is never <=
+            matched[beg:end] = (dist <= max_dist_km).any(axis=1)
+
+        return [stn for stn, ok in zip(mine.index, matched) if ok]
+
     def _read_dynamic(
-            self, 
-            stations, 
-            dynamic_features, 
+            self,
+            stations,
+            dynamic_features,
             st:Union[str, pd.Timestamp] = None, 
             en:Union[str, pd.Timestamp] = None
             ) -> Dict[str, pd.DataFrame]:
@@ -816,7 +942,7 @@ class _RainfallRunoff(Datasets):
                 if self.verbosity: print(f'converting data to netcdf format for faster io operations')
                 _, data = self.fetch(static_features=None)
 
-                data.to_netcdf(self.dyn_fpath)
+                atomic_to_netcdf(data, self.dyn_fpath)
             else:
                 if self.verbosity:
                     print(f"dynamic data already exists as {self.dyn_fpath}. "

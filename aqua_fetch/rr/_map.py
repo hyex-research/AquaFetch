@@ -38,6 +38,11 @@ def observed_water_level_cm()->str:
     return "wl_cm_obs"
 
 
+def observed_water_level_m()->str:
+    """observed water level (gauge stage) in meters"""
+    return "wl_m_obs"
+
+
 def observed_water_level_ft()->str:
     """observed water level in feet. The reference datum is station-specific
     (e.g. stage above the local streambed/ground for stream gauges, or
@@ -166,6 +171,14 @@ def max_windspeed()->str:
 
 def min_windspeed()->str:
     return "windspeed_mps_min"
+
+
+def max_wind_gust()->str:
+    """maximum instantaneous wind speed (gust) in meters per second, e.g. daily
+    maximum. Not the maximum of a sustained (averaged) wind speed, which is
+    :func:`max_windspeed`."""
+    return "windgust_mps_max"
+
 
 def u_component_of_wind()->str:
     """
@@ -334,7 +347,7 @@ def min_air_pressure()->str:
 # Radiation unit conversions to the canonical W m-2. Defined here, next to the
 # names that promise those units, so that a dataset never hard-codes a factor
 # whose meaning has to be re-derived by the next reader.
-MJ_M2_DAY_TO_WM2 = 1e6 / 86400.0   # 11.574074...   CAMELS_AUS (SILO/AWAP), CABra, CAMELS_PE
+MJ_M2_DAY_TO_WM2 = 1e6 / 86400.0   # 11.574074...   CAMELS_AUS (SILO/AWAP), CABra, CAMELS_PE, CAMELS_KR
 KJ_M2_DAY_TO_WM2 = 1e3 / 86400.0   # 0.011574074... CAMELS_FI
 J_CM2_DAY_TO_WM2 = 1e4 / 86400.0   # 0.11574074...  CAMELS_FR (SAFRAN)
 J_M2_DAY_TO_WM2 = 1.0 / 86400.0    # ERA5/ERA5-Land daily accumulations (HYSETS)
