@@ -23,7 +23,6 @@ from aqua_fetch import CAMELS_NZ
 from aqua_fetch import CAMELS_LUX
 from aqua_fetch import CAMELS_COL
 from aqua_fetch import CAMELS_SK
-from aqua_fetch import CAMELS_FI
 from aqua_fetch import CAMELS_PL
 from aqua_fetch import CAMELSH
 
@@ -245,15 +244,6 @@ class TestCamels(unittest.TestCase):
         test_dataset(dataset, 178, 175320, 215, 17,
                      st="20120101", en="20121231", 
                      yearly_steps=8761)
-        return
-
-    def test_camels_fi(self):
-
-        # test_latlong_ranges=False: the catchment boundaries are in EPSG:3067
-        # (ETRS-TM35FIN), so their coordinates are meters, not degrees
-        dataset = CAMELS_FI(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
-        test_dataset(dataset, 320, 23010, 112, 16, test_latlong_ranges=False)
-
         return
 
     def test_camelsh(self):

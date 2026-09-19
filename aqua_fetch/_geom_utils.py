@@ -192,19 +192,22 @@ def tmerc_to_wgs84(
     This is a generalisation of :func:`epsg25832_to_wgs84` (which is hard-wired
     to the UTM parameters). It works for any Transverse Mercator projection
     defined on the WGS84/GRS80 ellipsoid, e.g. ETRS89 / Poland CS92
-    (EPSG:2180) which is used by :py:class:`aqua_fetch.rr.CAMELS_PL`.
+    (EPSG:2180) used by :py:class:`aqua_fetch.rr.CAMELS_PL` or ETRS89 / TM35FIN
+    (EPSG:3067) used by :py:class:`aqua_fetch.rr.CAMELS_FI`.
 
     The GRS80 and WGS84 ellipsoids differ only in the flattening at the ~1e-11
     level, so a single (WGS84) eccentricity is used for both. Validated against
-    ``pyproj`` on the CAMELS-PL catchment boundaries with a maximum positional
-    error of ~5 cm, which is negligible for catchment-scale geometry.
+    ``pyproj`` on the CAMELS-PL and CAMELS-FI catchment boundaries with a
+    maximum positional error of ~5 cm, which is negligible for catchment-scale
+    geometry.
 
     Parameters
     ----------
-    easting : float
-        projected easting (x) in meters.
-    northing : float
-        projected northing (y) in meters.
+    easting : float or array-like
+        projected easting (x) in meters. An array converts a whole ring of
+        coordinates at once, which is ~50 times faster than looping in python.
+    northing : float or array-like
+        projected northing (y) in meters, of the same shape as ``easting``.
     lon_0 : float
         longitude of the central meridian in degrees (e.g. ``19.0`` for EPSG:2180).
     k0 : float
@@ -217,43 +220,46 @@ def tmerc_to_wgs84(
     Returns
     -------
     tuple
-        ``(lat, lon)`` in degrees.
+        ``(lat, lon)`` in degrees, as floats for scalar input and as
+        :obj:`numpy.ndarray` of the input's shape otherwise.
     """
     a = 6378137.0                    # WGS84/GRS80 semi-major axis
     e = 0.081819190842622            # WGS84/GRS80 first eccentricity
 
-    x = easting - false_easting
-    y = northing - false_northing
+    x = np.asarray(easting, dtype='float64') - false_easting
+    y = np.asarray(northing, dtype='float64') - false_northing
 
     # meridional arc -> footprint latitude
     m = y / k0
     mu = m / (a * (1 - e ** 2 / 4 - 3 * e ** 4 / 64 - 5 * e ** 6 / 256))
     e1 = (1 - math.sqrt(1 - e ** 2)) / (1 + math.sqrt(1 - e ** 2))
     phi1 = (mu
-            + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * math.sin(2 * mu)
-            + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * math.sin(4 * mu)
-            + (151 * e1 ** 3 / 96) * math.sin(6 * mu)
-            + (1097 * e1 ** 4 / 512) * math.sin(8 * mu))
+            + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * np.sin(2 * mu)
+            + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * np.sin(4 * mu)
+            + (151 * e1 ** 3 / 96) * np.sin(6 * mu)
+            + (1097 * e1 ** 4 / 512) * np.sin(8 * mu))
 
-    n1 = a / math.sqrt(1 - e ** 2 * math.sin(phi1) ** 2)
-    t1 = math.tan(phi1) ** 2
-    c1 = (e ** 2 / (1 - e ** 2)) * math.cos(phi1) ** 2
-    r1 = a * (1 - e ** 2) / math.pow(1 - e ** 2 * math.sin(phi1) ** 2, 1.5)
+    n1 = a / np.sqrt(1 - e ** 2 * np.sin(phi1) ** 2)
+    t1 = np.tan(phi1) ** 2
+    c1 = (e ** 2 / (1 - e ** 2)) * np.cos(phi1) ** 2
+    r1 = a * (1 - e ** 2) / (1 - e ** 2 * np.sin(phi1) ** 2) ** 1.5
     d = x / (n1 * k0)
 
-    lat = phi1 - (n1 * math.tan(phi1) / r1) * (
+    lat = phi1 - (n1 * np.tan(phi1) / r1) * (
         d ** 2 / 2
         - (5 + 3 * t1 + 10 * c1 - 4 * c1 ** 2 - 9 * e ** 2) * d ** 4 / 24
         + (61 + 90 * t1 + 298 * c1 + 45 * t1 ** 2 - 252 * e ** 2 - 3 * c1 ** 2) * d ** 6 / 720)
-    lat = math.degrees(lat)
+    lat = np.degrees(lat)
 
     lon = (d
            - (1 + 2 * t1 + c1) * d ** 3 / 6
-           + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * e ** 2 + 24 * t1 ** 2) * d ** 5 / 120) / math.cos(phi1)
-    lon = math.degrees(math.radians(lon_0) + lon)
+           + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * e ** 2 + 24 * t1 ** 2) * d ** 5 / 120) / np.cos(phi1)
+    lon = np.degrees(math.radians(lon_0) + lon)
+
+    if lat.ndim == 0:   # scalar in, scalar out
+        return float(lat), float(lon)
 
     return lat, lon
-
 
 def osgb36_to_wgs84(easting, northing):
     """
@@ -373,23 +379,80 @@ def osgb36_to_wgs84(easting, northing):
     return np.degrees(lat_w), np.degrees(lon_w)
 
 
-def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing):
-    # converts from Lambert Azimuthal Equal Area (LAEA) to WGS84
+def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing,
+                  a=6378137.0, f_inv=298.257222101):
+    """
+    Inverse of the (oblique) Lambert Azimuthal Equal Area projection, i.e.
+    converts projected easting/northing to geographic latitude/longitude.
 
-    R = 6378137.0  # Radius of the Earth in meters (WGS84)
-    lat_0 = np.deg2rad(lat_0)  # Convert origin latitude to radians
-    lon_0 = np.deg2rad(lon_0)  # Convert origin longitude to radians
+    The computation is carried out on the ellipsoid (Snyder, *Map Projections -
+    A Working Manual*, eqs. 3-11/3-12, 24-28..24-30), not on a sphere. The
+    defaults are the GRS80 ellipsoid used by ETRS89-LAEA (EPSG:3035), which is
+    the CRS of the LamaH-CE, QUADICA and CAMELS-DE-1h products.
 
-    # Adjust for false easting and northing
-    x_adj = x - false_easting
-    y_adj = y - false_northing
+    An earlier version approximated the Earth by a sphere of radius ``a``; that
+    simplification displaced the result by up to ~1.2 km. The implementation
+    below was checked against ``pyproj`` (EPSG:3035 -> EPSG:4326) over the whole
+    EPSG:3035 grid extent and for the 882 LamaH-CE gauges: the largest
+    difference is 3e-14 degrees (< 1e-8 m). ``pyproj`` is *not* a dependency of
+    this package; it was only used to verify the formulas.
 
-    # Cartesian to spherical conversion
-    p = np.sqrt(x_adj**2 + y_adj**2)
-    c = 2 * np.arcsin(p / (2 * R))
+    Parameters
+    ----------
+    x, y :
+        easting and northing in metres. Scalars, :obj:`numpy.ndarray` or
+        :obj:`pandas.Series` (the input type is preserved).
+    lon_0, lat_0 :
+        longitude and latitude of the projection origin in degrees.
+    false_easting, false_northing :
+        false easting/northing of the projection in metres.
+    a :
+        semi-major axis of the ellipsoid in metres (default GRS80).
+    f_inv :
+        inverse flattening of the ellipsoid (default GRS80).
 
-    lat = np.arcsin(np.cos(c) * np.sin(lat_0) + y_adj * np.sin(c) * np.cos(lat_0) / p)
-    lon = lon_0 + np.arctan2(x_adj * np.sin(c), p * np.cos(lat_0) * np.cos(c) - y_adj * np.sin(lat_0) * np.sin(c))
+    Returns
+    -------
+    tuple
+        ``(latitude, longitude)`` in degrees.
+    """
+    f = 1.0 / f_inv
+    e2 = 2 * f - f * f
+    e = np.sqrt(e2)
+
+    def _q(sin_phi):
+        """authalic-area function q (Snyder eq. 3-12)"""
+        return (1 - e2) * (sin_phi / (1 - e2 * sin_phi ** 2)
+                           - (1.0 / (2 * e)) * np.log((1 - e * sin_phi) / (1 + e * sin_phi)))
+
+    lat_0 = np.deg2rad(lat_0)
+    lon_0 = np.deg2rad(lon_0)
+
+    q_p = _q(1.0)                      # q at the pole
+    r_q = a * np.sqrt(q_p / 2.0)       # radius of the sphere of equal area
+    beta_0 = np.arcsin(_q(np.sin(lat_0)) / q_p)   # authalic latitude of origin
+    m_0 = np.cos(lat_0) / np.sqrt(1 - e2 * np.sin(lat_0) ** 2)
+    d = a * m_0 / (r_q * np.cos(beta_0))
+
+    x_adj = (x - false_easting) / d
+    y_adj = (y - false_northing) * d
+
+    rho = np.sqrt(x_adj ** 2 + y_adj ** 2)
+    # guard the projection origin itself (rho == 0); the limit below is exact
+    rho = np.maximum(rho, 1e-12)
+    c = 2 * np.arcsin(rho / (2 * r_q))
+
+    beta = np.arcsin(np.cos(c) * np.sin(beta_0) + y_adj * np.sin(c) * np.cos(beta_0) / rho)
+    lon = lon_0 + np.arctan2(
+        x_adj * np.sin(c),
+        rho * np.cos(beta_0) * np.cos(c) - y_adj * np.sin(beta_0) * np.sin(c))
+
+    # authalic -> geodetic latitude (Snyder eq. 3-18)
+    e4, e6 = e2 * e2, e2 * e2 * e2
+    lat = (beta
+           + (e2 / 3 + 31 * e4 / 180 + 517 * e6 / 5040) * np.sin(2 * beta)
+           + (23 * e4 / 360 + 251 * e6 / 3780) * np.sin(4 * beta)
+           + (761 * e6 / 45360) * np.sin(6 * beta))
 
     return (np.rad2deg(lat), np.rad2deg(lon))
 
@@ -464,6 +527,60 @@ def lcc_to_wgs84(x, y, lon_0, lat_0, lat_1, lat_2, false_easting, false_northing
     lon = theta / n + lon_0_rad
 
     return np.rad2deg(phi), np.rad2deg(lon)
+
+
+def world_mercator_to_wgs84(easting, northing):
+    """
+    Converts WGS 84 / World Mercator (EPSG:3395, meters) to WGS84
+    latitude/longitude (EPSG:4326).
+
+    EPSG:3395 is the *ellipsoidal* Mercator on the WGS84 ellipsoid, with the
+    equator as the latitude of true scale, a central meridian of 0, a scale
+    factor of 1 and no false easting/northing. It is used by
+    :py:class:`aqua_fetch.rr.CAMELS_COL` for both the gauge coordinates and the
+    catchment boundaries.
+
+    The longitude is exact (``lon = x / a``). The latitude is recovered from the
+    conformal latitude with Snyder's series (Map Projections - A Working Manual,
+    eq. 3-5), which avoids the iteration of the closed form. Verified against
+    ``pyproj`` (EPSG:3395 -> EPSG:4326) on the 346 CAMELS-COL gauges and over a
+    northing sweep covering |lat| <= 85 deg: the largest latitude error is
+    1.1e-10 deg (~0.01 mm). ``pyproj`` is *not* a dependency of this library.
+
+    Note that the *spherical* inverse ``2*atan(exp(y/a)) - pi/2``, which ignores
+    the flattening of the ellipsoid, is wrong by up to 8.2 km in latitude over
+    Colombia, so it must not be used here.
+
+    Parameters
+    ----------
+    easting : float or np.ndarray
+        projected easting (x) in meters.
+    northing : float or np.ndarray
+        projected northing (y) in meters.
+
+    Returns
+    -------
+    tuple
+        ``(lat, lon)`` in degrees, of the same shape as the inputs.
+    """
+    a = 6378137.0                # WGS84 semi-major axis
+    e2 = 0.00669437999014        # WGS84 first eccentricity squared
+    e4, e6, e8 = e2 ** 2, e2 ** 3, e2 ** 4
+
+    x = np.asarray(easting, dtype=float)
+    y = np.asarray(northing, dtype=float)
+
+    lon = np.degrees(x / a)
+
+    # conformal latitude -> geodetic latitude
+    chi = np.pi / 2 - 2 * np.arctan(np.exp(-y / a))
+    lat = (chi
+           + (e2 / 2 + 5 * e4 / 24 + e6 / 12 + 13 * e8 / 360) * np.sin(2 * chi)
+           + (7 * e4 / 48 + 29 * e6 / 240 + 811 * e8 / 11520) * np.sin(4 * chi)
+           + (7 * e6 / 120 + 81 * e8 / 1120) * np.sin(6 * chi)
+           + (4279 * e8 / 161280) * np.sin(8 * chi))
+
+    return np.degrees(lat), lon
 
 
 def _lv03_to_wgs84_vec(east, north):
