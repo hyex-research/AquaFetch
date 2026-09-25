@@ -80,7 +80,7 @@ DATASETS = {
 'CAMELS_BR': CAMELS_BR(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_CH': CAMELS_CH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_CL': CAMELS_CL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
-'CAMELS_COL': CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
+'CAMELS_COL': CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0, remove_zip=False),
 'CAMELS_DE': CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_DE_h': CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'), timestep='H', verbosity=0),
 "CAMELS_DK": CAMELS_DK(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
@@ -152,7 +152,7 @@ def test_stations_method():
         'RainfallRunoff': 561,
         'CAMELS_NZ': 369,
         'CAMELS_LUX': 56,
-        'CAMELS_COL': 347,
+        'CAMELS_COL': 346,
         'CAMELS_SK': 178,
         'CAMELS_FI': 320,
         'CAMELS_PL': 354,
@@ -213,9 +213,10 @@ class TestMethods(unittest.TestCase):
                         ]:
                 # catchment boundaries are not currently transformed to wgs84 for these datasets
                 # todo : must be done in future
-                # (note: 'CAMELS_DE_h' is intentionally absent here -> its hourly
-                #  boundaries ARE reprojected to wgs84, so latlong ranges apply)
-                if ds_name in ['CAMELS_CH', 'CAMELS_COL', 'CAMELS_DE', 'CAMELS_FR', 'CAMELS_GB', 'CAMELS_FI',
+                # (note: 'CAMELS_DE_h', 'CAMELS_COL' and 'CAMELS_FI' are intentionally
+                #  absent here -> their boundaries ARE reprojected to wgs84 (EPSG:3035,
+                #  EPSG:3395 and EPSG:3067 resp.), so latlong ranges apply)
+                if ds_name in ['CAMELS_CH', 'CAMELS_DE', 'CAMELS_FR',
                                 'LamaHIce_h_tu', 'LamaHIce_h_ia', 'LamaHIce_h_il', 'LamaHIce_d_tu', 'LamaHIce_d_ia', 'LamaHIce_d_il',
                             ]:
                     test_latlong_ranges = False
@@ -296,7 +297,9 @@ class TestMethods(unittest.TestCase):
         assert isinstance(ax, plt.Axes)
 
         # plotting for different time periods
-        dataset = RainfallRunoff('CAMELS_COL', path=raw_data_path)
+        # remove_zip=False: the factory defaults to True, which would delete
+        # the archives of the release on disk
+        dataset = RainfallRunoff('CAMELS_COL', path=raw_data_path, remove_zip=False)
         _, ax = plt.subplots()
         for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
             start, end = period

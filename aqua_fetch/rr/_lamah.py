@@ -16,7 +16,7 @@ from .._backend import fiona
 
 from ..utils import get_cpus
 from ..utils import validate_attributes, download, unzip
-from .utils import _RainfallRunoff, _handle_dynamic, cache_name
+from .utils import _RainfallRunoff, _handle_dynamic, cache_name, ymd_index
 from .._geom_utils import laea_to_wgs84, lcc_to_wgs84
 
 from ._map import (
@@ -98,34 +98,9 @@ _CE_DTYPES = {
 }
 
 
-def _ymd_index(
-        year: np.ndarray,
-        month: np.ndarray,
-        day: np.ndarray,
-        hour: np.ndarray = None,
-        minute: np.ndarray = None
-) -> pd.DatetimeIndex:
-    """
-    Builds a :obj:`pandas.DatetimeIndex` from integer year/month/day(/hour/minute)
-    columns using numpy's datetime64 arithmetic.
-
-    This is ~8x faster than ``pd.PeriodIndex(...).to_timestamp()`` on the 341856
-    row hourly files and yields a bit-identical index (asserted in
-    ``tests/rr/test_lamah.py::test_lamahce_index_construction``).
-    """
-    year = np.asarray(year, dtype='int64')
-    month = np.asarray(month, dtype='int64')
-    day = np.asarray(day, dtype='int64')
-
-    months = (year - 1970).astype('datetime64[Y]').astype('datetime64[M]') + (month - 1)
-    idx = months.astype('datetime64[D]') + (day - 1)
-
-    if hour is not None:
-        idx = idx.astype('datetime64[m]') + np.asarray(hour, dtype='int64') * 60
-        if minute is not None:
-            idx = idx + np.asarray(minute, dtype='int64')
-
-    return pd.DatetimeIndex(idx.astype('datetime64[ns]'))
+# the implementation moved to rr/utils.py so that other classes can use it;
+# this name is kept because tests/rr/test_lamah.py imports it
+_ymd_index = ymd_index
 
 
 def _read_ce_csv(

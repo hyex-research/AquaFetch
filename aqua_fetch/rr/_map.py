@@ -124,6 +124,12 @@ def total_potential_evapotranspiration_with_specifier(specifier:str)->str:
     return f"pet_mm_{specifier}"
 
 
+def reference_evapotranspiration_with_specifier(specifier:str)->str:
+    """reference (grass) evapotranspiration in mm/day, e.g. FAO-56
+    Penman-Monteith"""
+    return f"eto_mm_{specifier}"
+
+
 def mean_potential_evaporation()->str:
     # total: is it mean or total?
     return "pevap_mm"
@@ -558,6 +564,22 @@ def soil_moisture_layer3()->str:
 def soil_moisture_layer4()->str:
     """ m3/m3"""
     return "sml4"
+
+
+def soil_moisture_layer_with_specifier(layer:int, specifier:str)->str:
+    """volumetric soil moisture of a (1-based) soil layer from a named
+    product, m3/m3"""
+    return f"sml{layer}_{specifier}"
+
+
+def surface_soil_moisture_with_specifier(specifier:str)->str:
+    """volumetric surface soil moisture from a named product, m3/m3"""
+    return f"sm_surface_{specifier}"
+
+
+def rootzone_soil_moisture_with_specifier(specifier:str)->str:
+    """volumetric root zone soil moisture from a named product, m3/m3"""
+    return f"sm_rootzone_{specifier}"
 
 
 # %% dew point temperature

@@ -24,6 +24,7 @@ import os
 import re
 import glob
 import warnings
+import itertools
 
 import numpy as np
 import pandas as pd
@@ -94,11 +95,13 @@ def declared_factors(cls):
     return cls.dyn_factors.fget(object.__new__(cls))
 
 
-def declared_dyn_map(cls, timestep='D'):
+def declared_dyn_map(cls, timestep='D', version=None):
     obj = object.__new__(cls)
-    # a few classes branch their mapping on the timestep; nothing else in these
-    # property bodies touches state that ``__init__`` would have built
+    # a few classes branch their mapping on the timestep or, like CAMELS_GB, on
+    # the dataset version; nothing else in these property bodies touches state
+    # that ``__init__`` would have built
     obj.timestep = timestep
+    obj.version = version
     return cls.dyn_map.fget(obj)
 
 
@@ -251,14 +254,14 @@ def test_every_radiation_name_obeys_the_convention():
         r'^(?P<band>sw|lw)(?P<dir>down|up|net)rad_wm2'
         r'(?:_(?P<rest>.+))?$')
 
-    from aqua_fetch import Caravan_DK, CAMELS_FI, CAMELS_PE, CAMELSH, LamaHIce
+    from aqua_fetch import Caravan_DK, CAMELS_FI, CAMELS_PE, CAMELS_KR, CAMELSH, LamaHIce
 
     names = set()
     for cls in (CAMELS_US, CAMELS_GB, CAMELS_DE, CAMELS_FR, CAMELS_IND, CAMELS_PL,
                 CAMELS_AUS, CABra, EStreams, GSHA, HYSETS, Bull, GRDCCaravan, LamaHCE,
-                LamaHIce, Caravan_DK, CAMELS_FI, CAMELS_PE, CAMELSH):
-        for ts in ('D', 'H'):
-            dm = declared_dyn_map(cls, ts)
+                LamaHIce, Caravan_DK, CAMELS_FI, CAMELS_PE, CAMELS_KR, CAMELSH):
+        for ts, version in itertools.product(('D', 'H'), (1, 2)):
+            dm = declared_dyn_map(cls, ts, version)
             for v in dm.values():
                 if isinstance(v, dict):
                     names.update(x for x in v.values() if isinstance(x, str))

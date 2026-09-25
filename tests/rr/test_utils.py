@@ -17,7 +17,10 @@ data_path = '/mnt/datawaha/hyex/atr/data'
 gscad_path = '/mnt/datawaha/hyex/atr/gscad_database/raw'
 
 
-dataset = RainfallRunoff('CAMELS_COL', path=os.path.join(gscad_path, 'CAMELS'), verbosity=0)
+# remove_zip=False: the factory defaults to True, which would delete the
+# archives of the release on disk
+dataset = RainfallRunoff('CAMELS_COL', path=os.path.join(gscad_path, 'CAMELS'),
+                         verbosity=0, remove_zip=False)
 dataset1 = RainfallRunoff('CAMELS_AUS', path=os.path.join(gscad_path, 'CAMELS'), verbosity=0)
 
 

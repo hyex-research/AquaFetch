@@ -122,6 +122,12 @@ class UKFlow15(_RainfallRunoff):
     per-station quality-control / traceability tables are exposed unchanged
     through :meth:`qc_metadata`.
 
+    664 of these gauges are also in :class:`CAMELS_GB` version 2, whose hourly
+    streamflow is this 15-minute record averaged over each hour (verified to the
+    published 3 decimals). CAMELS-GB adds meteorology, catchment attributes and
+    boundaries for those 664 catchments but stops at 2022-10-01 and has no
+    sub-hourly values.
+
     .. note::
         The full dataset is ~64 GB (individual station files are 10-90 MB).
         To keep initialisation quick, only the small (~0.4 MB) metadata is

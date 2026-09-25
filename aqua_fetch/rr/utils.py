@@ -388,12 +388,6 @@ class _RainfallRunoff(Datasets):
                 if self.name in ['CAMELS_CH', 'CABra']:
                     # from '2004.0' -> '2004' for CAMELS_CH
                     catch_id = str(int(feature["properties"][boundary_id_map]))
-                elif self.name == 'CAMELS_LUX':
-                    idx = int(feature["properties"][boundary_id_map])
-                    if idx < 10:
-                        catch_id = f"ID_{str(idx).zfill(2)}"
-                    else:
-                        catch_id = f"ID_{idx}"
                 elif self.name == 'Simbi':
                     catch_id = feature['properties'][boundary_id_map]
                     catch_id = catch_id.split('-')[1]

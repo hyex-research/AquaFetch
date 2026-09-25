@@ -35,7 +35,7 @@ from .._backend import xarray as xr
 from .._backend import netCDF4
 from .._backend import fiona
 from ..utils import get_cpus
-from ..utils import validate_attributes
+from ..utils import validate_attributes, BROWSER_HEADERS
 from .utils import _RainfallRunoff, cache_name
 from ._utils import tw_resampler
  
@@ -2362,12 +2362,7 @@ def download_stn_data(gauge_code:int)->pd.Series:
 
     url = f'https://snirh.apambiente.pt/snirh/_dadosbase/site/paraCSV/dados_csv.php?sites={gauge_code}&pars=1850&tmin=01/01/1972&tmax=31/12/2022&formato=csv'
 
-    # Add headers if needed (you may need to adjust these)
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-    }
-
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=BROWSER_HEADERS)
 
     # Check if the request was successful
     if response.status_code == 200:
