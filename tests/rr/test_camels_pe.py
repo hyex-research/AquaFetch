@@ -48,7 +48,7 @@ from aqua_fetch import CAMELS_PE
 from aqua_fetch.rr import _camels
 from aqua_fetch._backend import xarray as xr
 
-from utils import test_dataset
+from utils import test_dataset as run_shared_tests
 
 # Path under which the (already downloaded) data lives. The class appends
 # ``CAMELS_PE`` to it, so the extracted data is expected at
@@ -454,7 +454,7 @@ if __name__ == "__main__":
     test_overwrite_removes_stale_before_download()
 
     # the standard, comprehensive suite shared by all rainfall-runoff datasets
-    test_dataset(dataset,
+    run_shared_tests(dataset,
                  num_stations=NUM_STATIONS,
                  dyn_data_len=DYN_LEN,
                  num_static_attrs=NUM_STATIC,

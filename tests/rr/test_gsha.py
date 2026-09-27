@@ -18,15 +18,15 @@ from aqua_fetch._backend import xarray as xr
 from aqua_fetch import GSHA, Thailand, Japan, Arcticnet, Spain
 
 from utils import (
-    test_dataset,
-    test_coords,
-    test_stations,
-    test_area,
-    test_boundary,
-    test_plot_stations,
-    test_fetch_static_feature,
-    test_fetch_dynamic_features,
-    test_plot_catchment,
+    test_dataset as run_shared_tests,
+    test_coords as check_coords,
+    test_stations as check_stations,
+    test_area as check_area,
+    test_boundary as check_boundary,
+    test_plot_stations as check_plot_stations,
+    test_fetch_static_feature as check_fetch_static_feature,
+    test_fetch_dynamic_features as check_fetch_dynamic_features,
+    test_plot_catchment as check_plot_catchment,
     )
 
 raw_data_path = '/path/to/your/raw/data'  # change this path accordingly
@@ -54,19 +54,19 @@ class TestGSHA(unittest.TestCase):
         return
 
     def test_stations(self):
-        test_stations(self.ds, 21568)
+        check_stations(self.ds, 21568)
         return
 
     def test_boundary(self):
-        test_boundary(self.ds)
+        check_boundary(self.ds)
         return
 
     def test_plot_stations(self):
-        test_plot_stations(self.ds)
+        check_plot_stations(self.ds)
         return
 
     def test_plot_catchment(self):
-        test_plot_catchment(self.ds)
+        check_plot_catchment(self.ds)
         return
 
     def test_atlas(self):
@@ -82,13 +82,13 @@ class TestGSHA(unittest.TestCase):
         return
 
     def test_area(self):
-        test_area(self.ds)
+        check_area(self.ds)
         assert self.ds.area(agency='arcticnet').shape == (106,), self.ds.area(agency='arcticnet').shape
         assert self.ds.area(stations='1001_arcticnet').shape == (1,), self.ds.area(stations='1001_arcticnet').shape
         return
 
     def test_coords(self):
-        test_coords(self.ds)
+        check_coords(self.ds)
         assert self.ds.stn_coords(agency='arcticnet').shape == (106, 2), self.ds.stn_coords(agency='arcticnet').shape
         assert self.ds.stn_coords(stations='1001_arcticnet').shape == (1, 2), self.ds.stn_coords(stations='1001_arcticnet').shape
         return
@@ -179,14 +179,14 @@ class TestGSHA(unittest.TestCase):
         out = self.ds.fetch_static_features(agency='arcticnet')
         assert out.shape == (106, 35), out.shape
 
-        test_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 35)
+        check_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 35)
         return
 
     def test_fetch_dynamic_features(self):
         out = self.ds.fetch_dynamic_features(agency='arcticnet')
         assert len(out) == 106, len(out)
 
-        test_fetch_dynamic_features(self.ds, '1001_arcticnet', 16071)
+        check_fetch_dynamic_features(self.ds, '1001_arcticnet', 16071)
         return
 
     def test_stn_dynamic_features(self):
@@ -210,7 +210,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_thailand(self):
         ds = Thailand(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=73,
                      dyn_data_len=7305,
                      num_static_attrs=35,
@@ -222,7 +222,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_japan(self):
         ds = Japan(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=751,
                      dyn_data_len=16071,
                      num_static_attrs=35,
@@ -238,7 +238,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_arcticnet(self):
         ds = Arcticnet(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=106,
                      dyn_data_len=9131,
                      num_static_attrs=35,
@@ -250,7 +250,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_spain(self):
         ds = Spain(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=889,
                      dyn_data_len=15249,
                      num_static_attrs=35,

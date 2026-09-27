@@ -1,13 +1,15 @@
 
 import os
 import json
+import functools
 from typing import Union, List
 
 import numpy as np
-import pandas as pd 
+import pandas as pd
 
 from .utils import _RainfallRunoff
 from ..utils import validate_attributes
+from ._map import catchment_area, gauge_latitude, gauge_longitude
 
 
 class HYPE(_RainfallRunoff):
@@ -61,7 +63,7 @@ class HYPE(_RainfallRunoff):
     # If we get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='564', static_features="all", as_dataframe=True)
     >>> static.shape, len(dynamic), dynamic['564'].shape
-    ((1, 59), 1, (12783, 9))
+    ((1, 3), 1, (12783, 9))
     ...
     # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
     >>> _, dynamic = dataset.fetch(10)
@@ -150,8 +152,25 @@ class HYPE(_RainfallRunoff):
         return list(_stations)
 
     @property
-    def static_features(self):
-        return []
+    def static_features(self) -> List[str]:
+        """only the catchment area and the coordinates returned by
+        :meth:`area` and :meth:`stn_coords`"""
+        return [catchment_area(), gauge_latitude(), gauge_longitude()]
+
+    @property
+    def boundary_file(self) -> os.PathLike:
+        """catchment boundaries, already in WGS84 (CRS84) lon/lat"""
+        return os.path.join(self.path, 'Catchments_CostaRica.geojson')
+
+    @property
+    def boundary_id_map(self) -> str:
+        return 'subid'
+
+    @functools.cached_property
+    def _catchments(self) -> dict:
+        """the parsed ``Catchments_CostaRica.geojson`` (33 MB), read once"""
+        with open(self.boundary_file, 'r') as fp:
+            return json.load(fp)
 
     def _read_dynamic(self,
                       stations: list,
@@ -200,9 +219,31 @@ class HYPE(_RainfallRunoff):
     def _mm_feature_name(self) ->str:
         return 'Streamflow_mm'
 
-    def fetch_static_features(self, station, static_features=None):
-        """static data for HYPE is not available."""
-        raise ValueError(f'No static feature for {self.name}')
+    def fetch_static_features(
+            self,
+            stations: Union[str, List[str]] = "all",
+            static_features: Union[str, List[str]] = "all"
+    ) -> pd.DataFrame:
+        """
+        Returns the catchment area (km2) and the station coordinates, the only
+        static features of HYPE, as one :obj:`pandas.DataFrame` whose index
+        is the station ids. The values are those of :meth:`area` and
+        :meth:`stn_coords`.
+
+        Examples
+        --------
+        >>> from aqua_fetch import HYPE
+        >>> dataset = HYPE()
+        >>> dataset.fetch_static_features('564').shape
+        (1, 3)
+        >>> dataset.fetch_static_features(['1', '2'], static_features='area_km2').shape
+        (2, 1)
+        """
+        stations = validate_attributes(stations, self.stations(), 'stations')
+        features = validate_attributes(static_features, self.static_features, 'static_features')
+
+        df = pd.concat([self.area(stations), self.stn_coords(stations)], axis=1)
+        return df.loc[:, features]
 
     def area(
             self,
@@ -234,10 +275,7 @@ class HYPE(_RainfallRunoff):
         """
         stations = validate_attributes(stations, self.stations())
 
-        fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
-
-        with open(fpath, 'r') as fp:
-            data = json.load(fp)
+        data = self._catchments
 
         areas = []
         indices = []
@@ -278,10 +316,7 @@ class HYPE(_RainfallRunoff):
         """
 
         stations = validate_attributes(stations, self.stations(), 'stations')
-        fpath = os.path.join(self.path, 'Catchments_CostaRica.geojson')
-
-        with open(fpath, 'r') as fp:
-            data = json.load(fp)
+        data = self._catchments
 
         lats = []
         longs = []

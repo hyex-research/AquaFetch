@@ -60,11 +60,11 @@ from aqua_fetch import Slovenia
 from aqua_fetch import GRDCCaravan
 from aqua_fetch import LamaHIce
 
-from utils import test_stations
-from utils import test_boundary
-from utils import test_plot_catchment
-from utils import test_q_mm
-from utils import test_coords
+from utils import test_stations as check_stations
+from utils import test_boundary as check_boundary
+from utils import test_plot_catchment as check_plot_catchment
+from utils import test_q_mm as check_q_mm
+from utils import test_coords as check_coords
 
 
 DATASETS = {
@@ -192,7 +192,7 @@ def test_stations_method():
     for ds_name, ds in DATASETS.items():
 
         if ds_name not in ['RRLuleaSweden', 'EStreams']:
-            test_stations(ds, numbers[ds_name])
+            check_stations(ds, numbers[ds_name])
     return
 
 
@@ -202,7 +202,7 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             if ds_name not in ['RRLuleaSweden', 'WaterBenchIowa']:
-                test_coords(ds)
+                check_coords(ds)
         return
 
     def test_get_boundary(self):
@@ -220,7 +220,7 @@ class TestMethods(unittest.TestCase):
                                 'LamaHIce_h_tu', 'LamaHIce_h_ia', 'LamaHIce_h_il', 'LamaHIce_d_tu', 'LamaHIce_d_ia', 'LamaHIce_d_il',
                             ]:
                     test_latlong_ranges = False
-                test_boundary(ds, test_latlong_ranges)
+                check_boundary(ds, test_latlong_ranges)
         return
 
     def test_plot_catchment_method(self):
@@ -229,7 +229,7 @@ class TestMethods(unittest.TestCase):
             if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 
                             'CAMELS_NZ',
                         ]:
-                test_plot_catchment(ds)
+                check_plot_catchment(ds)
         return
 
     def test_stations_method(self):
@@ -240,7 +240,7 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             if ds_name not in ["EStreams", "GSHA", "RRLuleaSweden", "WaterBenchIowa"]:
-                test_q_mm(ds)
+                check_q_mm(ds)
         return
 
     def test_camels_pl_specific(self):

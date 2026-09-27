@@ -48,8 +48,9 @@ from aqua_fetch.rr._lamah import _ymd_index
 from aqua_fetch.rr.utils import _make_boundary_2d
 from aqua_fetch._backend import fiona, plt, netCDF4, xarray as xr
 
-from utils import (test_dataset, test_stations, test_coords, test_boundary,
-                   test_plot_catchment, test_q_mm)
+from utils import (test_dataset as run_shared_tests, 
+                   test_stations as check_stations, test_coords as check_coords, test_boundary as check_boundary,
+                   test_plot_catchment as check_plot_catchment, test_q_mm as check_q_mm)
 
 # Root under which the (already downloaded) data lives. Each class appends its
 # own sub-directory, so e.g. LamaH-CE daily is expected at
@@ -219,7 +220,7 @@ def test_lamahce_daily():
         dataset = LamaHCE(path=LAMAHCE_PATHS['D'],
                           timestep='D', data_type=data_type, verbosity=VERBOSITY)
 
-        test_dataset(dataset,
+        run_shared_tests(dataset,
                      num_stations=LAMAHCE_NUM_STATIONS[idx],
                      dyn_data_len=14244,
                      num_static_attrs=LAMAHCE_NUM_STATIC[idx],
@@ -236,7 +237,7 @@ def test_lamahce_hourly():
         dataset = LamaHCE(path=LAMAHCE_PATHS['H'],
                           timestep='H', data_type=data_type, verbosity=VERBOSITY)
 
-        test_dataset(dataset,
+        run_shared_tests(dataset,
                      num_stations=LAMAHCE_NUM_STATIONS[idx],
                      dyn_data_len=341856,
                      num_static_attrs=LAMAHCE_NUM_STATIC[idx],
@@ -264,17 +265,17 @@ def test_lamahce_methods():
         for idx, data_type in enumerate(DATA_TYPES):
             ds = lamahce(timestep, data_type)
 
-            test_stations(ds, LAMAHCE_NUM_STATIONS[idx])
-            test_coords(ds)
+            check_stations(ds, LAMAHCE_NUM_STATIONS[idx])
+            check_coords(ds)
 
             if fiona is not None:
-                test_boundary(ds, test_latlong_ranges=True)
+                check_boundary(ds, test_latlong_ranges=True)
                 if plt is not None:
-                    test_plot_catchment(ds)
+                    check_plot_catchment(ds)
 
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
-                test_q_mm(ds)
+                check_q_mm(ds)
     return
 
 
@@ -1183,7 +1184,7 @@ def test_lamahice_hourly():
         dataset = LamaHIce(path=os.path.join(GSCAD_PATH, 'LamaHIce_hourly'),
                            timestep='H', data_type=data_type, verbosity=VERBOSITY)
 
-        test_dataset(dataset,
+        run_shared_tests(dataset,
                      num_stations=LAMAHICE_NUM_STATIONS[idx],
                      dyn_data_len=412848,
                      num_static_attrs=LAMAHICE_HOURLY_NUM_STATIC[idx],
@@ -1201,7 +1202,7 @@ def test_lamahice_daily():
         dataset = LamaHIce(path=os.path.join(GSCAD_PATH, 'LamaHIce_daily'),
                            timestep='D', data_type=data_type, verbosity=VERBOSITY)
 
-        test_dataset(dataset,
+        run_shared_tests(dataset,
                      num_stations=LAMAHICE_NUM_STATIONS[idx],
                      dyn_data_len=26298,
                      num_static_attrs=LAMAHICE_DAILY_NUM_STATIC[idx],
