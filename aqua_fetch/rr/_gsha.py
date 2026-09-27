@@ -2232,7 +2232,9 @@ class Thailand(_GSHA):
         The RID daily-discharge source files hosted by the University of Tokyo
         (``hydro.iis.u-tokyo.ac.jp/GAME-T/...``) were removed by the lab (they
         return HTTP 404 as of 2025; they were last online around April 2024), so
-        a fresh download will fail. Provide the extracted
+        the class raises a ``RuntimeError`` instead of trying to download them
+        (also with ``overwrite=True``, which would otherwise delete the local
+        copy that cannot be downloaded again). Provide the extracted
         ``disc_d_<year>_RIDall`` folders (or a prepared ``daily_q.csv``) under
         the dataset directory manually; archived copies of the per-station files
         are available via the Internet Archive (Wayback Machine).
@@ -2274,7 +2276,7 @@ class Thailand(_GSHA):
             verbosity=verbosity,
             **kwargs)
 
-        self._warn_source_removed(overwrite)
+        self._raise_if_download_needed(overwrite)
 
         self._download(overwrite=overwrite)
 
@@ -2282,28 +2284,42 @@ class Thailand(_GSHA):
         self.parallels = range(5, 22, 2)
         self.meridians = range(97, 106, 2)
 
-    def _warn_source_removed(self, overwrite: bool):
+    def _raise_if_download_needed(self, overwrite: bool):
         """
-        Warn (unconditionally, regardless of ``verbosity``) that the RID source
-        files have been taken offline, but only when a download would actually
-        be attempted, i.e. the data is not already present locally (or
-        ``overwrite`` forces a re-download). If the data is already on disk this
-        is silent so existing users are not nagged.
+        Raises an informative ``RuntimeError`` whenever a download would be
+        attempted, because the RID source files have been taken offline: when
+        the data is not on disk, or when ``overwrite=True`` (which would delete
+        the local copy before failing to download it again). Silent when the
+        data is already present. Uses the same "is it downloaded" rule as
+        :func:`aqua_fetch.utils.maybe_download` (a non-empty directory).
         """
         data_present = os.path.exists(self.path) and len(os.listdir(self.path)) > 0
-        if not (overwrite or not data_present):
-            return
-        warnings.warn(
-            "The Thailand (RID) daily-discharge source at "
-            "'hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/' has been "
-            "removed by the university lab and now returns HTTP 404, so the "
-            "download will fail. Place the extracted 'disc_d_<year>_RIDall' "
-            f"folders (or a prepared 'daily_q.csv') under '{self.path}' "
-            "manually; archived copies of the per-station files are available "
-            "via the Internet Archive (Wayback Machine).",
-            UserWarning,
-            stacklevel=2,
+
+        source = (
+            "The Thailand (RID) daily discharge files were hosted by the University "
+            "of Tokyo at 'https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/data/disc/'. "
+            "The lab removed them around 2024 (every file now returns HTTP 404) and "
+            "they have no official replacement, so aqua_fetch cannot download them."
         )
+        howto = (
+            f"To use this class, put the data under '{self.path}' yourself, either as\n"
+            "  - the extracted folders 'disc_d_<year>_RIDall' for every year 1980-1999, "
+            "each holding the per-station files 'disc_d_<year>_RID<station>_m3s-1.txt', or\n"
+            "  - a 'daily_q.csv' prepared earlier by this class.\n"
+            "Archived copies are on the Internet Archive (Wayback Machine): the zips "
+            "of 1995-1999 and the per-station .txt files of many earlier years, e.g. "
+            "https://web.archive.org/web/2024id_/https://hydro.iis.u-tokyo.ac.jp/"
+            "GAME-T/GAIN-T/routine/data/disc/disc_d_1999_RIDall.zip"
+        )
+
+        if overwrite and data_present:
+            raise RuntimeError(
+                f"{source}\n\noverwrite=True would delete the Thailand data in "
+                f"'{self.path}', which cannot be downloaded again, so nothing was "
+                "deleted. Use overwrite=False to keep using the local copy."
+            )
+        if not data_present:
+            raise RuntimeError(f"{source}\n\n{howto}")
         return
 
     @property

@@ -5,6 +5,8 @@ import site
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
+import shutil
+import tempfile
 import unittest
 import logging
 
@@ -258,6 +260,66 @@ class TestGSHADerivedDatasets(unittest.TestCase):
                      st="1992-01-01",
                      en="1992-12-31",
                      )
+        return
+
+
+class TestThailandSourceRemoved(unittest.TestCase):
+    """
+    The RID source files of Thailand are offline, so the class must raise an
+    informative error instead of attempting a download. These tests need no data
+    and no network: GSHA's own initialization is stubbed and ``_download`` raises
+    if it is ever reached.
+    """
+
+    def setUp(self):
+        from aqua_fetch.rr import _gsha
+
+        def fake_gsha_init(ds, path=None, gsha_path=None, verbosity=1, **kwargs):
+            # only what the check needs: the real path setter, which appends
+            # the class name
+            ds.verbosity = verbosity
+            ds.path = path
+
+        def no_download(ds, overwrite=False, **kwargs):
+            raise AssertionError("a download was attempted")
+
+        self._orig = (_gsha._GSHA.__init__, Thailand._download)
+        _gsha._GSHA.__init__ = fake_gsha_init
+        Thailand._download = no_download
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        from aqua_fetch.rr import _gsha
+        _gsha._GSHA.__init__, Thailand._download = self._orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_raises_when_data_missing(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            Thailand(path=self.tmp, verbosity=0)
+        msg = str(ctx.exception)
+        assert 'HTTP 404' in msg and 'disc_d_<year>_RIDall' in msg, msg
+        assert 'daily_q.csv' in msg and 'web.archive.org' in msg, msg
+        assert os.path.join(self.tmp, 'Thailand') in msg, msg
+        return
+
+    def test_overwrite_does_not_delete_local_data(self):
+        fpath = os.path.join(self.tmp, 'Thailand', 'daily_q.csv')
+        os.makedirs(os.path.dirname(fpath))
+        with open(fpath, 'w') as fp:
+            fp.write('time,C.1\n1980-01-01,1.0\n')
+        with self.assertRaises(RuntimeError) as ctx:
+            Thailand(path=self.tmp, overwrite=True, verbosity=0)
+        assert 'cannot be downloaded again' in str(ctx.exception)
+        assert os.path.exists(fpath), "overwrite=True deleted the local data"
+        return
+
+    def test_silent_when_data_present(self):
+        os.makedirs(os.path.join(self.tmp, 'Thailand', 'disc_d_1980_RIDall'))
+        # with the data on disk, the (real) download step only reports it is
+        # already there, so a no-op stands in for it
+        Thailand._download = lambda ds, overwrite=False, **kwargs: None
+        ds = Thailand(path=self.tmp, verbosity=0)
+        assert ds.path == os.path.join(self.tmp, 'Thailand')
         return
 
 
