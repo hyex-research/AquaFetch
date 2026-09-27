@@ -1,4 +1,4 @@
-## Unreleased
+## AquaFetch 1.2.0
 
 Everything below is in the `rr` submodule. The table is the complete per-dataset
 list; the sections after it cover only what is common to all of them. Blank cell
