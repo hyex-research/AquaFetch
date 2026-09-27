@@ -58,14 +58,13 @@ from aqua_fetch import Poland
 from aqua_fetch import Portugal
 from aqua_fetch import Slovenia
 from aqua_fetch import GRDCCaravan
-from aqua_fetch import LamaHCE
 from aqua_fetch import LamaHIce
 
-from utils import test_stations
-from utils import test_boundary
-from utils import test_plot_catchment
-from utils import test_q_mm
-from utils import test_coords
+from utils import test_stations as check_stations
+from utils import test_boundary as check_boundary
+from utils import test_plot_catchment as check_plot_catchment
+from utils import test_q_mm as check_q_mm
+from utils import test_coords as check_coords
 
 
 DATASETS = {
@@ -81,7 +80,7 @@ DATASETS = {
 'CAMELS_BR': CAMELS_BR(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_CH': CAMELS_CH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_CL': CAMELS_CL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
-'CAMELS_COL': CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
+'CAMELS_COL': CAMELS_COL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0, remove_zip=False),
 'CAMELS_DE': CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
 'CAMELS_DE_h': CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'), timestep='H', verbosity=0),
 "CAMELS_DK": CAMELS_DK(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0),
@@ -105,12 +104,7 @@ DATASETS = {
 "Ireland": Ireland(path=raw_data_path, verbosity=0),
 "Italy": Italy(path=raw_data_path, verbosity=0),
 'Japan': Japan(path=raw_data_path, verbosity=0),
-"LamaHCE_tu": LamaHCE(timestep='D', data_type="total_upstrm", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_ia": LamaHCE(timestep='D', data_type="intermediate_all", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_il": LamaHCE(timestep='D', data_type="intermediate_lowimp", path=os.path.join(raw_data_path, 'LamaHCE_daily'), verbosity=10),
-"LamaHCE_h_tu": LamaHCE(timestep='H', data_type="total_upstrm", path=raw_data_path, verbosity=10),
-"LamaHCE_h_ia": LamaHCE(timestep='H', data_type="intermediate_all", path=raw_data_path, verbosity=10),
-"LamaHCE_h_il": LamaHCE(timestep='H', data_type="intermediate_lowimp", path=raw_data_path, verbosity=10),
+# LamaHCE is exercised by these same shared helpers in test_lamah.py
 "LamaHIce_h_tu": LamaHIce(path=raw_data_path, timestep="H", data_type="total_upstrm", verbosity=0),
 "LamaHIce_h_ia": LamaHIce(path=raw_data_path, timestep="H", data_type="intermediate_all", verbosity=0),
 "LamaHIce_h_il": LamaHIce(path=raw_data_path, timestep="H", data_type="intermediate_lowimp", verbosity=0),
@@ -158,7 +152,7 @@ def test_stations_method():
         'RainfallRunoff': 561,
         'CAMELS_NZ': 369,
         'CAMELS_LUX': 56,
-        'CAMELS_COL': 347,
+        'CAMELS_COL': 346,
         'CAMELS_SK': 178,
         'CAMELS_FI': 320,
         'CAMELS_PL': 354,
@@ -187,12 +181,6 @@ def test_stations_method():
         "Portugal": 280,
         "Slovenia": 117,
         "GRDCCaravan": 5356,
-        "LamaHCE_tu": 859,
-        "LamaHCE_ia": 859,
-        "LamaHCE_il": 454,
-        "LamaHCE_h_tu": 859,
-        "LamaHCE_h_ia": 859,
-        "LamaHCE_h_il": 454,
         "LamaHIce_h_tu": 111,
         "LamaHIce_h_ia": 107,
         "LamaHIce_h_il": 86,
@@ -204,7 +192,7 @@ def test_stations_method():
     for ds_name, ds in DATASETS.items():
 
         if ds_name not in ['RRLuleaSweden', 'EStreams']:
-            test_stations(ds, numbers[ds_name])
+            check_stations(ds, numbers[ds_name])
     return
 
 
@@ -214,7 +202,7 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             if ds_name not in ['RRLuleaSweden', 'WaterBenchIowa']:
-                test_coords(ds)
+                check_coords(ds)
         return
 
     def test_get_boundary(self):
@@ -225,14 +213,14 @@ class TestMethods(unittest.TestCase):
                         ]:
                 # catchment boundaries are not currently transformed to wgs84 for these datasets
                 # todo : must be done in future
-                # (note: 'CAMELS_DE_h' is intentionally absent here -> its hourly
-                #  boundaries ARE reprojected to wgs84, so latlong ranges apply)
-                if ds_name in ['CAMELS_CH', 'CAMELS_COL', 'CAMELS_DE', 'CAMELS_FR', 'CAMELS_GB', 'CAMELS_FI',
-                            'LamaHCE_tu', 'LamaHCE_ia', 'LamaHCE_il', 'LamaHCE_h_tu', 'LamaHCE_h_ia', 'LamaHCE_h_il',
+                # (note: 'CAMELS_DE_h', 'CAMELS_COL' and 'CAMELS_FI' are intentionally
+                #  absent here -> their boundaries ARE reprojected to wgs84 (EPSG:3035,
+                #  EPSG:3395 and EPSG:3067 resp.), so latlong ranges apply)
+                if ds_name in ['CAMELS_CH', 'CAMELS_DE', 'CAMELS_FR',
                                 'LamaHIce_h_tu', 'LamaHIce_h_ia', 'LamaHIce_h_il', 'LamaHIce_d_tu', 'LamaHIce_d_ia', 'LamaHIce_d_il',
                             ]:
                     test_latlong_ranges = False
-                test_boundary(ds, test_latlong_ranges)
+                check_boundary(ds, test_latlong_ranges)
         return
 
     def test_plot_catchment_method(self):
@@ -241,7 +229,7 @@ class TestMethods(unittest.TestCase):
             if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 
                             'CAMELS_NZ',
                         ]:
-                test_plot_catchment(ds)
+                check_plot_catchment(ds)
         return
 
     def test_stations_method(self):
@@ -252,7 +240,7 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             if ds_name not in ["EStreams", "GSHA", "RRLuleaSweden", "WaterBenchIowa"]:
-                test_q_mm(ds)
+                check_q_mm(ds)
         return
 
     def test_camels_pl_specific(self):
@@ -309,7 +297,9 @@ class TestMethods(unittest.TestCase):
         assert isinstance(ax, plt.Axes)
 
         # plotting for different time periods
-        dataset = RainfallRunoff('CAMELS_COL', path=raw_data_path)
+        # remove_zip=False: the factory defaults to True, which would delete
+        # the archives of the release on disk
+        dataset = RainfallRunoff('CAMELS_COL', path=raw_data_path, remove_zip=False)
         _, ax = plt.subplots()
         for idx, period in enumerate([("19810101", "19901231"), ("19910101", "20001231"), ("20010101", "20101231")]):
             start, end = period

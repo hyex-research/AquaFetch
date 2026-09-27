@@ -5,6 +5,8 @@ import site
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
+import shutil
+import tempfile
 import unittest
 import logging
 
@@ -18,15 +20,15 @@ from aqua_fetch._backend import xarray as xr
 from aqua_fetch import GSHA, Thailand, Japan, Arcticnet, Spain
 
 from utils import (
-    test_dataset,
-    test_coords,
-    test_stations,
-    test_area,
-    test_boundary,
-    test_plot_stations,
-    test_fetch_static_feature,
-    test_fetch_dynamic_features,
-    test_plot_catchment,
+    test_dataset as run_shared_tests,
+    test_coords as check_coords,
+    test_stations as check_stations,
+    test_area as check_area,
+    test_boundary as check_boundary,
+    test_plot_stations as check_plot_stations,
+    test_fetch_static_feature as check_fetch_static_feature,
+    test_fetch_dynamic_features as check_fetch_dynamic_features,
+    test_plot_catchment as check_plot_catchment,
     )
 
 raw_data_path = '/path/to/your/raw/data'  # change this path accordingly
@@ -54,19 +56,19 @@ class TestGSHA(unittest.TestCase):
         return
 
     def test_stations(self):
-        test_stations(self.ds, 21568)
+        check_stations(self.ds, 21568)
         return
 
     def test_boundary(self):
-        test_boundary(self.ds)
+        check_boundary(self.ds)
         return
 
     def test_plot_stations(self):
-        test_plot_stations(self.ds)
+        check_plot_stations(self.ds)
         return
 
     def test_plot_catchment(self):
-        test_plot_catchment(self.ds)
+        check_plot_catchment(self.ds)
         return
 
     def test_atlas(self):
@@ -82,13 +84,13 @@ class TestGSHA(unittest.TestCase):
         return
 
     def test_area(self):
-        test_area(self.ds)
+        check_area(self.ds)
         assert self.ds.area(agency='arcticnet').shape == (106,), self.ds.area(agency='arcticnet').shape
         assert self.ds.area(stations='1001_arcticnet').shape == (1,), self.ds.area(stations='1001_arcticnet').shape
         return
 
     def test_coords(self):
-        test_coords(self.ds)
+        check_coords(self.ds)
         assert self.ds.stn_coords(agency='arcticnet').shape == (106, 2), self.ds.stn_coords(agency='arcticnet').shape
         assert self.ds.stn_coords(stations='1001_arcticnet').shape == (1, 2), self.ds.stn_coords(stations='1001_arcticnet').shape
         return
@@ -179,14 +181,14 @@ class TestGSHA(unittest.TestCase):
         out = self.ds.fetch_static_features(agency='arcticnet')
         assert out.shape == (106, 35), out.shape
 
-        test_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 35)
+        check_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 35)
         return
 
     def test_fetch_dynamic_features(self):
         out = self.ds.fetch_dynamic_features(agency='arcticnet')
         assert len(out) == 106, len(out)
 
-        test_fetch_dynamic_features(self.ds, '1001_arcticnet', 16071)
+        check_fetch_dynamic_features(self.ds, '1001_arcticnet', 16071)
         return
 
     def test_stn_dynamic_features(self):
@@ -210,7 +212,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_thailand(self):
         ds = Thailand(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=73,
                      dyn_data_len=7305,
                      num_static_attrs=35,
@@ -222,7 +224,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_japan(self):
         ds = Japan(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=751,
                      dyn_data_len=16071,
                      num_static_attrs=35,
@@ -238,7 +240,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_arcticnet(self):
         ds = Arcticnet(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=106,
                      dyn_data_len=9131,
                      num_static_attrs=35,
@@ -250,7 +252,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
 
     def test_spain(self):
         ds = Spain(path=raw_data_path, verbosity=VERBOSITY)
-        test_dataset(ds,
+        run_shared_tests(ds,
                      num_stations=889,
                      dyn_data_len=15249,
                      num_static_attrs=35,
@@ -258,6 +260,66 @@ class TestGSHADerivedDatasets(unittest.TestCase):
                      st="1992-01-01",
                      en="1992-12-31",
                      )
+        return
+
+
+class TestThailandSourceRemoved(unittest.TestCase):
+    """
+    The RID source files of Thailand are offline, so the class must raise an
+    informative error instead of attempting a download. These tests need no data
+    and no network: GSHA's own initialization is stubbed and ``_download`` raises
+    if it is ever reached.
+    """
+
+    def setUp(self):
+        from aqua_fetch.rr import _gsha
+
+        def fake_gsha_init(ds, path=None, gsha_path=None, verbosity=1, **kwargs):
+            # only what the check needs: the real path setter, which appends
+            # the class name
+            ds.verbosity = verbosity
+            ds.path = path
+
+        def no_download(ds, overwrite=False, **kwargs):
+            raise AssertionError("a download was attempted")
+
+        self._orig = (_gsha._GSHA.__init__, Thailand._download)
+        _gsha._GSHA.__init__ = fake_gsha_init
+        Thailand._download = no_download
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        from aqua_fetch.rr import _gsha
+        _gsha._GSHA.__init__, Thailand._download = self._orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_raises_when_data_missing(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            Thailand(path=self.tmp, verbosity=0)
+        msg = str(ctx.exception)
+        assert 'HTTP 404' in msg and 'disc_d_<year>_RIDall' in msg, msg
+        assert 'daily_q.csv' in msg and 'web.archive.org' in msg, msg
+        assert os.path.join(self.tmp, 'Thailand') in msg, msg
+        return
+
+    def test_overwrite_does_not_delete_local_data(self):
+        fpath = os.path.join(self.tmp, 'Thailand', 'daily_q.csv')
+        os.makedirs(os.path.dirname(fpath))
+        with open(fpath, 'w') as fp:
+            fp.write('time,C.1\n1980-01-01,1.0\n')
+        with self.assertRaises(RuntimeError) as ctx:
+            Thailand(path=self.tmp, overwrite=True, verbosity=0)
+        assert 'cannot be downloaded again' in str(ctx.exception)
+        assert os.path.exists(fpath), "overwrite=True deleted the local data"
+        return
+
+    def test_silent_when_data_present(self):
+        os.makedirs(os.path.join(self.tmp, 'Thailand', 'disc_d_1980_RIDall'))
+        # with the data on disk, the (real) download step only reports it is
+        # already there, so a no-op stands in for it
+        Thailand._download = lambda ds, overwrite=False, **kwargs: None
+        ds = Thailand(path=self.tmp, verbosity=0)
+        assert ds.path == os.path.join(self.tmp, 'Thailand')
         return
 
 

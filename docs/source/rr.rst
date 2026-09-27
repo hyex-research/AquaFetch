@@ -131,42 +131,42 @@ List of datasets
    * - ``CAMELS_BR``
      - :py:class:`aqua_fetch.rr.CAMELS_BR`
      - 897
-     - 
-     - 10
-     - 67
-     - 1920
-     - 2019
+     -
+     - 26, 11
+     - 66, 67
+     - 1980, 1980
+     - 2024, 2018
      - Brazil
      - `Chagas et al., 2020 <https://doi.org/10.5194/essd-12-2075-2020>`_
    * - ``CAMELS_CH``
      - :py:class:`aqua_fetch.rr.CAMELS_CH`
      - 331
-     - 
-     - 9
-     - 209
-     - 1981
-     - 2020
+     - 170
+     - 9, 1
+     - 209, 209
+     - 1981, 1923
+     - 2020, 2021
      - Switzerland
-     - `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_
+     - `Hoege et al., 2023 <https://doi.org/10.5194/essd-15-5755-2023>`_ , hourly: `Kauzlaric et al., 2023 <https://doi.org/10.5281/zenodo.7691294>`_
    * - ``CAMELS_CL``
      - :py:class:`aqua_fetch.rr.CAMELS_CL`
      - 516
-     - 
-     - 12
-     - 104
-     - 1913
-     - 2018
+     -
+     - 12, 10
+     - 104, 110
+     - 1913, 1900
+     - 2018, 2021
      - Chile
      - `Alvarez-Garreton et al., 2018 <https://doi.org/10.5194/hess-22-5817-2018>`_
    * - ``CAMELS_COL``
      - :py:class:`aqua_fetch.rr.CAMELS_COL`
-     - 347
+     - 346
      - 
-     - 6
-     - 255
+     - 5
+     - 79
      - 1981
      - 2022
-     - Columbia
+     - Colombia
      - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
@@ -193,11 +193,11 @@ List of datasets
      - 320
      - 
      - 16
-     - 111
-     - 1963
+     - 112
+     - 1961
      - 2023
      - Finland
-     - `Seppä et al., 2025 <https://doi.org/10.5281/zenodo.16257216>`_
+     - `Seppä et al., 2026 <https://doi.org/10.5281/zenodo.20225368>`_
    * - ``CAMELS_FR``
      - :py:class:`aqua_fetch.rr.CAMELS_FR`
      - 654
@@ -207,17 +207,17 @@ List of datasets
      - 1970
      - 2021
      - France
-     - `Delaigue et al., 2024 <https://doi.org/10.5194/essd-2024-415>`_
+     - `Delaigue et al., 2025 <https://doi.org/10.5194/essd-17-1461-2025>`_
    * - ``CAMELS_GB``
      - :py:class:`aqua_fetch.rr.CAMELS_GB`
      - 671
-     - 
-     - 10
-     - 145
-     - 1970
-     - 2015
+     - 671
+     - 10 daily, 7 hourly
+     - 145 (v1), 219 (v2)
+     - 1970 (hourly 1990)
+     - 2015 (v1), 2022 (v2)
      - Britain
-     - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_
+     - `Coxon et al., 2020 <https://doi.org/10.5194/essd-12-2459-2020>`_; version 2: `Coxon et al., 2026 <https://doi.org/10.5194/essd-18-4345-2026>`_
    * - ``CAMELS_IND``
      - :py:class:`aqua_fetch.rr.CAMELS_IND`
      - 472
@@ -227,12 +227,22 @@ List of datasets
      - 1980
      - 2020
      - Republic of India
-     - `Mangukiya et al., 2024 <https://doi.org/10.5194/essd-2024-379>`_
+     - `Mangukiya et al., 2025 <https://doi.org/10.5194/essd-17-461-2025>`_
+   * - ``CAMELS_KR``
+     - :py:class:`aqua_fetch.rr.CAMELS_KR`
+     - 282
+     -
+     - 14
+     - 75
+     - 1981
+     - 2025
+     - South Korea
+     - `Lee et al., 2026 <https://doi.org/10.5194/essd-2026-544>`_
    * - ``CAMELS_LUX``
      - :py:class:`aqua_fetch.rr.CAMELS_LUX`
      - 56
      - 56
-     - 25
+     - 26
      - 61
      - 2004
      - 2021
@@ -243,11 +253,11 @@ List of datasets
      - 369
      - 369
      - 5
-     - 40
+     - 37
      - 1972
      - 2024
      - New Zealand
-     - `Harrigan et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
+     - `Bushra et al., 2025 <https://doi.org/10.5194/essd-2025-244>`_
    * - ``CAMELS_PL``
      - :py:class:`aqua_fetch.rr.CAMELS_PL`
      - 354
@@ -393,7 +403,7 @@ List of datasets
      - 859
      - 859
      - 22
-     - 80
+     - 84
      - 1981
      - 2019
      - Central Europe
@@ -591,7 +601,11 @@ The following table lists the duplicate datasets available in AquaFetch.
    * - ``Spain``
      - :py:class:`aqua_fetch.Bull`
      - :py:class:`aqua_fetch.rr.Spain`
-     - 
+     -
+   * - ``South Korea``
+     - :py:class:`aqua_fetch.rr.CAMELS_SK`
+     - :py:class:`aqua_fetch.rr.CAMELS_KR`
+     -
 
 
 High Level API
@@ -732,7 +746,14 @@ This provides more control over the datasets.
    .. automethod:: __init__
 
 
-.. autoclass:: aqua_fetch.CAMELS_IND
+.. autoclass:: aqua_fetch.rr.CAMELS_IND
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_KR
    :members:
    :show-inheritance:
 

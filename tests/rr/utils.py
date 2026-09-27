@@ -430,21 +430,32 @@ def test_dataset(dataset,
                  st="20040101", 
                  en="20041231",
                  has_q: bool = True,
-                 test_latlong_ranges: bool = True
+                 test_latlong_ranges: bool = True,
+                 dyn_fraction: float = 0.1
                  ):
-    
+    """
+    dyn_fraction : float
+        fraction of the stations used by the "fetch a fraction of the stations"
+        checks. The default 0.1 is fine for most datasets; datasets whose
+        stations are very expensive to read (e.g. LamaH-CE at hourly timestep,
+        where one station is ~35 MB of csv) can lower it so that the check keeps
+        exercising the same code path at a fraction of the I/O.
+    """
+
     if netCDF4 is not None:
         # check that dynamic attribues from all data can be retrieved.
         test_dynamic_data(dataset, 'all', num_stations, dyn_data_len)
     # test_df:
     test_dynamic_data(dataset, 'all', num_stations, dyn_data_len, as_dataframe=True)
 
+    n_frac = int(num_stations * dyn_fraction)
+
     if netCDF4 is not None:
-        # check that dynamic data of 10% of stations can be retrieved
-        test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len,
+        # check that dynamic data of a fraction of the stations can be retrieved
+        test_dynamic_data(dataset, dyn_fraction, n_frac, dyn_data_len,
                       raise_len_error=raise_len_error)
     # test_df:
-    test_dynamic_data(dataset, 0.1, int(num_stations * 0.1), dyn_data_len, True,
+    test_dynamic_data(dataset, dyn_fraction, n_frac, dyn_data_len, True,
                           raise_len_error=raise_len_error)
 
     # check that static data of all stations can be retrieved

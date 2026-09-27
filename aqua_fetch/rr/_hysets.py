@@ -31,7 +31,6 @@ from ._map import (
     mean_daily_evaporation_with_specifier,
     cloud_cover,
     downward_longwave_radiation,
-    mean_thermal_radiation,
     snow_density,
     mean_daily_evaporation,
     snowfall,
@@ -40,6 +39,7 @@ from ._map import (
     solar_radiation,
     net_longwave_radiation,
     net_solar_radiation,
+    J_M2_DAY_TO_WM2,
     )
 
 from ._map import (
@@ -322,6 +322,8 @@ class HYSETS(_RainfallRunoff):
         else:
             self.sources = self.def_src.copy()
 
+        self._warn_broken_net_thermal()
+
         super().__init__(path=path, **kwargs)
 
         # lazily-populated caches. The heavy static table, the station list and
@@ -396,16 +398,55 @@ class HYSETS(_RainfallRunoff):
             'snow_water_equivalent': snow_water_equivalent(),
             'snowfall': snowfall(),
             'snowmelt': snowmelt(),
-            'surface_downwards_solar_radiation': solar_radiation(), # surface_downwards_solar_radiation_shortwave in J/m2
-            'surface_downwards_thermal_radiation': downward_longwave_radiation(),  # surface_downwards_thermal_radiation_longwave in J/m2
-            'surface_net_solar_radiation':   net_solar_radiation(), # surface_net_solar_radiation_shortwave in J/m2
-            'surface_net_thermal_radiation': net_longwave_radiation(), # surface_net_thermal_radiation_longwave in J/m2
+            # the four radiation variables carry ``units: 'J m-2'`` in the source
+            # netCDF (daily ERA5/ERA5-Land accumulations); converted to the
+            # W m-2 promised by their canonical names via dyn_factors
+            'surface_downwards_solar_radiation': solar_radiation(),
+            'surface_downwards_thermal_radiation': downward_longwave_radiation(),
+            'surface_net_solar_radiation':   net_solar_radiation(),
+            'surface_net_thermal_radiation': net_longwave_radiation(),
             'surface_pressure': mean_air_pressure(), # convert Pa to hPa
             'surface_runoff': observed_streamflow_mm(),
             'total_cloud_cover': cloud_cover(),
             'total_precipitation': total_precipitation(),
 
             # 'total_runoff': observed_streamflow_mm(), todo : it appears same as runoff?
+        }
+
+    def _warn_broken_net_thermal(self):
+        """
+        Reports that the ERA5 copy of ``surface_net_thermal_radiation`` is unusable.
+
+        In ``HYSETS_2023_update_ERA5.nc`` that variable is 92.9% exactly 0.0 and
+        never negative, so its mean works out at ~0.04 W m-2 -- physically
+        impossible for net longwave, which must be predominantly negative. The
+        same variable in ``HYSETS_2023_update_ERA5Land.nc`` is fine (median
+        -55.5 W m-2). This is a defect in the published file, not something this
+        library can repair, so it is reported rather than patched: the canonical
+        name it is served under promises a quantity the ERA5 copy does not
+        deliver.
+        """
+        if self.sources.get('surface_net_thermal_radiation') != 'ERA5':
+            return
+        warnings.warn(
+            f"HYSETS' ERA5 copy of 'surface_net_thermal_radiation' -- served as "
+            f"'{net_longwave_radiation()}' -- is defective in the published "
+            f"file: 92.9% of its values are exactly 0.0 and none are negative, "
+            f"giving a mean near 0 W m-2. Net longwave must be predominantly "
+            f"negative. The ERA5Land copy is unaffected; select it with "
+            f"sources={{'surface_net_thermal_radiation': 'ERA5Land'}}. The data "
+            f"is served exactly as published either way.",
+            UserWarning)
+
+    @property
+    def dyn_factors(self) -> Dict[str, float]:
+        # ERA5/ERA5-Land radiation is accumulated over the day and stored as
+        # J m-2 (see the ``units`` attribute of the source netCDF variables).
+        return {
+            solar_radiation(): J_M2_DAY_TO_WM2,
+            net_solar_radiation(): J_M2_DAY_TO_WM2,
+            downward_longwave_radiation(): J_M2_DAY_TO_WM2,
+            net_longwave_radiation(): J_M2_DAY_TO_WM2,
         }
 
     @property
@@ -686,6 +727,70 @@ class HYSETS(_RainfallRunoff):
         self._orig_meta.clear()
 
     def _fetch_dynamic_features(
+            self,
+            stations: List[int],
+            dynamic_features='all',
+            st=None,
+            en=None,
+            as_dataframe=False
+    ):
+        """Reads the requested data and brings it into the canonical units.
+
+        The unit conversion is applied here, at the single exit point shared by
+        all three read paths (transformed cache, multi-source and the
+        original-file bulk fast path), rather than inside each of them. Doing it
+        downstream of all three is what keeps their outputs identical to one
+        another and keeps the on-disk caches in the source's own units.
+        """
+        out = self._read_dynamic_features(
+            stations, dynamic_features, st=st, en=en, as_dataframe=as_dataframe)
+        return self._to_canonical_units(out)
+
+    def _to_canonical_units(self, out):
+        """
+        Applies :attr:`dyn_factors` to a dict of DataFrames or an
+        :obj:`xarray.Dataset` of ``(time, dynamic_features)`` variables.
+
+        Scales only the columns that actually carry a factor, in place and at
+        the array's own dtype. Multiplying the whole ``(time, feature)`` block by
+        a mostly-ones vector instead -- and in float64, which silently promoted
+        HYSETS' float32 -- copied every station's full array and doubled its
+        memory, adding ~190% to an xarray fetch and ~60% to a DataFrame one.
+        Only 4 of the 20 features need scaling, and the arrays here are freshly
+        read per call, so mutating them is safe and costs nothing.
+        """
+        factors = self.dyn_factors
+        if not factors:
+            return out
+
+        if isinstance(out, dict):
+            for df in out.values():
+                cols = [c for c in df.columns if c in factors]
+                if not cols:
+                    continue
+                block = df.to_numpy(copy=False)
+                if block.flags.writeable and block.dtype.kind == 'f':
+                    # one strided in-place pass per column; fancy-indexing the
+                    # column set instead costs ~50% more (gather + scatter)
+                    for c in cols:
+                        block[:, df.columns.get_loc(c)] *= block.dtype.type(factors[c])
+                else:                       # non-uniform dtype / read-only block
+                    for c in cols:
+                        df[c] = df[c].to_numpy() * np.asarray(
+                            factors[c], dtype=df[c].dtype)
+            return out
+
+        feats = [str(f) for f in out.coords['dynamic_features'].values]
+        pos = [(i, factors[f]) for i, f in enumerate(feats) if f in factors]
+        if not pos:
+            return out
+        for name in list(out.data_vars):
+            arr = out[name].data
+            for i, factor in pos:
+                arr[:, i] *= arr.dtype.type(factor)
+        return out
+
+    def _read_dynamic_features(
             self,
             stations: List[int],
             dynamic_features = 'all',

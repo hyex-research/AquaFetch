@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 from aqua_fetch import GRDCCaravan
 
-from utils import test_dataset
+from utils import test_dataset as run_shared_tests
 
 dataset = GRDCCaravan(path=raw_data_path, verbosity=4)
 
-test_dataset(dataset, 5356, 26800, 215, 41)
+run_shared_tests(dataset, 5356, 26800, 215, 41)

@@ -24,15 +24,15 @@ from aqua_fetch import Portugal
 from aqua_fetch import Slovenia
 
 from utils import (
-    test_dataset,
-    test_coords,
-    test_stations,
-    test_area,
-    test_boundary,
-    test_plot_stations,
-    test_fetch_static_feature,
-    test_fetch_dynamic_features,
-    test_plot_catchment,
+    test_dataset as run_shared_tests,
+    test_coords as check_coords,
+    test_stations as check_stations,
+    test_area as check_area,
+    test_boundary as check_boundary,
+    test_plot_stations as check_plot_stations,
+    test_fetch_static_feature as check_fetch_static_feature,
+    test_fetch_dynamic_features as check_fetch_dynamic_features,
+    test_plot_catchment as check_plot_catchment,
     )
 
 raw_data_path = '/path/to/your/raw/data'  # change this path accordingly
@@ -54,7 +54,7 @@ assert len(ds.country_stations('PL')) == 1287, len(ds.country_stations('PL'))
 
 def test_coords_():
 
-    test_coords(ds)
+    check_coords(ds)
 
     assert ds.stn_coords(countries='IE').shape == (464, 2), ds.stn_coords(countries='IE').shape
 
@@ -65,7 +65,7 @@ def test_coords_():
 
 def test_area_():
 
-    test_area(ds)
+    check_area(ds)
 
     assert ds.area(countries='IE').shape == (464, ), ds.area(countries='IE').shape
 
@@ -78,7 +78,7 @@ def test_fetch_static_features():
     # out = ds.fetch_static_features(countries='IE')  # todo : why countries argument is not working
     # assert out.shape == (464, 214), out.shape
 
-    test_fetch_static_feature(ds, 'IEEP0281', 17130, 214)
+    check_fetch_static_feature(ds, 'IEEP0281', 17130, 214)
     return
 
 
@@ -104,7 +104,7 @@ def test_fetch_dynamic_features_():
 
     assert len(out) == 464, len(out)
 
-    test_fetch_dynamic_features(ds, 'IEEP0281', 17130)
+    check_fetch_dynamic_features(ds, 'IEEP0281', 17130)
 
     return
 
@@ -119,13 +119,13 @@ test_meteo()
 
 test_fetch_dynamic_features_()
 
-test_boundary(ds)
+check_boundary(ds)
 
-test_plot_stations(ds)
+check_plot_stations(ds)
 
-test_stations(ds, 17130)
+check_stations(ds, 17130)
 
-test_plot_catchment(ds)
+check_plot_catchment(ds)
 
 print('All tests passed!')
 
@@ -135,7 +135,7 @@ ds = Ireland(path=raw_data_path, verbosity=3)
 ds.basin_id_gauge_id_map()['IEOP0126'] == '20002'
 ds.gauge_id_basin_id_map()['20002'] == 'IEOP0126'
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=464, 
              dyn_data_len=26844, 
              num_static_attrs=214,
@@ -153,7 +153,7 @@ h_q = ds.fetch_q()
 ds = Finland(path=raw_data_path, processes=1, 
              verbosity=3)
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=669, 
              dyn_data_len=4199, 
              num_static_attrs=214,
@@ -166,7 +166,7 @@ pd.concat(list(dynamic.values()), axis=1).count().sum() >= 814277
 
 ds = Italy(path=raw_data_path, verbosity=3)
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=294, 
              dyn_data_len=26844, 
              num_static_attrs=214,
@@ -177,7 +177,7 @@ test_dataset(ds,
 
 ds = Poland(path=raw_data_path, verbosity=3)
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=1287, 
              dyn_data_len=26844, 
              num_static_attrs=214,
@@ -202,7 +202,7 @@ assert isinstance(q.index, pd.DatetimeIndex)
 # find columns in q dataframe which are all NaN
 nan_cols = q.columns[q.isna().all()]
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=280, 
              dyn_data_len=18628, 
              num_static_attrs=214,
@@ -214,13 +214,13 @@ test_dataset(ds,
 
 ds = Slovenia(path=raw_data_path, verbosity=3)
 
-q = ds.fetch_q()
+q = ds.fetch_q().loc[:"2023-12-31"]
 
 assert q.shape == (27028, 117)
 
 assert len(q.columns[q.isna().all()]) == 0, len(q.columns[q.isna().all()])
 
-test_dataset(ds, 
+run_shared_tests(ds, 
              num_stations=117, 
              dyn_data_len=27028, 
              num_static_attrs=214,

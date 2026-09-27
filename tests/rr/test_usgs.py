@@ -19,9 +19,9 @@ from dataretrieval import nwis
 from aqua_fetch import USGS
 from aqua_fetch import CAMELSH
 from aqua_fetch.rr._usgs import download_daily_q_nwis, _download_metadata
-from aqua_fetch.rr._usgs import download_hourly_q_nwis, download_hourly_record
+from aqua_fetch.rr._usgs import download_hourly_q_nwis, download_hourly_record, DAILY_START
 
-from utils import test_dataset
+from utils import test_dataset as run_shared_tests
 
 
 raw_data_path = '/path/to/raw/data'  # replace with actual path
@@ -34,7 +34,7 @@ class TestUSGS(unittest.TestCase):
         end = "2024-05-30"
         df_nwis = nwis.get_record(site, 
                         parameterCd="00060", 
-                        start="1820-01-01",  # DAILY_START
+                        start="1900-01-01",  # DAILY_START
                         end=end,    # DAILY_END
                         service="dv",
                         )
@@ -93,8 +93,7 @@ class TestUSGS(unittest.TestCase):
         end = "1996-12-31"
 
         site = "09246200"
-        q_camelsh = dataset.q([site])[site].sel(dynamic_features=['q_cms_obs']).to_pandas()
-
+        q_camelsh = dataset.fetch_q([site])[site].sel(dynamic_features=['q_cms_obs']).to_pandas()
 
         path = os.path.join(raw_data_path, 'USGS', 'hourly_files')
         q_af = download_hourly_record(site, end=end, path=path, start=start)
@@ -109,7 +108,7 @@ class TestUSGS(unittest.TestCase):
 
     def test_dataset_class(self):
         dataset = USGS(path=raw_data_path, verbosity=2)
-        test_dataset(dataset, 12004, 27028, 29, 20)
+        run_shared_tests(dataset, 12004, 27028, 29, 20)
         return
 
 

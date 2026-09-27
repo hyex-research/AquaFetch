@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 from aqua_fetch import Bull
 
-from utils import test_dataset
+from utils import test_dataset as run_shared_tests
 
 
 dataset = Bull(path=raw_data_path, verbosity=3)
-test_dataset(dataset, 484, 25932, 214, 55)
+run_shared_tests(dataset, 484, 25932, 214, 55)

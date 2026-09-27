@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 from aqua_fetch import CAMELS_DK, Caravan_DK
 
-from utils import test_dataset
+from utils import test_dataset as run_shared_tests
 
 
 gscad_path = ''
 
 dataset = CAMELS_DK(path=os.path.join(gscad_path, 'CAMELS'), verbosity=3)
-test_dataset(dataset, 304, 12782, 119, 13)
+run_shared_tests(dataset, 304, 12782, 119, 13)
 
 
 ds_dk = Caravan_DK(path= gscad_path)
-test_dataset(ds_dk, 308, 14609, 211, 39)
+run_shared_tests(ds_dk, 308, 14609, 211, 39)

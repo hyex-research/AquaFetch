@@ -22,6 +22,12 @@ from ._backend import shapefile, plt, xarray, netCDF4, matplotlib
 from ._backend import fiona
 
 
+# request headers for servers that refuse the default user agent of urllib/requests
+BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+}
+
+
 COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
           '#FF4040', '#8A360F', '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
 
@@ -58,23 +64,26 @@ def download(
         outdir: Union[str, os.PathLike] = None,
         fname: str = None,
         verbosity:int = 1,
+        headers: dict = None,
         )->os.PathLike:
     """
-    High level function, which downloads URL into tmp file in current
-    directory and then moves and/or renames it to outdir/fname
+    High level function, which downloads URL into a tmp file in outdir
+    and then renames it to outdir/fname
 
     :param url:
     :param outdir: output directory
     :param fname: filename to save the downloaded file. If not given, then autodetected from either URL
         or HTTP headers.
+    :param headers: HTTP request headers, e.g. a browser ``User-Agent`` for servers
+        that refuse urllib's default one. No progress bar is shown when given.
     :return:    filepath] where URL is downloaded to
     """
     if outdir is None:
         outdir = os.getcwd()
 
-    # get filename for temp file in current directory
+    # the temp file is in outdir, so that the final move is a rename, not a copy
     prefix = filename_from_url(url)
-    (fd, tmpfile) = tempfile.mkstemp(".tmp", prefix=prefix, dir=".")
+    (fd, tmpfile) = tempfile.mkstemp(".tmp", prefix=prefix, dir=outdir)
     os.close(fd)
     os.unlink(tmpfile)
 
@@ -94,11 +103,23 @@ def download(
     binurl = urlparse.urlunsplit(binurl)
 
     try:
-        (tmpfile, headers) = ulib.urlretrieve(binurl, tmpfile, callback)
-    except ulib.HTTPError as e:
-        if verbosity:
+        if headers:
+            # urlretrieve cannot send request headers
+            with ulib.urlopen(ulib.Request(binurl, headers=headers)) as response, \
+                    open(tmpfile, 'wb') as out:
+                shutil.copyfileobj(response, out)
+                size = response.headers.get('Content-Length')
+            if size is not None and os.path.getsize(tmpfile) != int(size):
+                raise ulib.ContentTooShortError(
+                    f"downloaded {os.path.getsize(tmpfile)} of {size} bytes from {url}", None)
+        else:
+            tmpfile, _ = ulib.urlretrieve(binurl, tmpfile, callback)
+    except BaseException as e:
+        if os.path.exists(tmpfile):  # a partial download
+            os.remove(tmpfile)
+        if verbosity and isinstance(e, ulib.HTTPError):
             print(f"HTTP Error for {url} to download {fname}")
-        raise e
+        raise
     
     filename = filename_from_url(url)
 
@@ -1113,11 +1134,7 @@ def maybe_download_and_read_data(
 
 
 def download_with_requests(url)->pd.DataFrame:
-    # Add headers if needed (you may need to adjust these)
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-    }
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=BROWSER_HEADERS)
 
     if response.status_code == 200:
         # Use BytesIO for binary data/excel sheets

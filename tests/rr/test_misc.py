@@ -13,8 +13,8 @@ from aqua_fetch.rr import DraixBleone
 from aqua_fetch.rr import JialingRiverChina
 from aqua_fetch.rr import ShyftNorway
 
-from utils import test_fetch_dynamic_features
-from utils import test_dataset
+from utils import test_fetch_dynamic_features as check_fetch_dynamic_features
+from utils import test_dataset as run_shared_tests
 
 
 def test_jilingriverchina():
@@ -28,7 +28,7 @@ def test_jilingriverchina():
 
     assert len(dataset.dynamic_features) == 43
 
-    test_fetch_dynamic_features(dataset, dataset.stations()[0], as_dataframe=True)
+    check_fetch_dynamic_features(dataset, dataset.stations()[0], as_dataframe=True)
 
     return
 
@@ -48,4 +48,4 @@ for stn in ds.stations():
 # %%
 dataset = ShyftNorway(verbosity=3)
 
-test_dataset(dataset, 111, 23376, 10, 1)
+run_shared_tests(dataset, 111, 23376, 10, 1)

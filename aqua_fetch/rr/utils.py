@@ -3,6 +3,7 @@ import time
 import random
 import shutil
 import warnings
+import multiprocessing as mp
 import concurrent.futures as cf
 from typing import Union, List, Dict, Tuple
 
@@ -26,6 +27,123 @@ from ._map import (
 
 # directory separator
 SEP = os.sep
+
+# Version of the cache (.nc) files this library writes. It is part of every
+# cache name, e.g. camels_gb_D_v2.nc. Increase it whenever the names or units
+# of cached features change: old cache files are then simply not found, and
+# new ones are built from the source files the next time the data is used.
+#   2 -> radiation renamed to <band><direction>rad_wm2 and converted to W m-2
+CACHE_VERSION = 2
+
+
+def cache_name(name: str) -> str:
+    """Adds the cache version to a cache file or folder name, e.g.
+    ``'meteo_vars.nc'`` -> ``'meteo_vars_v2.nc'``."""
+    stem, ext = os.path.splitext(name)
+    return f"{stem}_v{CACHE_VERSION}{ext}"
+
+
+def ymd_index(
+        year: np.ndarray,
+        month: np.ndarray,
+        day: np.ndarray,
+        hour: np.ndarray = None,
+        minute: np.ndarray = None
+) -> pd.DatetimeIndex:
+    """
+    Builds a :obj:`pandas.DatetimeIndex` from integer year/month/day(/hour/minute)
+    columns using numpy's datetime64 arithmetic.
+
+    This is ~8x faster than ``pd.PeriodIndex(...).to_timestamp()`` on the 341856
+    row hourly files and yields a bit-identical index (asserted in
+    ``tests/rr/test_lamah.py::test_lamahce_index_construction``). A date or a
+    time of day which does not exist raises, as it does in pandas.
+    """
+    year = np.asarray(year, dtype='int64')
+    month = np.asarray(month, dtype='int64')
+    day = np.asarray(day, dtype='int64')
+
+    if ((month < 1) | (month > 12)).any():
+        bad = int(np.argmax((month < 1) | (month > 12)))
+        raise ValueError(f"{month[bad]} is not a month")
+
+    months = (year - 1970).astype('datetime64[Y]').astype('datetime64[M]') + (month - 1)
+    idx = months.astype('datetime64[D]') + (day - 1)
+
+    # adding the days rolls an impossible date (2025-02-31) into the next month
+    # instead of raising as pandas would, which would silently mis-date a corrupt
+    # row of a source file
+    rolled = idx.astype('datetime64[M]') != months
+    if rolled.any():
+        first = int(np.argmax(rolled))
+        raise ValueError(f"{year[first]}-{month[first]}-{day[first]} is not a date")
+
+    if hour is not None:
+        hour = np.asarray(hour, dtype='int64')
+        if ((hour < 0) | (hour > 23)).any():
+            raise ValueError(f"{hour[int(np.argmax((hour < 0) | (hour > 23)))]} is not an hour")
+        idx = idx.astype('datetime64[m]') + hour * 60
+        if minute is not None:
+            minute = np.asarray(minute, dtype='int64')
+            if ((minute < 0) | (minute > 59)).any():
+                raise ValueError(
+                    f"{minute[int(np.argmax((minute < 0) | (minute > 59)))]} is not a minute")
+            idx = idx + minute
+
+    return pd.DatetimeIndex(idx.astype('datetime64[ns]'))
+
+
+def apply_dyn_factors(df: pd.DataFrame, factors: Dict) -> pd.DataFrame:
+    """Multiplies (or, for a callable, maps) the columns of ``df`` named in
+    ``factors``, in place. Columns the frame does not have are skipped. A plain
+    function, so that a process-pool worker can use it without the dataset."""
+    for col, factor in factors.items():
+        if col not in df.columns:
+            continue
+        if callable(factor):
+            df[col] = df[col].apply(factor)
+        else:
+            df[col] = df[col] * factor
+    return df
+
+
+def n_workers(nbytes: float, n_tasks: int, processes: int = None) -> int:
+    """
+    Number of processes for reading ``n_tasks`` files of ``nbytes`` in total.
+    ``processes=1`` or a single task gives 1 (no pool). Otherwise a pool is used
+    only if the files are large enough to repay starting it, as measured for
+    csv files on 48 cores: ~5 MB with the ``fork`` start method (Linux up to
+    Python 3.13), ~60 MB with ``forkserver`` (Linux from Python 3.14) and
+    ~120 MB with ``spawn`` (Windows, macOS).
+    """
+    cpus = max(1, int(processes)) if processes is not None else min(get_cpus(), 32)
+    if cpus == 1 or n_tasks < 2:
+        return 1
+    # get_start_method() without allow_none would fix the start method for the
+    # whole program; the first of get_all_start_methods() is the default
+    method = mp.get_start_method(allow_none=True) or mp.get_all_start_methods()[0]
+    if nbytes < {'fork': 5e6, 'forkserver': 60e6}.get(method, 120e6):
+        return 1
+    return min(cpus, n_tasks)
+
+
+def atomic_to_netcdf(data, fpath: Union[str, os.PathLike], **kwargs):
+    """
+    Writes ``data`` (an :obj:`xarray.Dataset`) to ``fpath`` through a temporary
+    ``<fpath>.part`` file which replaces ``fpath`` only once the write has
+    finished. An interrupted write (Ctrl+C, a full disk) therefore leaves no
+    file behind instead of a truncated one that later looks like a complete
+    cache and serves empty stations.
+    """
+    tmp_fpath = f"{fpath}.part"
+    try:
+        data.to_netcdf(tmp_fpath, **kwargs)
+    except BaseException:
+        if os.path.exists(tmp_fpath):
+            os.remove(tmp_fpath)
+        raise
+    os.replace(tmp_fpath, fpath)
+    return
 
 
 def gb_message():
@@ -151,7 +269,20 @@ class _RainfallRunoff(Datasets):
         
     @property
     def dyn_factors(self) -> Dict[str, float]:
+        """
+        Maps a *canonical* dynamic-feature name to the number the raw values are
+        multiplied by (or a function applied to them) so that the served data is
+        in the units the canonical name promises.
+
+        A class declaring a non-empty mapping here must call
+        :meth:`_apply_dyn_factors` in its read path, otherwise it has no effect.
+        """
         return {}
+
+    def _apply_dyn_factors(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Applies :attr:`dyn_factors` to an already-renamed frame, in place.
+        Columns the frame does not have are skipped."""
+        return apply_dyn_factors(df, self.dyn_factors)
 
     @property
     def boundary_id_map(self) -> str:
@@ -162,6 +293,14 @@ class _RainfallRunoff(Datasets):
         if not given, then the first attribute in the boundary file will be used.
         """
         return None
+
+    def _boundary_catch_id(self, value) -> str:
+        """
+        Turns the identifier of one feature of :attr:`boundary_file` into the
+        station id used by this dataset. Overridden by classes whose boundary
+        file stores the id in another type, e.g. ``10500000.0`` as a float.
+        """
+        return str(value)
     
     @property
     def dyn_fname(self) -> Union[str, os.PathLike]:
@@ -170,7 +309,7 @@ class _RainfallRunoff(Datasets):
         only if to_netcdf is True and xarray is installed and the file does not already exists. The creation of this
         file can take some time however it leads to faster I/O operations.
         """
-        return self.name.lower() + f"_{self.timestep}.nc"
+        return cache_name(self.name.lower() + f"_{self.timestep}.nc")
 
     @property
     def dyn_fpath(self) -> os.PathLike:
@@ -246,16 +385,9 @@ class _RainfallRunoff(Datasets):
             
             for feature in src:
 
-                if self.name in ['CAMELS_CH', 'CAMELS_IND', 'CABra']:
+                if self.name in ['CAMELS_CH', 'CABra']:
                     # from '2004.0' -> '2004' for CAMELS_CH
-                    # from '03001' -> '3001' for CAMELS_IND
                     catch_id = str(int(feature["properties"][boundary_id_map]))
-                elif self.name == 'CAMELS_LUX':
-                    idx = int(feature["properties"][boundary_id_map])
-                    if idx < 10:
-                        catch_id = f"ID_{str(idx).zfill(2)}"
-                    else:
-                        catch_id = f"ID_{idx}"
                 elif self.name == 'Simbi':
                     catch_id = feature['properties'][boundary_id_map]
                     catch_id = catch_id.split('-')[1]
@@ -269,7 +401,7 @@ class _RainfallRunoff(Datasets):
                         catch_id = f"0{catch_id}"
                 else:
                     # since we are treating catchment/station id as string
-                    catch_id = str(feature["properties"][boundary_id_map])
+                    catch_id = self._boundary_catch_id(feature["properties"][boundary_id_map])
                 geometry = feature["geometry"]
 
                 self.bndry_id_map_[catch_id] = geometry
@@ -287,10 +419,89 @@ class _RainfallRunoff(Datasets):
         # The user is recommended to implement this method in the child class in a more efficient way.
         return self._static_data().index.tolist()
 
+    def common_stations(
+            self,
+            other: Union["_RainfallRunoff", List[str]],
+            max_dist_km: float = None
+    ) -> List[str]:
+        """
+        ids of this dataset's stations that are also in ``other``. Several
+        datasets of this library cover the same region (see the table of
+        duplicate datasets in the documentation).
+
+        Parameters
+        ----------
+        other :
+            another rainfall-runoff dataset, or a list of station ids. Ids are
+            compared as they are, which only finds the shared stations when both
+            datasets use the same id system (e.g. :py:class:`aqua_fetch.rr.CAMELS_KR`
+            and :py:class:`aqua_fetch.rr.CAMELS_SK`, which both use the official
+            Korean gauge codes).
+        max_dist_km : float, optional
+            if given, the stations are matched by distance instead of by id: an
+            id of this dataset is returned when a station of ``other`` lies
+            within ``max_dist_km`` of it. Use this when the two datasets use
+            different id systems. ``other`` must then be a dataset, because its
+            :meth:`stn_coords` is needed. The distance is computed on a sphere,
+            which is up to ~0.3% longer than on the WGS84 ellipsoid (1° of
+            latitude: 111.19 km here, 110.99 km with ``pyproj``), so allow for
+            that in the tolerance.
+
+        Returns
+        -------
+        list
+            ids of **this** dataset, in the order of :meth:`stations`
+
+        Examples
+        --------
+        >>> from aqua_fetch import CAMELS_KR, CAMELS_SK
+        >>> kr = CAMELS_KR()
+        ... # CAMELS_SK uses the same official Korean gauge codes as CAMELS_KR
+        >>> len(kr.common_stations(CAMELS_SK().stations()))
+        115
+        ... # a list of ids from anywhere works too, so the other dataset does
+        ... # not have to be downloaded
+        >>> kr.common_stations(['1001620', '1007635', 'not_an_id'])
+        ['1001620', '1007635']
+        ... # datasets with different ids are matched by distance instead
+        >>> kr.common_stations(other_dataset, max_dist_km=2.0)
+        """
+        stations = self.stations()
+
+        if max_dist_km is None:
+            ids = set(other.stations() if hasattr(other, 'stations') else other)
+            return [stn for stn in stations if stn in ids]
+
+        if not hasattr(other, 'stn_coords'):
+            raise TypeError(
+                f"matching by distance needs a dataset with coordinates, "
+                f"not {type(other)}. Leave max_dist_km out to match ids.")
+
+        mine = self.stn_coords().astype('float64')
+        theirs = other.stn_coords().astype('float64')
+        lat2 = np.radians(theirs['lat'].to_numpy())
+        lon2 = np.radians(theirs['long'].to_numpy())
+
+        matched = np.zeros(len(mine), dtype=bool)
+        # in chunks, so that a big dataset (HYSETS has 14425 stations) does not
+        # need one huge distance matrix
+        for beg in range(0, len(mine), 512):
+            end = beg + 512
+            lat1 = np.radians(mine['lat'].to_numpy()[beg:end])[:, None]
+            lon1 = np.radians(mine['long'].to_numpy()[beg:end])[:, None]
+            # haversine distance on a sphere of 6371 km
+            h = (np.sin((lat2 - lat1) / 2) ** 2 +
+                 np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
+            dist = 2 * 6371.0 * np.arcsin(np.sqrt(h))
+            # a station without coordinates gives NaN, which is never <=
+            matched[beg:end] = (dist <= max_dist_km).any(axis=1)
+
+        return [stn for stn, ok in zip(mine.index, matched) if ok]
+
     def _read_dynamic(
-            self, 
-            stations, 
-            dynamic_features, 
+            self,
+            stations,
+            dynamic_features,
             st:Union[str, pd.Timestamp] = None, 
             en:Union[str, pd.Timestamp] = None
             ) -> Dict[str, pd.DataFrame]:
@@ -731,7 +942,7 @@ class _RainfallRunoff(Datasets):
         >>> dynamic
         ... # get only selected dynamic features
         >>> _, sel_dyn_features = dataset.fetch(stations='318076',
-        ...     dynamic_features=['q_mm_obs', 'solrad_wm2_silo'], as_dataframe=True)
+        ...     dynamic_features=['q_mm_obs', 'swdownrad_wm2_silo'], as_dataframe=True)
         ... # fetch data between selected periods
         >>> _, data = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
@@ -782,7 +993,7 @@ class _RainfallRunoff(Datasets):
                 if self.verbosity: print(f'converting data to netcdf format for faster io operations')
                 _, data = self.fetch(static_features=None)
 
-                data.to_netcdf(self.dyn_fpath)
+                atomic_to_netcdf(data, self.dyn_fpath)
             else:
                 if self.verbosity:
                     print(f"dynamic data already exists as {self.dyn_fpath}. "
@@ -1125,7 +1336,8 @@ class _RainfallRunoff(Datasets):
     ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
-        by diving ``q``/area
+        by diving ``q``/area, where area is the area drained by the gauge
+        (see :meth:`area`).
 
         parameters
         ----------
@@ -1146,7 +1358,7 @@ class _RainfallRunoff(Datasets):
         if self._mm_feature_name is None:
             _, q = self.fetch_stations_features(
                 stations,
-                dynamic_features="q_cms_obs", 
+                dynamic_features="q_cms_obs",
                 as_dataframe=True)
             q = pd.DataFrame.from_dict({stn:df['q_cms_obs'] for stn,df in q.items()})
 
