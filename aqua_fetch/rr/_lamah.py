@@ -1,6 +1,7 @@
 
 import gc
 import os
+import zlib
 import shutil
 import warnings
 from functools import partial
@@ -154,6 +155,57 @@ def _first_last_stamps(fpath: str, timestep: str) -> tuple:
         return pd.Timestamp(year=year, month=month, day=day)
 
     return _stamp(first), _stamp(last)
+
+
+def _ice_hourly_q_index(df: pd.DataFrame, fpath: str) -> pd.DatetimeIndex:
+    """
+    Timestamps of the rows of a LamaH-Ice hourly runoff csv, which has no hour
+    column. The rows are a gap-free hourly series trimmed to its first and last
+    value: a gap is a row with an empty ``qobs`` (``gaps_hourly`` of
+    Gauge_attributes.csv is the share of exactly these rows). A short first day
+    therefore holds the last hours of that day (7 rows are 17:00 to 23:00) and a
+    short last day the first ones.
+    """
+    days = ymd_index(df['YYYY'], df['MM'], df['DD'])
+    n_first = int((days == days[0]).sum())
+    index = pd.date_range(days[0] + pd.Timedelta(hours=24 - n_first),
+                          periods=len(days), freq='h', name='time')
+    if not (index.normalize() == days).all():
+        raise ValueError(
+            f"{fpath} is not a gap-free hourly series (a day other than the "
+            f"first or last one has fewer or more than 24 rows), so the hour of "
+            f"its rows cannot be determined.")
+    return index
+
+
+def _ice_hourly_q_first_last(fpath: str) -> tuple:
+    """
+    First and last timestamp of a LamaH-Ice hourly runoff csv as stamped by
+    :func:`_ice_hourly_q_index`, read from the first 25 and the last ~300 rows.
+    """
+    with open(fpath, 'rb') as fh:
+        fh.readline()                                   # header
+        head = [fh.readline().decode().split(';')[:3] for _ in range(25)]
+        size = fh.seek(0, os.SEEK_END)
+        # a day has at most 24 rows of ~25 bytes; the first line may be cut
+        fh.seek(max(0, size - 8192))
+        tail = [line.split(';')[:3] for line in fh.read().decode().strip().splitlines()[1:]]
+
+    def n_same(rows):
+        n = 0
+        for fields in rows:
+            if fields != rows[0]:
+                break
+            n += 1
+        return n
+
+    year, month, day = map(int, head[0])
+    start = pd.Timestamp(year=year, month=month, day=day) + pd.Timedelta(hours=24 - n_same(head))
+    year, month, day = map(int, tail[-1])
+    # a file of a single (short) day ends at 23:00, like its first day
+    n_last = 24 if tail[-1] == head[0] else n_same(tail[::-1])
+    end = pd.Timestamp(year=year, month=month, day=day) + pd.Timedelta(hours=n_last - 1)
+    return start, end
 
 
 def _read_ce_stn(spec: Dict, station: str) -> pd.DataFrame:
@@ -516,7 +568,7 @@ class LamaHCE(_RainfallRunoff):
         self._warn_thermal_sign()
 
         if self.to_netcdf and not self.all_ncs_exist:
-            self._maybe_to_netcdf(fdir=cache_name(f"{data_type}_{timestep}"))
+            self._maybe_to_netcdf(fdir=self._nc_dir)
 
         self.bbox = {"llcrnrlat": 46, "urcrnrlat": 50.5,
                         "llcrnrlon": 7.5, "urcrnrlon": 19}
@@ -789,8 +841,13 @@ class LamaHCE(_RainfallRunoff):
         return [f"{feature}.nc" for feature in self.dynamic_features]
 
     @property
+    def _nc_dir(self) -> str:
+        """name of the folder, under ``path``, holding the netCDF cache of each dynamic feature"""
+        return cache_name(f"{self.data_type}_{self.timestep}")
+
+    @property
     def all_ncs_exist(self):
-        fdir = os.path.join(self.path, cache_name(f"{self.data_type}_{self.timestep}"))
+        fdir = os.path.join(self.path, self._nc_dir)
         return all(os.path.exists(os.path.join(fdir, fname_)) for fname_ in self.dynamic_fnames)
 
     @property
@@ -1309,7 +1366,7 @@ class LamaHCE(_RainfallRunoff):
 
         dyns = []
         for idx, f in enumerate(dynamic_features):
-            dyn_fpath = os.path.join(self.path, cache_name(f"{self.data_type}_{self.timestep}"), f'{f}.nc')
+            dyn_fpath = os.path.join(self.path, self._nc_dir, f'{f}.nc')
             with xr.open_dataset(dyn_fpath) as dyn:
                 dyns.append(dyn[stations].sel(time=slice(st, en)).load())
 
@@ -1462,101 +1519,83 @@ class LamaHCE(_RainfallRunoff):
 
 class LamaHIce(LamaHCE):
     """
-    Daily and hourly hydro-meteorological time series data of river basins
-    of Iceland following `Helgason et al., 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_.
-    The total period of dataset is from 1950 to 2021 from 111 catchments for daily
-    and from 1976-2023 for hourly timestep. The average
-    length of daily data is 33 years while for that of hourly it is 11 years.
-    The dataset is available on `hydroshare <https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/>`_
+    Daily and hourly hydro-meteorological time series and catchment attributes
+    of river basins in Iceland (LamaH-Ice,
+    `Helgason and Nijssen, 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_).
+    Release 1.5 is downloaded from
+    `HydroShare <https://www.hydroshare.org/resource/705d69c0f77c48538d83cf383f8c63d6/>`_:
+    0.8 GB (2 GB extracted) for ``timestep='D'``, 9.1 GB (30 GB extracted) for ``'H'``.
+
+    ``data_type`` selects the basin delineation: ``total_upstrm`` (111 stations),
+    ``intermediate_all`` (107) or ``intermediate_lowimp`` (86).
+
+    - daily: 56 dynamic features for ``total_upstrm`` (ERA5-Land, RAV-II and
+      CARRA forcings, streamflow) and 36 for the other two (no CARRA);
+      152 / 115 / 115 static features. The time index runs from 1932-09-01 to
+      2024-09-30 so that the streamflow of every gauge fits; the forcings cover
+      1949-12-31 to 2024-09-28 (``total_upstrm``) or to 2021-12-31.
+    - hourly: 28 dynamic features, 138 / 115 / 115 static features. The time
+      index runs from 1949-12-31 23:00 to 2023-09-30 00:00; the forcings end on
+      2021-12-31 23:00 and 76 gauges have hourly streamflow. The streamflow
+      files have no hour column; their rows are consecutive hours, so a short
+      first day (gauges 14, 28, 34, 70) holds the last hours of that day.
+
+    Streamflow is in m3/s; the units of the forcings are in Appendix A of the
+    paper and in ``LamaH-Ice Meteorological Data Documentation Table.pdf`` of the
+    daily archive. Time is GMT and labels the start of the interval. Values are
+    returned as published, including ``inf`` on 31 days in ``solid_prec_carra``
+    and ``2m_spec_hum_carra`` and a constant ``percolation_carra`` of 3e35 to
+    6e36, or ``inf``, at 16 stations. The hourly forcings repeat the 47 hours
+    from 2005-06-05 00:00 with different RAV-II values; only the first row of
+    each hour is kept (:meth:`fetch_stn_meteo` returns all rows).
+    :meth:`stn_coords` is in WGS84, boundaries are in EPSG:3057.
+    The Caravan extension, which is hosted with the dataset, is not downloaded.
+
+    Data of an older release on disk raises an error; re-initialize with
+    ``overwrite=True`` to replace it.
+
+    Fetching all stations of ``total_upstrm`` takes 3 s at daily and 31 s at
+    hourly timestep.
 
     Examples
     --------
     >>> from aqua_fetch import LamaHIce
-    # by default the timestep is daily and data_type is 'total_upstrm'
-    >>> dataset = LamaHIce()
-    ... # get data by station id
+    >>> dataset = LamaHIce()  # daily, data_type='total_upstrm'
     >>> _, dynamic = dataset.fetch(stations='92', as_dataframe=True)
-    >>> df = dynamic['92'] # dynamic is a dictionary of with keys as station names and values as DataFrames
-    >>> df.shape
-    (26298, 36)
-    ...
-    ... # get name of all stations as list
-    >>> stns = dataset.stations()
-    >>> len(stns)
-       111
-    ... # get data of 10 % of stations as dataframe
-    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)
-    >>> len(dynamic)  # dynamic has data for 10% of stations (11 out of 111)
-       11
-    ...
-    ... # dynamic is a dictionary whose values are dataframes of dynamic features
-    >>> [df.shape for df in dynamic.values()]
-        [(26298, 36), (26298, 36), (26298, 36),... (26298, 36), (26298, 36)]
-    ...
-    ... get the data of a single (randomly selected) station
-    >>> _, dynamic = dataset.fetch(stations=1, as_dataframe=True)
-    >>> len(dynamic)  # dynamic has data for 1 station
-        1
-    ... # get names of available dynamic features
-    >>> dataset.dynamic_features
-    ... # get only selected dynamic features
+    >>> dynamic['92'].shape
+    (33633, 56)
+    >>> len(dataset.stations())
+    111
+    >>> _, dynamic = dataset.fetch(0.1, as_dataframe=True)  # 10 % of the stations
+    >>> len(dynamic)
+    11
     >>> _, dynamic = dataset.fetch('92', as_dataframe=True,
     ...  dynamic_features=['swe', 'pet_mm', 'pcp_mm', 'q_cms_obs'])
     >>> dynamic['92'].shape
-       (26298, 4)
-    ...
-    ... # get names of available static features
-    >>> dataset.static_features
-    ... # get data of 10 random stations
-    >>> _, dynamic = dataset.fetch(10, as_dataframe=True)
-    >>> len(dynamic)  # remember this is a dictionary with values as dataframe
-       10
-    ...
-    # If we get both static and dynamic data
+    (33633, 4)
     >>> static, dynamic = dataset.fetch(stations='92', static_features="all", as_dataframe=True)
-    >>> static.shape, len(dynamic), dynamic['92'].shape
-    ((1, 154), 1, (26298, 36))
-    ...
-    # If we don't set as_dataframe=True and have xarray installed then the returned data will be a xarray Dataset
-    >>> _, dynamic = dataset.fetch(10)
-    ... type(dynamic)   
-    xarray.core.dataset.Dataset
-    ...
-    >>> dynamic.dims
-    FrozenMappingWarningOnValuesAccess({'time': 26298, 'dynamic_features': 36})
-    ...
+    >>> static.shape, dynamic['92'].shape
+    ((1, 152), (33633, 56))
+    >>> _, dynamic = dataset.fetch(10)  # an xarray Dataset if xarray is installed
+    >>> dict(dynamic.sizes)
+    {'time': 33633, 'dynamic_features': 56}
     >>> len(dynamic.data_vars)
     10
-    ...
-    >>> coords = dataset.stn_coords() # returns coordinates of all stations
-    >>> coords.shape
-        (111, 2)
-    >>> dataset.stn_coords('92')  # returns coordinates of station whose id is 92
-        571777.0	309737.0
-    >>> dataset.stn_coords(['92', '5'])  # returns coordinates of two stations
-    ...
-    # get area of a single station
+    >>> dataset.stn_coords('92')
+              lat       long
+    id
+    92  65.588076 -23.127037
     >>> dataset.area('92')
-    # get coordinates of two stations
-    >>> dataset.area(['92', '5'])
-    ...
-    # if fiona library is installed we can get the boundary as fiona Geometry
-    >>> dataset.get_boundary('92')
-    ...
-    # the data_type can also be 'intermediate_all'
-    >>> dataset = LamaHIce(data_type='intermediate_all')
-    ...
-    # or 'intermediate_lowimp'
-    >>> dataset = LamaHIce(data_type='intermediate_lowimp')
-    >>> len(dataset.stations())
+    id
+    92    101.875999
+    Name: area_km2, dtype: float32
+    >>> boundary = dataset.get_boundary('92')  # needs fiona
+    >>> len(LamaHIce(data_type='intermediate_lowimp').stations())
     86
-    ...
-    # the timestep can also be 'H'
     >>> dataset = LamaHIce(timestep='H')
     >>> _, dynamic = dataset.fetch(stations='79', as_dataframe=True)
     >>> dynamic['79'].shape
-    (412848, 28)  # there are 28 dynamic features for hourly data
-    
+    (646442, 28)
     """
 
     dirs_to_check = {
@@ -1579,20 +1618,21 @@ class LamaHIce(LamaHCE):
                 [os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'C_basins_intermediate_lowimp'),
                  os.path.join('lamah_ice_hourly', 'lamah_ice_hourly', 'D_gauges')],
                                     },
-        'Caravan_extension_lamahice.zip': {
-            'total_upstrm': [],
-            'intermediate_all': [],
-            'intermediate_lowimp': []},
     }
 
+    # release 1.5 (HydroShare resource 705d69c0...), which replaces resource
+    # 86117a5f... The Caravan extension it also hosts is not read and not downloaded.
     url = {
-        'Caravan_extension_lamahice.zip':
-            'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/Caravan_extension_lamahice.zip',
         'lamah_ice.zip':
-            'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/lamah_ice.zip',
+            'https://www.hydroshare.org/resource/705d69c0f77c48538d83cf383f8c63d6/data/contents/lamah_ice.zip',
         'lamah_ice_hourly.zip':
-            'https://www.hydroshare.org/resource/86117a5f36cc4b7c90a5d54e18161c91/data/contents/lamah_ice_hourly.zip'
+            'https://www.hydroshare.org/resource/705d69c0f77c48538d83cf383f8c63d6/data/contents/lamah_ice_hourly.zip'
     }
+    _RELEASE = '1.5'
+    # CRC-32 of D_gauges/1_attributes/Gauge_attributes.csv of release 1.5. Both
+    # archives ship this file and it differs from that of the previous release,
+    # so it tells an outdated installation apart without reading any time series.
+    _GAUGE_ATTRS_CRC32 = 0xe4c0c9b7
     _data_types = ['total_upstrm', 'intermediate_all', 'intermediate_lowimp']
     time_steps = ['D', 'H']
     DTYPES = {
@@ -1632,10 +1672,8 @@ class LamaHIce(LamaHCE):
         if timestep == "D":
             self.url.pop("lamah_ice_hourly.zip", None)
         if timestep == 'H':
-            # hourly mode reads everything from lamah_ice_hourly.zip; the
-            # daily archive and the caravan extension are not used.
+            # hourly mode reads everything from lamah_ice_hourly.zip
             self.url.pop('lamah_ice.zip', None)
-            self.url.pop('Caravan_extension_lamahice.zip', None)
 
         super().__init__(path=path,
                          timestep=timestep,
@@ -1647,6 +1685,45 @@ class LamaHIce(LamaHCE):
         self.bbox = {'llcrnrlat': 63.0, 'urcrnrlat': 67.0, 'llcrnrlon': -25.0, 'urcrnrlon': -13.0}
         self.parallels = range(63, 67, 1)
         self.meridians = range(-25, -12, 2)
+
+    def _download_and_extract(self):
+        super()._download_and_extract()
+        self._check_release()
+
+    def _check_release(self):
+        """
+        Raises if the data on disk is not release 1.5, e.g. because it was
+        downloaded by an older aqua_fetch. The folder layout of the releases is
+        the same, so without this check the old values would be read silently.
+        """
+        fpath = os.path.join(self.gauges_path, '1_attributes', 'Gauge_attributes.csv')
+        if not os.path.exists(fpath):
+            # an incomplete extraction is reported by _download_and_extract
+            return
+
+        with open(fpath, 'rb') as fh:
+            crc = zlib.crc32(fh.read())
+
+        if crc != self._GAUGE_ATTRS_CRC32:
+            if self.timestep == 'H':
+                changes = ("revises the gauge attributes, hydrological indices and "
+                           "water balance tables (the hourly time series are unchanged)")
+            else:
+                changes = ("extends the streamflow of 50 gauges (up to 2024-09-30), "
+                           "revises that of 28, revises the ERA5-Land forcings and "
+                           "the attribute tables, and adds CARRA forcings")
+            raise ValueError(
+                f"The LamaH-Ice data in {self.path} is not release {self._RELEASE} "
+                f"({fpath} differs from that of release {self._RELEASE}). Release "
+                f"{self._RELEASE} {changes}. Re-initialize with overwrite=True to "
+                f"replace the data in this folder with release {self._RELEASE} "
+                f"({'9.1 GB' if self.timestep == 'H' else '0.8 GB'} download).")
+
+    @property
+    def _nc_dir(self) -> str:
+        # carries the release, so that a cache built from an older release is never
+        # read. The dot is dropped: cache_name() would take '.5' for an extension.
+        return cache_name(f"{self.data_type}_{self.timestep}_r{self._RELEASE.replace('.', '')}")
 
     def _infer_dynamic_features(self) -> List[str]:
         """
@@ -1745,17 +1822,37 @@ class LamaHIce(LamaHCE):
                             "3_shapefiles",
                             f"Basins_{letters[self.data_type]}.shp")
 
-    @property
-    def start(self):
-        if self.timestep == "H":
-            return pd.Timestamp("19760826 00:00")
-        return pd.Timestamp("19500101")
+    def _dyn_extent(self) -> tuple:
+        """
+        First and last timestamp over the meteorological and the runoff files of
+        all stations of this ``data_type``, read from the first and last lines of
+        each file. The union is taken because the two cover different periods
+        (e.g. daily runoff from 1932-09-01, daily forcings from 1949-12-31), so
+        that no value is cut off.
+        """
+        if self._extent_cache is None:
+            stamps = []
+            for stn in self.stations():
+                stamps += _first_last_stamps(self.met_fname(stn), self.timestep)
+                q_fpath = os.path.join(self.q_path, f"ID_{stn}.csv")
+                if not os.path.exists(q_fpath):
+                    continue
+                if self.timestep == 'H':
+                    stamps += _ice_hourly_q_first_last(q_fpath)
+                else:
+                    stamps += _first_last_stamps(q_fpath, 'D')
+            self._extent_cache = (min(stamps), max(stamps))
+        return self._extent_cache
 
     @property
-    def end(self):
-        if self.timestep == "H":
-            return pd.Timestamp("20230930 23:00")
-        return pd.Timestamp("20211231")
+    def start(self) -> pd.Timestamp:
+        """first timestamp of the meteorological or runoff time series of any station"""
+        return self._dyn_extent()[0]
+
+    @property
+    def end(self) -> pd.Timestamp:
+        """last timestamp of the meteorological or runoff time series of any station"""
+        return self._dyn_extent()[1]
 
     @property
     def gauges_path(self):
@@ -1866,7 +1963,7 @@ class LamaHIce(LamaHCE):
         return path
 
     def catchment_attributes(self) -> pd.DataFrame:
-        """returns catchment attributes as DataFrame with 90 columns
+        """returns catchment attributes as DataFrame (110 columns for ``total_upstrm``)
         """
 
         fpath = os.path.join(self._catch_attr_path(), "Catchment_attributes.csv")
@@ -1905,8 +2002,8 @@ class LamaHIce(LamaHCE):
         Returns
         -------
         pd.DataFrame
-            a dataframe of shape (111, 104) where 104 are the static
-            catchment/basin attributes
+            a dataframe of shape (111, 124) for the daily ``total_upstrm`` data,
+            whose 124 columns are the static catchment/basin attributes
         """
         cat = self.catchment_attributes()
 
@@ -1939,7 +2036,7 @@ class LamaHIce(LamaHCE):
 
     def q_mm(
             self,
-            stations: Union[str, List[str]] = None
+            stations: Union[str, List[str]] = "all"
     ) -> pd.DataFrame:
         """
         returns streamflow in the units of milimeter per timestep (e.g. mm/day or mm/hour). This is obtained
@@ -1950,8 +2047,8 @@ class LamaHIce(LamaHCE):
         parameters
         ----------
         stations : str/list
-            name/names of stations. Default is None, which will return
-            area of all stations
+            name/names of stations. Default is ``all``, which will return
+            streamflow of all stations
 
         Returns
         --------
@@ -1975,7 +2072,7 @@ class LamaHIce(LamaHCE):
 
     def fetch_q(
             self,
-            stations: Union[str, List[str]] = None,
+            stations: Union[str, List[str]] = "all",
             qc_flag: int = None
     ):
         """
@@ -1984,7 +2081,8 @@ class LamaHIce(LamaHCE):
         parameters
         -----------
         stations : str/List[str]
-            name or names of stations for which streamflow is to be fetched
+            name or names of stations for which streamflow is to be fetched.
+            Default is ``all``.
         qc_flag : int
             following flags are available
             40 Good
@@ -1998,7 +2096,7 @@ class LamaHIce(LamaHCE):
         --------
         pd.DataFrame
             a :obj:`pandas.DataFrame` whose index is the time and columns are names of stations
-            For daily timestep, the dataframe has shape of 32630 rows and 111 columns
+            For daily timestep, the dataframe has shape of 33633 rows and 111 columns
 
         """
         stations = validate_attributes(stations, self.stations(), 'stations')
@@ -2052,27 +2150,52 @@ class LamaHIce(LamaHCE):
 
         # todo : consider quality code!
 
-        # vectorized date parsing from the YYYY/MM/DD integer columns. This is
-        # ~200x faster than a per-row datetime.strptime via df.apply(axis=1)
-        # (which dominated the hourly read time) and yields identical timestamps.
-        index = pd.to_datetime(
-            df[['YYYY', 'MM', 'DD']].rename(
-                columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
-
         if self.timestep == "H":
-            # the hourly q file has no explicit hour column; rows are stored
-            # sequentially within each (YYYY, MM, DD) group, so derive the
-            # hour offset from cumcount within the day.
-            hour = df.groupby(['YYYY', 'MM', 'DD']).cumcount()
-            df.index = index + pd.to_timedelta(hour, unit='h')
+            # the hourly q file has no hour column
+            df.index = _ice_hourly_q_index(df, fpath)
         else:
-            df.index = index
+            # vectorized date parsing from the YYYY/MM/DD integer columns. This is
+            # ~200x faster than a per-row datetime.strptime via df.apply(axis=1)
+            # and yields identical timestamps.
+            df.index = pd.to_datetime(
+                df[['YYYY', 'MM', 'DD']].rename(
+                    columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
         s = df['qobs']
         return s
 
+    def fetch_stn_q_raw(self, station: str) -> pd.DataFrame:
+        """
+        The runoff file of one gauge exactly as published: ``qobs`` (m3/s) and
+        its ``qc_flag`` (40 good, 80 fair, 100 estimated, 120 suspect,
+        200 unchecked, 250 missing), indexed by time.
+
+        Examples
+        --------
+        >>> from aqua_fetch import LamaHIce
+        >>> dataset = LamaHIce(timestep='H')
+        >>> dataset.fetch_stn_q_raw('34').head(2)
+                             qobs  qc_flag
+        time
+        1976-08-26 17:00:00  4.27     40.0
+        1976-08-26 18:00:00  4.30     40.0
+        """
+        fpath = self.q_fname(station)
+        if not os.path.exists(fpath):
+            # e.g. 35 of the 111 gauges have no hourly runoff
+            raise FileNotFoundError(f"gauge {station} has no {self.ts_dir_name} "
+                                    f"runoff file ({fpath})")
+        # no dtype: reproduce the file with pandas' own type inference
+        df = pd.read_csv(fpath, sep=';')
+        if self.timestep == 'H':
+            df.index = _ice_hourly_q_index(df, fpath)
+        else:
+            df.index = ymd_index(df['YYYY'], df['MM'], df['DD'])
+        df.index.name = 'time'
+        return df.drop(columns=['YYYY', 'MM', 'DD'])
+
     def fetch_clim_features(
             self,
-            stations: Union[str, List[str]] = None
+            stations: Union[str, List[str]] = "all"
     ):
         """Returns climate time series data for one or more stations
 
@@ -2102,7 +2225,8 @@ class LamaHIce(LamaHCE):
         Returns
         -------
         pd.DataFrame
-            a :obj:`pandas.DataFrame` with 23 columns
+            a :obj:`pandas.DataFrame` with one column per meteorological variable
+            (55 for the daily ``total_upstrm`` data)
         """
         fpath = os.path.join(self._clim_ts_path(), f"ID_{stn}.csv")
 
@@ -2122,10 +2246,11 @@ class LamaHIce(LamaHCE):
             "lai_high_veg": np.float32,
             "lai_low_veg": np.float32,
             "swe": np.float32,
-            "surf_net_solar_rad_max": np.int32,
-            "surf_net_solar_rad_mean": np.int32,
-            "surf_net_therm_rad_max": np.int32,
-            "surf_net_therm_rad_mean": np.int32,
+            # integers in B/C, but 2 decimals and blanks in A since release 1.5
+            "surf_net_solar_rad_max": np.float32,
+            "surf_net_solar_rad_mean": np.float32,
+            "surf_net_therm_rad_max": np.float32,
+            "surf_net_therm_rad_mean": np.float32,
             "surf_press": np.float32,
             "total_et": np.float32,
             "prec": np.float32,
@@ -2305,12 +2430,11 @@ class LamaHIce(LamaHCE):
         df.index.name = "time"
 
         df = df.sort_index()
-        # Ensure df always extends to self.end
-        if df.index[-1] < self.end or df.index[0] > self.start:
-            timestep = {'H': 'h', 'D': 'd'}[self.timestep]
-            # Create complete date range from start of existing data to self.end
-            complete_range = pd.date_range(start=self.start, end=self.end, freq=timestep)
-            # Reindex to fill missing dates with NaN
+        # every station on the same regular start..end grid; a step missing from
+        # both files (e.g. 1981-01-01 00:00 of the hourly forcings) becomes NaN
+        timestep = {'H': 'h', 'D': 'd'}[self.timestep]
+        complete_range = pd.date_range(start=self.start, end=self.end, freq=timestep, name='time')
+        if not df.index.equals(complete_range):
             df = df.reindex(complete_range)
         return df
 

@@ -22,6 +22,7 @@ downloaded under ``GSCAD_PATH``.
 
 import os
 import site
+import zlib
 import shutil
 import logging
 import tempfile
@@ -45,7 +46,7 @@ logger = logging.getLogger(__name__)
 from aqua_fetch import LamaHCE, LamaHIce
 from aqua_fetch.rr import _lamah
 from aqua_fetch.rr._lamah import _ymd_index
-from aqua_fetch.rr.utils import _make_boundary_2d
+from aqua_fetch.rr.utils import _make_boundary_2d, CACHE_VERSION
 from aqua_fetch._backend import fiona, plt, netCDF4, xarray as xr
 
 from utils import (test_dataset as run_shared_tests, 
@@ -1166,14 +1167,53 @@ def test_lamahce_free_disk_space():
 
 
 # ---------------------------------------------------------------------------
-# LamaH-Ice (Iceland)
+# LamaH-Ice (Iceland), release 1.5
 # ---------------------------------------------------------------------------
+LAMAHICE_PATHS = {'D': os.path.join(GSCAD_PATH, 'LamaHIce_daily'),
+                  'H': os.path.join(GSCAD_PATH, 'LamaHIce_hourly')}
+
 # number of stations is the same for both timesteps; the static-attribute count
-# differs because the daily ``total_upstrm`` product ships extra water-balance
-# attributes that the hourly / intermediate products do not.
+# differs because the class adds the two water-balance tables of ``total_upstrm``
+# at daily timestep only, although the hourly archive ships them too.
 LAMAHICE_NUM_STATIONS = [111, 107, 86]
-LAMAHICE_DAILY_NUM_STATIC = [154, 115, 115]
+LAMAHICE_DAILY_NUM_STATIC = [152, 115, 115]
 LAMAHICE_HOURLY_NUM_STATIC = [138, 115, 115]
+# only the daily A delineation carries the CARRA forcings and the FAO
+# Penman-Monteith PET added in release 1.5
+LAMAHICE_DAILY_NUM_DYN = [56, 36, 36]
+LAMAHICE_HOURLY_NUM_DYN = 28
+# 1932-09-01 .. 2024-09-30 (runoff) and 1949-12-31 23:00 .. 2023-09-30 00:00
+# (hourly forcings, then runoff)
+LAMAHICE_DAILY_LEN = 33633
+LAMAHICE_HOURLY_LEN = 646442
+
+_ICE_CACHE = {}
+
+
+def lamahice(timestep='D', data_type='total_upstrm'):
+    key = (timestep, data_type)
+    if key not in _ICE_CACHE:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            _ICE_CACHE[key] = LamaHIce(path=LAMAHICE_PATHS[timestep], timestep=timestep,
+                                       data_type=data_type, verbosity=0)
+    return _ICE_CACHE[key]
+
+
+def ice_raw_root(timestep):
+    """folder holding A_basins_total_upstrm, D_gauges, ... of a LamaH-Ice archive"""
+    top = {'D': 'lamah_ice', 'H': 'lamah_ice_hourly'}[timestep]
+    return os.path.join(LAMAHICE_PATHS[timestep], 'LamaHIce', top, top)
+
+
+def ice_raw_met(timestep, data_type, station):
+    return os.path.join(ice_raw_root(timestep), BASIN_DIR[data_type], '2_timeseries',
+                        TS_DIR[timestep], 'meteorological_data', f'ID_{station}.csv')
+
+
+def ice_raw_q(timestep, station):
+    return os.path.join(ice_raw_root(timestep), 'D_gauges', '2_timeseries',
+                        TS_DIR[timestep], f'ID_{station}.csv')
 
 
 def test_lamahice_hourly():
@@ -1181,14 +1221,14 @@ def test_lamahice_hourly():
     for idx, data_type in enumerate(DATA_TYPES):
         logger.info(f"testing LamaHIce {data_type} at hourly timestep")
 
-        dataset = LamaHIce(path=os.path.join(GSCAD_PATH, 'LamaHIce_hourly'),
+        dataset = LamaHIce(path=LAMAHICE_PATHS['H'],
                            timestep='H', data_type=data_type, verbosity=VERBOSITY)
 
         run_shared_tests(dataset,
                      num_stations=LAMAHICE_NUM_STATIONS[idx],
-                     dyn_data_len=412848,
+                     dyn_data_len=LAMAHICE_HOURLY_LEN,
                      num_static_attrs=LAMAHICE_HOURLY_NUM_STATIC[idx],
-                     num_dyn_attrs=28,
+                     num_dyn_attrs=LAMAHICE_HOURLY_NUM_DYN,
                      yearly_steps=8761,
                      test_latlong_ranges=False)
     return
@@ -1199,16 +1239,439 @@ def test_lamahice_daily():
     for idx, data_type in enumerate(DATA_TYPES):
         logger.info(f"testing LamaHIce {data_type} at daily timestep")
 
-        dataset = LamaHIce(path=os.path.join(GSCAD_PATH, 'LamaHIce_daily'),
+        dataset = LamaHIce(path=LAMAHICE_PATHS['D'],
                            timestep='D', data_type=data_type, verbosity=VERBOSITY)
 
         run_shared_tests(dataset,
                      num_stations=LAMAHICE_NUM_STATIONS[idx],
-                     dyn_data_len=26298,
+                     dyn_data_len=LAMAHICE_DAILY_LEN,
                      num_static_attrs=LAMAHICE_DAILY_NUM_STATIC[idx],
-                     num_dyn_attrs=36,
+                     num_dyn_attrs=LAMAHICE_DAILY_NUM_DYN[idx],
                      yearly_steps=366,
                      test_latlong_ranges=False)
+    return
+
+
+def test_lamahice_download_and_release_check():
+    """
+    Offline, with ``download``/``unzip`` stubbed:
+
+        - nothing on disk -> the archive is downloaded and extracted
+        - data of an older release on disk raises instead of being read
+        - ``overwrite=True`` replaces it, after deleting the old archive and folder
+    """
+    logger.info("testing LamaHIce download/release check")
+
+    # a stand-in for the release 1.5 gauge table; the shell below is told its
+    # checksum. The real checksum is exercised by every test on the real data.
+    v15_gauges = b'id;V_no;name\n1;V503;Laugafljot\n'
+    calls = []
+
+    def fake_download(url, outdir, fname, **kwargs):
+        calls.append(fname)
+        with open(os.path.join(outdir, fname), 'w') as fp:
+            fp.write('archive')
+
+    def fake_unzip(path, **kwargs):
+        # what the real archive leaves behind, with the release 1.5 gauge table
+        for top in ('lamah_ice', 'lamah_ice_hourly'):
+            if not os.path.exists(os.path.join(path, f'{top}.zip')):
+                continue
+            root = os.path.join(path, top, top)
+            for folder in BASIN_DIR.values():
+                os.makedirs(os.path.join(root, folder), exist_ok=True)
+            os.makedirs(os.path.join(root, 'D_gauges', '1_attributes'), exist_ok=True)
+            with open(os.path.join(root, 'D_gauges', '1_attributes',
+                                   'Gauge_attributes.csv'), 'wb') as fp:
+                fp.write(v15_gauges)
+
+    def make_dataset(tmpdir, timestep, overwrite=False):
+        """a LamaHIce shell that only knows what _download_and_extract needs"""
+        ds = object.__new__(LamaHIce)
+        ds._path = tmpdir
+        ds.name = 'LamaHIce'
+        ds.data_type = 'total_upstrm'
+        ds.timestep = timestep
+        ds.verbosity = 0
+        ds.overwrite = overwrite
+        ds.remove_zip = False
+        ds._GAUGE_ATTRS_CRC32 = zlib.crc32(v15_gauges)
+        fname = {'D': 'lamah_ice.zip', 'H': 'lamah_ice_hourly.zip'}[timestep]
+        ds.url = {fname: LamaHIce.url[fname]}
+        return ds
+
+    def make_old_release(gauges_csv):
+        # the previous release differs in the observation periods of 50 gauges
+        with open(gauges_csv, 'a') as fp:
+            fp.write('\n')
+
+    orig_download, orig_unzip = _lamah.download, _lamah.unzip
+    _lamah.download, _lamah.unzip = fake_download, fake_unzip
+    tmpdir = tempfile.mkdtemp(prefix='lamahice_dl_')
+    try:
+        # 1. nothing on disk -> download + extract, and the release check passes
+        make_dataset(tmpdir, 'D')._download_and_extract()
+        assert calls == ['lamah_ice.zip'], calls
+
+        # 2. an older release on disk -> error, and nothing is downloaded
+        gauges_csv = os.path.join(tmpdir, 'lamah_ice', 'lamah_ice', 'D_gauges',
+                                  '1_attributes', 'Gauge_attributes.csv')
+        make_old_release(gauges_csv)
+        marker = os.path.join(tmpdir, 'lamah_ice', 'lamah_ice', 'A_basins_total_upstrm', 'old.txt')
+        with open(marker, 'w') as fp:
+            fp.write('old')
+        try:
+            make_dataset(tmpdir, 'D')._download_and_extract()
+        except ValueError as e:
+            assert 'overwrite=True' in str(e) and '0.8 GB' in str(e), str(e)
+        else:
+            raise AssertionError("data of an older release was accepted")
+        assert calls == ['lamah_ice.zip'], calls
+
+        # 3. overwrite=True -> old archive and folder removed, release 1.5 fetched
+        make_dataset(tmpdir, 'D', overwrite=True)._download_and_extract()
+        assert calls == ['lamah_ice.zip'] * 2, calls
+        assert not os.path.exists(marker), "the old extracted data was not removed"
+
+        # 4. the hourly archive is checked in the same way
+        make_dataset(tmpdir, 'H')._download_and_extract()
+        make_old_release(os.path.join(tmpdir, 'lamah_ice_hourly', 'lamah_ice_hourly',
+                                      'D_gauges', '1_attributes', 'Gauge_attributes.csv'))
+        try:
+            make_dataset(tmpdir, 'H')._download_and_extract()
+        except ValueError as e:
+            assert '9.1 GB' in str(e), str(e)
+        else:
+            raise AssertionError("hourly data of an older release was accepted")
+    finally:
+        _lamah.download, _lamah.unzip = orig_download, orig_unzip
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return
+
+
+def test_lamahice_netcdf_cache_is_per_release():
+    """a netCDF cache built from an older release must not be read"""
+    logger.info("testing LamaHIce netcdf cache folder")
+
+    tmpdir = tempfile.mkdtemp(prefix='lamahice_nc_')
+    try:
+        ds = object.__new__(LamaHIce)
+        ds._path = tmpdir
+        ds.data_type = 'total_upstrm'
+        ds.timestep = 'D'
+        ds._dynamic_features = ['pcp_mm', 'q_cms_obs']
+
+        # the folder an older aqua_fetch wrote the caches of the old release to
+        old = os.path.join(tmpdir, LamaHCE._nc_dir.fget(ds))
+        os.makedirs(old)
+        for fname in ds.dynamic_fnames:
+            open(os.path.join(old, fname), 'w').close()
+        assert not ds.all_ncs_exist, "a cache of the previous release would be read"
+
+        assert ds._nc_dir != LamaHCE._nc_dir.fget(ds)
+        # the cache version must stay the suffix of the folder name, as for
+        # every other cache of the library
+        assert ds._nc_dir.endswith(f'_v{CACHE_VERSION}'), ds._nc_dir
+        new = os.path.join(tmpdir, ds._nc_dir)
+        os.makedirs(new)
+        for fname in ds.dynamic_fnames:
+            open(os.path.join(new, fname), 'w').close()
+        assert ds.all_ncs_exist
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return
+
+
+def test_lamahice_no_redownload():
+    """
+    instantiating the class when the data is on disk must neither download nor
+    extract anything, and each timestep must only declare its own archive (the
+    Caravan extension is not downloaded)
+    """
+    logger.info("testing that LamaHIce does not re-download")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("download/extraction was triggered although the "
+                             "data is already on disk")
+
+    orig_download, orig_unzip = _lamah.download, _lamah.unzip
+    _lamah.download, _lamah.unzip = boom, boom
+    try:
+        for timestep, archive in (('D', 'lamah_ice.zip'), ('H', 'lamah_ice_hourly.zip')):
+            for data_type in DATA_TYPES:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    ds = LamaHIce(path=LAMAHICE_PATHS[timestep], timestep=timestep,
+                                  data_type=data_type, verbosity=0)
+                assert len(ds.stations()) > 0
+                assert list(ds.url) == [archive], ds.url
+    finally:
+        _lamah.download, _lamah.unzip = orig_download, orig_unzip
+    return
+
+
+def _raw_daily_stamps(fpath):
+    df = pd.read_csv(fpath, sep=';', usecols=['YYYY', 'MM', 'DD'])
+    return pd.to_datetime(df.rename(columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
+
+
+def _raw_hourly_q_stamps(fpath):
+    """
+    the file has no hour column; its rows are consecutive hours that end the
+    first day at 23:00 (see test_lamahice_hourly_q_timestamps for the evidence)
+    """
+    df = pd.read_csv(fpath, sep=';', usecols=['YYYY', 'MM', 'DD'])
+    days = pd.to_datetime(df.rename(columns={'YYYY': 'year', 'MM': 'month', 'DD': 'day'}))
+    n_first = int((days == days.iloc[0]).sum())
+    stamps = pd.Series(pd.date_range(days.iloc[0] + pd.Timedelta(hours=24 - n_first),
+                                     periods=len(df), freq='h'))
+    assert (stamps.dt.normalize() == days).all(), fpath
+    return stamps
+
+
+def test_lamahice_temporal_extent_is_derived():
+    """
+    ``start``/``end`` must span every meteorological and runoff value of the
+    stations, so that nothing is cut off. They are read from the first and last
+    line of each file, which is only right if the files are in time order;
+    that is checked here too.
+    """
+    logger.info("testing LamaHIce temporal extent")
+
+    for data_type in DATA_TYPES:
+        ds = lamahice('D', data_type)
+        stamps = []
+        for stn in ds.stations():
+            for fpath in (ice_raw_met('D', data_type, stn), ice_raw_q('D', stn)):
+                t = _raw_daily_stamps(fpath)
+                assert t.is_monotonic_increasing and not t.duplicated().any(), fpath
+                stamps += [t.iloc[0], t.iloc[-1]]
+        assert (ds.start, ds.end) == (min(stamps), max(stamps)), (data_type, ds.start, ds.end)
+        assert len(pd.date_range(ds.start, ds.end, freq='D')) == LAMAHICE_DAILY_LEN
+
+    for data_type in DATA_TYPES:
+        ds = lamahice('H', data_type)
+        stamps = []
+        for stn in ds.stations():
+            q_fpath = ice_raw_q('H', stn)
+            if os.path.exists(q_fpath):
+                t = _raw_hourly_q_stamps(q_fpath)
+                assert t.is_monotonic_increasing and not t.duplicated().any(), q_fpath
+                stamps += [t.iloc[0], t.iloc[-1]]
+            # a full parse of all hourly forcings is ~10 GB; their first and
+            # last rows are read here and the order is checked for one file
+            with open(ice_raw_met('H', data_type, stn), 'rb') as fp:
+                fp.readline()
+                first = fp.readline()
+                fp.seek(-4096, os.SEEK_END)
+                last = fp.read().splitlines()[-1]
+            for line in (first, last):
+                y, m, d, hh, mm = map(int, line.decode().split(';')[:5])
+                stamps.append(pd.Timestamp(year=y, month=m, day=d, hour=hh, minute=mm))
+        assert (ds.start, ds.end) == (min(stamps), max(stamps)), (data_type, ds.start, ds.end)
+        assert len(pd.date_range(ds.start, ds.end, freq='h')) == LAMAHICE_HOURLY_LEN
+
+    met = pd.read_csv(ice_raw_met('H', 'total_upstrm', '1'), sep=';',
+                      usecols=['YYYY', 'MM', 'DD', 'hh', 'mm'])
+    assert raw_index(met, 'H').is_monotonic_increasing
+    return
+
+
+def test_lamahice_dynamic_matches_raw_files():
+    """
+    every value returned by ``fetch`` must be the value in the source csv, at
+    the timestamp of the source csv, and no runoff value may be lost
+    """
+    logger.info("testing LamaHIce values against the raw files")
+
+    # daily: every station of every delineation
+    for data_type in DATA_TYPES:
+        ds = lamahice('D', data_type)
+        rename = ds.dyn_map['D']
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            _, dyn = ds.fetch('all', as_dataframe=True)
+
+        grid = pd.date_range(ds.start, ds.end, freq='D', name='time')
+        for stn, df in dyn.items():
+            assert df.index.equals(grid), stn
+
+            met = pd.read_csv(ice_raw_met('D', data_type, stn), sep=';')
+            met.index = _raw_daily_stamps(ice_raw_met('D', data_type, stn))
+            for col in met.columns.drop(['YYYY', 'MM', 'DD', 'DOY']):
+                got = df.loc[met.index, rename.get(col, col)].to_numpy('float64')
+                # float32 columns carry ~7 significant digits
+                ref = met[col].to_numpy('float64')
+                assert np.allclose(got, ref, rtol=1e-6, atol=0, equal_nan=True), (data_type, stn, col)
+
+            q = pd.read_csv(ice_raw_q('D', stn), sep=';')
+            q.index = _raw_daily_stamps(ice_raw_q('D', stn))
+            got = df.loc[q.index, 'q_cms_obs'].to_numpy('float64')
+            assert np.allclose(got, q['qobs'].to_numpy('float64'), rtol=1e-6, atol=0,
+                               equal_nan=True), (data_type, stn)
+            assert df['q_cms_obs'].notna().sum() == q['qobs'].notna().sum(), (data_type, stn)
+
+    # hourly: gauge 34, whose runoff starts with a short day, and a station
+    # without hourly runoff
+    ds = lamahice('H')
+    rename = ds.dyn_map['H']
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        _, dyn = ds.fetch(['34', '10'], as_dataframe=True)
+    for stn, df in dyn.items():
+        assert df.index.equals(pd.date_range(ds.start, ds.end, freq='h', name='time')), stn
+
+        met = pd.read_csv(ice_raw_met('H', 'total_upstrm', stn), sep=';')
+        met.index = raw_index(met, 'H')
+        # the hourly forcings repeat ~80 timestamps; the first row is served
+        met = met.loc[~met.index.duplicated(keep='first')]
+        for col in met.columns.drop(['YYYY', 'MM', 'DD', 'hh', 'mm', 'DOY', 'HOD']):
+            got = df.loc[met.index, rename.get(col, col)].to_numpy('float64')
+            ref = met[col].to_numpy('float64')
+            assert np.allclose(got, ref, rtol=1e-6, atol=0, equal_nan=True), (stn, col)
+
+        q_fpath = ice_raw_q('H', stn)
+        if os.path.exists(q_fpath):
+            q = pd.read_csv(q_fpath, sep=';')
+            q.index = _raw_hourly_q_stamps(q_fpath)
+            got = df.loc[q.index, 'q_cms_obs'].to_numpy('float64')
+            assert np.allclose(got, q['qobs'].to_numpy('float64'), rtol=1e-6, atol=0,
+                               equal_nan=True), stn
+            assert df['q_cms_obs'].notna().sum() == q['qobs'].notna().sum(), stn
+        else:
+            assert df['q_cms_obs'].isna().all(), stn
+    assert os.path.exists(ice_raw_q('H', '34')) and not os.path.exists(ice_raw_q('H', '10'))
+
+    if xr is not None:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            _, xds = lamahice('D').fetch(['92', '5'])
+        assert 'time' in xds.dims, xds.dims
+    return
+
+
+def test_lamahice_hourly_q_timestamps():
+    """
+    The hourly runoff files have no hour column. Their rows are a gap-free
+    hourly series, so a short first day holds the LAST hours of that day.
+    Stamping the rows of each day from 00:00 instead put the first day of
+    gauges 14, 28, 34 and 70 up to 17 hours too early.
+    """
+    logger.info("testing LamaHIce hourly runoff timestamps")
+
+    ds = lamahice('H')
+    q_dir = os.path.dirname(ice_raw_q('H', '1'))
+    gauges = pd.read_csv(os.path.join(ice_raw_root('H'), 'D_gauges', '1_attributes',
+                                      'Gauge_attributes.csv'), sep=';', index_col='id')
+
+    # the evidence, checked on every file so that a release breaking it fails here
+    short_first = {}
+    for fname in os.listdir(q_dir):
+        stn = fname[3:-4]
+        raw = pd.read_csv(os.path.join(q_dir, fname), sep=';')
+        sizes = raw.groupby(['YYYY', 'MM', 'DD'], sort=False).size().to_numpy()
+        # only the first and the last day may be short ...
+        assert (sizes[1:-1] == 24).all(), fname
+        # ... gaps are rows with an empty qobs and both ends hold a value ...
+        assert raw['qobs'].iloc[[0, -1]].notna().all(), fname
+        # ... and the authors' gaps_hourly is the share of exactly these rows
+        assert np.isclose(raw['qobs'].isna().mean() * 1000,
+                          gauges.loc[int(stn), 'gaps_hourly'], atol=1e-6), fname
+        if sizes[0] < 24:
+            short_first[stn] = int(sizes[0])
+    assert short_first == {'14': 7, '28': 13, '34': 7, '70': 22}, short_first
+
+    # the hourly archive carries the daily runoff too
+    daily_dir = os.path.join(ice_raw_root('H'), 'D_gauges', '2_timeseries', 'daily')
+    for stn, n_first in short_first.items():
+        raw = pd.read_csv(os.path.join(q_dir, f'ID_{stn}.csv'), sep=';')
+        day0 = pd.Timestamp(year=raw['YYYY'][0], month=raw['MM'][0], day=raw['DD'][0])
+
+        q = ds.fetch_stn_q(stn)
+        assert q.index[0] == day0 + pd.Timedelta(hours=24 - n_first), (stn, q.index[0])
+        assert q.index[n_first - 1] == day0 + pd.Timedelta(hours=23), stn
+        assert q.index.equals(pd.date_range(q.index[0], periods=len(raw), freq='h')), stn
+        assert np.allclose(q.to_numpy('float64'), raw['qobs'].to_numpy('float64'),
+                           rtol=1e-6, atol=0, equal_nan=True), stn
+
+        # the rows are labelled with the right day: the daily runoff is the
+        # mean of the 24 hourly values of the same day
+        daily = pd.read_csv(os.path.join(daily_dir, f'ID_{stn}.csv'), sep=';')
+        daily.index = _raw_daily_stamps(os.path.join(daily_dir, f'ID_{stn}.csv'))
+        per_day = q.groupby(q.index.normalize()).agg(['mean', 'size'])
+        both = per_day[per_day['size'] == 24].join(daily['qobs']).dropna()
+        close = np.isclose(both['mean'], both['qobs'], rtol=0.01)
+        assert close.mean() > 0.98, (stn, close.mean())
+
+        raw_q = ds.fetch_stn_q_raw(stn)
+        assert raw_q.index.equals(q.index) and list(raw_q.columns) == ['qobs', 'qc_flag'], stn
+    return
+
+
+def test_lamahice_hourly_q_not_gap_free_raises():
+    """a file whose rows are not consecutive hours must not be stamped silently"""
+    logger.info("testing LamaHIce hourly runoff with a missing row")
+
+    raw = pd.DataFrame({'YYYY': 2000, 'MM': 1, 'DD': [1] * 5 + [2] * 23 + [3] * 24,
+                        'qobs': 1.0, 'qc_flag': 40})
+    assert _lamah._ice_hourly_q_index(raw.loc[5:], 'f.csv')[0] == pd.Timestamp('2000-01-02 01:00')
+    try:
+        _lamah._ice_hourly_q_index(raw, 'f.csv')
+    except ValueError as e:
+        assert 'gap-free' in str(e), str(e)
+    else:
+        raise AssertionError("a short day inside the series was accepted")
+    return
+
+
+def test_lamahice_hourly_q_first_last_matches_index():
+    """
+    ``start``/``end`` read the first and last timestamp of each hourly runoff
+    file from its head and tail only; that must agree with the stamping of the
+    whole file, whatever the shape of its first and last day
+    """
+    logger.info("testing LamaHIce hourly runoff first/last timestamps")
+
+    cases = {
+        'full days': (24, 30, 24),
+        'short first day': (7, 30, 24),
+        'short last day': (24, 30, 1),
+        'both short': (13, 400, 1),           # > 8 kB, the tail is a chunk
+        'two short days': (5, 0, 3),
+        'single short day': (7, None, None),
+    }
+    tmpdir = tempfile.mkdtemp(prefix='lamahice_q_')
+    try:
+        for name, (n_first, n_full, n_last) in cases.items():
+            for newline in ('\n', '\r\n'):
+                days = [pd.Timestamp('2000-01-01')] * n_first
+                if n_full is not None:
+                    for d in range(1, n_full + 1):
+                        days += [pd.Timestamp('2000-01-01') + pd.Timedelta(days=d)] * 24
+                    days += [pd.Timestamp('2000-01-01') + pd.Timedelta(days=n_full + 1)] * n_last
+                raw = pd.DataFrame({'YYYY': [d.year for d in days], 'MM': [d.month for d in days],
+                                    'DD': [d.day for d in days], 'qobs': 1.5, 'qc_flag': 40})
+                fpath = os.path.join(tmpdir, 'ID_1.csv')
+                with open(fpath, 'w', newline='') as fp:
+                    fp.write(raw.to_csv(sep=';', index=False, lineterminator=newline))
+
+                index = _lamah._ice_hourly_q_index(raw, fpath)
+                got = _lamah._ice_hourly_q_first_last(fpath)
+                assert got == (index[0], index[-1]), (name, repr(newline), got, index[[0, -1]])
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    return
+
+
+def test_lamahice_all_stations_by_default():
+    """fetch_q, q_mm and fetch_clim_features default to all stations"""
+    logger.info("testing LamaHIce default stations")
+
+    ds = lamahice('D')
+    n = len(ds.stations())
+    assert ds.fetch_q().shape == (LAMAHICE_DAILY_LEN, n)
+    assert ds.q_mm().shape == (LAMAHICE_DAILY_LEN, n)
+    assert ds.fetch_clim_features().shape[1] == n * len(ds.fetch_stn_meteo('92', nrows=1).columns)
     return
 
 
@@ -1223,6 +1686,10 @@ if __name__ == "__main__":
     test_lamahce_missing_runoff_file()
     test_lamahce_runoff_with_gaps()
     test_lamahce_free_disk_space()
+    test_lamahice_download_and_release_check()
+    test_lamahice_netcdf_cache_is_per_release()
+    test_lamahice_hourly_q_not_gap_free_raises()
+    test_lamahice_hourly_q_first_last_matches_index()
 
     # cheap checks against the real data
     test_lamahce_index_construction()
@@ -1241,6 +1708,11 @@ if __name__ == "__main__":
     test_lamahce_q_mm()
     test_lamahce_q_mm_uses_total_upstream_area()
     test_lamahce_methods()
+    test_lamahice_no_redownload()
+    test_lamahice_temporal_extent_is_derived()
+    test_lamahice_dynamic_matches_raw_files()
+    test_lamahice_hourly_q_timestamps()
+    test_lamahice_all_stations_by_default()
 
     test_lamahce_daily()
     test_lamahce_hourly()
