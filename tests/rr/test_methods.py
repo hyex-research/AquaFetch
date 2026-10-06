@@ -209,7 +209,7 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             test_latlong_ranges = True
-            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 'CAMELS_NZ',
+            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden',
                         ]:
                 # catchment boundaries are not currently transformed to wgs84 for these datasets
                 # todo : must be done in future
@@ -226,8 +226,7 @@ class TestMethods(unittest.TestCase):
     def test_plot_catchment_method(self):
         for ds_name, ds in DATASETS.items():
 
-            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 
-                            'CAMELS_NZ',
+            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden',
                         ]:
                 check_plot_catchment(ds)
         return

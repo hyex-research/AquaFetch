@@ -1,3 +1,10 @@
+## AquaFetch 1.2.1
+
+
+-  LamaHIce now uses 1.5 instead of 2024 
+- For CAMELS_NZ, the catchment boundaries are returned in wgs84
+
+
 ## AquaFetch 1.2.0
 
 Everything below is in the `rr` submodule. The table is the complete per-dataset

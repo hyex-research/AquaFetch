@@ -44,11 +44,14 @@ site.addsitedir(wd_dir)
 from aqua_fetch import CAMELS_NZ
 from aqua_fetch.rr import _camels
 from aqua_fetch.rr.utils import cache_name
-from aqua_fetch._backend import xarray as xr, fiona
+from aqua_fetch._backend import xarray as xr, fiona, plt
+from aqua_fetch._geom_utils import nzmg_to_wgs84, _make_boundary_2d
 
-# the generic rainfall-runoff suite; imported under another name so that pytest
-# does not collect it as a test of this module
+# the generic rainfall-runoff suite; imported under other names so that pytest
+# does not collect them as tests of this module
 from utils import test_dataset as run_generic_suite
+from utils import test_boundary as check_boundary
+from utils import test_plot_catchment as check_plot_catchment
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_camels_nz.log', filemode='w', level=logging.INFO,
@@ -445,19 +448,41 @@ def test_coordinates_and_area():
     return
 
 
-def test_boundary():
+def test_nzmg_to_wgs84():
+    """the conversion gives what pyproj gives (EPSG:27200 -> EPSG:4326 via EPSG:1564)"""
+    logger.info("test_nzmg_to_wgs84")
+    # the grid origin and a point in Auckland, converted with pyproj 3.7.2
+    lat, lon = nzmg_to_wgs84(np.array([2510000.0, 2667000.0]), np.array([6023150.0, 6479000.0]))
+    np.testing.assert_allclose(lat, [-40.99827672164099, -36.87727487148877], rtol=0, atol=1e-9)
+    np.testing.assert_allclose(lon, [173.00014295246737, 174.75678963511166], rtol=0, atol=1e-9)
+    return
+
+
+@TIMESTEPS
+def test_boundary(ds, n_steps):
     """
-    The boundaries are New Zealand Map Grid (EPSG:27200) metres and are served
-    as published; this class does not reproject them.
+    The boundaries are published in New Zealand Map Grid metres and served in
+    WGS84 lon/lat around the gauge's own coordinates; ``to_wgs84=False`` gives
+    the published metres.
     """
-    logger.info("test_boundary")
+    logger.info(f"test_boundary {ds.timestep}")
     if fiona is None:
-        logger.info("fiona is not installed, skipped")
         return
-    boundary = dataset.get_boundary('74321')
-    assert boundary.type in ('Polygon', 'MultiPolygon'), boundary.type
-    xy = np.asarray(boundary.coordinates[0][0], dtype='float64')
-    assert xy.min() > 1000, "the boundaries look like degrees, not NZMG metres"
+    # the checks test_methods.py runs for every dataset
+    check_boundary(ds, test_latlong_ranges=True)
+    if plt is not None:
+        check_plot_catchment(ds)
+
+    coords = ds.stn_coords()
+    for stn in ds.stations():
+        lon_lat = np.concatenate(_make_boundary_2d(ds.get_boundary(stn)))
+        xy = np.concatenate(_make_boundary_2d(ds.get_boundary(stn, to_wgs84=False)))
+        assert len(lon_lat) == len(xy), stn
+        assert xy.min() > 1e6, stn     # metres
+        # the gauge lies in the extent of its own catchment
+        lat, lon = coords.loc[stn]
+        assert lon_lat[:, 0].min() - 0.01 < lon < lon_lat[:, 0].max() + 0.01, stn
+        assert lon_lat[:, 1].min() - 0.01 < lat < lon_lat[:, 1].max() + 0.01, stn
     return
 
 
@@ -503,10 +528,9 @@ def test_fetch_all_stations():
 def test_shared(ds, n_steps):
     """the checks every rainfall-runoff dataset has to pass"""
     logger.info(f"test_shared {ds.timestep}")
-    # test_latlong_ranges=False: the boundaries are NZMG metres, not WGS84
     run_generic_suite(ds, NUM_STATIONS, n_steps, NUM_STATIC, NUM_DYNAMIC,
                       yearly_steps=366 if ds.timestep == 'D' else 8760,
-                      test_latlong_ranges=False,
+                      test_latlong_ranges=True,
                       dyn_fraction=0.1 if ds.timestep == 'D' else 0.02)
     return
 

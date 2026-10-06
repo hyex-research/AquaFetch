@@ -18,7 +18,8 @@ import pandas as pd
 
 from .utils import _RainfallRunoff, apply_dyn_factors, n_workers, cache_name, ymd_index, _path_size
 from .._geom_utils import (epsg25832_to_wgs84, epsg2056_point_to_wgs84, laea_to_wgs84,
-                           osgb36_to_wgs84, tmerc_to_wgs84, world_mercator_to_wgs84)
+                           osgb36_to_wgs84, tmerc_to_wgs84, world_mercator_to_wgs84,
+                           nzmg_to_wgs84)
 from ..utils import get_cpus, download_and_unzip, BROWSER_HEADERS
 from ..utils import validate_attributes, download, unzip
 from ..download_zenodo import download_from_zenodo
@@ -5678,13 +5679,6 @@ class CAMELS_NZ(_RainfallRunoff):
     :attr:`_nodata_stns` needs the owner's permission and is served as NaN.
     The hourly timestamps are New Zealand standard time (UTC+12), not UTC.
 
-    The 37 static features are the five attribute files of the release
-    (catchment information, climate, land cover, geology and human influence),
-    7 of them text. Areas are km2, elevations m and slopes degrees. The gauge
-    coordinates are WGS84 degrees, while the catchment boundaries are a
-    shapefile in New Zealand Map Grid (EPSG:27200, metres) which
-    :meth:`get_boundary` does **not** reproject, so it returns metres.
-
     Release 5 corrects two errors of release 2, which this class read before:
     its daily potential evapotranspiration was a mean hourly rate, 24 times too
     small (36 instead of 870 mm a year), and its hourly meteorology was stamped
@@ -6059,6 +6053,36 @@ class CAMELS_NZ(_RainfallRunoff):
     @property
     def boundary_file(self) -> os.PathLike:
         return os.path.join(self.shapefile_path, "All_Nested_Catchments.shp")
+
+    def transform_boundary(self, boundary):
+        """
+        Transforms a catchment boundary from New Zealand Map Grid (EPSG:27200,
+        the CRS of the shapefile) to WGS84 (EPSG:4326) lon/lat, so that it
+        matches the gauge coordinates.
+
+        Uses the pyproj-free :func:`nzmg_to_wgs84` helper, which reproduces
+        pyproj (EPSG:27200 -> EPSG:4326) on all vertices to below 0.1 mm; that
+        transformation itself is accurate to 4 m. Polygons with interior rings
+        (holes) and MultiPolygons are handled, and the geometry type and ring
+        structure are kept. The conversion is vectorised per ring.
+        """
+        if fiona is None:
+            return boundary
+
+        def _ring_to_wgs84(ring):
+            arr = np.asarray(ring, dtype=float)
+            # fiona stores each vertex as (x=easting, y=northing[, z]); output
+            # is (lon, lat) to keep the (x, y) ordering of the geometry.
+            lat, long = nzmg_to_wgs84(arr[:, 0], arr[:, 1])
+            return list(zip(long.tolist(), lat.tolist()))
+
+        if boundary.type == 'MultiPolygon':
+            coords = [[_ring_to_wgs84(ring) for ring in polygon]
+                      for polygon in boundary.coordinates]
+        else:  # Polygon, possibly with interior rings (holes)
+            coords = [_ring_to_wgs84(ring) for ring in boundary.coordinates]
+
+        return fiona.Geometry(type=boundary.type, coordinates=coords)
 
     @property
     def pet_path(self) -> os.PathLike:
