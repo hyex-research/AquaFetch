@@ -205,6 +205,14 @@ class TestCamels(unittest.TestCase):
         run_shared_tests(dataset, 5767, 394488, 779, 13)
         return
 
+    def test_camelsh_init(self):
+        # with both Hourly2/ and the consolidated .nc caches on disk, __init__
+        # used to read a station before its caches existed (AttributeError)
+        dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0)
+        self.assertEqual(len(dataset.stations()), 5767)
+        self.assertEqual(len(dataset.dynamic_features), 13)
+        return
+
     def test_pl(self):
         dataset = CAMELS_PL(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
         # ~51 sec

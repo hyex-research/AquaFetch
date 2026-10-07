@@ -22,6 +22,7 @@ from aqua_fetch import Italy
 from aqua_fetch import Poland
 from aqua_fetch import Portugal
 from aqua_fetch import Slovenia
+from aqua_fetch.rr._estreams import _imgw_dates
 
 from utils import (
     test_dataset as run_shared_tests,
@@ -190,6 +191,17 @@ pd.concat(list(dynamic.values()), axis=1).count().sum() >= 16319627
 q = ds.fetch_q()
 
 assert q.shape[1]>1287
+
+# IMGW files carry the hydrological year, which starts on 1 November, so
+# November and December belong to the calendar year before it
+assert list(_imgw_dates(pd.Series([1951, 1951, 1951]), pd.Series([11, 12, 1]), pd.Series([1, 31, 1]))) == \
+    [pd.Timestamp('1950-11-01'), pd.Timestamp('1950-12-31'), pd.Timestamp('1951-01-01')]
+# so the flow runs on smoothly from 31 October into 1 November (with Nov/Dec
+# a year late the median day-to-day change there was 43 %, elsewhere ~5 %)
+oct31, nov1 = q[(q.index.month == 10) & (q.index.day == 31)], q[(q.index.month == 11) & (q.index.day == 1)]
+oct31.index = oct31.index + pd.Timedelta(days=1)
+change = ((nov1 - oct31).abs() / oct31.abs().clip(lower=1e-3)).stack()
+assert change.median() < 0.15, change.median()
 
 ds = Portugal(path=raw_data_path, verbosity=3)
 

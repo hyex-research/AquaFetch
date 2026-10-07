@@ -2091,6 +2091,16 @@ class Poland(_EStreams):
         return data
 
 
+def _imgw_dates(hydro_year: pd.Series, month: pd.Series, day: pd.Series) -> pd.DatetimeIndex:
+    """
+    Dates of the rows of an IMGW daily file. Its year column is the hydrological
+    year, which starts on 1 November, so November and December belong to the
+    calendar year before it; the month column is the calendar month.
+    """
+    year = hydro_year - month.isin([11, 12]).astype(int)
+    return pd.DatetimeIndex(pd.to_datetime(pd.DataFrame({'year': year, 'month': month, 'day': day})))
+
+
 def download_single_file(year, month:str):
     url = f"https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_hydrologiczne/dobowe/{year}/codz_{year}_{month}.zip"
 
@@ -2117,12 +2127,8 @@ def download_single_file(year, month:str):
     month = df.loc[:, 'month']
     month = month.ffill()
 
-    yr, month, day = df.loc[:, 'year'].astype(int), month.astype(int), df.loc[:, 'day'].astype(int)    
-    df.index = pd.to_datetime(pd.DataFrame({
-            'year': yr,
-            'month': month,
-            'day': day,
-        }))
+    yr, month, day = df.loc[:, 'year'].astype(int), month.astype(int), df.loc[:, 'day'].astype(int)
+    df.index = _imgw_dates(yr, month, day)
 
     df = df.pivot_table(index=df.index, columns="stn_id", values="q_cms")
     df.columns = [col.replace(' ', '') for col in df.columns]
@@ -2150,10 +2156,9 @@ def download_data_2023(year):
         names=['stn_id', 'year', 'day', 'q_cms', 'month'],
         usecols=[0, 3, 5, 7, 9],
         dtype={'stn_id': str, 'year': 'int', 'day': 'int', 'q_cms': np.float32, 'month': 'int'},
-        parse_dates={'date': ['year', 'month', 'day']},
-        index_col='date',
         na_values=[99999.999]
         )
+    df.index = _imgw_dates(df['year'], df['month'], df['day'])
 
     df.replace("ï»¿149180020", "149180020", inplace=True)
 

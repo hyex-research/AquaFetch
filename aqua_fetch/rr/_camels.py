@@ -10101,6 +10101,13 @@ class CAMELSH(_RainfallRunoff):
             if fname.endswith(('.zip', '.7z')) and not os.path.exists(uzipped_dir_path):
                 unzip(self.path, keep_parent_dir=True, verbosity=self.verbosity)
 
+        # lazily-populated caches for the consolidated-cache fast reader and the
+        # static attribute table (both are heavy to build and read many times).
+        # Set before the discovery below, which reads a station through them.
+        self._axes_cache = None
+        self._static_cache = None
+        self._read_order_cache = None
+
         # Discover stations and dynamic features. Prefer the per-station files
         # when Hourly2/ is present; otherwise fall back to the consolidated nc
         # caches. The fallback uses netCDF4 directly (one open per file) instead
@@ -10123,12 +10130,6 @@ class CAMELSH(_RainfallRunoff):
                      "llcrnrlon": -168.0,  "urcrnrlon": -65.0}
         self.parallels = np.arange(22, 75, 7)
         self.meridians = np.arange(-168, -65, 12)
-
-        # lazily-populated caches for the consolidated-cache fast reader and the
-        # static attribute table (both are heavy to build and read many times).
-        self._axes_cache = None
-        self._static_cache = None
-        self._read_order_cache = None
 
     def stations(self) -> List[str]:
         return self.__stations

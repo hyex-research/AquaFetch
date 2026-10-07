@@ -67,10 +67,43 @@ def check_boundaries_in_wgs84(dataset):
     return
 
 
+# Table A1 of Korver et al. (2022), https://doi.org/10.5194/essd-14-4231-2022
+PAPER_COORDS = {
+    'RefStn': (51.6520, -128.1287), 'SSN626': (51.6408, -128.1219),
+    'WSN626': (51.6262, -128.1018), 'SSN693': (51.6442, -127.9978),
+    'WSN693_703': (51.6106, -127.9871), 'SSN703': (51.6466, -128.0257),
+    'WSN703': (51.6433, -128.0228), 'WSN703_708': (51.6222, -128.0507),
+    'SSN708': (51.6486, -128.0684), 'SSN819': (51.6619, -128.0419),
+    'WSN819_1015': (51.6827, -128.0433), 'SSN844': (51.6608, -128.0025),
+    'WSN844': (51.6614, -127.9975), 'SSN1015': (51.6906, -128.0653),
+    'East Buxton': (51.5899, -127.9752), 'Hecate': (51.6826, -128.0228),
+}
+
+
+def check_coords_match_paper(dataset):
+    coords = dataset.all_stn_coords()
+    for stn, lat_lon in PAPER_COORDS.items():
+        assert tuple(coords.loc[stn]) == lat_lon, (stn, tuple(coords.loc[stn]))
+    return
+
+
+def check_commented_flags_are_kept(dataset):
+    """a flag followed by a comment, e.g. "AV: QC'd by EH", is still AV"""
+    raw = pd.read_csv(os.path.join(dataset.path, '2013-2019_Discharge_Hourly.csv'),
+                      usecols=['Qflag', 'Qrate', 'Qvol', 'Qmm'])
+    raw = raw.dropna(subset=['Qrate', 'Qvol', 'Qmm'], how='all')
+    expected = raw['Qflag'].str.match(r'\s*(AV|EV)\s*(:|$)', na=False).sum()
+    served = sum(len(q) for q in dataset.read_hourly_q().values())
+    assert served == expected, (served, expected)
+    return
+
+
 check_web_mercator_known_points()
 
 ds = NPCTRCatchments(path='/mnt/datawaha/hyex/atr/data', verbosity=4)
 
+check_coords_match_paper(ds)
+check_commented_flags_are_kept(ds)
 check_boundaries_in_wgs84(ds)
 
 run_shared_tests(ds, 7, 53072, 14, 14, st="20140101", en="20141231")

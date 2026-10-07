@@ -33,6 +33,15 @@ from ._map import (
 
 # SSN : Stream Sensor Node and WSN : Weather Sensor Node
 
+
+def _flag_code(flags: pd.Series) -> pd.Series:
+    """
+    The quality code of each record. A flag is a code optionally followed by a
+    comment, e.g. ``"AV: QC'd by EH"``, which is still an accepted value (AV).
+    """
+    return flags.astype(str).str.split(':').str[0].str.strip()
+
+
 class NPCTRCatchments(_RainfallRunoff):
     """
     High-resolution streamflow and weather data (2013–2019) for seven small coastal
@@ -216,7 +225,7 @@ class NPCTRCatchments(_RainfallRunoff):
             "WSN626": {gauge_latitude(): 51.6262, gauge_longitude(): -128.1018},
             "SSN693": {gauge_latitude(): 51.6442, gauge_longitude(): -127.9978},
             "WSN693_703": {gauge_latitude(): 51.6106, gauge_longitude(): -127.9871},
-            "SSN703": {gauge_latitude(): 51.6166, gauge_longitude(): -128.0257},
+            "SSN703": {gauge_latitude(): 51.6466, gauge_longitude(): -128.0257},
             "WSN703": {gauge_latitude(): 51.6433, gauge_longitude(): -128.0228},
             "WSN703_708": {gauge_latitude(): 51.6222, gauge_longitude(): -128.0507},
             "SSN708": {gauge_latitude(): 51.6486, gauge_longitude(): -128.0684},
@@ -225,7 +234,7 @@ class NPCTRCatchments(_RainfallRunoff):
             "SSN844": {gauge_latitude(): 51.6608, gauge_longitude(): -128.0025},
             "WSN844": {gauge_latitude(): 51.6614, gauge_longitude(): -127.9975},
             "SSN1015": {gauge_latitude(): 51.6906, gauge_longitude(): -128.0653},
-            "East Buxton": {gauge_latitude(): 51.5899, gauge_longitude(): -128.9752},
+            "East Buxton": {gauge_latitude(): 51.5899, gauge_longitude(): -127.9752},
             "Hecate": {gauge_latitude(): 51.6826, gauge_longitude():-128.0228}
         }
 
@@ -249,7 +258,7 @@ class NPCTRCatchments(_RainfallRunoff):
         df.rename(columns={'Qrate': observed_streamflow_cms(),
                            'Qmm': observed_streamflow_mm()}, inplace=True)
 
-        df = df.loc[df['Qflag'].isin(self.qflags)]
+        df = df.loc[_flag_code(df['Qflag']).isin(self.qflags)]
         # drop Qlevel and Qflag columns
         df = df.drop(columns=['Qlevel', 'Qflag'])
 
@@ -314,7 +323,7 @@ class NPCTRCatchments(_RainfallRunoff):
             data['844'] = data['WSN844']
         
         for stn, stn_data in data.items():
-            data[stn] = stn_data.loc[stn_data['Qflags'].isin(self.qflags)].loc[:, total_precipitation()]
+            data[stn] = stn_data.loc[_flag_code(stn_data['Qflags']).isin(self.qflags)].loc[:, total_precipitation()]
 
         return data
 
@@ -387,7 +396,7 @@ class NPCTRCatchments(_RainfallRunoff):
 
 
         for stn, stn_data in data.items():
-            data[stn] = stn_data.loc[stn_data[flag_col].isin(self.qflags)].loc[:, mean_air_temp()]
+            data[stn] = stn_data.loc[_flag_code(stn_data[flag_col]).isin(self.qflags)].loc[:, mean_air_temp()]
 
         return data
 
@@ -528,7 +537,7 @@ class NPCTRCatchments(_RainfallRunoff):
         data['1015'] = data['WSN8191015']
 
         for stn, stn_data in data.items():
-            data[stn] = stn_data.loc[stn_data['Qflags'].isin(self.qflags)].loc[:, mean_windspeed()]
+            data[stn] = stn_data.loc[_flag_code(stn_data['Qflags']).isin(self.qflags)].loc[:, mean_windspeed()]
 
         return data
 
