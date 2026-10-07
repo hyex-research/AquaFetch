@@ -1,8 +1,10 @@
 
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 import math
 import numpy as np
+
+from ._backend import fiona
 
 
 def _make_boundary_2d(geometry)-> List[np.ndarray]:
@@ -43,6 +45,35 @@ def _make_boundary_2d(geometry)-> List[np.ndarray]:
             polygon = np.array(geometry.coordinates)
             rings.append(make_polygon_2d(polygon))
     return rings
+
+
+def transform_geometry(geometry, to_lat_lon: Callable):
+    """
+    Converts every vertex of a fiona ``Polygon`` or ``MultiPolygon`` with
+    ``to_lat_lon(x, y) -> (lat, lon)``, called once per ring.
+
+    The result has the same type and rings, holes included, in (lon, lat) order;
+    a ``z`` coordinate is dropped. Other geometry types raise a ``ValueError``.
+    A missing geometry, or any geometry without fiona, is returned as is.
+    """
+    if fiona is None or geometry is None:
+        return geometry
+
+    def _ring(ring):
+        if not len(ring):
+            return []
+        xy = np.asarray(ring, dtype='float64')
+        lat, lon = to_lat_lon(xy[:, 0], xy[:, 1])
+        return list(zip(lon.tolist(), lat.tolist()))
+
+    if geometry.type == 'MultiPolygon':
+        coords = [[_ring(ring) for ring in polygon] for polygon in geometry.coordinates]
+    elif geometry.type == 'Polygon':
+        coords = [_ring(ring) for ring in geometry.coordinates]
+    else:
+        raise ValueError(f"only Polygon and MultiPolygon can be transformed, not {geometry.type}")
+
+    return fiona.Geometry(type=geometry.type, coordinates=coords)
 
 
 def polygon_centroid(polygon:np.ndarray):
@@ -137,47 +168,6 @@ def calc_centroid(geometry)->Tuple[float, float]:
         raise ValueError("Unsupported geometry type for centroid calculation.")
 
 
-def epsg25832_to_wgs84(
-        easting,  # longitude like but in projected coordinate
-        northing,  # latitude like but in projected coordinate
-        zone:int):
-    # Constants
-    a = 6378137.0  # WGS 84 major axis
-    # Eccentricity : how much the ellipsoid deviates from being a perfect sphere
-    e = 0.081819190842622  
-    x = easting - 500000  # Correct for 500,000 meter offset
-    y = northing
-    # Scale factor, coefficient that scales the metric units in the projection to real-world distances
-    k0 = 0.9996  
-    
-    # Calculate the Meridian Arc
-    m = y / k0
-    mu = m / (a * (1 - math.pow(e, 2) / 4 - 3 * math.pow(e, 4) / 64 - 5 * math.pow(e, 6) / 256))
-    
-    # Calculate Footprint Latitude
-    e1 = (1 - math.sqrt(1 - e ** 2)) / (1 + math.sqrt(1 - e ** 2))
-    phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * math.sin(2 * mu)
-    phi1 += (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * math.sin(4 * mu)
-    phi1 += (151 * e1 ** 3 / 96) * math.sin(6 * mu)
-    phi1 += (1097 * e1 ** 4 / 512) * math.sin(8 * mu)
-    
-    # Latitude and Longitude
-    n1 = a / math.sqrt(1 - e ** 2 * math.sin(phi1) ** 2)
-    t1 = math.tan(phi1) ** 2
-    c1 = e ** 2 / (1 - e ** 2) * math.cos(phi1) ** 2
-    r1 = a * (1 - e ** 2) / math.pow(1 - e ** 2 * math.sin(phi1) ** 2, 1.5)
-    d = x / (n1 * k0)
-    
-    lat = phi1 - (n1 * math.tan(phi1) / r1) * (d ** 2 / 2 - (5 + 3 * t1 + 10 * c1 - 4 * c1 ** 2 - 9 * e ** 2) * d ** 4 / 24)
-    lat += (61 + 90 * t1 + 298 * c1 + 45 * t1 ** 2 - 3 * c1 ** 2 - 252 * e ** 2) * d ** 6 / 720
-    lat = lat * 180 / math.pi  # Convert to degrees
-    
-    lon = (d - (1 + 2 * t1 + c1) * d ** 3 / 6 + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * e ** 2 + 24 * t1 ** 2) * d ** 5 / 120) / math.cos(phi1)
-    lon = lon * 180 / math.pi + (zone * 6 - 183)  # Convert to degrees
-    
-    return lat, lon
-
-
 def tmerc_to_wgs84(
         easting,
         northing,
@@ -189,11 +179,11 @@ def tmerc_to_wgs84(
     """
     Inverse Transverse Mercator projection to WGS84 (latitude/longitude).
 
-    This is a generalisation of :func:`epsg25832_to_wgs84` (which is hard-wired
-    to the UTM parameters). It works for any Transverse Mercator projection
-    defined on the WGS84/GRS80 ellipsoid, e.g. ETRS89 / Poland CS92
-    (EPSG:2180) used by :py:class:`aqua_fetch.rr.CAMELS_PL` or ETRS89 / TM35FIN
-    (EPSG:3067) used by :py:class:`aqua_fetch.rr.CAMELS_FI`.
+    It works for any Transverse Mercator projection defined on the WGS84/GRS80
+    ellipsoid, e.g. ETRS89 / Poland CS92 (EPSG:2180) used by
+    :py:class:`aqua_fetch.rr.CAMELS_PL`, ETRS89 / TM35FIN (EPSG:3067) used by
+    :py:class:`aqua_fetch.rr.CAMELS_FI` or ETRS89 / UTM zone 32N (EPSG:25832)
+    used by :py:class:`aqua_fetch.rr.CAMELS_DK`.
 
     The GRS80 and WGS84 ellipsoids differ only in the flattening at the ~1e-11
     level, so a single (WGS84) eccentricity is used for both. Validated against

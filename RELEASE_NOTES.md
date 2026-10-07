@@ -3,6 +3,7 @@
 
 -  LamaHIce now uses 1.5 instead of 2024 
 - For CAMELS_NZ, the catchment boundaries are returned in wgs84
+- For CAMELS_DE (daily), LamaHIce and CAMELS_DK, the catchment boundaries are returned in wgs84; CAMELS_DK no longer fails for its 29 catchments with holes
 
 
 ## AquaFetch 1.2.0

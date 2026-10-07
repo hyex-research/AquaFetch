@@ -51,6 +51,7 @@ from aqua_fetch._backend import fiona, plt, netCDF4, xarray as xr
 
 from utils import (test_dataset as run_shared_tests, 
                    test_stations as check_stations, test_coords as check_coords, test_boundary as check_boundary,
+                   test_boundaries_around_gauges as check_boundaries_around_gauges,
                    test_plot_catchment as check_plot_catchment, test_q_mm as check_q_mm)
 
 # Root under which the (already downloaded) data lives. Each class appends its
@@ -1229,8 +1230,9 @@ def test_lamahice_hourly():
                      dyn_data_len=LAMAHICE_HOURLY_LEN,
                      num_static_attrs=LAMAHICE_HOURLY_NUM_STATIC[idx],
                      num_dyn_attrs=LAMAHICE_HOURLY_NUM_DYN,
-                     yearly_steps=8761,
-                     test_latlong_ranges=False)
+                     yearly_steps=8761)
+        # reprojected from EPSG:3057; the hourly archive has its own shapefiles
+        check_boundaries_around_gauges(dataset)
     return
 
 
@@ -1247,8 +1249,14 @@ def test_lamahice_daily():
                      dyn_data_len=LAMAHICE_DAILY_LEN,
                      num_static_attrs=LAMAHICE_DAILY_NUM_STATIC[idx],
                      num_dyn_attrs=LAMAHICE_DAILY_NUM_DYN[idx],
-                     yearly_steps=366,
-                     test_latlong_ranges=False)
+                     yearly_steps=366)
+        # reprojected from EPSG:3057; each delineation has its own shapefile
+        check_boundaries_around_gauges(dataset)
+
+    # gauges and boundaries share their projection parameters, so check one gauge
+    # against pyproj (EPSG:3057 -> EPSG:4326 of 309737 E, 571777 N)
+    lat, lon = dataset.stn_coords('92').iloc[0]
+    assert abs(lat - 65.58807626044201) < 1e-6 and abs(lon - -23.12703665674929) < 1e-6, (lat, lon)
     return
 
 

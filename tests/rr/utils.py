@@ -4,6 +4,7 @@ from typing import Dict
 
 import random
 
+import numpy as np
 import pandas as pd
 
 from aqua_fetch.rr.utils import _make_boundary_2d
@@ -138,8 +139,27 @@ def test_boundary(dataset, test_latlong_ranges: bool = True):
         lats = ring[:, 1]
         if test_latlong_ranges:
             assert (lons >= -180).all() and (lons <= 180).all(), f"Longitude values out of range for {dataset.name}"
-            assert (lats >= -90).all() and (lats <= 90).all(), f"Latitude values out of range for {dataset.name}"        
+            assert (lats >= -90).all() and (lats <= 90).all(), f"Latitude values out of range for {dataset.name}"
 
+    return
+
+
+def test_boundaries_around_gauges(dataset, share: float = 0.95):
+    """
+    Every boundary can be fetched, and nearly all gauges lie within 0.01 deg of
+    the lon/lat extent of their own catchment. Boundaries left in metres or with
+    lat and lon swapped give a share of 0, boundaries of other gauges below 0.3;
+    a few source gauges do sit kilometres away from their catchment.
+    """
+    logger.info(f"testing all boundaries of {dataset.name} around their gauges")
+    coords = dataset.stn_coords()
+    near = []
+    for stn in dataset.stations():
+        lon_lat = np.concatenate(_make_boundary_2d(dataset.get_boundary(stn)))
+        lat, lon = coords.loc[stn, ['lat', 'long']]
+        near.append(lon_lat[:, 0].min() - 0.01 <= lon <= lon_lat[:, 0].max() + 0.01
+                    and lon_lat[:, 1].min() - 0.01 <= lat <= lon_lat[:, 1].max() + 0.01)
+    assert np.mean(near) >= share, (dataset.name, np.mean(near))
     return
 
 

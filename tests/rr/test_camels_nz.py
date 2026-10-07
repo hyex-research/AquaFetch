@@ -52,6 +52,7 @@ from aqua_fetch._geom_utils import nzmg_to_wgs84, _make_boundary_2d
 from utils import test_dataset as run_generic_suite
 from utils import test_boundary as check_boundary
 from utils import test_plot_catchment as check_plot_catchment
+from utils import test_boundaries_around_gauges as check_boundaries_around_gauges
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_camels_nz.log', filemode='w', level=logging.INFO,
@@ -473,16 +474,13 @@ def test_boundary(ds, n_steps):
     if plt is not None:
         check_plot_catchment(ds)
 
-    coords = ds.stn_coords()
     for stn in ds.stations():
         lon_lat = np.concatenate(_make_boundary_2d(ds.get_boundary(stn)))
         xy = np.concatenate(_make_boundary_2d(ds.get_boundary(stn, to_wgs84=False)))
         assert len(lon_lat) == len(xy), stn
         assert xy.min() > 1e6, stn     # metres
-        # the gauge lies in the extent of its own catchment
-        lat, lon = coords.loc[stn]
-        assert lon_lat[:, 0].min() - 0.01 < lon < lon_lat[:, 0].max() + 0.01, stn
-        assert lon_lat[:, 1].min() - 0.01 < lat < lon_lat[:, 1].max() + 0.01, stn
+    # every gauge lies in the extent of its own catchment
+    check_boundaries_around_gauges(ds, share=1.0)
     return
 
 

@@ -17,9 +17,9 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff, apply_dyn_factors, n_workers, cache_name, ymd_index, _path_size
-from .._geom_utils import (epsg25832_to_wgs84, epsg2056_point_to_wgs84, laea_to_wgs84,
+from .._geom_utils import (epsg2056_point_to_wgs84, laea_to_wgs84,
                            osgb36_to_wgs84, tmerc_to_wgs84, world_mercator_to_wgs84,
-                           nzmg_to_wgs84)
+                           nzmg_to_wgs84, transform_geometry)
 from ..utils import get_cpus, download_and_unzip, BROWSER_HEADERS
 from ..utils import validate_attributes, download, unzip
 from ..download_zenodo import download_from_zenodo
@@ -3320,33 +3320,16 @@ class CAMELS_DE(_RainfallRunoff):
                             "catchments",
                             "CAMELS_DE_catchments.shp")
 
+    # ETRS89-LAEA (EPSG:3035), from the .prj of the daily and the hourly shapefiles;
+    # laea_to_wgs84 reproduces pyproj to better than 1e-8 m on all vertices
+    _ETRS89_LAEA = dict(lon_0=10.0, lat_0=52.0, false_easting=4321000.0, false_northing=3210000.0)
+
     def transform_boundary(self, boundary):
         """
-        The hourly (CAMELS-DE-1h) catchment boundaries are in ETRS89-LAEA
-        (EPSG:3035, meters); transform them to WGS84 (lat/lon) so they align
-        with the gauge coordinates. The shared ``laea_to_wgs84`` helper performs
-        the ellipsoidal (GRS80) inverse projection, verified against pyproj to
-        better than 1e-8 m. The daily boundaries are left untouched (the base
-        no-op) to preserve existing behaviour.
+        Transforms a catchment boundary from ETRS89-LAEA (EPSG:3035, metres) to
+        WGS84 lon/lat, so that it matches the gauge coordinates.
         """
-        if self.timestep != 'H':
-            return super().transform_boundary(boundary)
-
-        # EPSG:3035 parameters (from the shapefile .prj)
-        lon_0, lat_0 = 10.0, 52.0
-        false_easting, false_northing = 4321000.0, 3210000.0
-
-        assert len(boundary.coordinates) == 1  # only one polygon
-        longs, lats = [], []
-        for x, y, *_ in boundary.coordinates[0]:
-            lat_, long_ = laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing)
-            longs.append(long_)
-            lats.append(lat_)
-
-        if fiona is not None:
-            boundary = fiona.Geometry(type='Polygon',
-                                      coordinates=[list(zip(longs, lats))])
-        return boundary
+        return transform_geometry(boundary, lambda x, y: laea_to_wgs84(x, y, **self._ETRS89_LAEA))
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -4250,36 +4233,23 @@ class CAMELS_DK(_RainfallRunoff):
 
         return dyn
 
-    def transform_stn_coords(self, df:pd.DataFrame)->pd.DataFrame:
+    # ETRS89 / UTM zone 32N (EPSG:25832), the CRS of the gauges and the boundaries;
+    # tmerc_to_wgs84 reproduces pyproj to within 6 cm on all boundary vertices
+    _UTM32N = dict(lon_0=9.0, k0=0.9996, false_easting=500000.0, false_northing=0.0)
 
-        ct_m = pd.DataFrame(columns=['lat', 'long'], index=df.index)
-        # Test the function using lat, long in c DataFrame
-        for i in range(0, len(df)):
-            lat, lon = epsg25832_to_wgs84(df.iloc[i, 1], df.iloc[i, 0], 32)
-            ct_m.iloc[i] = [lat, lon]
-        
-        return ct_m
+    def transform_stn_coords(self, df:pd.DataFrame)->pd.DataFrame:
+        # the projected easting is in the 'long' column, the northing in 'lat'
+        lat, lon = tmerc_to_wgs84(df['long'].to_numpy(float), df['lat'].to_numpy(float),
+                                  **self._UTM32N)
+        return pd.DataFrame({'lat': lat, 'long': lon}, index=df.index)
 
     def transform_boundary(self, boundary):
         """
-        Transforms the coordinates to the required format.
+        Transforms a catchment boundary, holes and all, from ETRS89 / UTM zone
+        32N (EPSG:25832) to WGS84 lon/lat, so that it matches the gauge
+        coordinates.
         """
-        # from EPSG:25832 - ETRS89 / UTM zone 32N to WGS84
-
-        assert len(boundary.coordinates) == 1  # only one polygon
-        longs, lats = [], []
-        for i in range(0, len(boundary.coordinates[0])):
-            # assuming that coordinates in fiona.Geometry are in long, lat order
-            lat_, long_ = epsg25832_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1], 32)
-            longs.append(long_)
-            lats.append(lat_)
-        longs = np.array(longs)
-        lats = np.array(lats)
-
-        if fiona is not None:
-            boundary = fiona.Geometry(type='Polygon', 
-                                      coordinates=[list(zip(longs, lats))])
-        return boundary
+        return transform_geometry(boundary, lambda x, y: tmerc_to_wgs84(x, y, **self._UTM32N))
 
 
 def _read_camels_ind_forcings(fpath: str) -> pd.DataFrame:
@@ -6062,27 +6032,9 @@ class CAMELS_NZ(_RainfallRunoff):
 
         Uses the pyproj-free :func:`nzmg_to_wgs84` helper, which reproduces
         pyproj (EPSG:27200 -> EPSG:4326) on all vertices to below 0.1 mm; that
-        transformation itself is accurate to 4 m. Polygons with interior rings
-        (holes) and MultiPolygons are handled, and the geometry type and ring
-        structure are kept. The conversion is vectorised per ring.
+        transformation itself is accurate to 4 m.
         """
-        if fiona is None:
-            return boundary
-
-        def _ring_to_wgs84(ring):
-            arr = np.asarray(ring, dtype=float)
-            # fiona stores each vertex as (x=easting, y=northing[, z]); output
-            # is (lon, lat) to keep the (x, y) ordering of the geometry.
-            lat, long = nzmg_to_wgs84(arr[:, 0], arr[:, 1])
-            return list(zip(long.tolist(), lat.tolist()))
-
-        if boundary.type == 'MultiPolygon':
-            coords = [[_ring_to_wgs84(ring) for ring in polygon]
-                      for polygon in boundary.coordinates]
-        else:  # Polygon, possibly with interior rings (holes)
-            coords = [_ring_to_wgs84(ring) for ring in boundary.coordinates]
-
-        return fiona.Geometry(type=boundary.type, coordinates=coords)
+        return transform_geometry(boundary, nzmg_to_wgs84)
 
     @property
     def pet_path(self) -> os.PathLike:

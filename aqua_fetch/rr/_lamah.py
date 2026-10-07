@@ -18,7 +18,7 @@ from .._backend import fiona
 from ..utils import get_cpus
 from ..utils import validate_attributes, download, unzip
 from .utils import _RainfallRunoff, _handle_dynamic, cache_name, ymd_index
-from .._geom_utils import laea_to_wgs84, lcc_to_wgs84
+from .._geom_utils import laea_to_wgs84, lcc_to_wgs84, transform_geometry
 
 from ._map import (
     observed_streamflow_cms,
@@ -1548,7 +1548,8 @@ class LamaHIce(LamaHCE):
     6e36, or ``inf``, at 16 stations. The hourly forcings repeat the 47 hours
     from 2005-06-05 00:00 with different RAV-II values; only the first row of
     each hour is kept (:meth:`fetch_stn_meteo` returns all rows).
-    :meth:`stn_coords` is in WGS84, boundaries are in EPSG:3057.
+    :meth:`stn_coords` and :meth:`get_boundary` are converted from ISN93 /
+    Lambert 1993 (EPSG:3057) to WGS84.
     The Caravan extension, which is hosted with the dataset, is not downloaded.
 
     Data of an older release on disk raises an error; re-initialize with
@@ -1736,14 +1737,18 @@ class LamaHIce(LamaHCE):
         skip = set(_CE_DATE_COLS) | set(_CE_Q_FLAG_COLS) | {'checked'}
         return [col for col in cols if col not in skip]
 
+    # ISN93 / Lambert 1993 (EPSG:3057), from the .prj files: the CRS of the gauges
+    # and the shapefiles; lcc_to_wgs84 reproduces pyproj to within 1 mm
+    _ISN93 = dict(lon_0=-19.0, lat_0=65.0, lat_1=64.25, lat_2=65.75,
+                  false_easting=500000.0, false_northing=500000.0)
+
     def transform_boundary(self, boundary):
         """
-        The LamaH-Ice shapefiles are in EPSG:3057 (Lambert conformal conic), not
-        in the EPSG:3035 that :meth:`LamaHCE.transform_boundary` assumes, so the
-        geometry is returned untouched (i.e. in the projected coordinates of the
-        source shapefile).
+        Transforms a catchment boundary from ISN93 / Lambert 1993 (EPSG:3057, not
+        the EPSG:3035 of :meth:`LamaHCE.transform_boundary`) to WGS84 lon/lat, so
+        that it matches the gauge coordinates.
         """
-        return boundary
+        return transform_geometry(boundary, lambda x, y: lcc_to_wgs84(x, y, **self._ISN93))
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -1873,23 +1878,8 @@ class LamaHIce(LamaHCE):
         transforms coordinates from EPSG:3057 (Lambert 1993) to EPSG:4326 (WGS84)
 
         """
-
-        # following values are from .prj file 
-        # Parameters for EPSG:3057
-        lon_0 = -19.0        # Central Meridian
-        lat_0 = 65.0         # Latitude of Origin
-        lat_1 = 64.25        # First standard parallel
-        lat_2 = 65.75        # Second standard parallel
-        false_easting = 500000.0
-        false_northing = 500000.0
-
-        lat, lon = lcc_to_wgs84(
-        df['long'].values, df['lat'].values, 
-        lon_0, lat_0, lat_1, lat_2, false_easting, 
-        false_northing)
-
-        coords_m = pd.DataFrame({'lat': lat, 'long': lon}, index=df.index)
-        return coords_m
+        lat, lon = lcc_to_wgs84(df['long'].values, df['lat'].values, **self._ISN93)
+        return pd.DataFrame({'lat': lat, 'long': lon}, index=df.index)
 
     def met_fname(self, station):
         ts_folder = {'D': 'daily', 'H': 'hourly'}[self.timestep]
