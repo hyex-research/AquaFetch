@@ -42,7 +42,7 @@ wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 site.addsitedir(wd_dir)
 
 from aqua_fetch import CAMELS_NZ
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _nz
 from aqua_fetch.rr.utils import cache_name
 from aqua_fetch._backend import xarray as xr, fiona, plt
 from aqua_fetch._geom_utils import nzmg_to_wgs84, _make_boundary_2d
@@ -145,7 +145,7 @@ def _copy_for(path: str, ds: CAMELS_NZ = None) -> CAMELS_NZ:
 
 def _fake_download(calls):
     """
-    A stand-in for :func:`aqua_fetch.rr._camels.download` which records its
+    A stand-in for :func:`aqua_fetch.rr._camels._nz.download` which records its
     calls and writes an archive holding one csv, so that extraction has
     something to do.
     """
@@ -288,7 +288,7 @@ def test_time_axes_are_uniform(ds, n_steps):
         for stn in ds.stations():
             if variable == 'flow' and stn in RESTRICTED:
                 continue
-            first, last = _camels._first_and_last_row(ds._stn_file(stn, variable))
+            first, last = _nz._first_and_last_row(ds._stn_file(stn, variable))
             seen.add((ds._timestamp(first), ds._timestamp(last)))
         assert len(seen) == 1, f"{variable}: files with different time axes: {sorted(seen)}"
         bounds[variable] = seen.pop()
@@ -363,7 +363,7 @@ def test_slash_dates_are_day_first(ds, n_steps):
         if stn in RESTRICTED:
             continue
         fpath = ds._stn_file(stn, 'flow')
-        first, _ = _camels._first_and_last_row(fpath)
+        first, _ = _nz._first_and_last_row(fpath)
         if b'/' in first:
             slashed.append(stn)
 
@@ -553,9 +553,9 @@ def test_no_redownload_or_reextract(ds, n_steps):
     def boom(*args, **kwargs):
         raise AssertionError("must not be called when the data exists")
 
-    originals = (_camels.download, zipfile.ZipFile.extractall,
+    originals = (_nz.download, zipfile.ZipFile.extractall,
                  xr.Dataset.to_netcdf if xr is not None else None)
-    _camels.download = boom
+    _nz.download = boom
     zipfile.ZipFile.extractall = boom
     if xr is not None:
         xr.Dataset.to_netcdf = boom
@@ -564,7 +564,7 @@ def test_no_redownload_or_reextract(ds, n_steps):
         assert len(again.stations()) == NUM_STATIONS
         assert again.start == ds.start and again.end == ds.end
     finally:
-        _camels.download = originals[0]
+        _nz.download = originals[0]
         zipfile.ZipFile.extractall = originals[1]
         if xr is not None:
             xr.Dataset.to_netcdf = originals[2]
@@ -581,9 +581,9 @@ def test_only_the_archives_of_the_timestep_are_downloaded():
     logger.info("test_only_the_archives_of_the_timestep_are_downloaded")
     tmp = tempfile.mkdtemp()
     calls = []
-    original = _camels.download
+    original = _nz.download
     try:
-        _camels.download = _fake_download(calls)
+        _nz.download = _fake_download(calls)
         ds = _copy_for(os.path.join(tmp, 'CAMELS_NZ'))
         ds.remove_zip = False
         ds._download_camels_nz()
@@ -623,7 +623,7 @@ def test_only_the_archives_of_the_timestep_are_downloaded():
         hourly = _copy_for(os.path.join(tmp, 'CAMELS_NZ'), dataset_h)
         assert sum('hourly' in name for name in hourly._archives) == 5, hourly._archives
     finally:
-        _camels.download = original
+        _nz.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -636,9 +636,9 @@ def test_interrupted_extraction():
     logger.info("test_interrupted_extraction")
     tmp = tempfile.mkdtemp()
     calls = []
-    original = _camels.download
+    original = _nz.download
     try:
-        _camels.download = _fake_download(calls)
+        _nz.download = _fake_download(calls)
         ds = _copy_for(os.path.join(tmp, 'CAMELS_NZ'))
         ds.remove_zip = False
         ds._download_camels_nz()
@@ -655,7 +655,7 @@ def test_interrupted_extraction():
         assert os.path.isdir(folder), "the archive was not extracted again"
         assert not os.path.exists(f"{folder}_extracting"), "the partial folder survived"
     finally:
-        _camels.download = original
+        _nz.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -669,7 +669,7 @@ def test_corrupt_archive_is_deleted():
         with open(archive, 'w') as f:
             f.write('<html>404</html>')
         with pytest.raises(ValueError, match='corrupt'):
-            _camels._extract_zip(archive, os.path.join(tmp, 'CAMELS_NZ_daily_PET'), verbosity=0)
+            _nz._extract_zip(archive, os.path.join(tmp, 'CAMELS_NZ_daily_PET'), verbosity=0)
         assert not os.path.exists(archive)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -685,9 +685,9 @@ def test_overwrite_removes_stale_before_download():
     logger.info("test_overwrite_removes_stale_before_download")
     tmp = tempfile.mkdtemp()
     calls = []
-    original = _camels.download
+    original = _nz.download
     try:
-        _camels.download = _fake_download(calls)
+        _nz.download = _fake_download(calls)
         ds = _copy_for(os.path.join(tmp, 'CAMELS_NZ'))
         ds.remove_zip = False
         ds._download_camels_nz()
@@ -708,7 +708,7 @@ def test_overwrite_removes_stale_before_download():
         assert not any(name.endswith('.zip1') for name in os.listdir(ds._root)), \
             os.listdir(ds._root)
     finally:
-        _camels.download = original
+        _nz.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -721,9 +721,9 @@ def test_release_2_is_reported_and_kept():
     logger.info("test_release_2_is_reported_and_kept")
     tmp = tempfile.mkdtemp()
     calls = []
-    original = _camels.download
+    original = _nz.download
     try:
-        _camels.download = _fake_download(calls)
+        _nz.download = _fake_download(calls)
         path = os.path.join(tmp, 'CAMELS_NZ')
         os.makedirs(path)
         old = _release_2(path)
@@ -751,7 +751,7 @@ def test_release_2_is_reported_and_kept():
             ds2._warn_old_release()
         assert [str(w.message) for w in caught] == []
     finally:
-        _camels.download = original
+        _nz.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 

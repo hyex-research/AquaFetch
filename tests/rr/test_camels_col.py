@@ -52,7 +52,8 @@ import aqua_fetch.rr.utils
 from aqua_fetch import CAMELS_COL
 from aqua_fetch._backend import fiona
 from aqua_fetch._geom_utils import world_mercator_to_wgs84
-from aqua_fetch.rr._camels import _extract_zip, _read_col_csv
+from aqua_fetch.rr._camels._common import _extract_zip
+from aqua_fetch.rr._camels._col import _read_col_csv
 
 
 raw_data_path = '/path/to/raw/data'   # replace with the real raw data root

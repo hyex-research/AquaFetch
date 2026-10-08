@@ -86,6 +86,7 @@ setup(
     packages=['aqua_fetch',
               'aqua_fetch/wq',
               'aqua_fetch/rr',
+              'aqua_fetch/rr/_camels',
               'aqua_fetch/wwt',
               'aqua_fetch/misc',
               ],

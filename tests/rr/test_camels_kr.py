@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 import aqua_fetch
 import aqua_fetch.download_zenodo as download_zenodo
 from aqua_fetch import CAMELS_KR
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _kr
 from aqua_fetch.rr import utils as base_utils
 from aqua_fetch._backend import xarray as xr, fiona
 
@@ -203,14 +203,14 @@ def test_manifest_completeness():
 
 def test_missing_file_warns():
     logger.info("test_missing_file_warns")
-    orig = _camels._kr_ts_fname
-    _camels._kr_ts_fname = lambda kind, stn: orig(kind, stn) + ("x" if stn == '1001620' else "")
+    orig = _kr._kr_ts_fname
+    _kr._kr_ts_fname = lambda kind, stn: orig(kind, stn) + ("x" if stn == '1001620' else "")
     try:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             dataset._check_manifest()
     finally:
-        _camels._kr_ts_fname = orig
+        _kr._kr_ts_fname = orig
     msgs = [str(x.message) for x in w if 'missing' in str(x.message)]
     assert len(msgs) == 1 and '2 files are missing' in msgs[0], msgs
 
@@ -412,8 +412,8 @@ def test_n_workers():
 
 def test_process_pool_use():
     logger.info("test_process_pool_use")
-    orig = _camels.cf.ProcessPoolExecutor
-    _camels.cf.ProcessPoolExecutor = _RecordingPool
+    orig = _kr.cf.ProcessPoolExecutor
+    _kr.cf.ProcessPoolExecutor = _RecordingPool
     _RecordingPool.used = 0
     try:
         # two stations' files are ~4.7 MB, below every threshold
@@ -428,7 +428,7 @@ def test_process_pool_use():
         assert _RecordingPool.used == 1, "processes=1 must not use a pool"
         assert len(out) == 60
     finally:
-        _camels.cf.ProcessPoolExecutor = orig
+        _kr.cf.ProcessPoolExecutor = orig
 
 
 def test_fetch_outside_data_range():
@@ -516,14 +516,14 @@ def test_invalid_station():
 def test_duplicate_check():
     logger.info("test_duplicate_check")
     calls = []
-    orig = _camels._warn_duplicate_gauges
-    _camels._warn_duplicate_gauges = lambda name, meta: calls.append(meta) or orig(name, meta)
+    orig = _kr._warn_duplicate_gauges
+    _kr._warn_duplicate_gauges = lambda name, meta: calls.append(meta) or orig(name, meta)
     try:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             CAMELS_KR(path=CAMELS_KR_PATH, verbosity=0)
     finally:
-        _camels._warn_duplicate_gauges = orig
+        _kr._warn_duplicate_gauges = orig
     # the check runs at init on all gauges and, for this data, finds nothing
     assert len(calls) == 1 and calls[0]['gauge_id'].tolist() == dataset.stations()
     assert not [x for x in w if 'duplicate' in str(x.message).lower()]
@@ -533,7 +533,7 @@ def test_duplicate_check():
     dup = loc.iloc[[0]].assign(gauge_id='X', gauge_lat=loc['gauge_lat'].iloc[0] + 1e-6)
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        _camels._warn_duplicate_gauges('CAMELS_KR', pd.concat([loc, dup]))
+        _kr._warn_duplicate_gauges('CAMELS_KR', pd.concat([loc, dup]))
     msgs = [str(x.message) for x in w if 'duplicate' in str(x.message).lower()]
     assert len(msgs) == 1 and "'X'" in msgs[0], msgs
 
@@ -544,10 +544,10 @@ def _raise(*args, **kwargs):
 
 def test_no_redownload_or_reextract():
     logger.info("test_no_redownload_or_reextract")
-    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _camels.zipfile.ZipFile.extractall
+    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _kr.zipfile.ZipFile.extractall
     orig_nc = xr.Dataset.to_netcdf if xr is not None else None
     download_zenodo.download_from_zenodo = _raise
-    _camels.zipfile.ZipFile.extractall = _raise
+    _kr.zipfile.ZipFile.extractall = _raise
     if xr is not None:
         xr.Dataset.to_netcdf = _raise
     try:
@@ -555,7 +555,7 @@ def test_no_redownload_or_reextract():
         assert len(ds.stations()) == NUM_STATIONS
     finally:
         download_zenodo.download_from_zenodo = orig_dl
-        _camels.zipfile.ZipFile.extractall = orig_ext
+        _kr.zipfile.ZipFile.extractall = orig_ext
         if xr is not None:
             xr.Dataset.to_netcdf = orig_nc
 
@@ -566,16 +566,16 @@ def test_no_redownload_without_archive():
     tmp = tempfile.mkdtemp()
     os.makedirs(os.path.join(tmp, 'CAMELS_KR'))
     os.symlink(ROOT, os.path.join(tmp, 'CAMELS_KR', 'CAMELS-KR'))
-    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _camels.zipfile.ZipFile.extractall
+    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _kr.zipfile.ZipFile.extractall
     download_zenodo.download_from_zenodo = _raise
-    _camels.zipfile.ZipFile.extractall = _raise
+    _kr.zipfile.ZipFile.extractall = _raise
     try:
         ds = CAMELS_KR(path=tmp, verbosity=0, to_netcdf=False)
         assert len(ds.stations()) == NUM_STATIONS
         assert not os.path.exists(os.path.join(tmp, 'CAMELS_KR', 'CAMELS-KR.zip'))
     finally:
         download_zenodo.download_from_zenodo = orig_dl
-        _camels.zipfile.ZipFile.extractall = orig_ext
+        _kr.zipfile.ZipFile.extractall = orig_ext
         shutil.rmtree(tmp)  # removes the symlink, not its target
 
 
@@ -591,7 +591,7 @@ def test_interrupted_extraction_and_overwrite():
     root = os.path.join(ds_dir, 'CAMELS-KR')
     os.makedirs(ds_dir)
     os.symlink(ARCHIVE, os.path.join(ds_dir, 'CAMELS-KR.zip'))
-    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _camels.zipfile.ZipFile.extractall
+    orig_dl, orig_ext = download_zenodo.download_from_zenodo, _kr.zipfile.ZipFile.extractall
 
     def extract_then_fail(zf, path=None, members=None, pwd=None):
         for m in members[:100]:
@@ -602,12 +602,12 @@ def test_interrupted_extraction_and_overwrite():
         download_zenodo.download_from_zenodo = _raise
 
         # 1) extraction interrupted after 100 files
-        _camels.zipfile.ZipFile.extractall = extract_then_fail
+        _kr.zipfile.ZipFile.extractall = extract_then_fail
         try:
             CAMELS_KR(path=tmp, verbosity=0, to_netcdf=False)
         except KeyboardInterrupt:
             pass
-        _camels.zipfile.ZipFile.extractall = orig_ext
+        _kr.zipfile.ZipFile.extractall = orig_ext
         assert not os.path.exists(root), "a partial extraction looks complete"
         assert os.listdir(os.path.join(ds_dir, 'CAMELS-KR_extracting'))
 
@@ -626,9 +626,9 @@ def test_interrupted_extraction_and_overwrite():
         assert os.path.exists(ARCHIVE)
 
         # no archive left: the next init must neither download nor extract
-        _camels.zipfile.ZipFile.extractall = _raise
+        _kr.zipfile.ZipFile.extractall = _raise
         CAMELS_KR(path=tmp, verbosity=0, to_netcdf=False)
-        _camels.zipfile.ZipFile.extractall = orig_ext
+        _kr.zipfile.ZipFile.extractall = orig_ext
 
         # 3) overwrite: stale archive, extracted folder and cache
         stale_archive = os.path.join(ds_dir, 'CAMELS-KR.zip')
@@ -659,7 +659,7 @@ def test_interrupted_extraction_and_overwrite():
         assert os.path.isdir(os.path.join(ds_dir, 'CAMELS-KR', 'Hydrological time series'))
     finally:
         download_zenodo.download_from_zenodo = orig_dl
-        _camels.zipfile.ZipFile.extractall = orig_ext
+        _kr.zipfile.ZipFile.extractall = orig_ext
         shutil.rmtree(tmp)
 
 
@@ -729,7 +729,7 @@ def test_remove_stale_unlinks_symlinks():
             os.symlink(dst, os.path.join(tmp, name))
         stale_dir = os.path.join(tmp, 'stale_dir')
         os.makedirs(os.path.join(stale_dir, 'sub'))
-        _camels._remove_stale([os.path.join(tmp, n) for n in
+        _kr._remove_stale([os.path.join(tmp, n) for n in
                                ('dir_link', 'file_link', 'broken_link', 'stale_dir', 'absent')], 0)
         assert sorted(os.listdir(tmp)) == ['target']
         assert os.listdir(target) == ['data.csv']

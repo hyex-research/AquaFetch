@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import _RainfallRunoff, cache_name, ymd_index
-from ._camels import _remove_stale, _first_and_last_row, _warn_duplicate_gauges
+from ._camels._common import _remove_stale, _first_and_last_row, _warn_duplicate_gauges
 from ..utils import validate_attributes, download
 from ._map import (
     min_air_temp,
