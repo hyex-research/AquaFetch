@@ -411,11 +411,11 @@ List of datasets
    * - ``LamaHIce``
      - :py:class:`aqua_fetch.rr.LamaHIce`
      - 111
-     - 111
-     - 36
-     - 154
-     - 1950
-     - 2021
+     - 76
+     - 56 daily, 28 hourly
+     - 152 daily, 138 hourly
+     - 1932 (hourly 1949)
+     - 2024 (hourly 2023)
      - Iceland
      - `Helgason and Nijssen 2024 <https://doi.org/10.5194/essd-16-2741-2024>`_
    * - ``NPCTR Catchments``

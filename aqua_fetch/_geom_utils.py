@@ -1,8 +1,10 @@
 
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 import math
 import numpy as np
+
+from ._backend import fiona
 
 
 def _make_boundary_2d(geometry)-> List[np.ndarray]:
@@ -43,6 +45,35 @@ def _make_boundary_2d(geometry)-> List[np.ndarray]:
             polygon = np.array(geometry.coordinates)
             rings.append(make_polygon_2d(polygon))
     return rings
+
+
+def transform_geometry(geometry, to_lat_lon: Callable):
+    """
+    Converts every vertex of a fiona ``Polygon`` or ``MultiPolygon`` with
+    ``to_lat_lon(x, y) -> (lat, lon)``, called once per ring.
+
+    The result has the same type and rings, holes included, in (lon, lat) order;
+    a ``z`` coordinate is dropped. Other geometry types raise a ``ValueError``.
+    A missing geometry, or any geometry without fiona, is returned as is.
+    """
+    if fiona is None or geometry is None:
+        return geometry
+
+    def _ring(ring):
+        if not len(ring):
+            return []
+        xy = np.asarray(ring, dtype='float64')
+        lat, lon = to_lat_lon(xy[:, 0], xy[:, 1])
+        return list(zip(lon.tolist(), lat.tolist()))
+
+    if geometry.type == 'MultiPolygon':
+        coords = [[_ring(ring) for ring in polygon] for polygon in geometry.coordinates]
+    elif geometry.type == 'Polygon':
+        coords = [_ring(ring) for ring in geometry.coordinates]
+    else:
+        raise ValueError(f"only Polygon and MultiPolygon can be transformed, not {geometry.type}")
+
+    return fiona.Geometry(type=geometry.type, coordinates=coords)
 
 
 def polygon_centroid(polygon:np.ndarray):
@@ -137,47 +168,6 @@ def calc_centroid(geometry)->Tuple[float, float]:
         raise ValueError("Unsupported geometry type for centroid calculation.")
 
 
-def epsg25832_to_wgs84(
-        easting,  # longitude like but in projected coordinate
-        northing,  # latitude like but in projected coordinate
-        zone:int):
-    # Constants
-    a = 6378137.0  # WGS 84 major axis
-    # Eccentricity : how much the ellipsoid deviates from being a perfect sphere
-    e = 0.081819190842622  
-    x = easting - 500000  # Correct for 500,000 meter offset
-    y = northing
-    # Scale factor, coefficient that scales the metric units in the projection to real-world distances
-    k0 = 0.9996  
-    
-    # Calculate the Meridian Arc
-    m = y / k0
-    mu = m / (a * (1 - math.pow(e, 2) / 4 - 3 * math.pow(e, 4) / 64 - 5 * math.pow(e, 6) / 256))
-    
-    # Calculate Footprint Latitude
-    e1 = (1 - math.sqrt(1 - e ** 2)) / (1 + math.sqrt(1 - e ** 2))
-    phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * math.sin(2 * mu)
-    phi1 += (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * math.sin(4 * mu)
-    phi1 += (151 * e1 ** 3 / 96) * math.sin(6 * mu)
-    phi1 += (1097 * e1 ** 4 / 512) * math.sin(8 * mu)
-    
-    # Latitude and Longitude
-    n1 = a / math.sqrt(1 - e ** 2 * math.sin(phi1) ** 2)
-    t1 = math.tan(phi1) ** 2
-    c1 = e ** 2 / (1 - e ** 2) * math.cos(phi1) ** 2
-    r1 = a * (1 - e ** 2) / math.pow(1 - e ** 2 * math.sin(phi1) ** 2, 1.5)
-    d = x / (n1 * k0)
-    
-    lat = phi1 - (n1 * math.tan(phi1) / r1) * (d ** 2 / 2 - (5 + 3 * t1 + 10 * c1 - 4 * c1 ** 2 - 9 * e ** 2) * d ** 4 / 24)
-    lat += (61 + 90 * t1 + 298 * c1 + 45 * t1 ** 2 - 3 * c1 ** 2 - 252 * e ** 2) * d ** 6 / 720
-    lat = lat * 180 / math.pi  # Convert to degrees
-    
-    lon = (d - (1 + 2 * t1 + c1) * d ** 3 / 6 + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * e ** 2 + 24 * t1 ** 2) * d ** 5 / 120) / math.cos(phi1)
-    lon = lon * 180 / math.pi + (zone * 6 - 183)  # Convert to degrees
-    
-    return lat, lon
-
-
 def tmerc_to_wgs84(
         easting,
         northing,
@@ -189,11 +179,11 @@ def tmerc_to_wgs84(
     """
     Inverse Transverse Mercator projection to WGS84 (latitude/longitude).
 
-    This is a generalisation of :func:`epsg25832_to_wgs84` (which is hard-wired
-    to the UTM parameters). It works for any Transverse Mercator projection
-    defined on the WGS84/GRS80 ellipsoid, e.g. ETRS89 / Poland CS92
-    (EPSG:2180) used by :py:class:`aqua_fetch.rr.CAMELS_PL` or ETRS89 / TM35FIN
-    (EPSG:3067) used by :py:class:`aqua_fetch.rr.CAMELS_FI`.
+    It works for any Transverse Mercator projection defined on the WGS84/GRS80
+    ellipsoid, e.g. ETRS89 / Poland CS92 (EPSG:2180) used by
+    :py:class:`aqua_fetch.rr.CAMELS_PL`, ETRS89 / TM35FIN (EPSG:3067) used by
+    :py:class:`aqua_fetch.rr.CAMELS_FI` or ETRS89 / UTM zone 32N (EPSG:25832)
+    used by :py:class:`aqua_fetch.rr.CAMELS_DK`.
 
     The GRS80 and WGS84 ellipsoids differ only in the flattening at the ~1e-11
     level, so a single (WGS84) eccentricity is used for both. Validated against
@@ -349,18 +339,33 @@ def osgb36_to_wgs84(easting, northing):
     lat_osgb = lat - VII * dE ** 2 + VIII * dE ** 4 - IX * dE ** 6
     lon_osgb = lon0 + X * dE - XI * dE ** 3 + XII * dE ** 5 - XIIA * dE ** 7
 
-    # OSGB36 geodetic -> geocentric cartesian (on Airy 1830)
-    nu_a = a / np.sqrt(1 - e2 * np.sin(lat_osgb) ** 2)
-    x = nu_a * np.cos(lat_osgb) * np.cos(lon_osgb)
-    y = nu_a * np.cos(lat_osgb) * np.sin(lon_osgb)
-    z = (1 - e2) * nu_a * np.sin(lat_osgb)
-
     # 7-parameter Helmert transformation OSGB36 -> WGS84
-    tx, ty, tz = 446.448, -125.157, 542.060
-    s = -20.4894e-6
-    rx = math.radians(0.1502 / 3600.0)
-    ry = math.radians(0.2470 / 3600.0)
-    rz = math.radians(0.8421 / 3600.0)
+    return _helmert_to_wgs84(lat_osgb, lon_osgb, a, e2,
+                             446.448, -125.157, 542.060,
+                             0.1502, 0.2470, 0.8421, -20.4894e-6)
+
+
+def _helmert_to_wgs84(lat, lon, a, e2, tx, ty, tz, rx, ry, rz, s):
+    """
+    Shifts geodetic coordinates to WGS84 with a 7-parameter Helmert
+    transformation in the position vector convention (EPSG method 9606).
+
+    ``lat``/``lon`` are radians on an ellipsoid of semi-major axis ``a`` (m) and
+    squared eccentricity ``e2``, at height 0. ``tx``, ``ty``, ``tz`` are metres,
+    ``rx``, ``ry``, ``rz`` arc-seconds and ``s`` the scale difference as a
+    fraction (e.g. ``-20.4894e-6``). Parameters published in the coordinate
+    frame convention (EPSG method 9607) are passed with their rotations negated.
+    Returns ``(lat, lon)`` in degrees on WGS84.
+    """
+    # geodetic -> geocentric cartesian
+    nu_a = a / np.sqrt(1 - e2 * np.sin(lat) ** 2)
+    x = nu_a * np.cos(lat) * np.cos(lon)
+    y = nu_a * np.cos(lat) * np.sin(lon)
+    z = (1 - e2) * nu_a * np.sin(lat)
+
+    rx = math.radians(rx / 3600.0)
+    ry = math.radians(ry / 3600.0)
+    rz = math.radians(rz / 3600.0)
     xw = tx + (1 + s) * (x - rz * y + ry * z)
     yw = ty + (1 + s) * (rz * x + y - rx * z)
     zw = tz + (1 + s) * (-ry * x + rx * y + z)
@@ -377,6 +382,72 @@ def osgb36_to_wgs84(easting, northing):
     lon_w = np.arctan2(yw, xw)
 
     return np.degrees(lat_w), np.degrees(lon_w)
+
+
+# coefficients of the New Zealand Map Grid, from LINZ's formulae
+_NZMG_B = np.array([0.7557853228 + 0j, 0.249204646 + 0.003371507j,
+                    -0.001541739 + 0.041058560j, -0.10162907 + 0.01727609j,
+                    -0.26623489 - 0.36249218j, -0.6870983 - 1.1651967j])
+_NZMG_C = np.array([1.3231270439 + 0j, -0.577245789 - 0.007809598j,
+                    0.508307513 - 0.112208952j, -0.15094762 + 0.18200602j,
+                    1.01418179 + 1.64497696j, 1.9660549 + 2.5127645j])
+_NZMG_D = np.array([1.5627014243, 0.5185406398, -0.03333098, -0.1052906,
+                    -0.0368594, 0.007317, 0.01220, 0.00394, -0.0013])
+
+
+def nzmg_to_wgs84(easting, northing):
+    """
+    Converts New Zealand Map Grid coordinates (NZGD1949 / NZMG, EPSG:27200) to
+    WGS84 latitude/longitude (EPSG:4326).
+
+    NZMG is not a standard projection but a complex polynomial that LINZ
+    defines on the International 1924 ellipsoid, so this function
+
+        1. inverts it with LINZ's formulae (origin 41 S 173 E, false easting
+           ``2510000``, false northing ``6023150``; two Newton-Raphson steps on
+           the complex series), which gives NZGD1949 latitude/longitude, and
+        2. shifts NZGD1949 to WGS84 with the 7-parameter transformation
+           "NZGD49 to WGS 84 (2)" (EPSG:1564, accurate to 4 m), which moves a
+           point by ~190 m.
+
+    This reproduces ``pyproj``'s ``EPSG:27200 -> EPSG:4326``, which uses the same
+    transformation unless LINZ's distortion grid is installed, to below 0.1 mm
+    on all 1.8 million vertices of the CAMELS-NZ boundaries. Like the grid
+    itself, the formulae hold only in and around New Zealand. Used by
+    :py:class:`aqua_fetch.rr.CAMELS_NZ`.
+
+    Parameters
+    ----------
+    easting : float or np.ndarray
+        NZMG easting in metres.
+    northing : float or np.ndarray
+        NZMG northing in metres, of the same shape as ``easting``.
+
+    Returns
+    -------
+    tuple
+        ``(lat, lon)`` in degrees on WGS84.
+    """
+    z = ((np.asarray(northing, dtype=float) - 6023150.0)
+         + 1j * (np.asarray(easting, dtype=float) - 2510000.0)) / 6378388.0
+
+    zeta = sum(c * z ** (n + 1) for n, c in enumerate(_NZMG_C))
+    for _ in range(2):
+        numerator = z + sum(n * _NZMG_B[n] * zeta ** (n + 1) for n in range(1, 6))
+        denominator = sum((n + 1) * _NZMG_B[n] * zeta ** n for n in range(6))
+        zeta = numerator / denominator
+
+    # latitude difference from the origin, in units of 1e5 arc-seconds
+    dlat = sum(d * zeta.real ** (n + 1) for n, d in enumerate(_NZMG_D))
+    lat_49 = np.radians(-41.0 + dlat * 1e5 / 3600.0)
+    lon_49 = np.radians(173.0) + zeta.imag
+
+    # International 1924 ellipsoid; EPSG:1564 is published in the coordinate
+    # frame convention, so its rotations are negated for the position vector one
+    f = 1 / 297.0
+    return _helmert_to_wgs84(lat_49, lon_49, 6378388.0, f * (2 - f),
+                             59.47, -5.04, 187.44,
+                             0.47, -0.1, 1.024, -4.5993e-6)
 
 
 def laea_to_wgs84(x, y, lon_0, lat_0, false_easting, false_northing,

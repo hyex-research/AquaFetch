@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 import aqua_fetch
 from aqua_fetch import CAMELS_FR
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _fr
 from aqua_fetch.rr._map import (observed_streamflow_cms, observed_streamflow_mm,
                                 total_precipitation, mean_air_temp,
                                 solar_radiation, downward_longwave_radiation)
@@ -126,7 +126,7 @@ def _fake_install(root: str, hydrometry_bytes: int, with_archives: bool = False,
 
 
 class _Recorder:
-    """stands in for ``aqua_fetch.rr._camels.download`` and writes a zip whose
+    """stands in for ``aqua_fetch.rr._camels._fr.download`` and writes a zip whose
     single entry is the folder the real archive holds"""
 
     def __init__(self):
@@ -150,8 +150,8 @@ def _no_download(*args, **kwargs):
 
 def _patched_download(monkeypatched):
     """context-manager-free swap of the module level ``download``"""
-    previous = _camels.download
-    _camels.download = monkeypatched
+    previous = _fr.download
+    _fr.download = monkeypatched
     return previous
 
 
@@ -274,7 +274,7 @@ def test_no_download_when_extracted():
         try:
             ds._download_camels_fr()
         finally:
-            _camels.download = previous_download
+            _fr.download = previous_download
             zipfile.ZipFile.extractall = previous_extract
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -301,7 +301,7 @@ def test_release_21_is_replaced():
                 warnings.simplefilter("always")
                 ds._download_camels_fr()
         finally:
-            _camels.download = previous
+            _fr.download = previous
 
         messages = [str(w.message) for w in caught]
         assert any('2.1' in m for m in messages), messages
@@ -339,7 +339,7 @@ def test_release_32_is_left_alone():
                 warnings.simplefilter("always")
                 ds._download_camels_fr()
         finally:
-            _camels.download = previous
+            _fr.download = previous
         assert not [w for w in caught if '2.1' in str(w.message)]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -365,7 +365,7 @@ def test_remove_zip_is_honoured():
             # the extracted folders survive, so nothing is downloaded again
             ds._download_camels_fr()
         finally:
-            _camels.download = previous
+            _fr.download = previous
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return
@@ -389,7 +389,7 @@ def test_overwrite_removes_stale_files():
         try:
             ds._download_camels_fr(overwrite=True)
         finally:
-            _camels.download = previous
+            _fr.download = previous
 
         assert not os.path.exists(cache), "the stale netCDF cache survived"
         assert sorted(recorder.fetched) == sorted(CAMELS_FR.url), recorder.fetched
@@ -430,7 +430,7 @@ def test_interrupted_extraction_is_redone():
             except Exception:
                 pass  # the archive is reported as corrupt and deleted
         finally:
-            _camels.download = previous
+            _fr.download = previous
             zipfile.ZipFile.extractall = previous_extract
 
         folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]

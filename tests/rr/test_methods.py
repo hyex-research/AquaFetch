@@ -209,15 +209,11 @@ class TestMethods(unittest.TestCase):
         for ds_name, ds in DATASETS.items():
 
             test_latlong_ranges = True
-            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 'CAMELS_NZ',
+            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden',
                         ]:
                 # catchment boundaries are not currently transformed to wgs84 for these datasets
                 # todo : must be done in future
-                # (note: 'CAMELS_DE_h', 'CAMELS_COL' and 'CAMELS_FI' are intentionally
-                #  absent here -> their boundaries ARE reprojected to wgs84 (EPSG:3035,
-                #  EPSG:3395 and EPSG:3067 resp.), so latlong ranges apply)
-                if ds_name in ['CAMELS_CH', 'CAMELS_DE', 'CAMELS_FR',
-                                'LamaHIce_h_tu', 'LamaHIce_h_ia', 'LamaHIce_h_il', 'LamaHIce_d_tu', 'LamaHIce_d_ia', 'LamaHIce_d_il',
+                if ds_name in ['CAMELS_FR',
                             ]:
                     test_latlong_ranges = False
                 check_boundary(ds, test_latlong_ranges)
@@ -226,8 +222,7 @@ class TestMethods(unittest.TestCase):
     def test_plot_catchment_method(self):
         for ds_name, ds in DATASETS.items():
 
-            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden', 
-                            'CAMELS_NZ',
+            if ds_name not in ['HYPE', 'WaterBenchIowa', 'RRLuleaSweden',
                         ]:
                 check_plot_catchment(ds)
         return

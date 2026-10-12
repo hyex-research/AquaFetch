@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 import aqua_fetch
 from aqua_fetch import CAMELS_CL
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _cl
 from aqua_fetch.utils import BROWSER_HEADERS
 from aqua_fetch._backend import xarray as xr, fiona
 
@@ -210,7 +210,7 @@ def test_read_dynamic_fidelity():
     logger.info("test_read_dynamic_fidelity")
     stations = tuple(random.sample(dataset.stations(), 5))
 
-    real_pools = {name: getattr(_camels.cf, name) for name in ('ThreadPoolExecutor', 'ProcessPoolExecutor')}
+    real_pools = {name: getattr(_cl.cf, name) for name in ('ThreadPoolExecutor', 'ProcessPoolExecutor')}
     used = []
 
     def recording(name):
@@ -221,7 +221,7 @@ def test_read_dynamic_fidelity():
 
     try:
         for name in real_pools:
-            setattr(_camels.cf, name, recording(name))
+            setattr(_cl.cf, name, recording(name))
         dyn = dataset._read_dynamic(list(stations), 'all')
         assert used == ['ThreadPoolExecutor'], f"a few stations should be read with threads: {used}"
 
@@ -241,7 +241,7 @@ def test_read_dynamic_fidelity():
         assert len(used) == 3, f"processes=1 must not start threads or processes: {used}"
     finally:
         for name, pool in real_pools.items():
-            setattr(_camels.cf, name, pool)
+            setattr(_cl.cf, name, pool)
 
     for stn in many:
         assert many[stn].equals(many_serial[stn]), stn
@@ -429,8 +429,8 @@ def test_init_warnings():
     def boom(*args, **kwargs):
         raise AssertionError("nothing must be downloaded")
 
-    original = _camels.download
-    _camels.download = boom
+    original = _cl.download
+    _cl.download = boom
     tmp = tempfile.mkdtemp()
     try:
         with warnings.catch_warnings(record=True) as w:
@@ -454,7 +454,7 @@ def test_init_warnings():
         assert any('14 of 15 files are missing' in m for m in msgs), msgs
         assert any('duplicate' in m for m in msgs), msgs
     finally:
-        _camels.download = original
+        _cl.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -466,15 +466,15 @@ def test_no_redownload_or_reextract():
     def boom(*args, **kwargs):
         raise AssertionError("must not be called when the data exists")
 
-    originals = _camels.download, zipfile.ZipFile, (xr.Dataset.to_netcdf if xr is not None else None)
-    _camels.download = zipfile.ZipFile = boom
+    originals = _cl.download, zipfile.ZipFile, (xr.Dataset.to_netcdf if xr is not None else None)
+    _cl.download = zipfile.ZipFile = boom
     if xr is not None:
         xr.Dataset.to_netcdf = boom
     try:
         again = CAMELS_CL(path=CAMELS_CL_PATH, verbosity=0)
         assert len(again.stations()) == NUM_STATIONS
     finally:
-        _camels.download, zipfile.ZipFile = originals[:2]
+        _cl.download, zipfile.ZipFile = originals[:2]
         if xr is not None:
             xr.Dataset.to_netcdf = originals[2]
     return
@@ -506,9 +506,9 @@ def test_download():
                                                (2018, 15, 'store.pangaea.de', None)):
         tmp = tempfile.mkdtemp()
         path = os.path.join(tmp, 'CAMELS_CL')  # does not exist yet
-        original = _camels.download
+        original = _cl.download
         try:
-            ds, calls, _camels.download = _patched_download(path, version, lambda: None)
+            ds, calls, _cl.download = _patched_download(path, version, lambda: None)
             ds._download_camels_cl()
 
             assert len(calls) == n_archives, calls
@@ -526,7 +526,7 @@ def test_download():
             assert calls == [], f"downloaded again although the data is extracted: {calls}"
             assert sorted(os.listdir(path)) == sorted(folders), "remove_zip left archives"
         finally:
-            _camels.download = original
+            _cl.download = original
             shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -536,7 +536,7 @@ def test_interrupted_extraction():
     so the next initialization extracts the archive again"""
     logger.info("test_interrupted_extraction")
     tmp = tempfile.mkdtemp()
-    original_download, original_extractall = _camels.download, zipfile.ZipFile.extractall
+    original_download, original_extractall = _cl.download, zipfile.ZipFile.extractall
 
     def interrupted(self, path, *args, **kwargs):
         os.makedirs(path, exist_ok=True)
@@ -544,7 +544,7 @@ def test_interrupted_extraction():
         raise KeyboardInterrupt
 
     try:
-        ds, calls, _camels.download = _patched_download(tmp, 2022, lambda: None)
+        ds, calls, _cl.download = _patched_download(tmp, 2022, lambda: None)
         zipfile.ZipFile.extractall = interrupted
         try:
             ds._download_camels_cl()
@@ -561,7 +561,7 @@ def test_interrupted_extraction():
         assert sorted(os.listdir(tmp)) == ['CAMELS_CL_v202201', 'CAMELS_CL_v202201.zip'], os.listdir(tmp)
         assert os.listdir(os.path.join(tmp, 'CAMELS_CL_v202201')) == ['data.csv']
     finally:
-        _camels.download = original_download
+        _cl.download = original_download
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -572,9 +572,9 @@ def test_partial_and_corrupt_downloads():
     and downloaded again on the next initialization"""
     logger.info("test_partial_and_corrupt_downloads")
     tmp = tempfile.mkdtemp()
-    original = _camels.download
+    original = _cl.download
     try:
-        ds, calls, _camels.download = _patched_download(tmp, 2018, lambda: None)
+        ds, calls, _cl.download = _patched_download(tmp, 2018, lambda: None)
         stems = [fname[:-len('.zip')] for fname in CAMELS_CL.urls[2018]]
         for stem in stems[:13]:  # extracted, and one of them keeps its archive
             os.makedirs(os.path.join(tmp, stem))
@@ -617,7 +617,7 @@ def test_partial_and_corrupt_downloads():
         assert calls[-1][2] == 'CAMELS_CL_v202201.zip', calls
         assert os.listdir(os.path.join(tmp, 'CAMELS_CL_v202201')) == ['data.csv']
     finally:
-        _camels.download = original
+        _cl.download = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -656,8 +656,8 @@ def test_date_checks():
         fpath = os.path.join(root, 'q_m3s_day.csv')
         for dates in (['2000-01-03', '2000-01-02'], ['2000-01-02', '2000-01-02']):
             write(fpath, dates)
-            for read in (lambda: _camels._read_camels_cl_dates(fpath, b','),
-                         lambda: _camels._read_camels_cl_ts(fpath, ['1001001'], np.float32, 'legacy',
+            for read in (lambda: _cl._read_camels_cl_dates(fpath, b','),
+                         lambda: _cl._read_camels_cl_ts(fpath, ['1001001'], np.float32, 'legacy',
                                                             ',', 'date', None)):
                 try:
                     read()
@@ -785,14 +785,14 @@ def test_overwrite_removes_stale_before_download():
                 checked.append(True)
                 assert not any(map(os.path.exists, stale)), "stale files still exist when downloading"
 
-        original = _camels.download
+        original = _cl.download
         try:
-            ds, calls, _camels.download = _patched_download(tmp, version, stale_gone)
+            ds, calls, _cl.download = _patched_download(tmp, version, stale_gone)
             ds._download_camels_cl(overwrite=True)
             assert checked and len(calls) == len(CAMELS_CL.urls[version]), calls
             assert all(map(os.path.exists, kept)), f"overwriting {version} removed {other} files"
         finally:
-            _camels.download = original
+            _cl.download = original
             shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -822,12 +822,12 @@ def test_version_2018():
         raise AssertionError("the 2018 data exists, nothing must be downloaded")
 
     # the user's 2018 archives lie next to their folders; they must not be extracted again
-    originals = _camels.download, zipfile.ZipFile
-    _camels.download = zipfile.ZipFile = boom
+    originals = _cl.download, zipfile.ZipFile
+    _cl.download = zipfile.ZipFile = boom
     try:
         ds = CAMELS_CL(path=CAMELS_CL_PATH, version=2018, to_netcdf=False, verbosity=0)
     finally:
-        _camels.download, zipfile.ZipFile = originals
+        _cl.download, zipfile.ZipFile = originals
 
     assert ds.path == dataset.path and ds.dyn_fpath != dataset.dyn_fpath
     assert len(ds.stations()) == NUM_STATIONS

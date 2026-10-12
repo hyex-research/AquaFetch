@@ -43,7 +43,8 @@ from utils import (
     test_st_en_with_static_and_dynamic as check_st_en_with_static_and_dynamic,
     test_selected_dynamic_features as check_selected_dynamic_features,
     test_fetch_station_features as check_fetch_station_features,
-    test_area as check_area
+    test_area as check_area,
+    test_boundaries_around_gauges as check_boundaries_around_gauges,
 )
 
 
@@ -150,20 +151,22 @@ class TestCamels(unittest.TestCase):
 
     def test_camels_de(self):
         dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'))
-        run_shared_tests(dataset, 1582, 25568, 111, 21, test_latlong_ranges=False)
+        run_shared_tests(dataset, 1582, 25568, 111, 21)
+        # the boundaries are reprojected from EPSG:3035 to WGS84
+        check_boundaries_around_gauges(dataset)
         return
 
     def test_camels_de_h(self):
         # hourly (CAMELS-DE-1h) data. The 109 static attributes come from the 7
         # attribute files (the modelled simulation_benchmark file is excluded);
         # all 26 observed + meteo-forcing timeseries columns are kept.
-        # test_latlong_ranges=True here (unlike daily) validates that the hourly
-        # boundaries are reprojected from EPSG:3035 to WGS84.
         dataset = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'),
                             timestep='H', verbosity=4)
         run_shared_tests(dataset, 1611, 210383, 109, 26,
                      yearly_steps=8760,
                      test_latlong_ranges=True)
+        # the boundaries are reprojected from EPSG:3035 to WGS84
+        check_boundaries_around_gauges(dataset)
 
         # the hourly index must be a regular hourly series
         _, dyn = dataset.fetch(stations='DE110000', dynamic_features='q_cms_obs',
@@ -203,6 +206,14 @@ class TestCamels(unittest.TestCase):
         dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=4)
 
         run_shared_tests(dataset, 5767, 394488, 779, 13)
+        return
+
+    def test_camelsh_init(self):
+        # with both Hourly2/ and the consolidated .nc caches on disk, __init__
+        # used to read a station before its caches existed (AttributeError)
+        dataset = CAMELSH(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0)
+        self.assertEqual(len(dataset.stations()), 5767)
+        self.assertEqual(len(dataset.dynamic_features), 13)
         return
 
     def test_pl(self):

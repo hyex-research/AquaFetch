@@ -37,7 +37,7 @@ site.addsitedir(wd_dir)
 
 import aqua_fetch
 from aqua_fetch import CAMELS_GB, RainfallRunoff
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _gb
 from aqua_fetch._backend import xarray as xr, fiona, netCDF4
 
 # the generic rainfall-runoff suite; imported under another name so that pytest
@@ -289,7 +289,7 @@ def test_no_redownload_or_rebuild(monkeypatch):
     def boom(*args, **kwargs):
         raise AssertionError("must not be called when the data is on disk")
 
-    for module, name in ((_camels, 'download'), (zipfile, 'ZipFile'), (cf, 'ThreadPoolExecutor'),
+    for module, name in ((_gb, 'download'), (zipfile, 'ZipFile'), (cf, 'ThreadPoolExecutor'),
                          (shutil, 'rmtree'), (os, 'remove'), (os, 'rename')):
         monkeypatch.setattr(module, name, boom)
     if xr is not None:
@@ -326,7 +326,7 @@ def test_v2_interrupted_download_is_completed(tmp_path, monkeypatch):
         fpath.write_bytes(b'o' * nbytes)
 
     calls, workers = [], []
-    monkeypatch.setattr(_camels, 'download', _fake_v2_download(FAKE_V2, calls))
+    monkeypatch.setattr(_gb, 'download', _fake_v2_download(FAKE_V2, calls))
     real_pool = cf.ThreadPoolExecutor
 
     class SpyPool(real_pool):
@@ -356,7 +356,7 @@ def test_v2_wrong_size_after_download_raises(tmp_path, monkeypatch):
     (root / 'supporting_documents').mkdir(parents=True)
     (root / 'supporting_documents' / 'ro-crate-metadata.json').write_text(_manifest_json(FAKE_V2))
     wrong_sizes = {rel: nbytes + 1 for rel, nbytes in FAKE_V2.items()}
-    monkeypatch.setattr(_camels, 'download', _fake_v2_download(wrong_sizes, []))
+    monkeypatch.setattr(_gb, 'download', _fake_v2_download(wrong_sizes, []))
 
     with pytest.raises(RuntimeError, match='size'):
         _tmp_dataset(dataset, tmp_path / 'CAMELS_GB')._download()
@@ -376,7 +376,7 @@ def test_v2_manifest_recovery(tmp_path, monkeypatch, state):
         (root / 'supporting_documents' / 'ro-crate-metadata.json').write_text(_manifest_json(FAKE_V2)[:50])
 
     calls = []
-    monkeypatch.setattr(_camels, 'download', _fake_v2_download(FAKE_V2, calls))
+    monkeypatch.setattr(_gb, 'download', _fake_v2_download(FAKE_V2, calls))
     ds = _tmp_dataset(dataset, tmp_path / 'CAMELS_GB')
     ds.remove_zip = True
 
@@ -413,7 +413,7 @@ def test_v2_overwrite_deletes_before_download(tmp_path, monkeypatch, ds, other_f
         assert not cache.exists(), "the cache must be deleted before downloading"
         fake_download(url, outdir, fname, verbosity)
 
-    monkeypatch.setattr(_camels, 'download', checked_download)
+    monkeypatch.setattr(_gb, 'download', checked_download)
     _tmp_dataset(ds, base)._download(overwrite=True)
 
     # attributes and boundaries, plus the time series of this timestep only
@@ -445,7 +445,7 @@ def test_v1_overwrite_deletes_before_download(tmp_path, monkeypatch):
         calls.append(fname)
         _fake_v1_zip(os.path.join(outdir, fname))
 
-    monkeypatch.setattr(_camels, 'download', fake_download)
+    monkeypatch.setattr(_gb, 'download', fake_download)
     ds = _tmp_dataset(dataset_v1, base)
     ds.remove_zip = True
     ds._download(overwrite=True)
@@ -476,7 +476,7 @@ def test_v1_interrupted_extraction(tmp_path, monkeypatch, zip_state):
         calls.append(fname)
         _fake_v1_zip(os.path.join(outdir, fname))
 
-    monkeypatch.setattr(_camels, 'download', fake_download)
+    monkeypatch.setattr(_gb, 'download', fake_download)
     ds = _tmp_dataset(dataset_v1, base)
     ds._download()
 
@@ -491,7 +491,7 @@ def test_v1_failed_extraction_is_repeated(tmp_path, monkeypatch):
     base = tmp_path / 'CAMELS_GB'
     base.mkdir()
     _fake_v1_zip(base / 'camels_gb.zip')
-    monkeypatch.setattr(_camels, 'download', None)
+    monkeypatch.setattr(_gb, 'download', None)
     ds = _tmp_dataset(dataset_v1, base)
     real_extractall = zipfile.ZipFile.extractall
 
@@ -654,7 +654,7 @@ def test_other_malformed_attribute_rows_raise(tmp_path):
     soil = tmp_path / 'camels_gb_v2_soil_attributes.csv'
     soil.write_text('gauge_id,sand_perc,clay_perc\n1001,20.5,30.1\n27038,21,5,30.2\n')
     with pytest.raises(ValueError):
-        _camels._read_camels_gb_attributes(str(soil))
+        _gb._read_camels_gb_attributes(str(soil))
 
     with open(_raw_attr_file(2, 'hydrometry'), encoding='utf-8') as fp:
         lines = fp.read().splitlines()
@@ -663,14 +663,14 @@ def test_other_malformed_attribute_rows_raise(tmp_path):
     # the known row as first data row is repaired too
     first = tmp_path / 'first.csv'
     first.write_text('\n'.join([lines[0], row_27038] + [l for l in lines[1:] if l != row_27038]))
-    served = _camels._read_camels_gb_attributes(str(first))
+    served = _gb._read_camels_gb_attributes(str(first))
     assert served.loc['27038', 'station_quality_hourlyflow_comment'].endswith('flows and after')
 
     # the known row with a second extra comma
     two_commas = tmp_path / 'two_commas.csv'
     two_commas.write_text('\n'.join(line + ', again' if line == row_27038 else line for line in lines))
     with pytest.raises(ValueError):
-        _camels._read_camels_gb_attributes(str(two_commas))
+        _gb._read_camels_gb_attributes(str(two_commas))
 
     # a comma in any other row of the hydrometry file
     other = tmp_path / 'other.csv'
@@ -678,7 +678,7 @@ def test_other_malformed_attribute_rows_raise(tmp_path):
     fields[lines[0].split(',').index('quncert_meta')] = 'Calculated, discharge uncertainties'
     other.write_text('\n'.join([lines[0], ','.join(fields)] + lines[2:]))
     with pytest.raises(ValueError):
-        _camels._read_camels_gb_attributes(str(other))
+        _gb._read_camels_gb_attributes(str(other))
 
 
 def test_v1_humidity_is_specific_humidity():

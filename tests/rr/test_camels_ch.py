@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 import aqua_fetch
 from aqua_fetch import CAMELS_CH
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _ch
 from aqua_fetch._backend import xarray as xr, netCDF4, fiona
 
 from utils import test_dataset as run_shared_tests
@@ -138,7 +138,7 @@ def test_version():
     """version 0.9 is read, from its own folder and into its own cache, and the
     pre-0.7 layout is not used"""
     logger.info("test_version")
-    assert _camels._CH_VERSION == '0.9'
+    assert _ch._CH_VERSION == '0.9'
     assert dataset.url['camels_ch.zip'] == 'https://zenodo.org/records/15025258'
     assert dataset.camels_path == os.path.join(dataset.path, 'camels_ch_v0.9', 'camels_ch')
     assert dataset.dyn_fname == 'camels_ch_D_0.9_v2.nc', dataset.dyn_fname
@@ -274,13 +274,13 @@ def test_read_dynamic_fidelity():
     # processes=1 must not start a pool and must give the same values
     serial = copy.copy(dataset)
     serial.processes = 1
-    real_pool = _camels.cf.ProcessPoolExecutor
-    _camels.cf.ProcessPoolExecutor = lambda *a, **k: (_ for _ in ()).throw(
+    real_pool = _ch.cf.ProcessPoolExecutor
+    _ch.cf.ProcessPoolExecutor = lambda *a, **k: (_ for _ in ()).throw(
         AssertionError("processes=1 must not start a process pool"))
     try:
         dyn_serial = serial._read_dynamic(stations, 'all')
     finally:
-        _camels.cf.ProcessPoolExecutor = real_pool
+        _ch.cf.ProcessPoolExecutor = real_pool
     for stn in stations:
         assert dyn[stn].equals(dyn_serial[stn]), stn
     return
@@ -494,9 +494,9 @@ def test_no_redownload_or_reextract():
         raise AssertionError("must not be called when the data exists")
 
     # ZipFile itself is left alone: pandas uses it to read the .xlsx inventory
-    originals = (_camels.download_from_zenodo, zipfile.ZipFile.extractall,
+    originals = (_ch.download_from_zenodo, zipfile.ZipFile.extractall,
                  xr.Dataset.to_netcdf if xr is not None else None)
-    _camels.download_from_zenodo = zipfile.ZipFile.extractall = boom
+    _ch.download_from_zenodo = zipfile.ZipFile.extractall = boom
     if xr is not None:
         xr.Dataset.to_netcdf = boom
     try:
@@ -505,7 +505,7 @@ def test_no_redownload_or_reextract():
         hourly = CAMELS_CH(path=CAMELS_CH_PATH, timestep='H', verbosity=0)
         assert len(hourly.stations()) == NUM_HOURLY_STATIONS
     finally:
-        _camels.download_from_zenodo, zipfile.ZipFile.extractall = originals[:2]
+        _ch.download_from_zenodo, zipfile.ZipFile.extractall = originals[:2]
         if xr is not None:
             xr.Dataset.to_netcdf = originals[2]
     return
@@ -534,13 +534,13 @@ def test_download():
     or extracted again, and ``remove_zip`` deletes the archives"""
     logger.info("test_download")
     tmp = tempfile.mkdtemp()
-    original = _camels.download_from_zenodo
+    original = _ch.download_from_zenodo
     try:
         for timestep, n_calls in (('D', 1), ('H', 2)):
             path = os.path.join(tmp, timestep)
             ds = copy.copy(dataset)
             ds._path, ds.timestep, ds.remove_zip = path, timestep, False
-            calls, _camels.download_from_zenodo = _fake_record(path)
+            calls, _ch.download_from_zenodo = _fake_record(path)
 
             ds._download_camels_ch()
             assert len(calls) == n_calls, calls
@@ -566,7 +566,7 @@ def test_download():
             ds._download_camels_ch()
             assert calls == [], f"remove_zip forced a re-download: {calls}"
     finally:
-        _camels.download_from_zenodo = original
+        _ch.download_from_zenodo = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -575,7 +575,7 @@ def test_older_release_is_left_alone():
     """a version 0.6 folder next to the 0.9 one is neither read nor deleted"""
     logger.info("test_older_release_is_left_alone")
     tmp = tempfile.mkdtemp()
-    original = _camels.download_from_zenodo
+    original = _ch.download_from_zenodo
     try:
         old = os.path.join(tmp, 'camels_ch', 'camels_ch', 'time_series')
         os.makedirs(old)
@@ -583,7 +583,7 @@ def test_older_release_is_left_alone():
 
         ds = copy.copy(dataset)
         ds._path, ds.remove_zip = tmp, False
-        calls, _camels.download_from_zenodo = _fake_record(tmp)
+        calls, _ch.download_from_zenodo = _fake_record(tmp)
         ds._download_camels_ch()
 
         assert os.path.exists(os.path.join(old, 'CAMELS_CH_obs_based_2004.csv')), \
@@ -591,7 +591,7 @@ def test_older_release_is_left_alone():
         assert [c[1] for c in calls] == [('camels_ch.zip',)], calls
         assert ds.camels_path == os.path.join(tmp, 'camels_ch_v0.9', 'camels_ch')
     finally:
-        _camels.download_from_zenodo = original
+        _ch.download_from_zenodo = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -601,7 +601,7 @@ def test_interrupted_extraction():
     so the next initialization extracts the archive again without downloading it"""
     logger.info("test_interrupted_extraction")
     tmp = tempfile.mkdtemp()
-    original_download, original_extractall = _camels.download_from_zenodo, zipfile.ZipFile.extractall
+    original_download, original_extractall = _ch.download_from_zenodo, zipfile.ZipFile.extractall
 
     def interrupted(self, path, *args, **kwargs):
         os.makedirs(path, exist_ok=True)
@@ -611,7 +611,7 @@ def test_interrupted_extraction():
     try:
         ds = copy.copy(dataset)
         ds._path, ds.remove_zip = tmp, False
-        calls, _camels.download_from_zenodo = _fake_record(tmp)
+        calls, _ch.download_from_zenodo = _fake_record(tmp)
 
         zipfile.ZipFile.extractall = interrupted
         try:
@@ -628,7 +628,7 @@ def test_interrupted_extraction():
         assert len(calls) == 1, f"the archive was downloaded again: {calls}"
         assert os.listdir(ds.camels_path) == ['data.csv']
     finally:
-        _camels.download_from_zenodo = original_download
+        _ch.download_from_zenodo = original_download
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -638,11 +638,11 @@ def test_corrupt_archive():
     downloaded again on the next initialization"""
     logger.info("test_corrupt_archive")
     tmp = tempfile.mkdtemp()
-    original = _camels.download_from_zenodo
+    original = _ch.download_from_zenodo
     try:
         ds = copy.copy(dataset)
         ds._path, ds.remove_zip = tmp, False
-        calls, _camels.download_from_zenodo = _fake_record(tmp)
+        calls, _ch.download_from_zenodo = _fake_record(tmp)
 
         archive = os.path.join(tmp, 'camels_ch_v0.9', 'camels_ch.zip')
         os.makedirs(os.path.dirname(archive))
@@ -661,7 +661,7 @@ def test_corrupt_archive():
         assert [c[1] for c in calls] == [('camels_ch.zip',)], calls
         assert os.listdir(ds.camels_path) == ['data.csv']
     finally:
-        _camels.download_from_zenodo = original
+        _ch.download_from_zenodo = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 
@@ -672,11 +672,11 @@ def test_overwrite_removes_stale_before_download():
     the other timestep alone"""
     logger.info("test_overwrite_removes_stale_before_download")
     tmp = tempfile.mkdtemp()
-    original = _camels.download_from_zenodo
+    original = _ch.download_from_zenodo
     try:
         ds = copy.copy(dataset)
         ds._path, ds.remove_zip = tmp, False
-        calls, _camels.download_from_zenodo = _fake_record(tmp)
+        calls, _ch.download_from_zenodo = _fake_record(tmp)
 
         os.makedirs(os.path.join(tmp, 'camels_ch_v0.9', 'camels_ch'))
         stale_csv = os.path.join(tmp, 'camels_ch_v0.9', 'camels_ch', 'stale.csv')
@@ -694,7 +694,7 @@ def test_overwrite_removes_stale_before_download():
         assert os.path.exists(os.path.join(tmp, 'camels_ch_H_0.9_v2.nc')), \
             "the cache of the other timestep was deleted"
     finally:
-        _camels.download_from_zenodo = original
+        _ch.download_from_zenodo = original
         shutil.rmtree(tmp, ignore_errors=True)
     return
 

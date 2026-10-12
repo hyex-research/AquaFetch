@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 import aqua_fetch
 from aqua_fetch import CAMELS_PE
-from aqua_fetch.rr import _camels
+from aqua_fetch.rr._camels import _pe
 from aqua_fetch._backend import xarray as xr
 
 from utils import test_dataset as run_shared_tests
@@ -331,7 +331,7 @@ def test_no_redownload_or_reextract():
     must NOT rebuild the netcdf cache. Both are asserted by making the
     respective operation raise if invoked (not by wall-clock timing)."""
     logger.info("test_no_redownload_or_reextract")
-    orig_dl = _camels.download_and_unzip
+    orig_dl = _pe.download_and_unzip
     orig_nc = xr.Dataset.to_netcdf if xr is not None else None
 
     def _boom_dl(*a, **k):
@@ -340,7 +340,7 @@ def test_no_redownload_or_reextract():
     def _boom_nc(*a, **k):
         raise AssertionError("netcdf cache must not be rebuilt when it already exists")
 
-    _camels.download_and_unzip = _boom_dl
+    _pe.download_and_unzip = _boom_dl
     if xr is not None:
         xr.Dataset.to_netcdf = _boom_nc
     try:
@@ -348,7 +348,7 @@ def test_no_redownload_or_reextract():
         assert len(ds2.stations()) == NUM_STATIONS
         assert ds2.dyn_fpath_exists
     finally:
-        _camels.download_and_unzip = orig_dl
+        _pe.download_and_unzip = orig_dl
         if xr is not None:
             xr.Dataset.to_netcdf = orig_nc
     return
@@ -363,19 +363,19 @@ def test_overwrite_removes_stale_before_download():
     download are stubbed out so no data is destroyed)."""
     logger.info("test_overwrite_removes_stale_before_download")
     calls = []
-    orig_rmtree, orig_remove = _camels.shutil.rmtree, _camels.os.remove
-    orig_dl = _camels.download_and_unzip
+    orig_rmtree, orig_remove = shutil.rmtree, os.remove
+    orig_dl = _pe.download_and_unzip
 
-    _camels.shutil.rmtree = lambda p, *a, **k: calls.append(('rmtree', p))
-    _camels.os.remove = lambda p, *a, **k: calls.append(('remove', p))
-    _camels.download_and_unzip = lambda *a, **k: calls.append(('download', None))
+    shutil.rmtree = lambda p, *a, **k: calls.append(('rmtree', p))
+    os.remove = lambda p, *a, **k: calls.append(('remove', p))
+    _pe.download_and_unzip = lambda *a, **k: calls.append(('download', None))
     try:
         # call the download helper directly to isolate its removal-ordering logic
         dataset._download_camels_pe(overwrite=True)
     finally:
-        _camels.shutil.rmtree = orig_rmtree
-        _camels.os.remove = orig_remove
-        _camels.download_and_unzip = orig_dl
+        shutil.rmtree = orig_rmtree
+        os.remove = orig_remove
+        _pe.download_and_unzip = orig_dl
 
     ops = [c[0] for c in calls]
     assert 'download' in ops, "overwrite=True must (re)download"

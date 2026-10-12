@@ -4,7 +4,7 @@ from setuptools import setup
 
 
 import os
-fpath = os.path.join(os.getcwd(), "readme.md")
+fpath = os.path.join(os.getcwd(), "README.md")
 if os.path.exists(fpath):
     with open(fpath, "r") as fd:
         long_desc = fd.read()
@@ -46,7 +46,7 @@ setup(
 
     name='aqua_fetch',
 
-    version = "1.2.0",
+    version = "1.2.1",
 
     description='A Unified Python Interface for Water Resource Data Acquisition and harmonization',
     long_description=long_desc,
@@ -86,6 +86,7 @@ setup(
     packages=['aqua_fetch',
               'aqua_fetch/wq',
               'aqua_fetch/rr',
+              'aqua_fetch/rr/_camels',
               'aqua_fetch/wwt',
               'aqua_fetch/misc',
               ],

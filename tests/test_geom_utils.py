@@ -21,7 +21,8 @@ from aqua_fetch import RainfallRunoff, Quadica
 
 from aqua_fetch._geom_utils import calc_centroid
 from aqua_fetch._geom_utils import epsg2056_point_to_wgs84
-from aqua_fetch._geom_utils import epsg25832_to_wgs84, laea_to_wgs84, lcc_to_wgs84
+from aqua_fetch._geom_utils import laea_to_wgs84, lcc_to_wgs84
+from aqua_fetch._geom_utils import transform_geometry
 
 
 DATA_PATH = ''
@@ -49,47 +50,6 @@ def test_calc_centroid():
             est_cent = np.array(centroid1)
 
             np.testing.assert_allclose(est_cent, shp_cent, rtol=1e-5, atol=1e-5)
-    return
-
-
-def test_25832_to_4326():
-
-    ds = RainfallRunoff(
-        "CAMELS_DK", 
-        path=os.path.join(DATA_PATH, 'CAMELS'), 
-        verbosity=3)
-
-    #c = ds.fetch_static_features(static_features=['catch_outlet_lat', 'catch_outlet_lon'])
-    c = ds.stn_coords()
-
-    transformer = Transformer.from_crs("EPSG:25832", "EPSG:4326")
-    lat, long = transformer.transform(c.iloc[:, 1], c.iloc[:, 0])
-    ct = pd.DataFrame(np.column_stack([lat, long]), index=c.index,
-                                        columns=['lat', 'long'])
-
-    ct_m = pd.DataFrame(columns=['lat', 'long'], index=ct.index)
-    # Test the function using lat, long in c DataFrame
-    for i in range(0, len(c)):
-        lat, lon = epsg25832_to_wgs84(c.iloc[i, 1], c.iloc[i, 0], 32)
-        ct_m.iloc[i] = [lat, lon]
-
-    np.testing.assert_allclose(ct.values, ct_m.values.astype(float), atol=1e-5)
-
-    # test the boundary transformation
-    boundary = ds.get_boundary(ds.stations()[0])
-    transformer = Transformer.from_crs("EPSG:25832", "EPSG:4326")
-    lat, long = transformer.transform(np.array(boundary.coordinates[0])[:, 0], np.array(boundary.coordinates[0])[:, 1])
-
-    longs, lats = [], []
-    for i in range(0, len(lat)):
-        lat_, long_ = epsg25832_to_wgs84(boundary.coordinates[0][i][0], boundary.coordinates[0][i][1], 32)
-        longs.append(long_)
-        lats.append(lat_)
-    longs = np.array(longs)
-    lats = np.array(lats)
-
-    np.testing.assert_array_almost_equal(lat, lats)
-    np.testing.assert_array_almost_equal(long, longs)
     return
 
 
@@ -232,10 +192,36 @@ def test_2056_to_4326():
     return
 
 
+def test_transform_geometry():
+    """holes, MultiPolygons and z values keep their structure; x, y become lon, lat"""
+    def to_lat_lon(x, y):          # a stand-in projection: lat = y / 10, lon = x / 10
+        return y / 10, x / 10
+
+    square = [(0, 0), (10, 0), (10, 10), (0, 0)]
+    hole = [(2, 2, 5), (4, 2, 5), (4, 4, 5), (2, 2, 5)]
+    polygon = fiona.Geometry(type='Polygon', coordinates=[square, hole])
+    got = transform_geometry(polygon, to_lat_lon)
+    assert got.type == 'Polygon' and len(got.coordinates) == 2
+    assert got.coordinates[1] == [(0.2, 0.2), (0.4, 0.2), (0.4, 0.4), (0.2, 0.2)]
+
+    multi = fiona.Geometry(type='MultiPolygon', coordinates=[[square], [square, hole]])
+    got = transform_geometry(multi, to_lat_lon)
+    assert [len(p) for p in got.coordinates] == [1, 2]
+    assert got.coordinates[0][0][1] == (1.0, 0.0)
+
+    try:
+        transform_geometry(fiona.Geometry(type='Point', coordinates=(1, 2)), to_lat_lon)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a Point was transformed")
+    return
+
+
 class TestCamels(unittest.TestCase):
 
-    def test_25832_to_4326(self):
-        test_25832_to_4326()
+    def test_transform_geometry(self):
+        test_transform_geometry()
 
     def test_laea_to_wgs84(self):
         test_laea_to_wgs84()
