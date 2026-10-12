@@ -4,7 +4,7 @@ from setuptools import setup
 
 
 import os
-fpath = os.path.join(os.getcwd(), "readme.md")
+fpath = os.path.join(os.getcwd(), "README.md")
 if os.path.exists(fpath):
     with open(fpath, "r") as fd:
         long_desc = fd.read()

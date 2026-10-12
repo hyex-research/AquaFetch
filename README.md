@@ -6,7 +6,7 @@
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.16792359.svg)](https://doi.org/10.5281/zenodo.16792359)
 
 <p float="left">
-  <img src="/docs/source/imgs/logo.png"/>
+  <img src="https://raw.githubusercontent.com/hyex-research/AquaFetch/master/docs/source/imgs/logo.png"/>
 </p>
 
 
