@@ -151,6 +151,16 @@ ds = Ireland(path=raw_data_path, verbosity=3, processes=32, timestep='H')
 
 h_q = ds.fetch_q()
 
+# only 'D' and 'H' are accepted; other spellings used to crash the first
+# streamflow download with a KeyError, and 'd' read the hourly file
+for timestep in ('daily', 'hourly', 'd', 'h'):
+    try:
+        Ireland(path=raw_data_path, timestep=timestep, verbosity=0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"Ireland accepted timestep={timestep!r}")
+
 ds = Finland(path=raw_data_path, processes=1, 
              verbosity=3)
 

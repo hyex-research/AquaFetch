@@ -1268,6 +1268,8 @@ class Ireland(_EStreams):
     IEEP0281	52.217434	-8.494649
     IEEP0282	54.284546	-6.921607
     """
+    time_steps = ['D', 'H']
+
     def __init__(
             self, 
             path:Union[str, os.PathLike] = None,
@@ -1275,6 +1277,9 @@ class Ireland(_EStreams):
             timestep:str='D',
             verbosity:int=1,
             **kwargs):
+
+        if timestep not in self.time_steps:
+            raise ValueError(f"timestep must be one of {self.time_steps}, not {timestep!r}")
 
         super().__init__(
             path=path, 
