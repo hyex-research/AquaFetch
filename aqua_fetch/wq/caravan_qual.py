@@ -160,7 +160,7 @@ class CaravanQual(Datasets):
     Downloaded from `zenodo <https://zenodo.org/records/21337532>`_. The water
     quality csv data needs only ``pandas``; the catchment/stream attributes are a
     separate ``.zarr`` store, downloaded only when ``attributes=True`` (needs
-    ``xarray``+``zarr``). Attributes are *segment-level* — keyed to a reach of the
+    ``xarray`` + ``zarr`` ). Attributes are *segment-level* — keyed to a reach of the
     GEOGLOWS/TDX-Hydro river network (``LINKNO``), which a station inherits — 205
     in all (197 catchment + 8 stream). The ``.zarr`` covers only 1980-01-01 to
     2025-09-30 (:attr:`zarr_start` / :attr:`zarr_end`), ~10% narrower than the csv.
