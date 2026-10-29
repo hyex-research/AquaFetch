@@ -8,6 +8,7 @@ import unittest
 wd_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(wd_dir)
 
+import numpy as np
 import pandas as pd
 
 from aqua_fetch import CCAM
@@ -173,6 +174,20 @@ class TestCamels(unittest.TestCase):
                                as_dataframe=True)
         assert pd.infer_freq(dyn['DE110000'].index) in ['H', 'h'], \
             pd.infer_freq(dyn['DE110000'].index)
+        return
+
+    def test_camels_de_float32(self):
+        # daily values are served as float32: the published values cast to float32
+        ds = CAMELS_DE(path=os.path.join(raw_data_path, 'CAMELS'), verbosity=0)
+        stn = ds.stations()[0]
+        _, dyn = ds.fetch([stn], static_features=None, as_dataframe=True)
+        raw = pd.read_csv(os.path.join(ds.ts_dir, f"{ds._prefix}_hydromet_timeseries_{stn}.csv"),
+                          index_col=0, parse_dates=True, float_precision='round_trip')
+        assert set(dyn[stn].dtypes) == {np.dtype('float32')}
+        assert dyn[stn].index.equals(raw.index)
+        for col in ['discharge_vol_obs', 'precipitation_mean', 'temperature_mean']:
+            np.testing.assert_array_equal(dyn[stn][ds.dyn_map[col]].to_numpy(),
+                                          raw[col].to_numpy(np.float32))
         return
 
     def test_camels_se(self):

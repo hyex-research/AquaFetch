@@ -627,7 +627,8 @@ class CAMELS_LUX(_RainfallRunoff):
         stn_df.rename(columns=self.dyn_map, inplace=True)
         self._apply_dyn_factors(stn_df)
 
-        return stn_df
+        # after the unit conversion; float32 keeps every value at its published decimals
+        return stn_df.astype(self.fp)
 
     def __getstate__(self):
         """

@@ -51,9 +51,10 @@ logger = logging.getLogger(__name__)
 import aqua_fetch
 from aqua_fetch import download_zenodo   # so that aqua_fetch.download_zenodo can be patched
 from aqua_fetch import CAMELS_LUX
-from aqua_fetch._backend import xarray as xr, fiona
+from aqua_fetch._backend import xarray as xr, fiona, netCDF4
 
 from utils import test_dataset as run_shared_tests
+from utils import check_against_published_text
 
 # The class appends ``CAMELS_LUX`` to this path. Replace with the location on
 # your machine, or set the CAMELS_LUX_PATH environment variable. Point it at a
@@ -219,22 +220,42 @@ def test_stations_and_features():
 
 def test_dynamic_values_and_units():
     """every value read from a gauge's file is the published one, times the
-    documented factor, on the published date"""
+    documented factor, on the published date, as float32 which keeps the
+    published decimals; from the csv file and from the netCDF cache"""
     logger.info("test_dynamic_values_and_units")
     stations = dataset.stations()
-    for stn in (stations[0], stations[len(stations) // 2], stations[-1], 'ID_02'):
+    columns = {column: name for name, (column, _) in RAW_COLUMNS.items()}
+    factors = {column: factor for column, factor in RAW_COLUMNS.values()}
+    picked = [stations[0], stations[len(stations) // 2], stations[-1], 'ID_02']
+    _, from_cache = dataset.fetch(stations=picked, as_dataframe=True)
+    for stn in picked:
         raw = raw_timeseries(stn)
         served = dataset._read_stn_dyn(stn)
 
         assert served.shape == (len(raw), NUM_DYNAMIC), served.shape
         assert served.index.equals(raw.index), stn
 
-        for name, (column, factor) in RAW_COLUMNS.items():
-            expected = raw[column].values * factor
-            np.testing.assert_allclose(
-                served[name].values.astype('float64'), expected,
-                rtol=1e-12, atol=0, equal_nan=True,
-                err_msg=f"{stn}: {name} is not {column} x {factor}")
+        fpath = os.path.join(dataset._ts_dir('D'), dataset._ts_fname(stn, 'D'))
+        check_against_published_text(served, fpath, columns, factors)
+        check_against_published_text(from_cache[stn], fpath, columns, factors)
+    return
+
+
+def test_float_precision():
+    """float32 by default; float64 on request, with a cache of its own, and its
+    values are the float32 ones before the cast"""
+    logger.info("test_float_precision")
+    _, dyn = dataset.fetch(stations=['ID_01', 'ID_02'])
+    assert {dyn[stn].dtype for stn in dyn.data_vars} == {np.dtype('float32')}
+    with netCDF4.Dataset(dataset.dyn_fpath) as nc:
+        assert nc.variables['ID_01'].dtype == np.float32, nc.variables['ID_01'].dtype
+
+    # to_netcdf=False: no float64 cache is built in the data folder
+    ds64 = CAMELS_LUX(path=CAMELS_LUX_PATH, float_precision=np.float64, to_netcdf=False, verbosity=0)
+    assert ds64.dyn_fname == f'camels_lux_D_{CAMELS_LUX.release}_float64_v2.nc', ds64.dyn_fname
+    served64 = ds64._read_stn_dyn('ID_02')
+    assert set(served64.dtypes) == {np.dtype('float64')}
+    pd.testing.assert_frame_equal(served64.astype(np.float32), dataset._read_stn_dyn('ID_02'))
     return
 
 

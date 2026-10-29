@@ -602,6 +602,11 @@ class CAMELS_DE(_RainfallRunoff):
 
             dyn = {stn: stn_df for stn, stn_df in zip(stations, results)}
 
+        # float32 keeps every daily value at its published decimals; 109,146 hourly
+        # values (e.g. 278.33333) change in their last one (5th) decimal
+        for stn in dyn:
+            dyn[stn] = dyn[stn].astype(self.fp)
+
         if self.verbosity:
             total = time.time() - start
             print(f"Read {len(dyn)} stations for {len(dyn_feats)} dyn features "
