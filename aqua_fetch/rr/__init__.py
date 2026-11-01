@@ -55,6 +55,7 @@ from ._camels import CAMELS_FI
 from ._camels import CAMELS_PL
 from ._camels import CAMELS_PE
 from ._camels import CAMELS_KR
+from ._camels import CAMELS_CZ
 from ._estreams import Slovenia
 from ._ukflow15 import UKFlow15
 from ._camels import CAMELSH
@@ -115,6 +116,7 @@ DATASETS = {
     'CAMELS_PL': CAMELS_PL,
     'CAMELS_PE': CAMELS_PE,
     'CAMELS_KR': CAMELS_KR,
+    'CAMELS_CZ': CAMELS_CZ,
     'Slovenia': Slovenia,
     'UKFlow15': UKFlow15,
     'NamalValleyPakistan': NamalValleyPakistan,
@@ -231,6 +233,7 @@ class RainfallRunoff(object):
             - ``CAMELS_CH``
             - ``CAMELS_CL``
             - ``CAMELS_COL``
+            - ``CAMELS_CZ``
             - ``CAMELS_DE``
             - ``CAMELS_DK0``
             - ``CAMELS_DK``

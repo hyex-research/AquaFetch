@@ -18,5 +18,6 @@ from ._fi import CAMELS_FI
 from ._pl import CAMELS_PL
 from ._pe import CAMELS_PE
 from ._kr import CAMELS_KR
+from ._cz import CAMELS_CZ
 from ._camelsh import CAMELSH
 from ._unfinished import CAMELS_SPAT, CAMELS_DEBY, CAMELS_ES, HydResponses, ThirdPole

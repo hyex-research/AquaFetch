@@ -43,13 +43,13 @@ def _remove_stale(paths, verbosity: int = 1, reason: str = "overwrite=True"):
                 os.remove(stale)
     return
 
-def _extract_zip(archive: str, folder: str, verbosity: int = 1):
+def _extract_zip(archive: str, folder: str, verbosity: int = 1, skip: Tuple[str, ...] = ()):
     """
     Extracts ``archive`` into a temporary folder which is renamed to ``folder``
     once complete, so that an interrupted extraction is redone on the next
     initialization instead of being taken as complete. A corrupt archive, e.g.
     an error page saved under its name, is deleted so that it is downloaded
-    again.
+    again. Members whose names start with one of ``skip`` are not extracted.
     """
     tmp = f"{folder}_extracting"
     shutil.rmtree(tmp, ignore_errors=True)  # left by an interrupted extraction
@@ -59,7 +59,8 @@ def _extract_zip(archive: str, folder: str, verbosity: int = 1):
 
     try:
         with zipfile.ZipFile(archive) as zf:
-            zf.extractall(tmp)
+            members = [m for m in zf.namelist() if not m.startswith(skip)] if skip else None
+            zf.extractall(tmp, members=members)
     except (zipfile.BadZipFile, zlib.error, EOFError):
         shutil.rmtree(tmp, ignore_errors=True)
         os.remove(archive)

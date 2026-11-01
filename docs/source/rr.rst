@@ -83,7 +83,7 @@ List of datasets
      - 106
      - 
      - 27
-     - 35
+     - 40
      - 1979
      - 2003
      - Arctic (Russia)
@@ -168,6 +168,16 @@ List of datasets
      - 2022
      - Colombia
      - `Jimenez et al., 2025 <https://doi.org/10.5194/essd-2025-200>`_
+   * - ``CAMELS_CZ``
+     - :py:class:`aqua_fetch.rr.CAMELS_CZ`
+     - 249
+     - 249
+     - 46, 18
+     - 215, 215
+     - 1950, 2016
+     - 2025, 2025
+     - Czechia
+     - `Krejčí and Nearing, 2025 <https://doi.org/10.5281/zenodo.17769325>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
      - 1582
@@ -332,10 +342,10 @@ List of datasets
      - :py:class:`aqua_fetch.rr.Finland`
      - 669
      -
-     - 27
-     - 35
+     - 12
+     - 251
      - 2012
-     - 2023
+     - 2024
      - Finland
      - `ymparisto.fi <https://wwwi3.ymparisto.fi>`_
    * - ``GRDCCaravan``
@@ -372,20 +382,20 @@ List of datasets
      - :py:class:`aqua_fetch.rr.Ireland`
      - 464
      -
-     - 27
-     - 35
-     - 1992
-     - 2020
+     - 12
+     - 251
+     - 1950
+     - 2024
      - Ireland
      - `EPA Ireland <https://epawebapp.epa.ie>`_  
    * - ``Italy``
      - :py:class:`aqua_fetch.rr.Italy`
      - 294
      -
-     - 37
-     - 35
-     - 1992
-     - 2020
+     - 12
+     - 251
+     - 1950
+     - 2024
      - Italy
      - `EPA Ireland <https://epawebapp.epa.ie>`_  
    * - ``Japan``
@@ -393,7 +403,7 @@ List of datasets
      - 751
      - 696
      - 27
-     - 35
+     - 40
      - 1979
      - 2022
      - Japan
@@ -432,18 +442,18 @@ List of datasets
      - :py:class:`aqua_fetch.rr.Poland`
      - 1287
      -
-     - 27
-     - 35
-     - 1992
-     - 2020
+     - 12
+     - 251
+     - 1950
+     - 2024
      - Poland
      - `imgw.pl <https://danepubliczne.imgw.pl>`_     
    * - ``Portugal``
      - :py:class:`aqua_fetch.rr.Portugal`
      - 280
      -
-     - 27
-     - 35
+     - 12
+     - 251
      - 1992
      - 2020
      - Portugal
@@ -472,10 +482,10 @@ List of datasets
      - :py:class:`aqua_fetch.rr.Slovenia`
      - 117
      -
-     - 3
-     - 10
+     - 12
+     - 251
      - 1950
-     - 2023
+     - 2024
      - Slovenia
      - `vode.arso.gov.si <https://vode.arso.gov.si>`_
    * - ``Spain``
@@ -483,7 +493,7 @@ List of datasets
      - 889
      -
      - 27
-     - 35
+     - 40
      - 1979
      - 2020
      - Spain
@@ -493,7 +503,7 @@ List of datasets
      - 73
      -
      - 27
-     - 35
+     - 40
      - 1980
      - 1999
      - Thailand
@@ -705,6 +715,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.rr.CAMELS_COL
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.CAMELS_CZ
    :members:
    :show-inheritance:
 

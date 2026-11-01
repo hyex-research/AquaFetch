@@ -543,3 +543,36 @@ def test_dataset(dataset,
     logger.info(f"*** Finished testing {dataset.name} ***")
 
     return
+
+
+def check_against_published_text(served: pd.DataFrame, fpath: str, columns: Dict[str, str],
+                                 factors: Dict[str, float] = None, index_col=0):
+    """
+    Compares the float32 values ``served`` for a station with its csv file
+    ``fpath``, independently of the library: every value must equal the exact
+    (round_trip) published number cast to float32, and must round back to that
+    number at the decimals it is published with. ``columns`` maps each raw
+    column to its served name; ``factors`` holds unit conversions of raw columns.
+    """
+    factors = factors or {}
+    exact = pd.read_csv(fpath, index_col=index_col, parse_dates=True, float_precision='round_trip')
+    text = pd.read_csv(fpath, index_col=index_col, dtype=str, keep_default_na=False)
+    keep = ~exact.index.duplicated(keep='first')   # a repeated timestamp is served once
+    exact, text = exact[keep], text[keep]
+    # every timestamp of the file is served; timestamps added to align the
+    # stations (e.g. before a late start) hold NaN only
+    assert exact.index.isin(served.index).all(), f"{fpath}: timestamps missing"
+    added = served.index.difference(exact.index)
+    assert served.loc[added, list(columns.values())].isna().all().all(), f"{fpath}: values added"
+    served = served.loc[exact.index]
+    for raw_col, col in columns.items():
+        got = served[col].to_numpy()
+        assert got.dtype == np.float32, (col, got.dtype)
+        factor = factors.get(raw_col, 1.0)
+        want = exact[raw_col].to_numpy(np.float64) * factor
+        assert np.array_equal(got, want.astype(np.float32), equal_nan=True), f"{fpath}: {col} changed"
+        # decimals of each published value; a unit factor of 10**k shifts them
+        decimals = text[raw_col].str.partition('.')[2].str.len().to_numpy() - int(round(np.log10(factor)))
+        ok = np.isnan(want) | (np.abs(got.astype(np.float64) - want) < 0.5 * 10.0 ** -decimals.astype(float))
+        assert ok.all(), f"{fpath}: {col} loses published decimals at {served.index[~ok][:3].tolist()}"
+    return
