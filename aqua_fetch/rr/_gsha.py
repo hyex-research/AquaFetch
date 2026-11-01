@@ -2,7 +2,7 @@
 __all__ = [
     'GSHA', 
     '_GSHA', 
-    'Japan'
+    'Japan',
     'Arcticnet',
     'Spain',
     'Thailand'
@@ -23,7 +23,8 @@ from .._backend import xarray as xr
 from ..utils import get_cpus
 from ..utils import validate_attributes
 from ..utils import merge_shapefiles_fiona
-from .utils import _RainfallRunoff, cache_name
+from .utils import _RainfallRunoff, cache_name, _fetch_with_own_reader
+from ._camels._common import _extract_zip, _remove_stale
 
 from ._map import (
     total_precipitation_with_specifier,
@@ -74,10 +75,17 @@ class GSHA(_RainfallRunoff):
     """
     Global streamflow characteristics, hydrometeorology and catchment
     attributes following `Peirong et al., 2023 <https://doi.org/10.5194/essd-16-1559-2024>`_.
-    The data is downloaded from its `zenodo repository <https://zenodo.org/record/8090704>`_.
+    The data is downloaded from its `zenodo repository <https://zenodo.org/record/8090704>`_
+    (release 1.0), except the station table ``Global_files.zip``, which is taken
+    from release `1.3 <https://zenodo.org/records/10433905>`_, the only data file
+    that changed. A station table of release 1.0 on disk is replaced once, with a warning.
     It should be noted that this dataset does not contain observed streamflow data.
     It has 21568 stations, 26 dynamic (meteorological + storage) features with daily timestep, 21 dynamic
-    features (landcover + streamflow indices + reservoir) with yearly timestep and 35 static features.
+    features (landcover + streamflow indices + reservoir) with yearly timestep and 40 static features.
+    Release 1.3 adds the static features ``verification``, which says whether the
+    catchment matches the gauge (16889 'verified match', 3933 'unverified', 746
+    'verified mismatch'), and ``COMID``, ``uparea`` (km2), ``order`` and
+    ``NextDownID``, which place the gauge on the MERIT Hydro river network.
 
     Examples
     --------
@@ -86,27 +94,34 @@ class GSHA(_RainfallRunoff):
     >>> len(dataset.stations())
     21568
     >>> dataset.agencies
-    ['arcticnet', 'AFD', 'GRDC', 'IWRIS', 'MLIT', 'HYDAT', 'ANA', 'BOM', 'CCRR', 'China', 'CHP', 'RID', 'USGS']
+    array(['BOM', 'CCRR', 'USGS', 'HYDAT', 'GRDC', 'arcticnet', 'IWRIS',
+           'ANA', 'CHP', 'AFD', 'MLIT', 'RID', 'China'], dtype=object)
     >>> dataset.start
     Timestamp('1979-01-01 00:00:00')
     >>> dataset.end
     Timestamp('2022-12-31 00:00:00')
     >>> dataset.static_features
-    ['ele_mt_uav', 'slp_dg_uav', 'lat', 'long', 'area_km2', 'agency', ...]
+    ['HYRIV_ID', 'ele_mt_uav', 'slope_degrees', 'sgr_dk_rav', ...]
     >>> len(dataset.dynamic_features)
     26
     >>> len(dataset.daily_dynamic_features)
     26
     >>> len(dataset.yearly_dynamic_features)
     21
-    >>> dataset.fetch_static_features('1001_arcticnet')
+    >>> dataset.fetch_static_features('1001_arcticnet').shape
+    (1, 40)
     fetch static features for all stations of arcticnet agency
-    >>> dataset.fetch_static_features(agency='arcticnet')
-    fetch static features for all stations of arcticnet agency
-    >>> ds.fetch_dynamic_features(agency='arcticnet')
+    >>> dataset.fetch_static_features(agency='arcticnet').shape
+    (106, 40)
+    fetch dynamic features for all stations of arcticnet agency
+    >>> data = dataset.fetch_dynamic_features(agency='arcticnet')
+    >>> dict(data.sizes)
+    {'time': 16071, 'dynamic_features': 26}
 
     """
     url = "https://zenodo.org/record/8090704"
+    # Global_files.zip of release 1.3; the later releases hold no other data files
+    global_files_url = "https://zenodo.org/records/10433905"
 
     def __init__(self,
                  path=None,
@@ -116,6 +131,9 @@ class GSHA(_RainfallRunoff):
         """
         Parameters
         ----------
+        overwrite : bool
+            if True, the GSHA folder, including the netcdf files built from it,
+            is deleted and all the data is downloaded again.
         to_netcdf : bool
             whether to convert all the data into one netcdf file or not.
             This will fasten repeated calls to fetch etc but will
@@ -125,8 +143,9 @@ class GSHA(_RainfallRunoff):
                                    overwrite=overwrite, **kwargs)
         self.path = path
 
-        files = ['Global_files.zip',
-                 'GSHAreadme.docx',
+        # the station table, Global_files.zip, is taken from release 1.3 by
+        # _update_global_files, so that of release 1.0 is not downloaded
+        files = ['GSHAreadme.docx',
                  'LAI.zip',
                  'Landcover.zip',
                  'Meteorology_PartI_arcticnet_AFD_GRDC_IWRIS_MLIT.zip',
@@ -134,22 +153,24 @@ class GSHA(_RainfallRunoff):
                  'Meteorology_PartIII_China_CHP_RID_USGS.zip',
                  'Reservoir.zip',
                  'Storage.zip',
-                 'StreamflowIndices.zip',
+                 'StreamflowIndices_yearly.zip',
                  'WatershedPolygons.zip',
                  'WatershedsAll.csv'
                  ]
-        self._download()
+        self._download(overwrite=overwrite, include=files)
+        self._update_global_files()
 
         self._maybe_merge_shapefiles()
 
-        fpath = os.path.join(self.path,
-                             "Global_files",
-                             "Global_files",
-                             'WatershedsAll.csv')
-        wsAll = pd.read_csv(fpath)
-        wsAll.columns = ['station_id', 'lat', 'long', 'area', 'agency']
-        wsAll.index = wsAll.pop('station_id')
-        self.wsAll = wsAll[~wsAll.index.duplicated(keep='first')].copy()
+        global_dir = os.path.join(self.path, "Global_files", "Global_files")
+        wsAll = pd.read_csv(os.path.join(global_dir, 'WatershedsAll.csv'), index_col='Sttn_Nm')
+        wsAll = wsAll.rename(columns={'latitude': 'lat', 'longitude': 'long', 'WatershedArea': 'area'})
+        merit = pd.read_csv(os.path.join(global_dir, 'GSHA_MERITinfo.csv'), index_col='Sttn_Nm',
+                            usecols=['Sttn_Nm', 'COMID', 'uparea', 'order', 'NextDownID'])
+        wsAll = wsAll[~wsAll.index.duplicated(keep='first')]
+        wsAll = wsAll.join(merit[~merit.index.duplicated(keep='first')])
+        wsAll.index.name = 'station_id'
+        self.wsAll = wsAll
         self._daily_dynamic_features = None # lazy initialization, computed when accessed
         self._yearly_dynamic_features = None # lazy initialization, computed when accessed
         # Caches for the heavy, repeatedly-read resources. Opening any of the
@@ -162,6 +183,38 @@ class GSHA(_RainfallRunoff):
         self._uncertainty_df = None
         self._streamflow_cache = None
         self._static_features = self.__static_features()
+
+    def _update_global_files(self):
+        """
+        Replaces ``Global_files`` of release 1.0 with that of release 1.3, which
+        adds ``GSHA_MERITinfo.csv`` and the ``verification`` column of
+        ``WatershedsAll.csv``. The old folder is deleted, with a warning, only
+        once the new one is extracted. Nothing is downloaded if it is there.
+        """
+        folder = os.path.join(self.path, 'Global_files')
+        if os.path.exists(os.path.join(folder, 'Global_files', 'GSHA_MERITinfo.csv')):
+            return
+
+        archive = os.path.join(self.path, 'Global_files.zip')
+        # the archive of release 1.0; download() would save the new one beside it
+        _remove_stale([archive], self.verbosity, reason="replaced by release 1.3")
+
+        # imported here because this module installs a SIGINT handler on import
+        from ..download_zenodo import download_from_zenodo
+        download_from_zenodo(self.path, doi=self.global_files_url,
+                             include=['Global_files.zip'], verbosity=self.verbosity)
+
+        replaced = os.path.isdir(folder)
+        _extract_zip(archive, folder, self.verbosity)
+        if replaced:
+            # warned regardless of verbosity: the data on disk is deleted
+            warnings.warn(
+                f"GSHA: {folder} held the station table of release 1.0. Replaced "
+                f"it with that of release 1.3 ({self.global_files_url}), which adds "
+                f"GSHA_MERITinfo.csv and the verification column.", UserWarning)
+
+        self.maybe_remove_zip_files()
+        return
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -372,7 +425,7 @@ class GSHA(_RainfallRunoff):
         >>> from aqua_fetch import GSHA
         >>> dataset = GSHA()
         >>> dataset.stn_coords('1001_arcticnet')
-        >>> dataset.stn_coords(['1001_arcticnet', '1002_arcticnet'])
+        >>> dataset.stn_coords(['1001_arcticnet', '10062_arcticnet'])
         get coordinates for all stations of arcticnet agency
         >>> dataset.stn_coords(agency='arcticnet')
         """
@@ -995,23 +1048,23 @@ class GSHA(_RainfallRunoff):
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
         >>> static_data.shape
-           (21568, 35)
+           (21568, 40)
         get static data of one station only
         >>> static_data = dataset.fetch_static_features('1001_arcticnet')
         >>> static_data.shape
-           (1, 35)
+           (1, 40)
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['ele_mt_uav', 'slp_dg_uav'])
+        >>> static_data = dataset.fetch_static_features(stns, ['ele_mt_uav', 'slope_degrees'])
         >>> static_data.shape
            (21568, 2)
-        >>> data = dataset.fetch_static_features('1001_arcticnet', static_features=['slp_dg_uav', 'slp_dg_uav'])
+        >>> data = dataset.fetch_static_features('1001_arcticnet', static_features=['ele_mt_uav', 'slope_degrees'])
         >>> data.shape
            (1, 2)
-        >>> out = ds.fetch_static_features(agency='arcticnet')
+        >>> out = dataset.fetch_static_features(agency='arcticnet')
         >>> out.shape
-        (106, 35
+        (106, 40)
         """
 
         stations = self._get_stations(stations, agency)
@@ -1029,6 +1082,33 @@ class GSHA(_RainfallRunoff):
         df.rename(columns=self.static_map, inplace=True)
 
         return df.loc[:, features]
+
+    def fetch_stations_features(
+            self,
+            stations: List[str],
+            dynamic_features: Union[str, List[str], None] = 'all',
+            static_features: Union[str, List[str], None] = None,
+            st=None,
+            en=None,
+            as_dataframe: bool = False,
+            **kwargs
+    ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
+        """
+        Static and dynamic features of the given stations; what :meth:`fetch`
+        returns. The dynamic features come from :meth:`fetch_dynamic_features`,
+        which reads the consolidated netcdf files directly.
+
+        Examples
+        --------
+        >>> from aqua_fetch import GSHA
+        >>> dataset = GSHA()
+        >>> static, dynamic = dataset.fetch(['1001_arcticnet', '10062_arcticnet'],
+        ...     static_features='all', st='2000-01-01', en='2000-12-31')
+        >>> static.shape, dict(dynamic.sizes)
+        ((2, 40), {'time': 366, 'dynamic_features': 26})
+        """
+        return _fetch_with_own_reader(self, stations, dynamic_features, static_features,
+                                      st=st, en=en, as_dataframe=as_dataframe)
 
     def fetch_stn_dynamic_features(
             self,
@@ -1111,7 +1191,7 @@ class GSHA(_RainfallRunoff):
         >>> from aqua_fetch import GSHA
         >>> dataset = GSHA()
         >>> data = dataset.fetch_dynamic_features('1001_arcticnet', as_dataframe=True)
-        >>> data.shape
+        >>> data['1001_arcticnet'].shape
         (16071, 26)
         >>> dataset.dynamic_features
         >>> stns = ['1001_arcticnet', '10062_arcticnet']
@@ -1461,21 +1541,21 @@ class _GSHA(_RainfallRunoff):
         get the names of stations
         >>> stns = dataset.stations()
         >>> len(stns)
-            12004
+            751
         get all static data of all stations
         >>> static_data = dataset.fetch_static_features(stns)
         >>> static_data.shape
-           (12004, 27)
+           (751, 40)
         get static data of one station only
-        >>> static_data = dataset.fetch_static_features('01010070')
+        >>> static_data = dataset.fetch_static_features('302041282204110')
         >>> static_data.shape
-           (1, 27)
+           (1, 40)
         get the names of static features
         >>> dataset.static_features
         get only selected features of all stations
-        >>> static_data = dataset.fetch_static_features(stns, ['Drainage_Area_km2', 'Elevation_m'])
+        >>> static_data = dataset.fetch_static_features(stns, ['area_km2', 'ele_mt_uav'])
         >>> static_data.shape
-           (12004, 2)
+           (751, 2)
         """
         return self._fetch_static_features(stations, static_features, st, en)
 
@@ -1614,7 +1694,7 @@ class Japan(_GSHA):
     `river.go.jp website <http://www1.river.go.jp>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of static features are 35 and dynamic features are 27 and the
+    the number of static features are 40 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2022-12-31.
     """
 
@@ -1932,7 +2012,7 @@ class Arcticnet(_GSHA):
     `r-arcticnet project <https://www.r-arcticnet.sr.unh.edu/v4.0/AllData/index.html>`_ .
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of static features are 35 and dynamic features are 27 and the
+    the number of static features are 40 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2003-12-31 although the observed
     streamflow (q_cms_obs) for some stations is available as earlier as from
     1913-01-01.
@@ -2095,7 +2175,7 @@ class Spain(_GSHA):
     `ceh-es <https://ceh-flumen64.cedex.es>`_ website.
     The meteorological data static catchment features and catchment boundaries 
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of static features are 35 and dynamic features are 27 and the
+    the number of static features are 40 and dynamic features are 27 and the
     data is available from 1979-01-01 to 2020-09-30.
     """
 
@@ -2225,7 +2305,7 @@ class Thailand(_GSHA):
     `RID project <https://hydro.iis.u-tokyo.ac.jp/GAME-T/GAIN-T/routine/rid-river/disc_d.html>`_ .
     The meteorological data static catchment features and catchment boundaries
     taken from `GSHA <https://doi.org/10.5194/essd-16-1559-2024>`_ project. Therefore,
-    the number of static features are 35 and dynamic features are 27 and the
+    the number of static features are 40 and dynamic features are 27 and the
     data is available from 1980-01-01 to 1999-12-31.
 
     .. note::

@@ -1697,6 +1697,41 @@ def _handle_dynamic(
     return dyn
 
 
+def _fetch_with_own_reader(
+        ds: _RainfallRunoff,
+        stations: List[str],
+        dynamic_features: Union[str, List[str], None],
+        static_features: Union[str, List[str], None],
+        st=None,
+        en=None,
+        as_dataframe: bool = False,
+) -> Tuple[Union[pd.DataFrame, None], Union[Dict[str, pd.DataFrame], "Dataset", None]]:
+    """
+    :meth:`_RainfallRunoff.fetch_stations_features` for a dataset that reads many
+    stations at once with its own ``fetch_dynamic_features(stations,
+    dynamic_features, st, en, as_dataframe)`` and has no single-station
+    ``_read_stn_dyn`` for the base implementation to call (GSHA, EStreams).
+    """
+    stations = validate_attributes(stations, ds.stations(), 'stations')
+
+    if dynamic_features is None and static_features is None:
+        raise ValueError("static_features and dynamic_features are both None")
+
+    if xr is None and not as_dataframe:
+        if ds.verbosity:
+            warnings.warn("xarray module is not installed so as_dataframe will have no effect. "
+                          "Dynamic features will be returned as pandas DataFrame")
+        as_dataframe = True
+
+    static, dynamic = None, None
+    if dynamic_features is not None:
+        dynamic = ds.fetch_dynamic_features(stations, dynamic_features, st=st, en=en,
+                                            as_dataframe=as_dataframe)
+    if static_features is not None:
+        static = ds.fetch_static_features(stations, static_features)
+    return static, dynamic
+
+
 def _path_size(path: str) -> int:
     """Total size in bytes of a file or directory tree."""
     if os.path.isfile(path):

@@ -12,13 +12,16 @@ __all__ = [
 
 import os
 import time
+import zlib
+import shutil
+import zipfile
 import warnings
 import urllib.parse
 from io import StringIO
 from datetime import datetime
 import concurrent.futures as cf
 from urllib.error import HTTPError
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 from concurrent.futures import ProcessPoolExecutor
 
 import requests
@@ -36,8 +39,9 @@ from .._backend import netCDF4
 from .._backend import fiona
 from ..utils import get_cpus
 from ..utils import validate_attributes, BROWSER_HEADERS
-from .utils import _RainfallRunoff, cache_name
+from .utils import _RainfallRunoff, cache_name, _fetch_with_own_reader
 from ._utils import tw_resampler
+from ._camels._common import _remove_stale
  
 from ._map import (
     catchment_area,
@@ -50,6 +54,7 @@ from ._map import (
     min_air_pressure,
     total_precipitation,
     mean_potential_evapotranspiration,
+    mean_potential_evapotranspiration_with_specifier,
     mean_rel_hum,
     mean_air_temp,
     mean_windspeed,
@@ -78,11 +83,17 @@ class EStreams(_RainfallRunoff):
     """
     Handles EStreams data following the work of
     `Nascimento et al., 2024 <https://doi.org/10.1038/s41597-024-03706-1>`_ .
-    The data is available at its `zenodo repository <https://zenodo.org/records/13961394>`_ .
+    Release 1.4 is downloaded from its `zenodo repository <https://zenodo.org/records/17598150>`_ .
     It should be noted that this dataset does not contain observed streamflow data.
-    It has 17130 stations, 9 dynamic (meteorological) features with daily timestep, 27 dynamic
-    features with yearly timestep and 214 static features. The dynamic features
-    are from 1950-01-01 to 2023-06-30.
+    It has 17130 stations, 11 dynamic (meteorological) features with daily timestep
+    and 251 static features. The daily features
+    are from 1950-01-01 to 2024-06-30 for every station. The Makkink (``pet_mm_makkink``)
+    and Penman-Monteith (``pet_mm_pm``) potential evapotranspiration, in mm/day, have
+    no values after 2023-12-31, and the latter none before 1980. The IHME geology columns ``lit_dom`` and ``tot_area`` are
+    renamed to ``lit_dom_ihme`` and ``tot_area_ihme``; 4 stations have no IHME geology.
+    The streamflow indices (``streamflow_indices.zip``, 2.3 GB) are derived data and
+    are not downloaded. An older release on disk is replaced once, with a warning,
+    and the weather cache built from it is deleted.
 
     Examples
     --------
@@ -90,12 +101,21 @@ class EStreams(_RainfallRunoff):
     >>> dataset = EStreams()
     """
 
-    url = "https://zenodo.org/records/13961394"
+    url = "https://zenodo.org/records/17598150"  # release 1.4
+
+    # each folder of release 1.4 is its own archive. streamflow_indices.zip
+    # (2.3 GB) is not downloaded: it holds indices derived from the streamflow
+    archives = ('attributes.zip', 'hydroclimatic_signatures.zip', 'meteorology.zip',
+                'shapefiles.zip', 'streamflow_gauges.zip', 'appendix.zip')
 
     def __init__(self, path=None, **kwargs):
         super().__init__(path, **kwargs)
 
-        self._download()
+        # the meteorology.nc file handles are shared process-wide (see the module
+        # level _SHARED_METEO_* dicts); only the cheap decoded axes are per-instance
+        self._meteo_axes_cache = None # shared (time index, column names) of meteo.nc
+
+        self._download(overwrite=self.overwrite)
 
         self.md = self.gauge_stations()
         self.md.rename(columns={'area_estreams': catchment_area()}, inplace=True)
@@ -103,13 +123,101 @@ class EStreams(_RainfallRunoff):
         self._dynamic_features = None # lazy loading, will be loaded when first accessed
         self._static_features = None # lazy loading, will be loaded when first accessed
         self._static_data_cache = None # assembled static table, cached on first use
-        # the meteorology.nc file handles are shared process-wide (see the module
-        # level _SHARED_METEO_* dicts); only the cheap decoded axes are per-instance
-        self._meteo_axes_cache = None # shared (time index, column names) of meteo.nc
+        self._meteo_extent_cache = None # first and last day of the weather data
 
         self.bbox = {"llcrnrlat": 30, "urcrnrlat": 80, "llcrnrlon": -30, "urcrnrlon": 60}
         self.parallels = range(30, 80, 15)
         self.meridians = range(-30, 60, 20)
+
+    def _download(self, overwrite: bool = False, **kwargs):
+        """
+        Downloads the archives of release 1.4 and extracts them into a temporary
+        folder which replaces :attr:`path2` once all of them are extracted.
+        Nothing is downloaded if release 1.4 is already there, even when the
+        archives were deleted (``remove_zip=True``). An older release and the
+        weather caches built from it are deleted only after that, with a warning.
+        """
+        old = self._holds_old_release()
+        tmp = f"{self.path2}_extracting"
+        if os.path.isdir(self.path2) and not old and not overwrite:
+            if self.verbosity:
+                print(f"EStreams release 1.4 already exists at {self.path2}")
+            if os.path.isdir(tmp):  # left by an interrupted overwrite
+                shutil.rmtree(tmp)
+            self.maybe_remove_zip_files()
+            return
+
+        archives = [os.path.join(self.path, a) for a in self.archives]
+        if overwrite:
+            _remove_stale(archives, self.verbosity)
+
+        missing = [os.path.basename(a) for a in archives if not os.path.exists(a)]
+        if missing:
+            # imported here because this module installs a SIGINT handler on import
+            from ..download_zenodo import download_from_zenodo
+            os.makedirs(self.path, exist_ok=True)
+            download_from_zenodo(self.path, doi=self.url, include=missing,
+                                 verbosity=self.verbosity)
+
+        shutil.rmtree(tmp, ignore_errors=True)  # left by an interrupted extraction
+        for archive in archives:
+            if self.verbosity:
+                print(f"extracting {archive}")
+            try:
+                with zipfile.ZipFile(archive) as zf:
+                    # macOS metadata (__MACOSX/, .DS_Store) is not data
+                    zf.extractall(tmp, members=[m for m in zf.namelist()
+                                                if not m.startswith('__MACOSX')
+                                                and not m.endswith('.DS_Store')])
+            except (zipfile.BadZipFile, zlib.error, EOFError):
+                shutil.rmtree(tmp, ignore_errors=True)
+                os.remove(archive)
+                raise ValueError(f"{archive} is corrupt and was deleted. Initialize "
+                                 f"EStreams again to download it again.") from None
+
+        # the weather caches are built from the weather files, which are replaced;
+        # meteorology.nc is the cache of an older version of this class
+        stale = [path for path in (self.path2, self.nc_path,
+                                   os.path.join(self.path, 'EStreams', 'meteorology.nc'),
+                                   os.path.join(self.path, 'EStreams.zip'))
+                 if os.path.lexists(path)]
+        if old:
+            # warned regardless of verbosity: the data on disk is deleted
+            warnings.warn(
+                f"EStreams: {self.path} holds a release older than 1.4. Replaced it "
+                f"with release 1.4 ({self.url}), whose weather data comes from the "
+                f"0.1 degree E-OBS grid instead of the 0.25 degree one ({len(stale)} "
+                f"paths removed: {', '.join(os.path.basename(p) for p in stale)}).",
+                UserWarning)
+        self.close()
+        _remove_stale(stale, self.verbosity, reason="replaced by release 1.4")
+        os.replace(tmp, self.path2)
+
+        self.maybe_remove_zip_files()
+        return
+
+    def _holds_old_release(self) -> bool:
+        """
+        True if :attr:`path2` holds a release older than 1.4, whose weather files
+        lack the ``petmk_mean`` column, or an incomplete one. The weather cache
+        decides when the weather files were deleted after it was built.
+        """
+        if not os.path.isdir(self.path2):
+            return False
+
+        meteo_dir = os.path.join(self.path2, 'meteorology')
+        fpath = None
+        if os.path.isdir(meteo_dir):
+            with os.scandir(meteo_dir) as entries:
+                fpath = next((e.path for e in entries if e.name.startswith('estreams_meteorology_')
+                              and e.name.endswith('.csv')), None)
+        if fpath is not None:
+            with open(fpath) as fp:
+                return 'petmk_mean' not in fp.readline().strip().split(',')
+
+        if os.path.exists(self.nc_path) and netCDF4 is not None:
+            return self.dyn_map['petmk_mean'] not in self._meteo_axes()[1]
+        return True
 
     @property
     def boundary_file(self) -> os.PathLike:
@@ -135,11 +243,19 @@ class EStreams(_RainfallRunoff):
 
     @property
     def start(self) -> pd.Timestamp:
-        return pd.Timestamp('1950-01-01')
+        return self._meteo_extent()[0]
 
     @property
     def end(self) -> pd.Timestamp:
-        return pd.Timestamp('2023-06-30')
+        return self._meteo_extent()[1]
+
+    def _meteo_extent(self) -> Tuple[pd.Timestamp, pd.Timestamp]:
+        """first and last day of the weather data, which are the same for every
+        station; read once from the data"""
+        if self._meteo_extent_cache is None:
+            index = self.meteo_data_station(self.stations()[0]).index
+            self._meteo_extent_cache = (index.min(), index.max())
+        return self._meteo_extent_cache
 
     @property
     def static_map(self) -> Dict[str, str]:
@@ -158,6 +274,8 @@ class EStreams(_RainfallRunoff):
             't_mean': mean_air_temp(),
             'p_mean': total_precipitation(),
             'pet_mean': mean_potential_evapotranspiration(),
+            'petmk_mean': mean_potential_evapotranspiration_with_specifier('makkink'),
+            'petpm_mean': mean_potential_evapotranspiration_with_specifier('pm'),
             'rh_mean': mean_rel_hum(),
             'sp_min': min_air_pressure(),
             'swr_mean': solar_radiation(),
@@ -184,6 +302,9 @@ class EStreams(_RainfallRunoff):
         for f in os.listdir(static_path):
             if f.endswith('.csv'):
                 df = pd.read_csv(os.path.join(static_path, f), index_col='basin_id', dtype={'basin_id': str})
+                if f == 'estreams_geologycontinental_attributes.csv':
+                    # the IHME geology repeats two column names of the GLiM geology
+                    df = df.rename(columns={'lit_dom': 'lit_dom_ihme', 'tot_area': 'tot_area_ihme'})
                 dfs.append(df)
 
         df = pd.concat(dfs, axis=1)
@@ -295,7 +416,7 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a :obj:`pandas.DataFrame` of meteorological data of shape (time, 9)
+            a :obj:`pandas.DataFrame` of meteorological data of shape (time, 11)
         """
         if os.path.exists(self.nc_path) and netCDF4 is not None:
             if self.verbosity > 2:
@@ -333,7 +454,7 @@ class EStreams(_RainfallRunoff):
         """
         Returns the ``(time index, column names)`` shared by every station
         variable in ``meteorology.nc``. Decoded once and cached: ``num2date``
-        over the 26844 timestamps (and the column decode) is identical for every
+        over the 27210 timestamps (and the column decode) is identical for every
         station, and recomputing it per station dominated bulk reads.
         """
         if self._meteo_axes_cache is None:
@@ -446,18 +567,20 @@ class EStreams(_RainfallRunoff):
         Returns
         -------
         pd.DataFrame
-            a :obj:`pandas.DataFrame` of hydro-climatic signatures of shape (stations, 31)
+            a :obj:`pandas.DataFrame` of hydro-climatic signatures of shape (stations, 35)
         """
         stations = self._get_stations(countries, stations)
 
+        # the station id column has no name in release 1.4
         df = pd.read_csv(
             os.path.join(
                 self.path2, 
                 'hydroclimatic_signatures',
                 'estreams_hydrometeo_signatures.csv'),
-            index_col='basin_id',
-            dtype={'basin_id': str}
+            converters={0: str},
         )
+        df = df.set_index(df.columns[0])
+        df.index.name = 'basin_id'
         return df.loc[stations, :]
 
     def fetch_stn_dynamic_features(
@@ -550,7 +673,35 @@ class EStreams(_RainfallRunoff):
             # raise NotImplementedError("as_dataframe=True is not implemented yet")
             return data
 
-        return self.meteo_data(stations).sel(dynamic_features=features)
+        st, en = self._check_length(st, en)
+        return self.meteo_data(stations).sel(dynamic_features=features, time=slice(st, en))
+
+    def fetch_stations_features(
+            self,
+            stations: List[str],
+            dynamic_features: Union[str, List[str], None] = 'all',
+            static_features: Union[str, List[str], None] = None,
+            st=None,
+            en=None,
+            as_dataframe: bool = False,
+            **kwargs
+    ) -> Tuple[pd.DataFrame, Union[Dict[str, pd.DataFrame], "Dataset"]]:
+        """
+        Static and dynamic features of the given stations; what :meth:`fetch`
+        returns. The dynamic features come from :meth:`fetch_dynamic_features`,
+        which reads the consolidated meteorology netcdf file directly.
+
+        Examples
+        --------
+        >>> from aqua_fetch import EStreams
+        >>> dataset = EStreams()
+        >>> static, dynamic = dataset.fetch(['IEEP0281', 'IEEP0282'],
+        ...     static_features='all', st='2000-01-01', en='2000-12-31')
+        >>> static.shape, dict(dynamic.sizes)
+        ((2, 251), {'time': 366, 'dynamic_features': 11})
+        """
+        return _fetch_with_own_reader(self, stations, dynamic_features, static_features,
+                                      st=st, en=en, as_dataframe=as_dataframe)
 
 
 class _EStreams(_RainfallRunoff):
@@ -626,15 +777,15 @@ class _EStreams(_RainfallRunoff):
 
     @property
     def start(self) -> pd.Timestamp:
-        return pd.Timestamp('1950-01-01')
+        return self.estreams.start
 
     @property
     def end(self) -> pd.Timestamp:
-        return pd.Timestamp('2023-06-30')
+        return self.estreams.end
 
     def stations(self) -> List[str]:
         """
-        Returns a list of all station names. Note that the `basin_id` column is 
+        Returns a list of all station names. Note that the `basin_id` column is
         used as the station name.
         """
         return self._stations
@@ -911,8 +1062,8 @@ class Finland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
-    data is available from 2012-01-01 to 2023-06-30.
+    the number of static features are 251 and dynamic features are 12 and the
+    data is available from 2012-01-01 to 2024-06-30.
 
     Examples
     ---------
@@ -922,7 +1073,7 @@ class Finland(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 4199, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 4565, 'dynamic_features': 12})
     >>> len(data.data_vars)  # number of stations for which data has been fetched
         66
     >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
@@ -946,7 +1097,7 @@ class Finland(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='FI000001', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (669, 2)
@@ -1223,7 +1374,7 @@ class Ireland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
+    the number of static features are 251 and dynamic features are 12 and the
     data is available from 1992-01-01 to 2020-06-31.
 
     Examples
@@ -1234,7 +1385,7 @@ class Ireland(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 27210, 'dynamic_features': 12})
     >>> len(data.data_vars)  # number of stations for which data has been fetched
         46
     >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
@@ -1258,7 +1409,7 @@ class Ireland(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='IEEP0281', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (464, 2)
@@ -1768,7 +1919,7 @@ class Italy(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
+    the number of static features are 251 and dynamic features are 12 and the
     data is available from 1992-01-01 to 2020-06-31.
 
     Examples
@@ -1779,7 +1930,7 @@ class Italy(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 27210, 'dynamic_features': 12})
     >>> len(data.data_vars)  # number of stations for which data has been fetched
         29
     >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
@@ -1803,7 +1954,7 @@ class Italy(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='ITIS0001', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (294, 2)
@@ -1938,8 +2089,8 @@ class Poland(_EStreams):
     features and catchment boundaries are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ . Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
-    data is available from 1951-01-01 to 2023-06-30.
+    the number of static features are 251 and dynamic features are 12 and the
+    data is available from 1951-01-01 to 2024-06-30.
 
     Examples
     ---------
@@ -1949,7 +2100,7 @@ class Poland(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 26844, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 27210, 'dynamic_features': 12})
     >>> len(data.data_vars)  # number of stations for which data has been fetched
         128
     >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
@@ -1973,7 +2124,7 @@ class Poland(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='PL000001', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (1287, 2)
@@ -2194,7 +2345,7 @@ class Portugal(_EStreams):
     features and catchment boundaries for the 280 catchments are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
+    the number of static features are 251 and dynamic features are 12 and the
     data is available from 1972-01-01 to 2022-12-31.
 
     Examples
@@ -2205,7 +2356,7 @@ class Portugal(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 18628, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 18628, 'dynamic_features': 12})
     >>> len(data.data_vars)  # number of stations for which data has been fetched
         28
     >>> _, data = dataset.fetch(stations=1)  # get data of only one random station
@@ -2229,7 +2380,7 @@ class Portugal(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='PT000001', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (280, 2)
@@ -2398,8 +2549,8 @@ class Slovenia(_EStreams):
     features and catchment boundaries for the 117 catchments are
     taken from :py:class:`aqua_fetch.EStreams` follwoing the works
     of `Nascimento et al., 2024 <https://doi.org/10.5194/hess-25-471-2021>`_ project. Therefore,
-    the number of static features are 214 and dynamic features are 10 and the
-    data is available from 1950-01-01 to 2023-12-31 .
+    the number of static features are 251 and dynamic features are 12 and the
+    data is available from 1950-01-01 to 2024-06-30 .
 
     Examples
     ---------
@@ -2409,7 +2560,7 @@ class Slovenia(_EStreams):
     >>> type(data)
         xarray.core.dataset.Dataset
     >>> data.dims
-    FrozenMappingWarningOnValuesAccess({'time': 27028, 'dynamic_features': 10})
+    FrozenMappingWarningOnValuesAccess({'time': 27210, 'dynamic_features': 12})
     >>> len(data.data_vars)
         10
     >>> _, df = dataset.fetch(stations=1)  # get data of only one random station
@@ -2431,7 +2582,7 @@ class Slovenia(_EStreams):
     # If we want to get both static and dynamic data
     >>> static, dynamic = dataset.fetch(stations='SI000090', static_features="all")
     >>> static.shape, len(dynamic.data_vars)
-    ((1, 214), 1)
+    ((1, 251), 1)
     >>> coords = dataset.stn_coords() # returns coordinates of all stations
     >>> coords.shape
         (117, 2)
@@ -2454,10 +2605,6 @@ class Slovenia(_EStreams):
         self.bbox = {'llcrnrlat': 45.0, 'urcrnrlat': 47.0, 'llcrnrlon': 13.0, 'urcrnrlon': 17.0}
         self.parallels = range(45, 47, 1)
         self.meridians = range(13, 17, 1)
-
-    @property
-    def end(self) -> pd.Timestamp:
-        return pd.Timestamp('2023-12-31')
 
     @property
     def country_name(self) -> str:

@@ -13,7 +13,11 @@ if __name__ == "__main__":
 import warnings
 warnings.filterwarnings("ignore")
 
+from unittest import mock
+
+import numpy as np
 import pandas as pd
+import xarray as xr
 
 from aqua_fetch import EStreams
 from aqua_fetch import Ireland
@@ -77,9 +81,9 @@ def test_area_():
 
 def test_fetch_static_features():
     # out = ds.fetch_static_features(countries='IE')  # todo : why countries argument is not working
-    # assert out.shape == (464, 214), out.shape
+    # assert out.shape == (464, 251), out.shape
 
-    check_fetch_static_feature(ds, 'IEEP0281', 17130, 214)
+    check_fetch_static_feature(ds, 'IEEP0281', 17130, 251)
     return
 
 
@@ -88,7 +92,7 @@ def test_meteo():
 
     assert isinstance(out, pd.DataFrame), type(out)
 
-    assert out.shape[1] == 9, out.shape
+    assert out.shape[1] == 11, out.shape
 
     out = ds.meteo_data(countries='IE')
     assert len(out) == 464, len(out)
@@ -110,6 +114,72 @@ def test_fetch_dynamic_features_():
     return
 
 
+def test_fetch_():
+    """fetch() returns what fetch_dynamic_features and fetch_static_features
+    return (it used to raise NotImplementedError)"""
+    stns = ds.country_stations('IE')[:20]
+    st, en = '2000-01-01', '2000-12-31'
+    static, dynamic = ds.fetch(stns, static_features='all', st=st, en=en)
+    assert dict(dynamic.sizes) == {'time': 366, 'dynamic_features': 11}, dict(dynamic.sizes)
+    xr.testing.assert_identical(dynamic, ds.fetch_dynamic_features(stns, st=st, en=en))
+    pd.testing.assert_frame_equal(static, ds.fetch_static_features(stns, 'all'))
+    return
+
+
+def test_release_update_():
+    """
+    An older release on disk is replaced by release 1.4 once, with a warning,
+    and the weather cache built from it is deleted. Zenodo is stubbed.
+    """
+    import shutil, tempfile, zipfile
+    import aqua_fetch.download_zenodo as dz
+
+    def fake_download(outdir, doi, include, verbosity):
+        for archive in include:
+            with zipfile.ZipFile(os.path.join(outdir, archive), 'w') as zf:
+                zf.writestr(f'{archive[:-4]}/estreams_{archive[:-4]}_AT000001.csv', 'date,p_mean,petmk_mean\n')
+
+    tmp = tempfile.mkdtemp()
+    try:
+        new = EStreams.__new__(EStreams)
+        new.verbosity, new.remove_zip, new.overwrite, new._meteo_axes_cache = 0, True, False, None
+        new.path = tmp   # the setter appends 'EStreams'
+        os.makedirs(os.path.join(new.path2, 'meteorology'))
+        with open(os.path.join(new.path2, 'meteorology', 'estreams_meteorology_AT000001.csv'), 'w') as fp:
+            fp.write('date,p_mean,pet_mean\n')   # release 1.1 has no petmk_mean column
+        with open(new.nc_path, 'w') as fp:
+            fp.write('cache of release 1.1')
+
+        with mock.patch.object(dz, 'download_from_zenodo', fake_download), \
+                warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            new._download()
+        assert any('older than 1.4' in str(w.message) for w in caught)
+        assert sorted(os.listdir(new.path2)) == sorted(a[:-4] for a in EStreams.archives)
+        assert not os.path.exists(new.nc_path)
+
+        # release 1.4 is on disk, so nothing is downloaded again
+        with mock.patch.object(dz, 'download_from_zenodo', side_effect=AssertionError("downloaded")):
+            new._download()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return
+
+
+def test_release_values_():
+    """the weather of a station is served as published in release 1.4"""
+    stn = 'AT000001'
+    out = ds.meteo_data_station(stn)
+    raw = pd.read_csv(os.path.join(ds.path2, 'meteorology', f'estreams_meteorology_{stn}.csv'),
+                      index_col='date', parse_dates=True)
+    assert out.index.equals(raw.index) and len(out) == 27210, len(out)
+    # float32 when read from the weather cache, float64 from the csv files
+    np.testing.assert_array_equal(out.to_numpy(), raw.to_numpy(out.to_numpy().dtype))
+    # the static features of different files do not share a name
+    assert ds.fetch_static_features('all', 'all').columns.is_unique
+    return
+
+
 test_coords_()
 
 test_area_()
@@ -119,6 +189,12 @@ test_fetch_static_features()
 test_meteo()
 
 test_fetch_dynamic_features_()
+
+test_fetch_()
+
+test_release_update_()
+
+test_release_values_()
 
 check_boundary(ds)
 
@@ -138,9 +214,9 @@ ds.gauge_id_basin_id_map()['20002'] == 'IEOP0126'
 
 run_shared_tests(ds, 
              num_stations=464, 
-             dyn_data_len=26844, 
-             num_static_attrs=214,
-              num_dyn_attrs=10
+             dyn_data_len=27210, 
+             num_static_attrs=251,
+              num_dyn_attrs=12
               )
 
 _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
@@ -166,9 +242,9 @@ ds = Finland(path=raw_data_path, processes=1,
 
 run_shared_tests(ds, 
              num_stations=669, 
-             dyn_data_len=4199, 
-             num_static_attrs=214,
-              num_dyn_attrs=10,
+             dyn_data_len=4565, 
+             num_static_attrs=251,
+              num_dyn_attrs=12,
               st="20200101",
               en="20201231"
               )
@@ -179,9 +255,9 @@ ds = Italy(path=raw_data_path, verbosity=3)
 
 run_shared_tests(ds, 
              num_stations=294, 
-             dyn_data_len=26844, 
-             num_static_attrs=214,
-              num_dyn_attrs=10
+             dyn_data_len=27210, 
+             num_static_attrs=251,
+              num_dyn_attrs=12
               )
 
 
@@ -190,9 +266,9 @@ ds = Poland(path=raw_data_path, verbosity=3)
 
 run_shared_tests(ds, 
              num_stations=1287, 
-             dyn_data_len=26844, 
-             num_static_attrs=214,
-              num_dyn_attrs=10
+             dyn_data_len=27210, 
+             num_static_attrs=251,
+              num_dyn_attrs=12
               )
 
 _, dynamic = ds.fetch('all', dynamic_features='q_cms_obs', as_dataframe=True)
@@ -227,8 +303,8 @@ nan_cols = q.columns[q.isna().all()]
 run_shared_tests(ds, 
              num_stations=280, 
              dyn_data_len=18628, 
-             num_static_attrs=214,
-              num_dyn_attrs=10
+             num_static_attrs=251,
+              num_dyn_attrs=12
               )
 
 
@@ -244,7 +320,7 @@ assert len(q.columns[q.isna().all()]) == 0, len(q.columns[q.isna().all()])
 
 run_shared_tests(ds, 
              num_stations=117, 
-             dyn_data_len=27028, 
-             num_static_attrs=214,
-              num_dyn_attrs=10
+             dyn_data_len=27210, 
+             num_static_attrs=251,
+              num_dyn_attrs=12
               )

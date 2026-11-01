@@ -9,11 +9,13 @@ import shutil
 import tempfile
 import unittest
 import logging
+from unittest import mock
 
 if __name__ == "__main__":
     logging.basicConfig(filename='test_gsha.log', filemode='w', level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
+import numpy as np
 import pandas as pd
 from aqua_fetch._backend import xarray as xr
 
@@ -39,7 +41,7 @@ VERBOSITY = 3
 class TestGSHA(unittest.TestCase):
     """
     Tests for the :class:`aqua_fetch.GSHA` dataset (21568 stations across 13
-    agencies; 26 daily + 21 yearly dynamic features and 35 static features).
+    agencies; 26 daily + 21 yearly dynamic features and 40 static features).
 
     A single instance is shared across all tests (built once in ``setUpClass``)
     so that GSHA's cached netcdf handles / csv tables are reused instead of
@@ -51,8 +53,21 @@ class TestGSHA(unittest.TestCase):
         cls.ds = GSHA(path=raw_data_path, verbosity=VERBOSITY)
 
     def test_dataset_attributes(self):
-        assert self.ds.wsAll.shape == (21568, 4), self.ds.wsAll.shape
+        assert self.ds.wsAll.shape == (21568, 9), self.ds.wsAll.shape
         assert len(self.ds.agencies) == 13, len(self.ds.agencies)
+        return
+
+    def test_station_table(self):
+        """the new columns of release 1.3 are served as published"""
+        global_dir = os.path.join(self.ds.path, 'Global_files', 'Global_files')
+        stations = pd.read_csv(os.path.join(global_dir, 'WatershedsAll.csv'), index_col='Sttn_Nm')
+        merit = pd.read_csv(os.path.join(global_dir, 'GSHA_MERITinfo.csv'), index_col='Sttn_Nm')
+
+        static = self.ds.fetch_static_features('all', 'all')
+        assert static.index.tolist() == stations.index.tolist()
+        np.testing.assert_array_equal(static['verification'], stations['verification'])
+        for col in ['COMID', 'uparea', 'order', 'NextDownID']:
+            np.testing.assert_array_equal(static[col], merit[col])
         return
 
     def test_stations(self):
@@ -179,9 +194,9 @@ class TestGSHA(unittest.TestCase):
 
     def test_fetch_static_features(self):
         out = self.ds.fetch_static_features(agency='arcticnet')
-        assert out.shape == (106, 35), out.shape
+        assert out.shape == (106, 40), out.shape
 
-        check_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 35)
+        check_fetch_static_feature(self.ds, '1001_arcticnet', 21568, 40)
         return
 
     def test_fetch_dynamic_features(self):
@@ -189,6 +204,17 @@ class TestGSHA(unittest.TestCase):
         assert len(out) == 106, len(out)
 
         check_fetch_dynamic_features(self.ds, '1001_arcticnet', 16071)
+        return
+
+    def test_fetch(self):
+        """fetch() returns what fetch_dynamic_features and fetch_static_features
+        return (it used to raise NotImplementedError)"""
+        stns = self.ds.stations()[:20]
+        st, en = '2000-01-01', '2000-12-31'
+        static, dynamic = self.ds.fetch(stns, static_features='all', st=st, en=en)
+        assert dict(dynamic.sizes) == {'time': 366, 'dynamic_features': 26}, dict(dynamic.sizes)
+        xr.testing.assert_identical(dynamic, self.ds.fetch_dynamic_features(stns, st=st, en=en))
+        pd.testing.assert_frame_equal(static, self.ds.fetch_static_features(stns, 'all'))
         return
 
     def test_stn_dynamic_features(self):
@@ -215,7 +241,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
         run_shared_tests(ds,
                      num_stations=73,
                      dyn_data_len=7305,
-                     num_static_attrs=35,
+                     num_static_attrs=40,
                      num_dyn_attrs=27,
                      st="1992-01-01",
                      en="1992-12-31",
@@ -227,7 +253,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
         run_shared_tests(ds,
                      num_stations=751,
                      dyn_data_len=16071,
-                     num_static_attrs=35,
+                     num_static_attrs=40,
                      num_dyn_attrs=27,
                      )
         return
@@ -243,7 +269,7 @@ class TestGSHADerivedDatasets(unittest.TestCase):
         run_shared_tests(ds,
                      num_stations=106,
                      dyn_data_len=9131,
-                     num_static_attrs=35,
+                     num_static_attrs=40,
                      num_dyn_attrs=27,
                      st="1992-01-01",
                      en="1992-12-31",
@@ -255,11 +281,68 @@ class TestGSHADerivedDatasets(unittest.TestCase):
         run_shared_tests(ds,
                      num_stations=889,
                      dyn_data_len=15249,
-                     num_static_attrs=35,
+                     num_static_attrs=40,
                      num_dyn_attrs=27,
                      st="1992-01-01",
                      en="1992-12-31",
                      )
+        return
+
+
+class TestDownload(unittest.TestCase):
+    """
+    The station table of release 1.0 is replaced by that of release 1.3 once,
+    and ``overwrite=True`` downloads everything again. Needs no data or network:
+    the downloads are stubbed.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.table = os.path.join(self.tmp, 'GSHA', 'Global_files', 'Global_files', 'WatershedsAll.csv')
+        os.makedirs(os.path.dirname(self.table))
+        with open(self.table, 'w') as fp:
+            fp.write('old')
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_station_table_replaced_once(self):
+        import zipfile
+        import aqua_fetch.download_zenodo as dz
+
+        def fake_download(outdir, doi, include, verbosity):
+            with zipfile.ZipFile(os.path.join(outdir, 'Global_files.zip'), 'w') as zf:
+                zf.writestr('Global_files/WatershedsAll.csv', 'new')
+                zf.writestr('Global_files/GSHA_MERITinfo.csv', 'new')
+
+        ds = GSHA.__new__(GSHA)
+        ds.verbosity, ds.remove_zip = 0, True
+        ds.path = self.tmp   # the setter appends 'GSHA'
+        with mock.patch.object(dz, 'download_from_zenodo', fake_download), self.assertWarns(UserWarning):
+            ds._update_global_files()
+        with open(self.table) as fp:
+            assert fp.read() == 'new'
+
+        # release 1.3 is on disk, so nothing is downloaded again
+        with mock.patch.object(dz, 'download_from_zenodo', side_effect=AssertionError("downloaded")):
+            ds._update_global_files()
+        return
+
+    def test_overwrite(self):
+        import aqua_fetch.utils as utils
+
+        class Stop(Exception):
+            pass
+
+        downloads = []
+        for overwrite in (False, True):
+            # the initialization is stopped right after the download
+            with mock.patch.object(utils, 'download_and_unzip', lambda *args, **kwargs: downloads.append(overwrite)), \
+                    mock.patch.object(GSHA, '_update_global_files', side_effect=Stop), \
+                    self.assertRaises(Stop):
+                GSHA(path=self.tmp, overwrite=overwrite, verbosity=0)
+        assert downloads == [True], downloads
+        assert not os.path.exists(self.table)   # the old folder was deleted
         return
 
 
