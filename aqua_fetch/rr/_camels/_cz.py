@@ -105,11 +105,7 @@ class CAMELS_CZ(_RainfallRunoff):
 
         - daily ``q_mm_obs`` is 0.00 on 3847 days at 41 gauges, where CHMI
           reports flow below 0.005 mm (e.g. 0.02-0.04 m3 s-1 at B4440000 in 2018).
-        - hourly ``q_mm_obs`` is negative in 112 hours (down to -0.33 mm h-1);
-          O4350000 has no hourly streamflow.
-        - C4128000 is on the Nová řeka, a canal fed from the Lužnice: its runoff
-          is ~3.5 times its precipitation. 17 gauges are at dams (CHMI names
-          "VD ...", e.g. B8479500), so their flow is regulated.
+        - hourly ``q_mm_obs`` is negative in 112 hours (down to -0.33 mm h-1).
         - the daily streamflow of 24042409 is the discharge of CHMI's Žatec
           gauge (3944 km2), but its coordinates, boundary and ``area_km2``
           (3579 km2) are those of Stranná, 7.7 km upstream, so its
@@ -123,15 +119,11 @@ class CAMELS_CZ(_RainfallRunoff):
           outside [min, max] on 969 station-days. ``pet_mm_chmi`` (FAO
           Penman-Monteith from CHMI data) may inherit this.
         - ``pevap_mm_era5land`` reaches 39.75 mm day-1 (P4088000).
-        - the zenodo record states CC-BY-4.0, the license file in the archives
-          links to CC-BY-NC-4.0.
 
     :py:class:`aqua_fetch.rr.GRDCCaravan` has 26 of these gauges under GRDC
-    ids (``common_stations(grdc_caravan, max_dist_km=0.5)``);
-    :py:class:`aqua_fetch.rr.EStreams` lists 566 Czech CHMI gauges but has no
-    streamflow.
+    ids (``common_stations(grdc_caravan, max_dist_km=0.5)``).
 
-    The first initialization took ~10 min for ``D`` (1.6 GB download, 2.7 GB
+    The first initialization takes ~10 min for ``D`` (1.6 GB download, 2.7 GB
     extracted, 1.3 GB netCDF cache) and ~10 min for ``H`` (2.3 GB, 3.7 GB and
     1.4 GB). Afterwards initialization takes ~0.03 s, and fetching all features
     of all stations ~0.5 s from the cache (~10 s when it is first read from a

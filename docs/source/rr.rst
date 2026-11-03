@@ -177,7 +177,7 @@ List of datasets
      - 1950, 2016
      - 2025, 2025
      - Czechia
-     - `Krejčí and Nearing, 2025 <https://doi.org/10.5281/zenodo.17769325>`_
+     - `Krejcí and Nearing, 2025 <https://doi.org/10.5281/zenodo.17769325>`_
    * - ``CAMELS_DE``
      - :py:class:`aqua_fetch.rr.CAMELS_DE`
      - 1582
@@ -277,7 +277,7 @@ List of datasets
      - 1951
      - 2024
      - Poland
-     - `Brzezińska et al., 2026 <https://doi.org/10.5281/zenodo.20133183>`_
+     - `Brzezinska et al., 2026 <https://doi.org/10.5281/zenodo.20133183>`_
    * - ``CAMELS_PE``
      - :py:class:`aqua_fetch.rr.CAMELS_PE`
      - 136
@@ -468,6 +468,16 @@ List of datasets
      - 2019
      - Lulea (Sweden)
      - `Broekhuizen et al., 2020 <https://doi.org/10.5194/hess-24-869-2020>`_
+   * - ``Russia``
+     - :py:class:`aqua_fetch.rr.Russia`
+     - 1886
+     -
+     - 8
+     - 25
+     - 2008
+     - 2020
+     - Russia
+     - `Abramov et al., 2026 <https://doi.org/10.3103/S1068373926030052>`_
    * - ``Simbi``
      - :py:class:`aqua_fetch.rr.Simbi`
      - 24
@@ -615,6 +625,10 @@ The following table lists the duplicate datasets available in AquaFetch.
    * - ``South Korea``
      - :py:class:`aqua_fetch.rr.CAMELS_SK`
      - :py:class:`aqua_fetch.rr.CAMELS_KR`
+     -
+   * - ``Russia``
+     - :py:class:`aqua_fetch.rr.Arcticnet`
+     - :py:class:`aqua_fetch.rr.Russia`
      -
 
 
@@ -939,6 +953,13 @@ This provides more control over the datasets.
 
 
 .. autoclass:: aqua_fetch.RRLuleaSweden
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
+.. autoclass:: aqua_fetch.rr.Russia
    :members:
    :show-inheritance:
 
